@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Delegated</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #fa8c16;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 30px;
+            border: 1px solid #ddd;
+        }
+        .task-details {
+            background-color: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #fa8c16;
+        }
+        .task-details h3 {
+            margin-top: 0;
+            color: #fa8c16;
+        }
+        .reason {
+            background-color: #fff7e6;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 3px;
+            border-left: 3px solid #fa8c16;
+        }
+        .button-group {
+            margin: 30px 0;
+            text-align: center;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 0 10px;
+            font-weight: bold;
+        }
+        .button-accept {
+            background-color: #52c41a;
+            color: white;
+        }
+        .button-reject {
+            background-color: #f5222d;
+            color: white;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Task Delegated</h1>
+    </div>
+
+    <div class="content">
+        <p>Dear <strong th:text="${delegatedTo}">User</strong>,</p>
+
+        <p>A task has been delegated to you by <strong th:text="${delegatedBy}">User</strong> in the
+            <strong th:text="${processName}">Workflow Process</strong>.</p>
+
+        <div class="task-details">
+            <h3>Delegation Details</h3>
+            <p><strong>Task Name:</strong> <span th:text="${taskName}">Unnamed Task</span></p>
+            <p><strong>Process:</strong> <span th:text="${processName}">Workflow Process</span></p>
+            <p><strong>Delegated By:</strong> <span th:text="${delegatedBy}">User</span></p>
+        </div>
+
+        <div th:if="${reason != null and reason != 'No reason provided'}">
+            <h4>Delegation Reason:</h4>
+            <div class="reason">
+                <p th:text="${reason}">No reason provided</p>
+            </div>
+        </div>
+
+        <p>Please review the delegation and decide whether to accept or reject it.</p>
+
+        <div class="button-group">
+            <a th:href="${acceptUrl}" class="button button-accept">Accept Delegation</a>
+            <a th:href="${rejectUrl}" class="button button-reject">Reject Delegation</a>
+        </div>
+
+        <p style="font-size: 14px; color: #666;">
+            <strong>Note:</strong> If you accept this delegation, you will become responsible for completing this task.
+            If you reject it, the task will be returned to the original assignee.
+        </p>
+    </div>
+
+    <div class="footer">
+        <p>This is an automated notification from <span th:text="${fromName}">Werkflow Platform</span>.</p>
+        <p>Please do not reply to this email.</p>
+    </div>
+</body>
+</html>

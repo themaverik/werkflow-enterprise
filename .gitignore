@@ -1,0 +1,102 @@
+# Build artifacts
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iws
+*.iml
+*.ipr
+.classpath
+.project
+.settings/
+.vscode/
+/nbproject/private/
+/nbbuild/
+/nbdist/
+/.nb-gradle/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temp files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Database
+*.db
+*.sqlite
+
+# Node.js / Frontend
+node_modules/
+.next/
+.turbo/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.npm/
+.eslintcache
+
+# Environment (never commit real values — use .env.*.example files)
+.env
+.env.local
+.env.*.local
+.env.shared
+.env.engine
+.env.admin
+.env.business
+config/env/.env.shared
+config/env/.env.engine
+config/env/.env.admin
+config/env/.env.business
+application-local.yml
+application-local.properties
+
+# Docker
+docker-compose.override.yml
+.docker/
+volumes/
+
+# Service and frontend build output
+services/*/target/
+services/*/.mvn/
+frontends/*/node_modules/
+frontends/*/.next/
+frontends/*/out/
+frontends/*/.env.local
+dist/
+build/
+out/
+
+# Test artifacts
+.playwright/
+playwright-report/
+test-results/
+
+# Archives
+/archive/
+docs/archive/

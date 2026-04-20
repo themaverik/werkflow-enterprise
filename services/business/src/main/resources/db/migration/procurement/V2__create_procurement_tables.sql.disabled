@@ -1,0 +1,112 @@
+-- Vendors table is created in V1__Initial_Schema.sql
+-- Purchase Requests
+CREATE TABLE IF NOT EXISTS purchase_requests (
+    id BIGSERIAL PRIMARY KEY,
+    request_number VARCHAR(50) UNIQUE NOT NULL,
+    department_id BIGINT NOT NULL, -- FK to admin_service.departments
+    requested_by_user_id BIGINT NOT NULL,
+    requested_date TIMESTAMP NOT NULL,
+    required_by_date DATE,
+    justification VARCHAR(2000) NOT NULL,
+    total_amount DECIMAL(15, 2) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'DRAFT',
+    approved_by_user_id BIGINT,
+    approved_date TIMESTAMP,
+    process_instance_id VARCHAR(255), -- Flowable workflow
+    rejection_reason VARCHAR(1000),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_pr_status CHECK (status IN ('DRAFT', 'PENDING', 'APPROVED', 'REJECTED', 'ORDERED', 'RECEIVED', 'CANCELLED')),
+    CONSTRAINT chk_pr_amount CHECK (total_amount > 0)
+);
+
+-- Purchase Request Line Items
+CREATE TABLE IF NOT EXISTS pr_line_items (
+    id BIGSERIAL PRIMARY KEY,
+    purchase_request_id BIGINT NOT NULL REFERENCES purchase_requests(id),
+    asset_definition_id BIGINT, -- FK to inventory_service.asset_definitions
+    description VARCHAR(500) NOT NULL,
+    quantity INTEGER NOT NULL,
+    unit_price DECIMAL(15, 2) NOT NULL,
+    total_price DECIMAL(15, 2) NOT NULL,
+    specifications JSONB,
+    notes VARCHAR(1000),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_line_quantity CHECK (quantity > 0),
+    CONSTRAINT chk_line_prices CHECK (unit_price > 0 AND total_price > 0)
+);
+
+-- Purchase Orders
+CREATE TABLE IF NOT EXISTS purchase_orders (
+    id BIGSERIAL PRIMARY KEY,
+    po_number VARCHAR(50) UNIQUE NOT NULL,
+    purchase_request_id BIGINT REFERENCES purchase_requests(id),
+    vendor_id BIGINT NOT NULL REFERENCES vendors(id),
+    order_date DATE NOT NULL,
+    expected_delivery_date DATE,
+    actual_delivery_date DATE,
+    total_amount DECIMAL(15, 2) NOT NULL,
+    tax_amount DECIMAL(15, 2),
+    shipping_amount DECIMAL(15, 2),
+    grand_total DECIMAL(15, 2) NOT NULL,
+    payment_terms VARCHAR(100),
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    notes VARCHAR(2000),
+    created_by_user_id BIGINT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_po_status CHECK (status IN ('PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED')),
+    CONSTRAINT chk_po_amounts CHECK (total_amount > 0 AND grand_total > 0)
+);
+
+-- Purchase Order Line Items
+CREATE TABLE IF NOT EXISTS po_line_items (
+    id BIGSERIAL PRIMARY KEY,
+    purchase_order_id BIGINT NOT NULL REFERENCES purchase_orders(id),
+    pr_line_item_id BIGINT REFERENCES pr_line_items(id),
+    description VARCHAR(500) NOT NULL,
+    quantity INTEGER NOT NULL,
+    unit_price DECIMAL(15, 2) NOT NULL,
+    total_price DECIMAL(15, 2) NOT NULL,
+    received_quantity INTEGER DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_po_line_quantity CHECK (quantity > 0 AND received_quantity >= 0),
+    CONSTRAINT chk_po_line_prices CHECK (unit_price > 0 AND total_price > 0)
+);
+
+-- Receipts (goods receipt)
+CREATE TABLE IF NOT EXISTS receipts (
+    id BIGSERIAL PRIMARY KEY,
+    receipt_number VARCHAR(50) UNIQUE NOT NULL,
+    purchase_order_id BIGINT NOT NULL REFERENCES purchase_orders(id),
+    receipt_date DATE NOT NULL,
+    received_by_user_id BIGINT NOT NULL,
+    notes VARCHAR(2000),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Receipt Line Items
+CREATE TABLE IF NOT EXISTS receipt_line_items (
+    id BIGSERIAL PRIMARY KEY,
+    receipt_id BIGINT NOT NULL REFERENCES receipts(id),
+    po_line_item_id BIGINT NOT NULL REFERENCES po_line_items(id),
+    quantity_received INTEGER NOT NULL,
+    condition VARCHAR(50) NOT NULL DEFAULT 'GOOD',
+    notes VARCHAR(1000),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_receipt_quantity CHECK (quantity_received > 0),
+    CONSTRAINT chk_receipt_condition CHECK (condition IN ('GOOD', 'DAMAGED', 'DEFECTIVE'))
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_vendor_status ON vendors(status);
+CREATE INDEX IF NOT EXISTS idx_pr_dept ON purchase_requests(department_id);
+CREATE INDEX IF NOT EXISTS idx_pr_status ON purchase_requests(status);
+CREATE INDEX IF NOT EXISTS idx_pr_requester ON purchase_requests(requested_by_user_id);
+CREATE INDEX IF NOT EXISTS idx_pr_line_pr ON pr_line_items(purchase_request_id);
+CREATE INDEX IF NOT EXISTS idx_po_vendor ON purchase_orders(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_po_pr ON purchase_orders(purchase_request_id);
+CREATE INDEX IF NOT EXISTS idx_po_status ON purchase_orders(status);
+CREATE INDEX IF NOT EXISTS idx_po_line_po ON po_line_items(purchase_order_id);
+CREATE INDEX IF NOT EXISTS idx_receipt_po ON receipts(purchase_order_id);
+CREATE INDEX IF NOT EXISTS idx_receipt_line_receipt ON receipt_line_items(receipt_id);

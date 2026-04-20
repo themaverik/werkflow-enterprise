@@ -1,0 +1,57 @@
+package com.werkflow.engine.service;
+
+import com.werkflow.engine.dto.ProcessDraftSummaryDTO;
+import com.werkflow.engine.workflow.ProcessDraft;
+import com.werkflow.engine.workflow.ProcessDraftRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@Service
+@Slf4j
+@RequiredArgsConstructor
+public class ProcessDraftService {
+
+    private final ProcessDraftRepository repository;
+
+    @Transactional
+    public ProcessDraft saveDraft(String processKey, String name, String bpmnXml, String userId) {
+        log.info("Saving draft for process: {}", processKey);
+        ProcessDraft draft = repository.findByProcessKey(processKey)
+                .orElse(ProcessDraft.builder().processKey(processKey).createdBy(userId).build());
+        draft.setName(name);
+        draft.setBpmnXml(bpmnXml);
+        draft.setUpdatedBy(userId);
+        return repository.save(draft);
+    }
+
+    public Optional<ProcessDraft> getDraft(String processKey) {
+        return repository.findByProcessKey(processKey);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProcessDraftSummaryDTO> listDrafts() {
+        return repository.findAllByOrderByUpdatedAtDesc().stream()
+                .map(draft -> ProcessDraftSummaryDTO.builder()
+                        .id(draft.getId())
+                        .processKey(draft.getProcessKey())
+                        .name(draft.getName())
+                        .createdBy(draft.getCreatedBy())
+                        .updatedBy(draft.getUpdatedBy())
+                        .createdAt(draft.getCreatedAt())
+                        .updatedAt(draft.getUpdatedAt())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void deleteDraft(String processKey) {
+        log.info("Deleting draft for process: {}", processKey);
+        repository.deleteByProcessKey(processKey);
+    }
+}

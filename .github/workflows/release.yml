@@ -1,0 +1,121 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/werkflow
+
+jobs:
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      # --- Engine Service ---
+      - name: Build & push engine-service
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: engine-service
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-engine:${{ steps.version.outputs.VERSION }}
+            ${{ env.IMAGE_PREFIX }}-engine:latest
+          cache-from: type=gha,scope=engine
+          cache-to: type=gha,mode=max,scope=engine
+
+      # --- Admin Service ---
+      - name: Build & push admin-service
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: admin-service
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-admin:${{ steps.version.outputs.VERSION }}
+            ${{ env.IMAGE_PREFIX }}-admin:latest
+          cache-from: type=gha,scope=admin
+          cache-to: type=gha,mode=max,scope=admin
+
+      # --- Portal ---
+      - name: Build & push portal
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: portal
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-portal:${{ steps.version.outputs.VERSION }}
+            ${{ env.IMAGE_PREFIX }}-portal:latest
+          cache-from: type=gha,scope=portal
+          cache-to: type=gha,mode=max,scope=portal
+
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Werkflow v${{ steps.version.outputs.VERSION }}"
+          body: |
+            ## Werkflow Enterprise Workflow Automation Platform v${{ steps.version.outputs.VERSION }}
+
+            ### Docker Images
+
+            Pull the images from GitHub Container Registry:
+
+            ```bash
+            docker pull ghcr.io/${{ github.repository_owner }}/werkflow-engine:${{ steps.version.outputs.VERSION }}
+            docker pull ghcr.io/${{ github.repository_owner }}/werkflow-admin:${{ steps.version.outputs.VERSION }}
+            docker pull ghcr.io/${{ github.repository_owner }}/werkflow-portal:${{ steps.version.outputs.VERSION }}
+            ```
+
+            ### Quick Start
+
+            ```bash
+            git clone https://github.com/${{ github.repository }}.git
+            cd werkflow
+            docker compose -f infrastructure/docker/docker-compose.yml up -d
+            ```
+
+            See [README](https://github.com/${{ github.repository }}/blob/main/README.md) for full setup instructions.
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}

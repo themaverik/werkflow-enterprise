@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
+             xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/"
+             id="procurement_matrix_definitions"
+             name="Procurement Matrix Definitions"
+             namespace="http://werkflow.com/dmn">
+
+  <decision id="procurement_matrix" name="Procurement Approval Matrix">
+    <description>Determines the procurement approval path and whether a committee review
+is required, based on total amount and spend category. Supports multi-level
+procurement governance: direct purchase, manager sign-off, committee review, or
+full board approval.</description>
+    <decisionTable id="procurement_matrix_table" hitPolicy="FIRST">
+
+      <input id="input_amount" label="Procurement Amount">
+        <inputExpression id="input_amount_expr" typeRef="number">
+          <text>amount</text>
+        </inputExpression>
+      </input>
+
+      <input id="input_category" label="Spend Category">
+        <inputExpression id="input_category_expr" typeRef="string">
+          <text>category</text>
+        </inputExpression>
+      </input>
+
+      <output id="output_path" label="Procurement Path" name="procurementPath" typeRef="string"/>
+      <output id="output_committee" label="Requires Committee" name="requiresCommittee" typeRef="boolean"/>
+
+      <!-- Rule 1: IT or INFRASTRUCTURE > 500,000 — board approval + committee -->
+      <rule id="rule_board">
+        <description>Large IT or infrastructure spend requires full board and committee</description>
+        <inputEntry id="rule_board_amount"><text>&gt; 500000</text></inputEntry>
+        <inputEntry id="rule_board_cat"><text>"IT","INFRASTRUCTURE"</text></inputEntry>
+        <outputEntry id="rule_board_path"><text>"BOARD_APPROVAL"</text></outputEntry>
+        <outputEntry id="rule_board_committee"><text>true</text></outputEntry>
+      </rule>
+
+      <!-- Rule 2: > 200,000 any category — committee review -->
+      <rule id="rule_committee">
+        <description>High-value purchases require procurement committee review</description>
+        <inputEntry id="rule_com_amount"><text>&gt; 200000</text></inputEntry>
+        <inputEntry id="rule_com_cat"><text></text></inputEntry>
+        <outputEntry id="rule_com_path"><text>"COMMITTEE_REVIEW"</text></outputEntry>
+        <outputEntry id="rule_com_committee"><text>true</text></outputEntry>
+      </rule>
+
+      <!-- Rule 3: 50,001–200,000 — manager approval, no committee -->
+      <rule id="rule_manager">
+        <description>Mid-range purchases require manager sign-off</description>
+        <inputEntry id="rule_mgr_amount"><text>(50000..200000]</text></inputEntry>
+        <inputEntry id="rule_mgr_cat"><text></text></inputEntry>
+        <outputEntry id="rule_mgr_path"><text>"MANAGER_APPROVAL"</text></outputEntry>
+        <outputEntry id="rule_mgr_committee"><text>false</text></outputEntry>
+      </rule>
+
+      <!-- Rule 4: <= 50,000 — direct purchase, no approval needed -->
+      <rule id="rule_direct">
+        <description>Small purchases are direct-purchase with no approval gate</description>
+        <inputEntry id="rule_dir_amount"><text>&lt;= 50000</text></inputEntry>
+        <inputEntry id="rule_dir_cat"><text></text></inputEntry>
+        <outputEntry id="rule_dir_path"><text>"DIRECT_PURCHASE"</text></outputEntry>
+        <outputEntry id="rule_dir_committee"><text>false</text></outputEntry>
+      </rule>
+
+    </decisionTable>
+  </decision>
+
+</definitions>

@@ -1,0 +1,247 @@
+[
+  {
+    "username": "john.manager",
+    "email": "john.manager@company.com",
+    "firstName": "John",
+    "lastName": "Manager",
+    "enabled": true,
+    "emailVerified": true,
+    "credentials": [
+      {
+        "type": "password",
+        "value": "TempPassword123!",
+        "temporary": true
+      }
+    ],
+    "groups": ["/HR Department", "/HR Department/Managers"],
+    "realmRoles": ["employee", "asset_request_approver", "doa_approver_level1"],
+    "attributes": {
+      "department": ["HR"],
+      "employee_id": ["EMP001001"],
+      "doa_level": ["1"],
+      "cost_center": ["HR-001"],
+      "manager_id": [""],
+      "is_poc": ["false"]
+    }
+  },
+  {
+    "username": "jane.employee",
+    "email": "jane.employee@company.com",
+    "firstName": "Jane",
+    "lastName": "Employee",
+    "enabled": true,
+    "emailVerified": true,
+    "credentials": [
+      {
+        "type": "password",
+        "value": "TempPassword123!",
+        "temporary": true
+      }
+    ],
+    "groups": ["/HR Department", "/HR Department/Specialists"],
+    "realmRoles": ["employee", "asset_request_requester"],
+    "attributes": {
+      "department": ["HR"],
+      "employee_id": ["EMP001002"],
+      "doa_level": ["0"],
+      "cost_center": ["HR-001"],
+      "manager_id": ["<set-to-john-manager-uuid>"],
+      "is_poc": ["false"]
+    }
+  },
+  {
+    "username": "mike.it",
+    "email": "mike.it@company.com",
+    "firstName": "Mike",
+    "lastName": "IT Manager",
+    "enabled": true,
+    "emailVerified": true,
+    "credentials": [
+      {
+        "type": "password",
+        "value": "TempPassword123!",
+        "temporary": true
+      }
+    ],
+    "groups": ["/IT Department", "/IT Department/Managers", "/IT Department/POC"],
+    "realmRoles": ["employee", "asset_request_approver", "doa_approver_level1", "department_poc"],
+    "attributes": {
+      "department": ["IT"],
+      "employee_id": ["EMP002001"],
+      "doa_level": ["1"],
+      "cost_center": ["IT-001"],
+      "manager_id": [""],
+      "is_poc": ["true"]
+    }
+  },
+  {
+    "username": "sarah.finance",
+    "email": "sarah.finance@company.com",
+    "firstName": "Sarah",
+    "lastName": "Finance Head",
+    "enabled": true,
+    "emailVerified": true,
+    "credentials": [
+      {
+        "type": "password",
+        "value": "TempPassword123!",
+        "temporary": true
+      }
+    ],
+    "groups": ["/Finance Department", "/Finance Department/Managers", "/Finance Department/Approvers"],
+    "realmRoles": ["employee", "finance_head", "doa_approver_level3", "doa_approver_level4"],
+    "attributes": {
+      "department": ["Finance"],
+      "employee_id": ["EMP003001"],
+      "doa_level": ["4"],
+      "cost_center": ["FIN-001"],
+      "manager_id": [""],
+      "is_poc": ["false"]
+    }
+  },
+  {
+    "username": "tom.procurement",
+    "email": "tom.procurement@company.com",
+    "firstName": "Tom",
+    "lastName": "Procurement POC",
+    "enabled": true,
+    "emailVerified": true,
+    "credentials": [
+      {
+        "type": "password",
+        "value": "TempPassword123!",
+        "temporary": true
+      }
+    ],
+    "groups": ["/Procurement Department", "/Procurement Department/POC"],
+    "realmRoles": ["employee", "procurement_approver", "department_poc"],
+    "attributes": {
+      "department": ["Procurement"],
+      "employee_id": ["EMP004001"],
+      "doa_level": ["2"],
+      "cost_center": ["PROC-001"],
+      "manager_id": [""],
+      "is_poc": ["true"]
+    }
+  },
+  {
+    "username": "lisa.hub",
+    "email": "lisa.hub@company.com",
+    "firstName": "Lisa",
+    "lastName": "Hub Manager",
+    "enabled": true,
+    "emailVerified": true,
+    "credentials": [
+      {
+        "type": "password",
+        "value": "TempPassword123!",
+        "temporary": true
+      }
+    ],
+    "groups": ["/Inventory Warehouse", "/Inventory Warehouse/Central Hub"],
+    "realmRoles": ["employee", "central_hub_manager"],
+    "attributes": {
+      "department": ["Inventory"],
+      "employee_id": ["EMP005001"],
+      "doa_level": ["0"],
+      "cost_center": ["INV-001"],
+      "manager_id": [""],
+      "hub_id": ["CENTRAL"],
+      "is_poc": ["false"]
+    }
+  },
+  {
+    "username": "bob.driver",
+    "email": "bob.driver@company.com",
+    "firstName": "Bob",
+    "lastName": "Driver",
+    "enabled": true,
+    "emailVerified": true,
+    "credentials": [
+      {
+        "type": "password",
+        "value": "TempPassword123!",
+        "temporary": true
+      }
+    ],
+    "groups": ["/Transport Department", "/Transport Department/Drivers"],
+    "realmRoles": ["employee", "driver"],
+    "attributes": {
+      "department": ["Transport"],
+      "employee_id": ["EMP006001"],
+      "doa_level": ["0"],
+      "cost_center": ["TRANS-001"],
+      "manager_id": [""],
+      "is_poc": ["false"]
+    }
+  },
+  {
+    "username": "demo.admin",
+    "email": "demo.admin@company.com",
+    "firstName": "Demo",
+    "lastName": "Admin",
+    "enabled": true,
+    "emailVerified": true,
+    "credentials": [
+      {
+        "type": "password",
+        "value": "Demo1234!",
+        "temporary": false
+      }
+    ],
+    "realmRoles": ["admin", "doa_approver_level4"],
+    "attributes": {
+      "department": ["Engineering"],
+      "employee_id": ["DEMO001"],
+      "doa_level": ["4"],
+      "cost_center": ["ENG-001"],
+      "is_poc": ["false"]
+    }
+  },
+  {
+    "username": "demo.manager",
+    "email": "demo.manager@company.com",
+    "firstName": "Demo",
+    "lastName": "Manager",
+    "enabled": true,
+    "emailVerified": true,
+    "credentials": [
+      {
+        "type": "password",
+        "value": "Demo1234!",
+        "temporary": false
+      }
+    ],
+    "realmRoles": ["employee", "doa_approver_level2"],
+    "attributes": {
+      "department": ["Engineering"],
+      "employee_id": ["DEMO002"],
+      "doa_level": ["2"],
+      "cost_center": ["ENG-001"],
+      "is_poc": ["false"]
+    }
+  },
+  {
+    "username": "demo.employee",
+    "email": "demo.employee@company.com",
+    "firstName": "Demo",
+    "lastName": "Employee",
+    "enabled": true,
+    "emailVerified": true,
+    "credentials": [
+      {
+        "type": "password",
+        "value": "Demo1234!",
+        "temporary": false
+      }
+    ],
+    "realmRoles": ["employee"],
+    "attributes": {
+      "department": ["Engineering"],
+      "employee_id": ["DEMO003"],
+      "doa_level": ["1"],
+      "cost_center": ["ENG-001"],
+      "is_poc": ["false"]
+    }
+  }
+]
