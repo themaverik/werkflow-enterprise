@@ -1,0 +1,228 @@
+{
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "text": "<h3>Capital Expenditure Request Form</h3><p>Please provide details for your CapEx request.</p>"
+    },
+    {
+      "type": "textfield",
+      "key": "requestTitle",
+      "label": "Request Title",
+      "placeholder": "Enter request title",
+      "validate": {
+        "required": true,
+        "minLength": 5,
+        "maxLength": 100
+      }
+    },
+    {
+      "type": "select",
+      "key": "category",
+      "label": "Category",
+      "values": [
+        { "label": "Equipment", "value": "equipment" },
+        { "label": "Software", "value": "software" },
+        { "label": "Infrastructure", "value": "infrastructure" },
+        { "label": "Facility", "value": "facility" },
+        { "label": "Other", "value": "other" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "number",
+      "key": "requestAmount",
+      "label": "Request Amount (USD)",
+      "placeholder": "Enter amount",
+      "validate": {
+        "required": true,
+        "min": 1,
+        "max": 10000000
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "department",
+      "label": "Department",
+      "placeholder": "Enter department",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "costCenter",
+      "label": "Cost Center",
+      "placeholder": "Enter cost center code",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "description",
+      "label": "Description",
+      "placeholder": "Describe the expenditure in detail",
+      "validate": {
+        "required": true,
+        "minLength": 20,
+        "maxLength": 2000
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "businessJustification",
+      "label": "Business Justification",
+      "placeholder": "Explain why this expenditure is necessary",
+      "validate": {
+        "required": true,
+        "minLength": 50,
+        "maxLength": 2000
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "expectedBenefits",
+      "label": "Expected Benefits",
+      "placeholder": "List expected benefits and ROI",
+      "validate": {
+        "required": true,
+        "minLength": 20
+      }
+    },
+    {
+      "type": "select",
+      "key": "priority",
+      "label": "Priority",
+      "values": [
+        { "label": "Low", "value": "low" },
+        { "label": "Medium", "value": "medium" },
+        { "label": "High", "value": "high" },
+        { "label": "Critical", "value": "critical" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "date",
+      "key": "requiredByDate",
+      "label": "Required By Date",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "vendor",
+      "label": "Preferred Vendor (Optional)",
+      "placeholder": "Enter vendor name if known"
+    },
+    {
+      "type": "select",
+      "key": "fundingSource",
+      "label": "Funding Source",
+      "values": [
+        { "label": "Operating Budget", "value": "operating" },
+        { "label": "Capital Budget", "value": "capital" },
+        { "label": "Grant", "value": "grant" },
+        { "label": "External Funding", "value": "external" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "checkbox",
+      "key": "budgetApproved",
+      "label": "Budget has been pre-approved",
+      "validate": {
+        "required": false
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "projectCode",
+      "label": "Project Code (if applicable)",
+      "placeholder": "Enter project code"
+    },
+    {
+      "type": "number",
+      "key": "estimatedMaintenanceCost",
+      "label": "Annual Maintenance Cost (USD)",
+      "placeholder": "Enter estimated annual maintenance cost",
+      "validate": {
+        "min": 0
+      }
+    },
+    {
+      "type": "number",
+      "key": "usefulLife",
+      "label": "Expected Useful Life (Years)",
+      "placeholder": "Enter expected useful life in years",
+      "validate": {
+        "required": true,
+        "min": 1,
+        "max": 50
+      }
+    },
+    {
+      "type": "select",
+      "key": "depreciationMethod",
+      "label": "Depreciation Method",
+      "values": [
+        { "label": "Straight Line", "value": "straight_line" },
+        { "label": "Declining Balance", "value": "declining_balance" },
+        { "label": "Units of Production", "value": "units_production" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "alternativesConsidered",
+      "label": "Alternatives Considered",
+      "placeholder": "Describe alternative options considered",
+      "validate": {
+        "minLength": 20
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "riskAssessment",
+      "label": "Risk Assessment",
+      "placeholder": "Identify potential risks and mitigation strategies",
+      "validate": {
+        "required": true,
+        "minLength": 20
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "requestorName",
+      "label": "Requestor Name",
+      "placeholder": "Enter your full name",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "email",
+      "key": "requestorEmail",
+      "label": "Requestor Email",
+      "placeholder": "Enter your email",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "additionalComments",
+      "label": "Additional Comments",
+      "placeholder": "Any additional information"
+    }
+  ]
+}

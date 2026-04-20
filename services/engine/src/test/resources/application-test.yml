@@ -1,0 +1,70 @@
+spring:
+  application:
+    name: werkflow-engine-service-test
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/werkflow_test
+    username: werkflow_admin
+    password: werkflow_secure_pass
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: false
+
+  mail:
+    host: localhost
+    port: 1025
+    username: test
+    password: test
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/werkflow
+          jwk-set-uri: http://localhost:8080/realms/werkflow/protocol/openid-connect/certs
+
+flowable:
+  async-executor-activate: false
+  database-schema-update: true
+  check-process-definitions: false
+  process-definition-cache-limit: 10
+
+werkflow:
+  notification:
+    email:
+      enabled: false
+      from: noreply@werkflow.com
+      retry:
+        max-attempts: 3
+        initial-interval: 1000
+
+  cache:
+    enabled: true
+    task-list-ttl: 300
+    process-details-ttl: 600
+
+logging:
+  level:
+    root: INFO
+    com.werkflow: DEBUG
+    org.flowable: WARN
+    org.springframework.security: WARN

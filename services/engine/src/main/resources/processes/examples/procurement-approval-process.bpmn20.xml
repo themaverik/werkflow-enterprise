@@ -1,0 +1,468 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://werkflow.com/bpmn/procurement">
+
+  <process id="procurement-approval-process" name="Procurement Approval Process" isExecutable="true">
+
+    <documentation>Purchase request approval workflow with vendor selection and multi-level approvals</documentation>
+
+    <!-- Start Event -->
+    <startEvent id="startEvent" name="Purchase Request Submitted" flowable:formKey="procurement-request">
+      <documentation>Employee submits a purchase request</documentation>
+    </startEvent>
+
+    <!-- Service Task: Create Purchase Request in Procurement Service -->
+    <serviceTask id="createPurchaseRequest" name="Create Purchase Request"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Creates purchase request record in Procurement Service via REST API</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>procurement</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:string>/api/workflow/procurement/purchase-requests</flowable:string></flowable:field>
+        <flowable:field name="method"><flowable:string>POST</flowable:string></flowable:field>
+        <flowable:field name="body"><flowable:string>{"requestId":"${requestId}","itemName":"${itemName}","quantity":${quantity},"estimatedCost":${estimatedCost}}</flowable:string></flowable:field>
+        <flowable:field name="extractFields"><flowable:string>purchaseRequestId:$.id</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Service Task: Fetch Approved Vendors -->
+    <serviceTask id="fetchVendors" name="Fetch Approved Vendors"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Retrieves list of approved vendors for the requested item category</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>procurement</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:expression>/api/workflow/procurement/vendors?category=${itemCategory}</flowable:expression></flowable:field>
+        <flowable:field name="method"><flowable:string>GET</flowable:string></flowable:field>
+        <flowable:field name="extractFields"><flowable:string>vendorList:$.vendors</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- User Task: Select Vendor -->
+    <userTask id="selectVendor" name="Select Vendor" flowable:candidateGroups="DOA:L1" flowable:formKey="vendor-selection">
+      <documentation>Procurement team selects vendor from approved vendor list</documentation>
+    </userTask>
+
+    <!-- Service Task: Request Quotations -->
+    <serviceTask id="requestQuotations" name="Request Quotations"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Sends quotation requests to selected vendors</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>procurement</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:string>/api/workflow/procurement/quotations/request</flowable:string></flowable:field>
+        <flowable:field name="method"><flowable:string>POST</flowable:string></flowable:field>
+        <flowable:field name="body"><flowable:string>{"purchaseRequestId":"${purchaseRequestId}","vendorIds":${vendorList}}</flowable:string></flowable:field>
+        <flowable:field name="extractFields"><flowable:string>quotationIds:$.quotationIds</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- User Task: Review Quotations -->
+    <userTask id="reviewQuotations" name="Review Quotations" flowable:candidateGroups="DOA:L1" flowable:formKey="quotation-review">
+      <documentation>Procurement team reviews and compares vendor quotations</documentation>
+    </userTask>
+
+    <!-- Service Task: Calculate Total Cost -->
+    <serviceTask id="calculateTotalCost" name="Calculate Total Cost"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Calculates total cost including taxes and shipping</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>procurement</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:expression>/api/workflow/procurement/quotations/${selectedQuotationId}/cost</flowable:expression></flowable:field>
+        <flowable:field name="method"><flowable:string>GET</flowable:string></flowable:field>
+        <flowable:field name="extractFields"><flowable:string>totalCost:$.totalCost,taxAmount:$.taxAmount</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Exclusive Gateway: Amount-based Approval Routing -->
+    <exclusiveGateway id="amountGateway" name="Amount > $10,000?" />
+
+    <!-- User Task: Supervisor Approval (all requests) -->
+    <userTask id="supervisorApproval" name="Supervisor Review" flowable:candidateGroups="DOA:L2" flowable:formKey="procurement-approval">
+      <documentation>Supervisor reviews and approves purchase request</documentation>
+    </userTask>
+
+    <!-- User Task: Manager Approval (amounts > $10k) -->
+    <userTask id="managerApproval" name="Manager Review" flowable:candidateGroups="DOA:L3" flowable:formKey="procurement-approval">
+      <documentation>Manager reviews high-value purchase requests exceeding $10,000</documentation>
+    </userTask>
+
+    <!-- Exclusive Gateway: Check Amount for Director Approval -->
+    <exclusiveGateway id="directorGateway" name="Amount > $50,000?" />
+
+    <!-- User Task: Director Approval (amounts > $50k) -->
+    <userTask id="directorApproval" name="Director Review" flowable:candidateGroups="DOA:L4" flowable:formKey="procurement-approval">
+      <documentation>Director reviews very high-value purchase requests exceeding $50,000</documentation>
+    </userTask>
+
+    <!-- Merge Gateway -->
+    <exclusiveGateway id="mergeGateway" name="Merge Approvals" />
+
+    <!-- Exclusive Gateway: Final Decision -->
+    <exclusiveGateway id="decisionGateway" name="Approved?" />
+
+    <!-- Service Task: Create Purchase Order -->
+    <serviceTask id="createPurchaseOrder" name="Create Purchase Order"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Creates purchase order in Procurement Service</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>procurement</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:string>/api/workflow/procurement/purchase-orders</flowable:string></flowable:field>
+        <flowable:field name="method"><flowable:string>POST</flowable:string></flowable:field>
+        <flowable:field name="body"><flowable:string>{"requestId":"${requestId}","selectedQuotationId":"${selectedQuotationId}"}</flowable:string></flowable:field>
+        <flowable:field name="extractFields"><flowable:string>poNumber:$.poNumber</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Service Task: Send PO to Vendor -->
+    <serviceTask id="sendPOToVendor" name="Send PO to Vendor"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Sends purchase order to selected vendor via email</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>procurement</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:expression>/api/workflow/procurement/purchase-orders/${poNumber}/send</flowable:expression></flowable:field>
+        <flowable:field name="method"><flowable:string>POST</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Service Task: Update Request Status - Approved -->
+    <serviceTask id="updateApproved" name="Update Status: Approved"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Updates purchase request status to APPROVED with PO number</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>procurement</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:expression>/api/workflow/procurement/purchase-requests/${requestId}/approve</flowable:expression></flowable:field>
+        <flowable:field name="method"><flowable:string>PUT</flowable:string></flowable:field>
+        <flowable:field name="body"><flowable:string>{"poNumber":"${poNumber}"}</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Service Task: Send Approval Notification -->
+    <serviceTask id="sendApprovalNotification" name="Send Approval Notification"
+                 flowable:delegateExpression="${notificationDelegate}">
+      <documentation>Sends email notification to requester about approval</documentation>
+      <extensionElements>
+        <flowable:field name="notificationType">
+          <flowable:string><![CDATA[PROCUREMENT_APPROVED]]></flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Service Task: Update Request Status - Rejected -->
+    <serviceTask id="updateRejected" name="Update Status: Rejected"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Updates purchase request status to REJECTED</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>procurement</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:expression>/api/workflow/procurement/purchase-requests/${requestId}/reject</flowable:expression></flowable:field>
+        <flowable:field name="method"><flowable:string>PUT</flowable:string></flowable:field>
+        <flowable:field name="body"><flowable:string>{"rejectionReason":"${rejectionReason}"}</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Service Task: Send Rejection Notification -->
+    <serviceTask id="sendRejectionNotification" name="Send Rejection Notification"
+                 flowable:delegateExpression="${notificationDelegate}">
+      <documentation>Sends email notification to requester about rejection</documentation>
+      <extensionElements>
+        <flowable:field name="notificationType">
+          <flowable:string><![CDATA[PROCUREMENT_REJECTED]]></flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- End Events -->
+    <endEvent id="endEventApproved" name="PO Created" />
+    <endEvent id="endEventRejected" name="Request Rejected" />
+
+    <!-- Sequence Flows -->
+    <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="createPurchaseRequest" />
+    <sequenceFlow id="flow2" sourceRef="createPurchaseRequest" targetRef="fetchVendors" />
+    <sequenceFlow id="flow3" sourceRef="fetchVendors" targetRef="selectVendor" />
+    <sequenceFlow id="flow4" sourceRef="selectVendor" targetRef="requestQuotations" />
+    <sequenceFlow id="flow5" sourceRef="requestQuotations" targetRef="reviewQuotations" />
+    <sequenceFlow id="flow6" sourceRef="reviewQuotations" targetRef="calculateTotalCost" />
+    <sequenceFlow id="flow7" sourceRef="calculateTotalCost" targetRef="amountGateway" />
+
+    <!-- Amount Gateway Flows -->
+    <sequenceFlow id="amountLow" sourceRef="amountGateway" targetRef="supervisorApproval">
+      <conditionExpression xsi:type="tFormalExpression">${totalCost &lt;= 10000}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="amountHigh" sourceRef="amountGateway" targetRef="supervisorApproval">
+      <conditionExpression xsi:type="tFormalExpression">${totalCost &gt; 10000}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow8" sourceRef="supervisorApproval" targetRef="directorGateway" />
+
+    <!-- Director Gateway Flows -->
+    <sequenceFlow id="directorNotNeeded" sourceRef="directorGateway" targetRef="mergeGateway">
+      <conditionExpression xsi:type="tFormalExpression">${totalCost &lt;= 10000 || (supervisorApproved == true &amp;&amp; totalCost &lt;= 50000)}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="directorPath" sourceRef="directorGateway" targetRef="managerApproval">
+      <conditionExpression xsi:type="tFormalExpression">${supervisorApproved == true &amp;&amp; totalCost &gt; 10000}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow9" sourceRef="managerApproval" targetRef="directorApproval" />
+    <sequenceFlow id="flow10" sourceRef="directorApproval" targetRef="mergeGateway" />
+    <sequenceFlow id="flow11" sourceRef="mergeGateway" targetRef="decisionGateway" />
+
+    <!-- Decision Gateway Flows -->
+    <sequenceFlow id="approved" sourceRef="decisionGateway" targetRef="createPurchaseOrder">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[
+        ${
+          (supervisorApproved == true) &&
+          (totalCost <= 10000 || (managerApproved == true && (totalCost <= 50000 || directorApproved == true)))
+        }
+      ]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="rejected" sourceRef="decisionGateway" targetRef="updateRejected">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[
+        ${
+          (supervisorApproved == false) ||
+          (totalCost > 10000 && managerApproved == false) ||
+          (totalCost > 50000 && directorApproved == false)
+        }
+      ]]></conditionExpression>
+    </sequenceFlow>
+
+    <!-- Approval Path -->
+    <sequenceFlow id="flow12" sourceRef="createPurchaseOrder" targetRef="sendPOToVendor" />
+    <sequenceFlow id="flow13" sourceRef="sendPOToVendor" targetRef="updateApproved" />
+    <sequenceFlow id="flow14" sourceRef="updateApproved" targetRef="sendApprovalNotification" />
+    <sequenceFlow id="flow15" sourceRef="sendApprovalNotification" targetRef="endEventApproved" />
+
+    <!-- Rejection Path -->
+    <sequenceFlow id="flow16" sourceRef="updateRejected" targetRef="sendRejectionNotification" />
+    <sequenceFlow id="flow17" sourceRef="sendRejectionNotification" targetRef="endEventRejected" />
+
+  </process>
+
+  <!-- BPMN Diagram (Visual Layout) -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_procurement-approval-process">
+    <bpmndi:BPMNPlane bpmnElement="procurement-approval-process" id="BPMNPlane_procurement-approval-process">
+
+      <!-- Start Event -->
+      <bpmndi:BPMNShape bpmnElement="startEvent" id="BPMNShape_startEvent">
+        <omgdc:Bounds height="30.0" width="30.0" x="100.0" y="163.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Script Tasks -->
+      <bpmndi:BPMNShape bpmnElement="createPurchaseRequest" id="BPMNShape_createPurchaseRequest">
+        <omgdc:Bounds height="80.0" width="100.0" x="180.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="fetchVendors" id="BPMNShape_fetchVendors">
+        <omgdc:Bounds height="80.0" width="100.0" x="330.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- User Tasks -->
+      <bpmndi:BPMNShape bpmnElement="selectVendor" id="BPMNShape_selectVendor">
+        <omgdc:Bounds height="80.0" width="100.0" x="480.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="requestQuotations" id="BPMNShape_requestQuotations">
+        <omgdc:Bounds height="80.0" width="100.0" x="630.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="reviewQuotations" id="BPMNShape_reviewQuotations">
+        <omgdc:Bounds height="80.0" width="100.0" x="780.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="calculateTotalCost" id="BPMNShape_calculateTotalCost">
+        <omgdc:Bounds height="80.0" width="100.0" x="930.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Gateways -->
+      <bpmndi:BPMNShape bpmnElement="amountGateway" id="BPMNShape_amountGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="1080.0" y="158.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="supervisorApproval" id="BPMNShape_supervisorApproval">
+        <omgdc:Bounds height="80.0" width="100.0" x="1170.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="directorGateway" id="BPMNShape_directorGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="1320.0" y="158.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="managerApproval" id="BPMNShape_managerApproval">
+        <omgdc:Bounds height="80.0" width="100.0" x="1410.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="directorApproval" id="BPMNShape_directorApproval">
+        <omgdc:Bounds height="80.0" width="100.0" x="1560.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="mergeGateway" id="BPMNShape_mergeGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="1710.0" y="158.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="decisionGateway" id="BPMNShape_decisionGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="1800.0" y="158.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Approval Path -->
+      <bpmndi:BPMNShape bpmnElement="createPurchaseOrder" id="BPMNShape_createPurchaseOrder">
+        <omgdc:Bounds height="80.0" width="100.0" x="1890.0" y="50.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="sendPOToVendor" id="BPMNShape_sendPOToVendor">
+        <omgdc:Bounds height="80.0" width="100.0" x="2040.0" y="50.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="updateApproved" id="BPMNShape_updateApproved">
+        <omgdc:Bounds height="80.0" width="100.0" x="2190.0" y="50.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="sendApprovalNotification" id="BPMNShape_sendApprovalNotification">
+        <omgdc:Bounds height="80.0" width="100.0" x="2340.0" y="50.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Rejection Path -->
+      <bpmndi:BPMNShape bpmnElement="updateRejected" id="BPMNShape_updateRejected">
+        <omgdc:Bounds height="80.0" width="100.0" x="1890.0" y="250.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="sendRejectionNotification" id="BPMNShape_sendRejectionNotification">
+        <omgdc:Bounds height="80.0" width="100.0" x="2040.0" y="250.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- End Events -->
+      <bpmndi:BPMNShape bpmnElement="endEventApproved" id="BPMNShape_endEventApproved">
+        <omgdc:Bounds height="28.0" width="28.0" x="2490.0" y="76.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="endEventRejected" id="BPMNShape_endEventRejected">
+        <omgdc:Bounds height="28.0" width="28.0" x="2190.0" y="276.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Sequence Flow Edges -->
+      <bpmndi:BPMNEdge bpmnElement="flow1" id="BPMNEdge_flow1">
+        <omgdi:waypoint x="130.0" y="178.0"/>
+        <omgdi:waypoint x="180.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow2" id="BPMNEdge_flow2">
+        <omgdi:waypoint x="280.0" y="178.0"/>
+        <omgdi:waypoint x="330.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow3" id="BPMNEdge_flow3">
+        <omgdi:waypoint x="430.0" y="178.0"/>
+        <omgdi:waypoint x="480.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow4" id="BPMNEdge_flow4">
+        <omgdi:waypoint x="580.0" y="178.0"/>
+        <omgdi:waypoint x="630.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow5" id="BPMNEdge_flow5">
+        <omgdi:waypoint x="730.0" y="178.0"/>
+        <omgdi:waypoint x="780.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow6" id="BPMNEdge_flow6">
+        <omgdi:waypoint x="880.0" y="178.0"/>
+        <omgdi:waypoint x="930.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow7" id="BPMNEdge_flow7">
+        <omgdi:waypoint x="1030.0" y="178.0"/>
+        <omgdi:waypoint x="1080.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="amountLow" id="BPMNEdge_amountLow">
+        <omgdi:waypoint x="1120.0" y="178.0"/>
+        <omgdi:waypoint x="1170.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="amountHigh" id="BPMNEdge_amountHigh">
+        <omgdi:waypoint x="1100.0" y="198.0"/>
+        <omgdi:waypoint x="1100.0" y="240.0"/>
+        <omgdi:waypoint x="1220.0" y="240.0"/>
+        <omgdi:waypoint x="1220.0" y="218.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow8" id="BPMNEdge_flow8">
+        <omgdi:waypoint x="1270.0" y="178.0"/>
+        <omgdi:waypoint x="1320.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="directorNotNeeded" id="BPMNEdge_directorNotNeeded">
+        <omgdi:waypoint x="1340.0" y="198.0"/>
+        <omgdi:waypoint x="1340.0" y="280.0"/>
+        <omgdi:waypoint x="1730.0" y="280.0"/>
+        <omgdi:waypoint x="1730.0" y="198.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="directorPath" id="BPMNEdge_directorPath">
+        <omgdi:waypoint x="1360.0" y="178.0"/>
+        <omgdi:waypoint x="1410.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow9" id="BPMNEdge_flow9">
+        <omgdi:waypoint x="1510.0" y="178.0"/>
+        <omgdi:waypoint x="1560.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow10" id="BPMNEdge_flow10">
+        <omgdi:waypoint x="1660.0" y="178.0"/>
+        <omgdi:waypoint x="1710.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow11" id="BPMNEdge_flow11">
+        <omgdi:waypoint x="1750.0" y="178.0"/>
+        <omgdi:waypoint x="1800.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="approved" id="BPMNEdge_approved">
+        <omgdi:waypoint x="1820.0" y="158.0"/>
+        <omgdi:waypoint x="1820.0" y="90.0"/>
+        <omgdi:waypoint x="1890.0" y="90.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="rejected" id="BPMNEdge_rejected">
+        <omgdi:waypoint x="1820.0" y="198.0"/>
+        <omgdi:waypoint x="1820.0" y="290.0"/>
+        <omgdi:waypoint x="1890.0" y="290.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow12" id="BPMNEdge_flow12">
+        <omgdi:waypoint x="1990.0" y="90.0"/>
+        <omgdi:waypoint x="2040.0" y="90.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow13" id="BPMNEdge_flow13">
+        <omgdi:waypoint x="2140.0" y="90.0"/>
+        <omgdi:waypoint x="2190.0" y="90.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow14" id="BPMNEdge_flow14">
+        <omgdi:waypoint x="2290.0" y="90.0"/>
+        <omgdi:waypoint x="2340.0" y="90.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow15" id="BPMNEdge_flow15">
+        <omgdi:waypoint x="2440.0" y="90.0"/>
+        <omgdi:waypoint x="2490.0" y="90.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow16" id="BPMNEdge_flow16">
+        <omgdi:waypoint x="1990.0" y="290.0"/>
+        <omgdi:waypoint x="2040.0" y="290.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow17" id="BPMNEdge_flow17">
+        <omgdi:waypoint x="2140.0" y="290.0"/>
+        <omgdi:waypoint x="2190.0" y="290.0"/>
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</definitions>

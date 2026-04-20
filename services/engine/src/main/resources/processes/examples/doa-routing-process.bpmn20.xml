@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://werkflow.com/bpmn/examples">
+
+  <process id="doa-routing-process" name="DoA Routing via DMN" isExecutable="true">
+
+    <documentation>Demonstrates DMN-backed Business Rule Task routing. A spend request is
+submitted, then a Business Rule Task evaluates the doa_routing decision table to determine
+the correct approver group. The gateway routes to the appropriate approval task based on the
+DMN output variable — no hardcoded JUEL thresholds in the gateway conditions.</documentation>
+
+    <startEvent id="doaStart" name="Request Submitted" flowable:initiator="initiator"/>
+
+    <sequenceFlow id="flow_start_submit" sourceRef="doaStart" targetRef="submitRequest"/>
+
+    <!-- Step 1: submitter fills in the spend request form -->
+    <userTask id="submitRequest" name="Submit Spend Request"
+              flowable:assignee="${initiator}"
+              flowable:formKey="doa-request-form">
+      <documentation>Submitter provides request amount, department, and justification.</documentation>
+    </userTask>
+
+    <sequenceFlow id="flow_submit_route" sourceRef="submitRequest" targetRef="evaluateDoA"/>
+
+    <!-- Step 2: Business Rule Task — evaluates doa_routing DMN decision table -->
+    <!-- Output variable approverGroup is set from the singleEntry result -->
+    <businessRuleTask id="evaluateDoA" name="Evaluate DoA Routing"
+                      flowable:decisionRef="doa_routing"
+                      flowable:mapDecisionResult="singleEntry"
+                      flowable:resultVariable="approverGroup">
+      <documentation>Evaluates the DoA routing decision table. Sets approverGroup to one
+of: VP, FINANCE_DIRECTOR, MANAGER, or STAFF based on requestAmount and department.</documentation>
+    </businessRuleTask>
+
+    <sequenceFlow id="flow_route_gateway" sourceRef="evaluateDoA" targetRef="routeGateway"/>
+
+    <!-- Step 3: gateway routes based on DMN output, not hardcoded thresholds -->
+    <exclusiveGateway id="routeGateway" name="Route by Approver"/>
+
+    <sequenceFlow id="flow_to_vp" sourceRef="routeGateway" targetRef="vpApproval">
+      <conditionExpression xsi:type="tFormalExpression">${approverGroup == 'VP'}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow_to_finance" sourceRef="routeGateway" targetRef="financeApproval">
+      <conditionExpression xsi:type="tFormalExpression">${approverGroup == 'FINANCE_DIRECTOR'}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow_to_manager" sourceRef="routeGateway" targetRef="managerApproval">
+      <conditionExpression xsi:type="tFormalExpression">${approverGroup == 'MANAGER'}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow_to_staff" sourceRef="routeGateway" targetRef="staffApproval">
+      <conditionExpression xsi:type="tFormalExpression">${approverGroup == 'STAFF'}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- Approval tasks — each targeted at the relevant candidate group -->
+    <userTask id="vpApproval" name="VP Approval"
+              flowable:candidateGroups="VP,ADMIN"
+              flowable:formKey="doa-approval-form">
+      <documentation>VP-level approval for high-value requests.</documentation>
+    </userTask>
+
+    <userTask id="financeApproval" name="Finance Director Approval"
+              flowable:candidateGroups="FINANCE_DIRECTOR,ADMIN"
+              flowable:formKey="doa-approval-form">
+      <documentation>Finance Director approval for large Finance department requests.</documentation>
+    </userTask>
+
+    <userTask id="managerApproval" name="Manager Approval"
+              flowable:candidateGroups="MANAGER,ADMIN"
+              flowable:formKey="doa-approval-form">
+      <documentation>Line manager approval for mid-range requests.</documentation>
+    </userTask>
+
+    <userTask id="staffApproval" name="Staff Approver Review"
+              flowable:candidateGroups="WORKFLOW_ADMIN,ADMIN"
+              flowable:formKey="doa-approval-form">
+      <documentation>Standard staff approver review for routine requests.</documentation>
+    </userTask>
+
+    <!-- All paths converge at the join gateway -->
+    <sequenceFlow id="flow_vp_join" sourceRef="vpApproval" targetRef="approvalJoin"/>
+    <sequenceFlow id="flow_finance_join" sourceRef="financeApproval" targetRef="approvalJoin"/>
+    <sequenceFlow id="flow_manager_join" sourceRef="managerApproval" targetRef="approvalJoin"/>
+    <sequenceFlow id="flow_staff_join" sourceRef="staffApproval" targetRef="approvalJoin"/>
+
+    <exclusiveGateway id="approvalJoin" name="Approval Complete"/>
+
+    <sequenceFlow id="flow_join_notify" sourceRef="approvalJoin" targetRef="sendOutcomeNotice"/>
+
+    <serviceTask id="sendOutcomeNotice" name="Send Outcome Notification"
+                 flowable:actionType="NOTIFICATION"
+                 flowable:delegateExpression="${emailActionDelegate}">
+      <extensionElements>
+        <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
+        <flowable:field name="recipient"><flowable:string>${initiator}</flowable:string></flowable:field>
+        <flowable:field name="templateKey"><flowable:string>task-escalation</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <sequenceFlow id="flow_notify_end" sourceRef="sendOutcomeNotice" targetRef="doaEnd"/>
+
+    <endEvent id="doaEnd" name="Request Complete"/>
+
+  </process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_doa-routing">
+    <bpmndi:BPMNPlane id="BPMNPlane_doa-routing" bpmnElement="doa-routing-process">
+
+      <bpmndi:BPMNShape id="doaStart_di" bpmnElement="doaStart">
+        <omgdc:Bounds x="152" y="302" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="125" y="345" width="90" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="submitRequest_di" bpmnElement="submitRequest">
+        <omgdc:Bounds x="240" y="280" width="120" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="evaluateDoA_di" bpmnElement="evaluateDoA">
+        <omgdc:Bounds x="420" y="280" width="120" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="routeGateway_di" bpmnElement="routeGateway" isMarkerVisible="true">
+        <omgdc:Bounds x="605" y="295" width="50" height="50"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="575" y="352" width="110" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="vpApproval_di" bpmnElement="vpApproval">
+        <omgdc:Bounds x="730" y="100" width="120" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="financeApproval_di" bpmnElement="financeApproval">
+        <omgdc:Bounds x="730" y="220" width="120" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="managerApproval_di" bpmnElement="managerApproval">
+        <omgdc:Bounds x="730" y="340" width="120" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="staffApproval_di" bpmnElement="staffApproval">
+        <omgdc:Bounds x="730" y="460" width="120" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="approvalJoin_di" bpmnElement="approvalJoin" isMarkerVisible="true">
+        <omgdc:Bounds x="935" y="295" width="50" height="50"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="908" y="352" width="104" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="sendOutcomeNotice_di" bpmnElement="sendOutcomeNotice">
+        <omgdc:Bounds x="1060" y="280" width="120" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="doaEnd_di" bpmnElement="doaEnd">
+        <omgdc:Bounds x="1252" y="302" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1225" y="345" width="90" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="flow_start_submit_di" bpmnElement="flow_start_submit">
+        <omgdi:waypoint x="188" y="320"/>
+        <omgdi:waypoint x="240" y="320"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="flow_submit_route_di" bpmnElement="flow_submit_route">
+        <omgdi:waypoint x="360" y="320"/>
+        <omgdi:waypoint x="420" y="320"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="flow_route_gateway_di" bpmnElement="flow_route_gateway">
+        <omgdi:waypoint x="540" y="320"/>
+        <omgdi:waypoint x="605" y="320"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="flow_to_vp_di" bpmnElement="flow_to_vp">
+        <omgdi:waypoint x="630" y="295"/>
+        <omgdi:waypoint x="630" y="140"/>
+        <omgdi:waypoint x="730" y="140"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="flow_to_finance_di" bpmnElement="flow_to_finance">
+        <omgdi:waypoint x="630" y="295"/>
+        <omgdi:waypoint x="630" y="260"/>
+        <omgdi:waypoint x="730" y="260"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="flow_to_manager_di" bpmnElement="flow_to_manager">
+        <omgdi:waypoint x="630" y="345"/>
+        <omgdi:waypoint x="630" y="380"/>
+        <omgdi:waypoint x="730" y="380"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="flow_to_staff_di" bpmnElement="flow_to_staff">
+        <omgdi:waypoint x="630" y="345"/>
+        <omgdi:waypoint x="630" y="500"/>
+        <omgdi:waypoint x="730" y="500"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="flow_vp_join_di" bpmnElement="flow_vp_join">
+        <omgdi:waypoint x="850" y="140"/>
+        <omgdi:waypoint x="960" y="140"/>
+        <omgdi:waypoint x="960" y="295"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="flow_finance_join_di" bpmnElement="flow_finance_join">
+        <omgdi:waypoint x="850" y="260"/>
+        <omgdi:waypoint x="960" y="260"/>
+        <omgdi:waypoint x="960" y="295"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="flow_manager_join_di" bpmnElement="flow_manager_join">
+        <omgdi:waypoint x="850" y="380"/>
+        <omgdi:waypoint x="960" y="380"/>
+        <omgdi:waypoint x="960" y="345"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="flow_staff_join_di" bpmnElement="flow_staff_join">
+        <omgdi:waypoint x="850" y="500"/>
+        <omgdi:waypoint x="960" y="500"/>
+        <omgdi:waypoint x="960" y="345"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="flow_join_notify_di" bpmnElement="flow_join_notify">
+        <omgdi:waypoint x="985" y="320"/>
+        <omgdi:waypoint x="1060" y="320"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="flow_notify_end_di" bpmnElement="flow_notify_end">
+        <omgdi:waypoint x="1180" y="320"/>
+        <omgdi:waypoint x="1252" y="320"/>
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</definitions>

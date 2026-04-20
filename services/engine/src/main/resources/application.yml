@@ -1,0 +1,296 @@
+spring:
+  application:
+    name: werkflow-engine-service
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5433}/${POSTGRES_DB:werkflow}
+    username: ${POSTGRES_USER:werkflow_admin}
+    password: ${POSTGRES_PASSWORD:werkflow_secure_pass}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${POSTGRES_MAX_POOL_SIZE:10}
+      minimum-idle: ${POSTGRES_MIN_IDLE:2}
+      connection-timeout: ${POSTGRES_CONNECTION_TIMEOUT:30000}
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-init-sql: SET search_path TO public,${SPRING_DATASOURCE_SCHEMA:flowable}
+
+  jpa:
+    hibernate:
+      ddl-auto: none  # Managed by Flyway and Flowable
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: ${SPRING_DATASOURCE_SCHEMA:flowable}
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+  flyway:
+    enabled: ${FLYWAY_ENABLED:false}  # Flowable manages its own schema
+    baseline-on-migrate: true
+    schemas: ${SPRING_DATASOURCE_SCHEMA:flowable}
+    locations: classpath:db/migration
+
+  # Mail configuration for notification service
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS_ENABLE:false}
+      mail.smtp.starttls.required: ${SMTP_STARTTLS_REQUIRED:false}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER:http://localhost:8090/realms/werkflow}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://keycloak:8080/realms/werkflow/protocol/openid-connect/certs}
+      client:
+        registration:
+          werkflow-engine:
+            client-id: werkflow-engine
+            client-secret: ${ENGINE_CLIENT_SECRET}
+            authorization-grant-type: client_credentials
+            scope: openid
+        provider:
+          werkflow-engine:
+            token-uri: ${KEYCLOAK_TOKEN_URI:http://localhost:8090/realms/werkflow/protocol/openid-connect/token}
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: ${SERVER_PORT:8081}
+  servlet:
+    context-path: /
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Flowable Configuration
+flowable:
+  # Database schema management
+  database-schema-update: ${FLOWABLE_DATABASE_SCHEMA_UPDATE:true}
+  db-history-used: true
+
+  # Async executor for timers and async jobs
+  async-executor-activate: ${FLOWABLE_ASYNC_EXECUTOR_ACTIVATE:true}
+  async:
+    executor:
+      core-pool-size: ${FLOWABLE_ASYNC_EXECUTOR_CORE_POOL_SIZE:2}
+      max-pool-size: ${FLOWABLE_ASYNC_EXECUTOR_MAX_POOL_SIZE:10}
+      queue-size: 100
+      keep-alive-time: 60000
+
+  # Process definition cache
+  process-definition-cache-limit: ${FLOWABLE_PROCESS_DEFINITION_CACHE_LIMIT:100}
+
+  # History level: none, activity, audit, full
+  history-level: ${FLOWABLE_HISTORY_LEVEL:full}
+
+  # History cleanup — prevents unbounded DB growth (estimated 50MB/day at full history level)
+  # Runs nightly at 01:00; retains data for 365 days; processes in batches to avoid table locks
+  enable-history-cleaning: ${FLOWABLE_ENABLE_HISTORY_CLEANING:true}
+  history-cleaning-cycle: ${FLOWABLE_HISTORY_CLEANING_CYCLE:0 0 1 * * ?}
+  history-cleaning-after: ${FLOWABLE_HISTORY_CLEANING_AFTER:P365D}
+  history-cleaning-batch-size: ${FLOWABLE_HISTORY_CLEANING_BATCH_SIZE:100}
+
+  # REST API
+  rest-api-enabled: ${FLOWABLE_REST_API_ENABLED:true}
+
+  # Process validation
+  process-validation-enabled: true
+
+  # Diagram generation - disabled by default to prevent errors with BPMN files lacking graphic info
+  # Set to true only if all BPMN files have complete bpmndi:BPMNDiagram sections
+  create-diagram-on-deploy: ${FLOWABLE_CREATE_DIAGRAM_ON_DEPLOY:false}
+
+  # DMN Decision Table Support
+  dmn:
+    enabled: true
+    deployment-resources: classpath*:dmn/*.dmn
+    history-level: full
+
+  # CMMN Case Management — kept for S31 Premium tier
+  cmmn:
+    enabled: true
+    database-schema-update: true
+
+  # Mail server configuration - disabled, using Spring Mail via NotificationService instead
+  # Flowable's built-in mail service is not used; all notifications go through NotificationService
+  # Set host to empty to prevent Flowable from trying to connect to SMTP servers
+  mail-server-host: ""
+  mail-server-port: 25
+  mail-server-default-from: ${MAIL_FROM:noreply@werkflow.local}
+  mail-server-use-tls: false
+
+# Management & Monitoring
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info,metrics,flowable}
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS:always}
+  health:
+    mail:
+      enabled: false  # Disable mail health check since we're not using Spring Mail for Flowable
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# API Documentation
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:true}
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:true}
+    path: ${SPRINGDOC_SWAGGER_UI_PATH:/swagger-ui.html}
+    operations-sorter: alpha
+    tags-sorter: alpha
+    display-request-duration: true
+    doc-expansion: none
+    oauth2-redirect-url: http://localhost:8081/swagger-ui/oauth2-redirect.html
+
+# Logging
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}
+    com.werkflow.engine: INFO
+    org.flowable: INFO
+    org.springframework.security: WARN
+    org.springframework.security.oauth2: WARN
+    org.springframework.security.web: WARN
+  file:
+    path: ${LOG_FILE_PATH:./logs}
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Application-specific configuration
+app:
+  name: ${APP_NAME:Werkflow Engine Service}
+  version: ${APP_VERSION:1.0.0}
+  environment: ${APP_ENVIRONMENT:development}
+
+  # BPMN process storage
+  bpmn:
+    storage-path: ${BPMN_STORAGE_PATH:./process-definitions}
+    max-file-size: ${BPMN_MAX_FILE_SIZE:5}  # MB
+
+
+  admin-service:
+    url: ${ADMIN_SERVICE_URL:http://localhost:8083}
+
+  # Flowable group resolution — maps Keycloak roles to Flowable candidateGroup identifiers
+  # Higher DOA levels inherit all lower levels (L3 user gets DOA_L1, DOA_L2, DOA_L3)
+  # BPMN specifies the minimum required level only
+  flowable:
+    include-department-as-group: false
+    role-mappings:
+      admin:               [ADMIN, SUPER_ADMIN]
+      super_admin:         [SUPER_ADMIN]
+      doa_approver_level1: [DOA_L1]
+      doa_approver_level2: [DOA_L1, DOA_L2]
+      doa_approver_level3: [DOA_L1, DOA_L2, DOA_L3]
+      doa_approver_level4: [DOA_L1, DOA_L2, DOA_L3, DOA_L4]
+      workflow_designer:   [WORKFLOW_DESIGNER]
+
+  # Connector fallback URLs (used by TenantEndpointResolver when TenantServiceEndpoint has no entry)
+  # Prefer configuring connectors via the Admin UI (TenantServiceEndpoint table).
+  # These are last-resort defaults only.
+  services:
+    fallback:
+      procurement: ${PROCUREMENT_SERVICE_URL:http://localhost:8085}
+      inventory:   ${INVENTORY_SERVICE_URL:http://localhost:8084}
+
+# Admin Service Configuration (for service registry redirection)
+admin:
+  service:
+    url: ${ADMIN_SERVICE_URL:http://admin-service:8083}
+
+  # Mail configuration for notification service
+  mail:
+    from: ${MAIL_FROM:noreply@werkflow.local}
+    fromName: ${MAIL_FROM_NAME:Werkflow Platform}
+    replyTo: ${MAIL_REPLY_TO:support@werkflow.local}
+
+  # Application URL for email links
+  url: ${APP_URL:http://localhost:3000}
+
+werkflow:
+  # Set to true to load business-module components (AssetRequestGuard, etc.)
+  # Leave false for open-source deployments without the business module.
+  business:
+    enabled: ${WERKFLOW_BUSINESS_ENABLED:false}
+
+  # Set to true to auto-deploy example BPMN processes on startup from classpath:processes/examples/
+  examples:
+    deploy-on-startup: ${WERKFLOW_DEPLOY_EXAMPLES:false}
+
+  secrets:
+    allowed-keys: ${WERKFLOW_SECRETS_ALLOWED_KEYS:}
+    # Individual secrets referenced by allowed-keys are resolved via:
+    # werkflow.secrets.<key>=<value>  (injected as env vars in production)
+
+  audit:
+    # Additional field names/JSONPaths to mask in audit log (comma-separated)
+    mask-fields: ${WERKFLOW_AUDIT_MASK_FIELDS:}
+
+  security:
+    # Set to true only in development — opens /actuator/** and /swagger-ui/** without auth
+    expose-management-endpoints: ${EXPOSE_MANAGEMENT_ENDPOINTS:false}
+
+  # ----------------------------------------------------------------
+  # Platform role hierarchy
+  # Each role lists only its OWN permissions. Inherited permissions are
+  # resolved transitively at runtime via role-hierarchy below.
+  #
+  # Hierarchy: SUPER_ADMIN → ADMIN → WORKFLOW_ADMIN → WORKFLOW_DESIGNER → EMPLOYEE
+  #
+  # Business roles (Department Manager, Finance Director, HR Partner, etc.) are
+  # sourced from the tenant DB at runtime — do not define them here.
+  # ----------------------------------------------------------------
+  role-hierarchy:
+    WORKFLOW_DESIGNER: EMPLOYEE
+    WORKFLOW_ADMIN: WORKFLOW_DESIGNER
+    ADMIN: WORKFLOW_ADMIN
+    SUPER_ADMIN: ADMIN
+
+  permissions:
+    # Base role — all authenticated users
+    EMPLOYEE:
+      - TASK:VIEW_OWN
+
+    # Workflow Designers can create and deploy process definitions
+    WORKFLOW_DESIGNER:
+      - WORKFLOW:DESIGN
+      - WORKFLOW:DEPLOY
+
+    # Workflow Admins can fully manage workflows and view audit logs
+    WORKFLOW_ADMIN:
+      - WORKFLOW:MANAGE
+      - PROCESS:MANAGE
+      - AUDIT:VIEW
+
+    # Admins manage users and all tasks on top of WORKFLOW_ADMIN
+    ADMIN:
+      - USER:MANAGE
+      - TASK:MANAGE
+
+    # Super Admins have all platform permissions plus system-level access
+    SUPER_ADMIN:
+      - SYSTEM:ADMIN

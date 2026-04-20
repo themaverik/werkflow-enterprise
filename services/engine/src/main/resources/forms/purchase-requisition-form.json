@@ -1,0 +1,281 @@
+{
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "text": "<h3>Purchase Requisition Form</h3><p>Submit a purchase requisition for goods or services.</p>"
+    },
+    {
+      "type": "textfield",
+      "key": "requisitionTitle",
+      "label": "Requisition Title",
+      "placeholder": "Enter title for this requisition",
+      "validate": {
+        "required": true,
+        "minLength": 5,
+        "maxLength": 100
+      }
+    },
+    {
+      "type": "select",
+      "key": "requisitionType",
+      "label": "Requisition Type",
+      "values": [
+        { "label": "Goods", "value": "goods" },
+        { "label": "Services", "value": "services" },
+        { "label": "Equipment", "value": "equipment" },
+        { "label": "Maintenance", "value": "maintenance" },
+        { "label": "Consulting", "value": "consulting" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "select",
+      "key": "priority",
+      "label": "Priority",
+      "values": [
+        { "label": "Low", "value": "low" },
+        { "label": "Medium", "value": "medium" },
+        { "label": "High", "value": "high" },
+        { "label": "Urgent", "value": "urgent" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "department",
+      "label": "Requesting Department",
+      "placeholder": "Enter department name",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "costCenter",
+      "label": "Cost Center",
+      "placeholder": "Enter cost center code",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "budgetCode",
+      "label": "Budget Code",
+      "placeholder": "Enter budget allocation code",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "text",
+      "text": "<h4>Item Details</h4>"
+    },
+    {
+      "type": "textfield",
+      "key": "itemDescription",
+      "label": "Item/Service Description",
+      "placeholder": "Detailed description of items or services",
+      "validate": {
+        "required": true,
+        "minLength": 10
+      }
+    },
+    {
+      "type": "select",
+      "key": "itemCategory",
+      "label": "Item Category",
+      "values": [
+        { "label": "Office Supplies", "value": "office_supplies" },
+        { "label": "IT Equipment", "value": "it_equipment" },
+        { "label": "Furniture", "value": "furniture" },
+        { "label": "Raw Materials", "value": "raw_materials" },
+        { "label": "Professional Services", "value": "professional_services" },
+        { "label": "Software Licenses", "value": "software_licenses" },
+        { "label": "Marketing Materials", "value": "marketing_materials" },
+        { "label": "Other", "value": "other" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "number",
+      "key": "quantity",
+      "label": "Quantity",
+      "placeholder": "Enter quantity",
+      "validate": {
+        "required": true,
+        "min": 1,
+        "max": 100000
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "unitOfMeasure",
+      "label": "Unit of Measure",
+      "placeholder": "e.g., pieces, boxes, hours",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "number",
+      "key": "estimatedUnitPrice",
+      "label": "Estimated Unit Price (USD)",
+      "placeholder": "Enter estimated unit price",
+      "validate": {
+        "required": true,
+        "min": 0
+      }
+    },
+    {
+      "type": "number",
+      "key": "estimatedTotalCost",
+      "label": "Estimated Total Cost (USD)",
+      "placeholder": "Calculated total cost",
+      "validate": {
+        "required": true,
+        "min": 0
+      }
+    },
+    {
+      "type": "text",
+      "text": "<h4>Vendor Information</h4>"
+    },
+    {
+      "type": "textfield",
+      "key": "preferredVendor",
+      "label": "Preferred Vendor",
+      "placeholder": "Enter vendor name if known"
+    },
+    {
+      "type": "textfield",
+      "key": "vendorContact",
+      "label": "Vendor Contact Person",
+      "placeholder": "Enter vendor contact name"
+    },
+    {
+      "type": "email",
+      "key": "vendorEmail",
+      "label": "Vendor Email",
+      "placeholder": "Enter vendor email"
+    },
+    {
+      "type": "textfield",
+      "key": "vendorPhone",
+      "label": "Vendor Phone",
+      "placeholder": "Enter vendor phone number"
+    },
+    {
+      "type": "checkbox",
+      "key": "vendorApproved",
+      "label": "Vendor is on approved vendor list"
+    },
+    {
+      "type": "text",
+      "text": "<h4>Delivery and Timeline</h4>"
+    },
+    {
+      "type": "date",
+      "key": "requiredDeliveryDate",
+      "label": "Required Delivery Date",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "deliveryAddress",
+      "label": "Delivery Address",
+      "placeholder": "Enter delivery location",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "select",
+      "key": "deliveryMethod",
+      "label": "Preferred Delivery Method",
+      "values": [
+        { "label": "Standard Shipping", "value": "standard" },
+        { "label": "Express Shipping", "value": "express" },
+        { "label": "Pickup", "value": "pickup" },
+        { "label": "Direct Delivery", "value": "direct" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "text",
+      "text": "<h4>Justification</h4>"
+    },
+    {
+      "type": "textarea",
+      "key": "businessJustification",
+      "label": "Business Justification",
+      "placeholder": "Explain why this purchase is necessary",
+      "validate": {
+        "required": true,
+        "minLength": 50,
+        "maxLength": 2000
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "alternativesConsidered",
+      "label": "Alternatives Considered",
+      "placeholder": "Describe alternative options considered",
+      "validate": {
+        "minLength": 20
+      }
+    },
+    {
+      "type": "checkbox",
+      "key": "budgetAvailable",
+      "label": "Budget is available for this purchase",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "requestorName",
+      "label": "Requestor Name",
+      "placeholder": "Enter your full name",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "email",
+      "key": "requestorEmail",
+      "label": "Requestor Email",
+      "placeholder": "Enter your email",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "requestorPhone",
+      "label": "Requestor Phone",
+      "placeholder": "Enter your phone number",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "additionalNotes",
+      "label": "Additional Notes",
+      "placeholder": "Any additional information"
+    }
+  ]
+}

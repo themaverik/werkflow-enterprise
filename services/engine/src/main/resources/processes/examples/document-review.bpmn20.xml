@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://werkflow.com/bpmn/examples">
+
+  <process id="document-review" name="Document Review" isExecutable="true">
+
+    <documentation>Document review workflow with approve, reject, and revise loop. The requester selects a reviewer group; the assigned reviewer can approve, reject, or request a revision. On revision, the requester updates and resubmits. Engine-internal — no external API calls.</documentation>
+
+    <!-- Start -->
+    <startEvent id="startEvent" name="Review Requested" flowable:initiator="initiator" />
+
+    <!-- Step 1: Requester submits document details -->
+    <userTask id="submitDocument" name="Submit Document"
+              flowable:assignee="${initiator}"
+              flowable:formKey="document-review-form">
+      <documentation>Requester provides document title, type, description, attachment, and selects reviewer group</documentation>
+    </userTask>
+
+    <!-- Step 2: Assigned reviewer reviews the document -->
+    <userTask id="reviewDocument" name="Review Document"
+              flowable:candidateGroups="${reviewerGroup},SUPER_ADMIN"
+              flowable:formKey="document-review-decision">
+      <documentation>Reviewer approves, rejects, or requests a revision. Sets decision = approve / reject / revise</documentation>
+    </userTask>
+
+    <!-- Gateway: what did the reviewer decide? -->
+    <exclusiveGateway id="reviewDecisionGateway" name="Review Decision?" />
+
+    <!-- Revision path: requester updates the document -->
+    <userTask id="reviseDocument" name="Revise Document"
+              flowable:assignee="${initiator}"
+              flowable:formKey="document-review-form">
+      <documentation>Requester applies requested revisions and resubmits for review</documentation>
+    </userTask>
+
+    <!-- Notifications -->
+    <serviceTask id="sendApprovedEmail" name="Notify: Approved"
+                 flowable:actionType="NOTIFICATION"
+                 flowable:delegateExpression="${emailActionDelegate}">
+      <extensionElements>
+        <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
+        <flowable:field name="recipient"><flowable:string>${initiator}</flowable:string></flowable:field>
+        <flowable:field name="templateKey"><flowable:string>request-approved</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <serviceTask id="sendRejectedEmail" name="Notify: Rejected"
+                 flowable:actionType="NOTIFICATION"
+                 flowable:delegateExpression="${emailActionDelegate}">
+      <extensionElements>
+        <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
+        <flowable:field name="recipient"><flowable:string>${initiator}</flowable:string></flowable:field>
+        <flowable:field name="templateKey"><flowable:string>request-rejected</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <serviceTask id="sendRevisionEmail" name="Notify: Revision Requested"
+                 flowable:actionType="NOTIFICATION"
+                 flowable:delegateExpression="${emailActionDelegate}">
+      <extensionElements>
+        <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
+        <flowable:field name="recipient"><flowable:string>${initiator}</flowable:string></flowable:field>
+        <flowable:field name="templateKey"><flowable:string>task-assigned</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <endEvent id="endApproved" name="Document Approved" />
+    <endEvent id="endRejected" name="Document Rejected" />
+
+    <!-- Sequence flows -->
+    <sequenceFlow id="flow1" sourceRef="startEvent"           targetRef="submitDocument" />
+    <sequenceFlow id="flow2" sourceRef="submitDocument"       targetRef="reviewDocument" />
+    <sequenceFlow id="flow3" sourceRef="reviewDocument"       targetRef="reviewDecisionGateway" />
+
+    <sequenceFlow id="flow4" sourceRef="reviewDecisionGateway" targetRef="sendApprovedEmail">
+      <conditionExpression xsi:type="tFormalExpression">${decision == 'approve'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow5" sourceRef="reviewDecisionGateway" targetRef="sendRejectedEmail">
+      <conditionExpression xsi:type="tFormalExpression">${decision == 'reject'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow6" sourceRef="reviewDecisionGateway" targetRef="sendRevisionEmail">
+      <conditionExpression xsi:type="tFormalExpression">${decision == 'revise'}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow7" sourceRef="sendRevisionEmail"   targetRef="reviseDocument" />
+    <sequenceFlow id="flow8" sourceRef="reviseDocument"      targetRef="reviewDocument" />
+
+    <sequenceFlow id="flow9"  sourceRef="sendApprovedEmail"  targetRef="endApproved" />
+    <sequenceFlow id="flow10" sourceRef="sendRejectedEmail"  targetRef="endRejected" />
+
+  </process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_document-review">
+    <bpmndi:BPMNPlane id="BPMNPlane_document-review" bpmnElement="document-review">
+
+      <bpmndi:BPMNShape id="startEvent_di" bpmnElement="startEvent">
+        <omgdc:Bounds x="152" y="262" width="36" height="36" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="130" y="305" width="80" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="submitDocument_di" bpmnElement="submitDocument">
+        <omgdc:Bounds x="240" y="240" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="reviewDocument_di" bpmnElement="reviewDocument">
+        <omgdc:Bounds x="395" y="240" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="reviewDecisionGateway_di" bpmnElement="reviewDecisionGateway" isMarkerVisible="true">
+        <omgdc:Bounds x="555" y="255" width="50" height="50" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="534" y="312" width="92" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="sendApprovedEmail_di" bpmnElement="sendApprovedEmail">
+        <omgdc:Bounds x="665" y="160" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="sendRejectedEmail_di" bpmnElement="sendRejectedEmail">
+        <omgdc:Bounds x="665" y="300" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="sendRevisionEmail_di" bpmnElement="sendRevisionEmail">
+        <omgdc:Bounds x="665" y="430" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="reviseDocument_di" bpmnElement="reviseDocument">
+        <omgdc:Bounds x="440" y="430" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="endApproved_di" bpmnElement="endApproved">
+        <omgdc:Bounds x="827" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="800" y="225" width="90" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="endRejected_di" bpmnElement="endRejected">
+        <omgdc:Bounds x="827" y="322" width="36" height="36" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="800" y="365" width="90" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="flow1_di" bpmnElement="flow1">
+        <omgdi:waypoint x="188" y="280" /><omgdi:waypoint x="240" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow2_di" bpmnElement="flow2">
+        <omgdi:waypoint x="340" y="280" /><omgdi:waypoint x="395" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow3_di" bpmnElement="flow3">
+        <omgdi:waypoint x="495" y="280" /><omgdi:waypoint x="555" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow4_di" bpmnElement="flow4">
+        <omgdi:waypoint x="580" y="255" /><omgdi:waypoint x="580" y="200" /><omgdi:waypoint x="665" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow5_di" bpmnElement="flow5">
+        <omgdi:waypoint x="605" y="280" /><omgdi:waypoint x="665" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow6_di" bpmnElement="flow6">
+        <omgdi:waypoint x="580" y="305" /><omgdi:waypoint x="580" y="470" /><omgdi:waypoint x="665" y="470" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow7_di" bpmnElement="flow7">
+        <omgdi:waypoint x="665" y="470" /><omgdi:waypoint x="540" y="470" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow8_di" bpmnElement="flow8">
+        <omgdi:waypoint x="445" y="430" /><omgdi:waypoint x="445" y="320" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow9_di" bpmnElement="flow9">
+        <omgdi:waypoint x="765" y="200" /><omgdi:waypoint x="827" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow10_di" bpmnElement="flow10">
+        <omgdi:waypoint x="765" y="340" /><omgdi:waypoint x="827" y="340" />
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

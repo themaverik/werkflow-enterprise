@@ -1,0 +1,47 @@
+Werkflow
+Copyright 2026 Werkflow Contributors
+
+This product includes software developed by third parties under the following licenses.
+
+---
+
+Apache License 2.0
+https://www.apache.org/licenses/LICENSE-2.0
+
+  - Flowable (flowable-engine) — https://github.com/flowable/flowable-engine
+    Copyright (c) Flowable Foundation and contributors
+
+  - Keycloak — https://github.com/keycloak/keycloak
+    Copyright (c) Red Hat, Inc. and/or its affiliates
+
+  - Spring Boot — https://github.com/spring-projects/spring-boot
+    Copyright (c) 2012-2024 VMware, Inc.
+
+  - Spring Framework — https://github.com/spring-projects/spring-framework
+    Copyright (c) 2002-2024 VMware, Inc.
+
+---
+
+MIT License
+See LICENSES/MIT.txt
+
+  - Next.js — https://github.com/vercel/next.js
+    Copyright (c) 2024 Vercel, Inc.
+
+  - bpmn-js — https://github.com/bpmn-io/bpmn-js
+    Copyright (c) Camunda Services GmbH
+
+  - form-js — https://github.com/bpmn-io/form-js
+    Copyright (c) Camunda Services GmbH
+
+  - dmn-js — https://github.com/bpmn-io/dmn-js
+    Copyright (c) Camunda Services GmbH
+
+  - Tailwind CSS — https://github.com/tailwindlabs/tailwindcss
+    Copyright (c) Tailwind Labs, Inc.
+
+  - React — https://github.com/facebook/react
+    Copyright (c) Meta Platforms, Inc. and affiliates
+
+  - shadcn/ui — https://github.com/shadcn-ui/ui
+    Copyright (c) shadcn

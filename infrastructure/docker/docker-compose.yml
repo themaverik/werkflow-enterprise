@@ -1,0 +1,297 @@
+version: '3.8'
+name: werkflow
+
+# ================================================================
+# WERKFLOW ENTERPRISE PLATFORM - DOCKER COMPOSE
+# ================================================================
+# Complete local development environment for all services
+# ================================================================
+
+services:
+  # ================================================================
+  # INFRASTRUCTURE SERVICES
+  # ================================================================
+
+  # PostgreSQL Database (Single instance, multiple schemas)
+  postgres:
+    image: postgres:15-alpine
+    container_name: werkflow-postgres
+    environment:
+      POSTGRES_DB: werkflow
+      POSTGRES_USER: werkflow_admin
+      POSTGRES_PASSWORD: werkflow_secure_pass
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5433:5432"  # External 5433 to avoid conflicts
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - werkflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U werkflow_admin -d werkflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Keycloak PostgreSQL Database
+  keycloak-postgres:
+    image: postgres:15-alpine
+    container_name: werkflow-keycloak-db
+    environment:
+      POSTGRES_DB: keycloak_db
+      POSTGRES_USER: keycloak_user
+      POSTGRES_PASSWORD: keycloak_pass
+    volumes:
+      - keycloak_postgres_data:/var/lib/postgresql/data
+    networks:
+      - werkflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak_user -d keycloak_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Keycloak Identity and Access Management
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: werkflow-keycloak
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/keycloak_db
+      KC_DB_USERNAME: keycloak_user
+      KC_DB_PASSWORD: keycloak_pass
+
+      # Hostname Configuration for Docker Environment
+      # CRITICAL: Using 'start' (production mode) instead of 'start-dev' to enable hostname config
+      # Browser accesses Keycloak at localhost:8090 (port-mapped)
+      # Containers access Keycloak at keycloak:8080 (internal network)
+      # KC_HOSTNAME: Sets the frontend URL that browsers will use
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8090
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HOSTNAME_STRICT_BACKCHANNEL: false
+
+      # Enable HTTP (required for local development)
+      KC_HTTP_ENABLED: true
+
+      # Proxy mode: Tells Keycloak it's behind a reverse proxy
+      # This makes Keycloak respect X-Forwarded-* headers
+      KC_PROXY: edge
+
+      # Logging and Metrics
+      KC_LOG_LEVEL: info
+      KC_METRICS_ENABLED: true
+      KC_HEALTH_ENABLED: true
+
+      # Admin Credentials
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+    command:
+      - start
+      - --http-relative-path=/
+      - --import-realm
+    ports:
+      - "8090:8080"
+    volumes:
+      - ../keycloak/themes:/opt/keycloak/themes
+      - ../keycloak/realms/werkflow-realm.json:/opt/keycloak/data/import/werkflow-realm.json:ro
+    depends_on:
+      keycloak-postgres:
+        condition: service_healthy
+    networks:
+      - werkflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080;echo -e 'GET /health/ready HTTP/1.1\r\nhost: http://localhost\r\nConnection: close\r\n\r\n' >&3;if [ $? -eq 0 ]; then echo 'Healthcheck Successful';exit 0;else echo 'Healthcheck Failed';exit 1;fi;"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  # pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: werkflow-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@werkflow.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - werkflow-network
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  # Mailpit — local SMTP sandbox for email testing
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: werkflow-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - werkflow-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8025"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ================================================================
+  # BACKEND SERVICES
+  # ================================================================
+
+  # Flowable Engine Service
+  engine-service:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: engine-service
+    container_name: werkflow-engine
+    env_file:
+      - ../../config/env/.env.shared
+      - ../../config/env/.env.engine
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: werkflow
+      POSTGRES_USER: werkflow_admin
+      POSTGRES_PASSWORD: werkflow_secure_pass
+      SPRING_DATASOURCE_SCHEMA: flowable
+      SERVER_PORT: 8081
+      ADMIN_SERVICE_URL: http://admin-service:8083
+      KEYCLOAK_ISSUER: http://localhost:8090/realms/werkflow
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/werkflow/protocol/openid-connect/certs
+      KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/werkflow/protocol/openid-connect/token
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_USERNAME: ""
+      SMTP_PASSWORD: ""
+      SMTP_AUTH: "false"
+      SMTP_STARTTLS_ENABLE: "false"
+      SMTP_STARTTLS_REQUIRED: "false"
+    ports:
+      - "8081:8081"
+    volumes:
+      - engine_data:/app/process-definitions
+      - engine_logs:/app/logs
+    networks:
+      - werkflow-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Admin Service
+  admin-service:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: admin-service
+    container_name: werkflow-admin
+    env_file:
+      - ../../config/env/.env.shared
+      - ../../config/env/.env.admin
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: werkflow
+      POSTGRES_USER: werkflow_admin
+      POSTGRES_PASSWORD: werkflow_secure_pass
+      SPRING_DATASOURCE_SCHEMA: admin_service
+      SERVER_PORT: 8083
+      KEYCLOAK_URL: http://localhost:8090
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/werkflow/protocol/openid-connect/certs
+      KEYCLOAK_REALM: werkflow
+    ports:
+      - "8083:8083"
+    volumes:
+      - admin_logs:/app/logs
+    networks:
+      - werkflow-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ================================================================
+  # FRONTEND SERVICES
+  # ================================================================
+
+  # Portal (unified frontend)
+  portal:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: portal
+    container_name: werkflow-portal
+    environment:
+      PORT: 4000
+      NODE_ENV: production
+
+      # Backend API URLs (internal Docker network)
+      NEXT_PUBLIC_ENGINE_API_URL: http://engine-service:8081/api
+      NEXT_PUBLIC_ADMIN_API_URL: http://admin-service:8083/api
+
+      # NextAuth Configuration
+      NEXTAUTH_URL: http://localhost:4000
+      NEXTAUTH_SECRET: xg7bVqYgFgTDwpVWe6gbyWwZVb8f0Yd1Wo+ZGuKdm/U=
+      AUTH_TRUST_HOST: true
+
+      # Keycloak OAuth2 Configuration (Three-URL Strategy for Docker)
+      KEYCLOAK_ISSUER: http://localhost:8090/realms/werkflow
+      KEYCLOAK_ISSUER_INTERNAL: http://keycloak:8080/realms/werkflow
+      KEYCLOAK_ISSUER_PUBLIC: http://localhost:8090/realms/werkflow
+      KEYCLOAK_ISSUER_BROWSER: http://localhost:8090/realms/werkflow
+      NEXT_PUBLIC_KEYCLOAK_ISSUER_BROWSER: http://localhost:8090/realms/werkflow
+
+      KEYCLOAK_CLIENT_ID: werkflow-portal
+      KEYCLOAK_CLIENT_SECRET: 4uohM7y1sGkOcR2gTR1APo4JDmkwRxSv
+    ports:
+      - "4000:4000"
+    networks:
+      - werkflow-network
+    depends_on:
+      - engine-service
+      - admin-service
+    restart: unless-stopped
+
+# ================================================================
+# VOLUMES
+# ================================================================
+volumes:
+  postgres_data:
+    driver: local
+  keycloak_postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  engine_data:
+    driver: local
+  engine_logs:
+    driver: local
+  admin_logs:
+    driver: local
+
+# ================================================================
+# NETWORKS
+# ================================================================
+networks:
+  werkflow-network:
+    driver: bridge
+    name: werkflow-network

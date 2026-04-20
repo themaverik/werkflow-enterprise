@@ -1,0 +1,210 @@
+{
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "text": "<h3>CapEx Request Approval Form</h3><p>Review and approve/reject the capital expenditure request.</p>"
+    },
+    {
+      "type": "text",
+      "key": "requestSummary",
+      "text": "<h4>Request Summary</h4>"
+    },
+    {
+      "type": "textfield",
+      "key": "requestTitle",
+      "label": "Request Title",
+      "disabled": true
+    },
+    {
+      "type": "number",
+      "key": "requestAmount",
+      "label": "Request Amount (USD)",
+      "disabled": true
+    },
+    {
+      "type": "textfield",
+      "key": "department",
+      "label": "Department",
+      "disabled": true
+    },
+    {
+      "type": "textfield",
+      "key": "category",
+      "label": "Category",
+      "disabled": true
+    },
+    {
+      "type": "textarea",
+      "key": "description",
+      "label": "Description",
+      "disabled": true
+    },
+    {
+      "type": "textarea",
+      "key": "businessJustification",
+      "label": "Business Justification",
+      "disabled": true
+    },
+    {
+      "type": "text",
+      "text": "<hr><h4>Approval Decision</h4>"
+    },
+    {
+      "type": "radio",
+      "key": "decision",
+      "label": "Decision",
+      "values": [
+        { "label": "Approve", "value": "approved" },
+        { "label": "Reject", "value": "rejected" },
+        { "label": "Request More Information", "value": "more_info" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "approverComments",
+      "label": "Approver Comments",
+      "placeholder": "Enter your comments",
+      "validate": {
+        "required": true,
+        "minLength": 10
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "rejectionReason",
+      "label": "Rejection Reason (Required if Rejected)",
+      "placeholder": "Explain why this request is being rejected",
+      "conditional": {
+        "when": "decision",
+        "eq": "rejected"
+      },
+      "validate": {
+        "minLength": 20
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "conditions",
+      "label": "Approval Conditions (Optional)",
+      "placeholder": "Enter any conditions for approval",
+      "conditional": {
+        "when": "decision",
+        "eq": "approved"
+      }
+    },
+    {
+      "type": "number",
+      "key": "approvedAmount",
+      "label": "Approved Amount (USD)",
+      "placeholder": "Enter approved amount (can be different from requested)",
+      "conditional": {
+        "when": "decision",
+        "eq": "approved"
+      },
+      "validate": {
+        "min": 0
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "budgetAllocationCode",
+      "label": "Budget Allocation Code",
+      "placeholder": "Enter budget code for this approval",
+      "conditional": {
+        "when": "decision",
+        "eq": "approved"
+      }
+    },
+    {
+      "type": "select",
+      "key": "approvalLevel",
+      "label": "Approval Level",
+      "values": [
+        { "label": "Department Manager", "value": "dept_manager" },
+        { "label": "Finance Manager", "value": "finance_manager" },
+        { "label": "VP", "value": "vp" },
+        { "label": "CFO", "value": "cfo" },
+        { "label": "CEO", "value": "ceo" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "checkbox",
+      "key": "requiresNextLevelApproval",
+      "label": "Requires next level approval",
+      "conditional": {
+        "when": "decision",
+        "eq": "approved"
+      }
+    },
+    {
+      "type": "select",
+      "key": "nextApprover",
+      "label": "Next Approver",
+      "values": [
+        { "label": "Finance Manager", "value": "finance_manager" },
+        { "label": "VP Operations", "value": "vp_operations" },
+        { "label": "CFO", "value": "cfo" },
+        { "label": "CEO", "value": "ceo" }
+      ],
+      "conditional": {
+        "when": "requiresNextLevelApproval",
+        "eq": true
+      }
+    },
+    {
+      "type": "date",
+      "key": "approvalDate",
+      "label": "Approval Date",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "approverName",
+      "label": "Approver Name",
+      "placeholder": "Enter your full name",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "approverTitle",
+      "label": "Approver Title",
+      "placeholder": "Enter your title",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "checkbox",
+      "key": "reviewedFinancialImpact",
+      "label": "I have reviewed the financial impact",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "checkbox",
+      "key": "reviewedBusinessJustification",
+      "label": "I have reviewed the business justification",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "additionalNotes",
+      "label": "Additional Notes",
+      "placeholder": "Any additional notes or instructions"
+    }
+  ]
+}
