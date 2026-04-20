@@ -1,0 +1,455 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://werkflow.com/bpmn/inventory">
+
+  <process id="asset-transfer-approval-process" name="Asset Transfer Approval Process" isExecutable="true">
+
+    <documentation>Asset transfer workflow with custody tracking and multi-level approvals for high-value assets</documentation>
+
+    <!-- Start Event -->
+    <startEvent id="startEvent" name="Transfer Request Submitted" flowable:formKey="asset-transfer">
+      <documentation>Employee or manager submits an asset transfer request</documentation>
+    </startEvent>
+
+    <!-- Service Task: Create Transfer Request in Inventory Service -->
+    <serviceTask id="createTransferRequest" name="Create Transfer Request"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Creates asset transfer request record in Inventory Service via REST API</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>inventory</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:string>/api/workflow/inventory/transfers</flowable:string></flowable:field>
+        <flowable:field name="method"><flowable:string>POST</flowable:string></flowable:field>
+        <flowable:field name="body"><flowable:string>{"assetId":"${assetId}","fromLocation":"${fromLocation}","toLocation":"${toLocation}","requestedBy":"${initiator}"}</flowable:string></flowable:field>
+        <flowable:field name="extractFields"><flowable:string>transferRequestId:$.id</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Service Task: Verify Asset Availability -->
+    <serviceTask id="verifyAsset" name="Verify Asset Availability"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Verifies asset exists, is available, and retrieves asset details including value</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>inventory</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:expression>/api/workflow/inventory/assets/${assetId}/verify</flowable:expression></flowable:field>
+        <flowable:field name="method"><flowable:string>GET</flowable:string></flowable:field>
+        <flowable:field name="extractFields"><flowable:string>assetVerified:$.verified,assetStatus:$.status</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Exclusive Gateway: Asset Available? -->
+    <exclusiveGateway id="availabilityGateway" name="Asset Available?" />
+
+    <!-- Service Task: Check Current Custody -->
+    <serviceTask id="checkCustody" name="Check Current Custody"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Retrieves current custodian information</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>inventory</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:expression>/api/workflow/inventory/assets/${assetId}/custody</flowable:expression></flowable:field>
+        <flowable:field name="method"><flowable:string>GET</flowable:string></flowable:field>
+        <flowable:field name="extractFields"><flowable:string>currentCustodian:$.currentCustodian,custodyStartDate:$.startDate</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- User Task: Current Custodian Release Approval -->
+    <userTask id="custodianReleaseApproval" name="Release Approval" flowable:assignee="${currentCustodian}" flowable:formKey="release-approval">
+      <documentation>Current custodian approves release of the asset</documentation>
+    </userTask>
+
+    <!-- Exclusive Gateway: Released? -->
+    <exclusiveGateway id="releaseGateway" name="Released?" />
+
+    <!-- Exclusive Gateway: High-Value Asset? -->
+    <exclusiveGateway id="valueGateway" name="Value > $5,000?" />
+
+    <!-- User Task: Department Manager Approval (for high-value assets) -->
+    <userTask id="managerApproval" name="Manager Review" flowable:candidateGroups="DOA:L2" flowable:formKey="transfer-approval">
+      <documentation>Department manager approves high-value asset transfers</documentation>
+    </userTask>
+
+    <!-- Merge Gateway -->
+    <exclusiveGateway id="mergeGateway" name="Merge Paths" />
+
+    <!-- User Task: New Custodian Acceptance -->
+    <userTask id="custodianAcceptance" name="Accept Asset" flowable:assignee="${newCustodian}" flowable:formKey="asset-acceptance">
+      <documentation>New custodian accepts responsibility for the asset</documentation>
+    </userTask>
+
+    <!-- Exclusive Gateway: Accepted? -->
+    <exclusiveGateway id="acceptanceGateway" name="Accepted?" />
+
+    <!-- Service Task: Update Custody Record -->
+    <serviceTask id="updateCustody" name="Update Custody Record"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Updates custody record in Inventory Service with new custodian</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>inventory</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:expression>/api/workflow/inventory/assets/${assetId}/custody</flowable:expression></flowable:field>
+        <flowable:field name="method"><flowable:string>PUT</flowable:string></flowable:field>
+        <flowable:field name="body"><flowable:string>{"newCustodian":"${assignedTo}","transferDate":"${transferDate}"}</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Service Task: Update Asset Location -->
+    <serviceTask id="updateLocation" name="Update Asset Location"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Updates asset location and department assignment</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>inventory</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:expression>/api/workflow/inventory/assets/${assetId}/location</flowable:expression></flowable:field>
+        <flowable:field name="method"><flowable:string>PUT</flowable:string></flowable:field>
+        <flowable:field name="body"><flowable:string>{"location":"${toLocation}"}</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Service Task: Create Transfer Record -->
+    <serviceTask id="createTransferRecord" name="Create Transfer Record"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Creates historical transfer record for audit trail</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>inventory</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:expression>/api/workflow/inventory/transfers/${transferRequestId}/complete</flowable:expression></flowable:field>
+        <flowable:field name="method"><flowable:string>POST</flowable:string></flowable:field>
+        <flowable:field name="body"><flowable:string>{"completedBy":"${assignedTo}","completionDate":"${completionDate}"}</flowable:string></flowable:field>
+        <flowable:field name="extractFields"><flowable:string>transferRecordId:$.id</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Service Task: Update Transfer Status - Completed -->
+    <serviceTask id="updateCompleted" name="Update Status: Completed"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Marks transfer request as completed</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>inventory</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:expression>/api/workflow/inventory/transfers/${transferRequestId}/status</flowable:expression></flowable:field>
+        <flowable:field name="method"><flowable:string>PUT</flowable:string></flowable:field>
+        <flowable:field name="body"><flowable:string>{"status":"COMPLETED"}</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Service Task: Send Completion Notification -->
+    <serviceTask id="sendCompletionNotification" name="Send Completion Notification"
+                 flowable:delegateExpression="${notificationDelegate}">
+      <documentation>Sends notification to all parties about successful transfer</documentation>
+      <extensionElements>
+        <flowable:field name="notificationType">
+          <flowable:string><![CDATA[ASSET_TRANSFER_COMPLETED]]></flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Service Task: Update Transfer Status - Rejected -->
+    <serviceTask id="updateRejected" name="Update Status: Rejected"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Marks transfer request as rejected</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>inventory</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:expression>/api/workflow/inventory/transfers/${transferRequestId}/status</flowable:expression></flowable:field>
+        <flowable:field name="method"><flowable:string>PUT</flowable:string></flowable:field>
+        <flowable:field name="body"><flowable:string>{"status":"REJECTED","reason":"${rejectionReason}"}</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Service Task: Send Rejection Notification -->
+    <serviceTask id="sendRejectionNotification" name="Send Rejection Notification"
+                 flowable:delegateExpression="${notificationDelegate}">
+      <documentation>Sends rejection notification to requester</documentation>
+      <extensionElements>
+        <flowable:field name="notificationType">
+          <flowable:string><![CDATA[ASSET_TRANSFER_REJECTED]]></flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- End Events -->
+    <endEvent id="endEventCompleted" name="Transfer Completed" />
+    <endEvent id="endEventRejected" name="Transfer Rejected" />
+    <endEvent id="endEventUnavailable" name="Asset Unavailable" />
+
+    <!-- Sequence Flows -->
+    <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="createTransferRequest" />
+    <sequenceFlow id="flow2" sourceRef="createTransferRequest" targetRef="verifyAsset" />
+    <sequenceFlow id="flow3" sourceRef="verifyAsset" targetRef="availabilityGateway" />
+
+    <!-- Availability Gateway Flows -->
+    <sequenceFlow id="available" sourceRef="availabilityGateway" targetRef="checkCustody">
+      <conditionExpression xsi:type="tFormalExpression">${assetStatus == 'AVAILABLE' || assetStatus == 'IN_USE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="unavailable" sourceRef="availabilityGateway" targetRef="endEventUnavailable">
+      <conditionExpression xsi:type="tFormalExpression">${assetStatus == 'MAINTENANCE' || assetStatus == 'RETIRED'}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow4" sourceRef="checkCustody" targetRef="custodianReleaseApproval" />
+    <sequenceFlow id="flow5" sourceRef="custodianReleaseApproval" targetRef="releaseGateway" />
+
+    <!-- Release Gateway Flows -->
+    <sequenceFlow id="released" sourceRef="releaseGateway" targetRef="valueGateway">
+      <conditionExpression xsi:type="tFormalExpression">${releaseDecision == 'APPROVED'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="notReleased" sourceRef="releaseGateway" targetRef="updateRejected">
+      <conditionExpression xsi:type="tFormalExpression">${releaseDecision == 'REJECTED'}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- Value Gateway Flows -->
+    <sequenceFlow id="highValue" sourceRef="valueGateway" targetRef="managerApproval">
+      <conditionExpression xsi:type="tFormalExpression">${assetValue &gt; 5000}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="lowValue" sourceRef="valueGateway" targetRef="mergeGateway">
+      <conditionExpression xsi:type="tFormalExpression">${assetValue &lt;= 5000}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow6" sourceRef="managerApproval" targetRef="mergeGateway" />
+    <sequenceFlow id="flow7" sourceRef="mergeGateway" targetRef="custodianAcceptance" />
+    <sequenceFlow id="flow8" sourceRef="custodianAcceptance" targetRef="acceptanceGateway" />
+
+    <!-- Acceptance Gateway Flows -->
+    <sequenceFlow id="accepted" sourceRef="acceptanceGateway" targetRef="updateCustody">
+      <conditionExpression xsi:type="tFormalExpression">${acceptanceDecision == 'ACCEPTED'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="notAccepted" sourceRef="acceptanceGateway" targetRef="updateRejected">
+      <conditionExpression xsi:type="tFormalExpression">${acceptanceDecision == 'REJECTED'}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- Completion Path -->
+    <sequenceFlow id="flow9" sourceRef="updateCustody" targetRef="updateLocation" />
+    <sequenceFlow id="flow10" sourceRef="updateLocation" targetRef="createTransferRecord" />
+    <sequenceFlow id="flow11" sourceRef="createTransferRecord" targetRef="updateCompleted" />
+    <sequenceFlow id="flow12" sourceRef="updateCompleted" targetRef="sendCompletionNotification" />
+    <sequenceFlow id="flow13" sourceRef="sendCompletionNotification" targetRef="endEventCompleted" />
+
+    <!-- Rejection Path -->
+    <sequenceFlow id="flow14" sourceRef="updateRejected" targetRef="sendRejectionNotification" />
+    <sequenceFlow id="flow15" sourceRef="sendRejectionNotification" targetRef="endEventRejected" />
+
+  </process>
+
+  <!-- BPMN Diagram (Visual Layout) -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_asset-transfer-approval-process">
+    <bpmndi:BPMNPlane bpmnElement="asset-transfer-approval-process" id="BPMNPlane_asset-transfer-approval-process">
+
+      <!-- Start Event -->
+      <bpmndi:BPMNShape bpmnElement="startEvent" id="BPMNShape_startEvent">
+        <omgdc:Bounds height="30.0" width="30.0" x="100.0" y="163.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Script Tasks -->
+      <bpmndi:BPMNShape bpmnElement="createTransferRequest" id="BPMNShape_createTransferRequest">
+        <omgdc:Bounds height="80.0" width="100.0" x="180.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="verifyAsset" id="BPMNShape_verifyAsset">
+        <omgdc:Bounds height="80.0" width="100.0" x="330.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Gateways -->
+      <bpmndi:BPMNShape bpmnElement="availabilityGateway" id="BPMNShape_availabilityGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="480.0" y="158.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="checkCustody" id="BPMNShape_checkCustody">
+        <omgdc:Bounds height="80.0" width="100.0" x="570.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- User Tasks -->
+      <bpmndi:BPMNShape bpmnElement="custodianReleaseApproval" id="BPMNShape_custodianReleaseApproval">
+        <omgdc:Bounds height="80.0" width="100.0" x="720.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="releaseGateway" id="BPMNShape_releaseGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="870.0" y="158.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="valueGateway" id="BPMNShape_valueGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="960.0" y="158.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="managerApproval" id="BPMNShape_managerApproval">
+        <omgdc:Bounds height="80.0" width="100.0" x="1050.0" y="50.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="mergeGateway" id="BPMNShape_mergeGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="1200.0" y="158.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="custodianAcceptance" id="BPMNShape_custodianAcceptance">
+        <omgdc:Bounds height="80.0" width="100.0" x="1290.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="acceptanceGateway" id="BPMNShape_acceptanceGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="1440.0" y="158.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Processing Tasks -->
+      <bpmndi:BPMNShape bpmnElement="updateCustody" id="BPMNShape_updateCustody">
+        <omgdc:Bounds height="80.0" width="100.0" x="1530.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="updateLocation" id="BPMNShape_updateLocation">
+        <omgdc:Bounds height="80.0" width="100.0" x="1680.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="createTransferRecord" id="BPMNShape_createTransferRecord">
+        <omgdc:Bounds height="80.0" width="100.0" x="1830.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="updateCompleted" id="BPMNShape_updateCompleted">
+        <omgdc:Bounds height="80.0" width="100.0" x="1980.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="sendCompletionNotification" id="BPMNShape_sendCompletionNotification">
+        <omgdc:Bounds height="80.0" width="100.0" x="2130.0" y="138.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Rejection Path -->
+      <bpmndi:BPMNShape bpmnElement="updateRejected" id="BPMNShape_updateRejected">
+        <omgdc:Bounds height="80.0" width="100.0" x="930.0" y="300.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="sendRejectionNotification" id="BPMNShape_sendRejectionNotification">
+        <omgdc:Bounds height="80.0" width="100.0" x="1080.0" y="300.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- End Events -->
+      <bpmndi:BPMNShape bpmnElement="endEventCompleted" id="BPMNShape_endEventCompleted">
+        <omgdc:Bounds height="28.0" width="28.0" x="2280.0" y="164.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="endEventRejected" id="BPMNShape_endEventRejected">
+        <omgdc:Bounds height="28.0" width="28.0" x="1230.0" y="326.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="endEventUnavailable" id="BPMNShape_endEventUnavailable">
+        <omgdc:Bounds height="28.0" width="28.0" x="486.0" y="250.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Sequence Flow Edges -->
+      <bpmndi:BPMNEdge bpmnElement="flow1" id="BPMNEdge_flow1">
+        <omgdi:waypoint x="130.0" y="178.0"/>
+        <omgdi:waypoint x="180.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow2" id="BPMNEdge_flow2">
+        <omgdi:waypoint x="280.0" y="178.0"/>
+        <omgdi:waypoint x="330.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow3" id="BPMNEdge_flow3">
+        <omgdi:waypoint x="430.0" y="178.0"/>
+        <omgdi:waypoint x="480.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="available" id="BPMNEdge_available">
+        <omgdi:waypoint x="520.0" y="178.0"/>
+        <omgdi:waypoint x="570.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="unavailable" id="BPMNEdge_unavailable">
+        <omgdi:waypoint x="500.0" y="198.0"/>
+        <omgdi:waypoint x="500.0" y="250.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow4" id="BPMNEdge_flow4">
+        <omgdi:waypoint x="670.0" y="178.0"/>
+        <omgdi:waypoint x="720.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow5" id="BPMNEdge_flow5">
+        <omgdi:waypoint x="820.0" y="178.0"/>
+        <omgdi:waypoint x="870.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="released" id="BPMNEdge_released">
+        <omgdi:waypoint x="910.0" y="178.0"/>
+        <omgdi:waypoint x="960.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="notReleased" id="BPMNEdge_notReleased">
+        <omgdi:waypoint x="890.0" y="198.0"/>
+        <omgdi:waypoint x="890.0" y="340.0"/>
+        <omgdi:waypoint x="930.0" y="340.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="highValue" id="BPMNEdge_highValue">
+        <omgdi:waypoint x="980.0" y="158.0"/>
+        <omgdi:waypoint x="980.0" y="90.0"/>
+        <omgdi:waypoint x="1050.0" y="90.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="lowValue" id="BPMNEdge_lowValue">
+        <omgdi:waypoint x="1000.0" y="178.0"/>
+        <omgdi:waypoint x="1200.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow6" id="BPMNEdge_flow6">
+        <omgdi:waypoint x="1150.0" y="90.0"/>
+        <omgdi:waypoint x="1220.0" y="90.0"/>
+        <omgdi:waypoint x="1220.0" y="158.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow7" id="BPMNEdge_flow7">
+        <omgdi:waypoint x="1240.0" y="178.0"/>
+        <omgdi:waypoint x="1290.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow8" id="BPMNEdge_flow8">
+        <omgdi:waypoint x="1390.0" y="178.0"/>
+        <omgdi:waypoint x="1440.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="accepted" id="BPMNEdge_accepted">
+        <omgdi:waypoint x="1480.0" y="178.0"/>
+        <omgdi:waypoint x="1530.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="notAccepted" id="BPMNEdge_notAccepted">
+        <omgdi:waypoint x="1460.0" y="198.0"/>
+        <omgdi:waypoint x="1460.0" y="340.0"/>
+        <omgdi:waypoint x="1030.0" y="340.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow9" id="BPMNEdge_flow9">
+        <omgdi:waypoint x="1630.0" y="178.0"/>
+        <omgdi:waypoint x="1680.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow10" id="BPMNEdge_flow10">
+        <omgdi:waypoint x="1780.0" y="178.0"/>
+        <omgdi:waypoint x="1830.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow11" id="BPMNEdge_flow11">
+        <omgdi:waypoint x="1930.0" y="178.0"/>
+        <omgdi:waypoint x="1980.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow12" id="BPMNEdge_flow12">
+        <omgdi:waypoint x="2080.0" y="178.0"/>
+        <omgdi:waypoint x="2130.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow13" id="BPMNEdge_flow13">
+        <omgdi:waypoint x="2230.0" y="178.0"/>
+        <omgdi:waypoint x="2280.0" y="178.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow14" id="BPMNEdge_flow14">
+        <omgdi:waypoint x="1030.0" y="340.0"/>
+        <omgdi:waypoint x="1080.0" y="340.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow15" id="BPMNEdge_flow15">
+        <omgdi:waypoint x="1180.0" y="340.0"/>
+        <omgdi:waypoint x="1230.0" y="340.0"/>
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</definitions>

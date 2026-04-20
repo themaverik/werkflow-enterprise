@@ -1,0 +1,687 @@
+{
+  "id": "werkflow-platform",
+  "realm": "werkflow-platform",
+  "displayName": "Werkflow Enterprise Platform",
+  "displayNameHtml": "<div class=\"kc-logo-text\"><span>Werkflow Platform</span></div>",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": false,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+
+  "accessTokenLifespan": 3600,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 28800,
+  "ssoSessionMaxLifespan": 86400,
+  "offlineSessionIdleTimeout": 2592000,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "accessCodeLifespanLogin": 1800,
+
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "System Administrator - Full platform access",
+        "composite": false
+      },
+      {
+        "name": "super_admin",
+        "description": "Super Administrator (C-Suite) - Organization-wide authority",
+        "composite": false
+      },
+      {
+        "name": "employee",
+        "description": "Base Employee Role - Login access",
+        "composite": false
+      },
+      {
+        "name": "asset_request_requester",
+        "description": "Can submit asset requests",
+        "composite": false
+      },
+      {
+        "name": "asset_request_approver",
+        "description": "Can approve asset requests",
+        "composite": false
+      },
+      {
+        "name": "doa_approver_level1",
+        "description": "Delegation of Authority - Approve up to $1,000",
+        "composite": false
+      },
+      {
+        "name": "doa_approver_level2",
+        "description": "Delegation of Authority - Approve up to $10,000",
+        "composite": false
+      },
+      {
+        "name": "doa_approver_level3",
+        "description": "Delegation of Authority - Approve up to $100,000",
+        "composite": false
+      },
+      {
+        "name": "doa_approver_level4",
+        "description": "Delegation of Authority - Approve unlimited amounts",
+        "composite": false
+      },
+      {
+        "name": "hr_head",
+        "description": "HR Department Head",
+        "composite": true,
+        "composites": {
+          "realm": ["asset_request_approver", "doa_approver_level1", "employee"]
+        }
+      },
+      {
+        "name": "it_head",
+        "description": "IT Department Head",
+        "composite": true,
+        "composites": {
+          "realm": ["asset_request_approver", "doa_approver_level1", "employee"]
+        }
+      },
+      {
+        "name": "finance_head",
+        "description": "Finance Department Head",
+        "composite": true,
+        "composites": {
+          "realm": ["doa_approver_level3", "doa_approver_level4", "employee"]
+        }
+      },
+      {
+        "name": "procurement_head",
+        "description": "Procurement Department Head",
+        "composite": true,
+        "composites": {
+          "realm": ["procurement_approver", "doa_approver_level2", "employee"]
+        }
+      },
+      {
+        "name": "transport_head",
+        "description": "Transport Department Head",
+        "composite": true,
+        "composites": {
+          "realm": ["transport_manager", "employee"]
+        }
+      },
+      {
+        "name": "inventory_head",
+        "description": "Inventory Department Head",
+        "composite": true,
+        "composites": {
+          "realm": ["central_hub_manager", "employee"]
+        }
+      },
+      {
+        "name": "department_poc",
+        "description": "Department Point of Contact - Workflow coordination",
+        "composite": false
+      },
+      {
+        "name": "inventory_manager",
+        "description": "Manage inventory operations",
+        "composite": false
+      },
+      {
+        "name": "hub_manager",
+        "description": "Manage warehouse hub",
+        "composite": false
+      },
+      {
+        "name": "central_hub_manager",
+        "description": "Manage central warehouse hub",
+        "composite": false
+      },
+      {
+        "name": "procurement_approver",
+        "description": "Approve procurement requests",
+        "composite": false
+      },
+      {
+        "name": "procurement_specialist",
+        "description": "Handle procurement operations",
+        "composite": false
+      },
+      {
+        "name": "transport_manager",
+        "description": "Manage transport and logistics",
+        "composite": false
+      },
+      {
+        "name": "transport_coordinator",
+        "description": "Coordinate transport schedules",
+        "composite": false
+      },
+      {
+        "name": "driver",
+        "description": "Transport driver",
+        "composite": false
+      },
+      {
+        "name": "finance_officer",
+        "description": "Finance operations",
+        "composite": false
+      },
+      {
+        "name": "workflow_designer",
+        "description": "Can design and deploy BPMN workflows",
+        "composite": false
+      },
+      {
+        "name": "workflow_admin",
+        "description": "Workflow administration",
+        "composite": false
+      }
+    ],
+    "client": {
+      "werkflow-admin-portal": [
+        {
+          "name": "admin",
+          "description": "Admin portal administrator"
+        },
+        {
+          "name": "manager",
+          "description": "Department manager"
+        },
+        {
+          "name": "poc",
+          "description": "Point of contact"
+        },
+        {
+          "name": "approver",
+          "description": "Request approver"
+        },
+        {
+          "name": "requester",
+          "description": "Request submitter"
+        },
+        {
+          "name": "viewer",
+          "description": "Read-only viewer"
+        }
+      ],
+      "werkflow-engine": [
+        {
+          "name": "workflow_admin",
+          "description": "Workflow engine administrator"
+        },
+        {
+          "name": "task_processor",
+          "description": "Process workflow tasks"
+        },
+        {
+          "name": "event_publisher",
+          "description": "Publish workflow events"
+        }
+      ]
+    }
+  },
+
+  "groups": [
+    {
+      "name": "HR Department",
+      "path": "/HR Department",
+      "attributes": {
+        "department": ["HR"],
+        "cost_center_prefix": ["HR"]
+      },
+      "realmRoles": ["employee"],
+      "subGroups": [
+        {
+          "name": "Managers",
+          "path": "/HR Department/Managers",
+          "attributes": {
+            "role_level": ["manager"]
+          },
+          "realmRoles": ["asset_request_approver"]
+        },
+        {
+          "name": "Specialists",
+          "path": "/HR Department/Specialists",
+          "attributes": {
+            "role_level": ["specialist"]
+          }
+        },
+        {
+          "name": "POC",
+          "path": "/HR Department/POC",
+          "attributes": {
+            "is_poc": ["true"]
+          },
+          "realmRoles": ["department_poc"]
+        }
+      ]
+    },
+    {
+      "name": "IT Department",
+      "path": "/IT Department",
+      "attributes": {
+        "department": ["IT"],
+        "cost_center_prefix": ["IT"]
+      },
+      "realmRoles": ["employee"],
+      "subGroups": [
+        {
+          "name": "Managers",
+          "path": "/IT Department/Managers",
+          "attributes": {
+            "role_level": ["manager"]
+          },
+          "realmRoles": ["asset_request_approver"]
+        },
+        {
+          "name": "Inventory",
+          "path": "/IT Department/Inventory",
+          "attributes": {
+            "role_level": ["specialist"]
+          },
+          "realmRoles": ["inventory_manager"]
+        },
+        {
+          "name": "POC",
+          "path": "/IT Department/POC",
+          "attributes": {
+            "is_poc": ["true"]
+          },
+          "realmRoles": ["department_poc"]
+        }
+      ]
+    },
+    {
+      "name": "Finance Department",
+      "path": "/Finance Department",
+      "attributes": {
+        "department": ["Finance"],
+        "cost_center_prefix": ["FIN"]
+      },
+      "realmRoles": ["employee"],
+      "subGroups": [
+        {
+          "name": "Managers",
+          "path": "/Finance Department/Managers",
+          "attributes": {
+            "role_level": ["manager"]
+          },
+          "realmRoles": ["doa_approver_level2"]
+        },
+        {
+          "name": "Approvers",
+          "path": "/Finance Department/Approvers",
+          "attributes": {
+            "role_level": ["approver"]
+          },
+          "realmRoles": ["doa_approver_level1"]
+        },
+        {
+          "name": "Officers",
+          "path": "/Finance Department/Officers",
+          "attributes": {
+            "role_level": ["officer"]
+          },
+          "realmRoles": ["finance_officer"]
+        },
+        {
+          "name": "POC",
+          "path": "/Finance Department/POC",
+          "attributes": {
+            "is_poc": ["true"]
+          },
+          "realmRoles": ["department_poc"]
+        }
+      ]
+    },
+    {
+      "name": "Procurement Department",
+      "path": "/Procurement Department",
+      "attributes": {
+        "department": ["Procurement"],
+        "cost_center_prefix": ["PROC"]
+      },
+      "realmRoles": ["employee"],
+      "subGroups": [
+        {
+          "name": "Managers",
+          "path": "/Procurement Department/Managers",
+          "attributes": {
+            "role_level": ["manager"]
+          },
+          "realmRoles": ["procurement_approver"]
+        },
+        {
+          "name": "Specialists",
+          "path": "/Procurement Department/Specialists",
+          "attributes": {
+            "role_level": ["specialist"]
+          },
+          "realmRoles": ["procurement_specialist"]
+        },
+        {
+          "name": "POC",
+          "path": "/Procurement Department/POC",
+          "attributes": {
+            "is_poc": ["true"]
+          },
+          "realmRoles": ["department_poc", "procurement_approver"]
+        }
+      ]
+    },
+    {
+      "name": "Transport Department",
+      "path": "/Transport Department",
+      "attributes": {
+        "department": ["Transport"],
+        "cost_center_prefix": ["TRANS"]
+      },
+      "realmRoles": ["employee"],
+      "subGroups": [
+        {
+          "name": "Managers",
+          "path": "/Transport Department/Managers",
+          "attributes": {
+            "role_level": ["manager"]
+          },
+          "realmRoles": ["transport_manager"]
+        },
+        {
+          "name": "Coordinators",
+          "path": "/Transport Department/Coordinators",
+          "attributes": {
+            "role_level": ["coordinator"]
+          },
+          "realmRoles": ["transport_coordinator"]
+        },
+        {
+          "name": "Drivers",
+          "path": "/Transport Department/Drivers",
+          "attributes": {
+            "role_level": ["driver"]
+          },
+          "realmRoles": ["driver"]
+        }
+      ]
+    },
+    {
+      "name": "Inventory Warehouse",
+      "path": "/Inventory Warehouse",
+      "attributes": {
+        "department": ["Inventory"],
+        "cost_center_prefix": ["INV"]
+      },
+      "realmRoles": ["employee"],
+      "subGroups": [
+        {
+          "name": "Central Hub",
+          "path": "/Inventory Warehouse/Central Hub",
+          "attributes": {
+            "hub_id": ["CENTRAL"],
+            "hub_type": ["central"]
+          },
+          "realmRoles": ["central_hub_manager"]
+        },
+        {
+          "name": "Hub A",
+          "path": "/Inventory Warehouse/Hub A",
+          "attributes": {
+            "hub_id": ["HUB_A"],
+            "hub_type": ["regional"]
+          },
+          "realmRoles": ["hub_manager"]
+        },
+        {
+          "name": "Hub B",
+          "path": "/Inventory Warehouse/Hub B",
+          "attributes": {
+            "hub_id": ["HUB_B"],
+            "hub_type": ["regional"]
+          },
+          "realmRoles": ["hub_manager"]
+        }
+      ]
+    }
+  ],
+
+  "clients": [
+    {
+      "clientId": "werkflow-admin-portal",
+      "name": "Werkflow Admin Portal",
+      "description": "Admin portal for workflow management",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "REDACTED_KC_PORTAL_SECRET",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:4000/*",
+        "https://admin.werkflow.com/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://localhost:4000",
+        "https://admin.werkflow.com"
+      ],
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": true,
+      "fullScopeAllowed": true,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "full.path": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "department",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "department",
+            "claim.name": "department",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "doa_level",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "doa_level",
+            "claim.name": "doa_level",
+            "jsonType.label": "int",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "manager_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "manager_id",
+            "claim.name": "manager_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "cost_center",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "cost_center",
+            "claim.name": "cost_center",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "is_poc",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "is_poc",
+            "claim.name": "is_poc",
+            "jsonType.label": "boolean",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "hub_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "hub_id",
+            "claim.name": "hub_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "employee_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "employee_id",
+            "claim.name": "employee_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "werkflow-engine",
+      "name": "Workflow Engine Service",
+      "description": "Backend workflow engine",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "REPLACE_WITH_ENGINE_CLIENT_SECRET",
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "fullScopeAllowed": true
+    },
+    {
+      "clientId": "werkflow-hr-portal",
+      "name": "Werkflow HR Portal",
+      "description": "HR portal for employee services",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "HR_PORTAL_SECRET_2024_SECURE",
+      "redirectUris": [
+        "http://localhost:4001/*",
+        "https://hr.werkflow.com/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4001",
+        "https://hr.werkflow.com"
+      ],
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": true,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+
+  "users": [
+    {
+      "username": "admin",
+      "email": "admin@werkflow.com",
+      "firstName": "System",
+      "lastName": "Administrator",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin", "super_admin"],
+      "attributes": {
+        "department": ["IT"],
+        "employee_id": ["EMP001"],
+        "doa_level": ["4"],
+        "cost_center": ["IT-001"]
+      }
+    }
+  ],
+
+  "scopeMappings": [
+    {
+      "clientScope": "offline_access",
+      "roles": ["offline_access"]
+    }
+  ],
+
+  "clientScopeMappings": {
+    "werkflow-admin-portal": [
+      {
+        "client": "werkflow-admin-portal",
+        "roles": ["admin", "manager", "poc", "approver", "requester", "viewer"]
+      }
+    ]
+  },
+
+  "internationalizationEnabled": false,
+  "supportedLocales": ["en"],
+  "defaultLocale": "en",
+
+  "authenticationFlows": [],
+  "authenticatorConfig": [],
+  "requiredActions": [],
+  "browserFlow": "browser",
+  "registrationFlow": "registration",
+  "directGrantFlow": "direct grant",
+  "resetCredentialsFlow": "reset credentials",
+  "clientAuthenticationFlow": "clients",
+  "dockerAuthenticationFlow": "docker auth",
+
+  "attributes": {
+    "frontendUrl": "",
+    "userProfileEnabled": "true"
+  }
+}

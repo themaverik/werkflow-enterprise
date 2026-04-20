@@ -1,0 +1,192 @@
+{
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "text": "<h3>Leave Request Approval Form</h3><p>Review and approve/reject the leave request.</p>"
+    },
+    {
+      "type": "text",
+      "text": "<h4>Employee Information</h4>"
+    },
+    {
+      "type": "textfield",
+      "key": "employeeName",
+      "label": "Employee Name",
+      "disabled": true
+    },
+    {
+      "type": "textfield",
+      "key": "employeeId",
+      "label": "Employee ID",
+      "disabled": true
+    },
+    {
+      "type": "textfield",
+      "key": "department",
+      "label": "Department",
+      "disabled": true
+    },
+    {
+      "type": "textfield",
+      "key": "position",
+      "label": "Position",
+      "disabled": true
+    },
+    {
+      "type": "text",
+      "text": "<h4>Leave Details</h4>"
+    },
+    {
+      "type": "textfield",
+      "key": "leaveType",
+      "label": "Leave Type",
+      "disabled": true
+    },
+    {
+      "type": "date",
+      "key": "startDate",
+      "label": "Start Date",
+      "disabled": true
+    },
+    {
+      "type": "date",
+      "key": "endDate",
+      "label": "End Date",
+      "disabled": true
+    },
+    {
+      "type": "number",
+      "key": "totalDays",
+      "label": "Total Days",
+      "disabled": true
+    },
+    {
+      "type": "textarea",
+      "key": "reason",
+      "label": "Reason for Leave",
+      "disabled": true
+    },
+    {
+      "type": "number",
+      "key": "currentBalance",
+      "label": "Current Leave Balance",
+      "disabled": true
+    },
+    {
+      "type": "number",
+      "key": "balanceAfterLeave",
+      "label": "Balance After Leave",
+      "disabled": true
+    },
+    {
+      "type": "text",
+      "text": "<hr><h4>Approval Decision</h4>"
+    },
+    {
+      "type": "radio",
+      "key": "decision",
+      "label": "Decision",
+      "values": [
+        { "label": "Approve", "value": "approved" },
+        { "label": "Reject", "value": "rejected" },
+        { "label": "Approve with Conditions", "value": "conditional" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "approverComments",
+      "label": "Approver Comments",
+      "placeholder": "Enter your comments",
+      "validate": {
+        "required": true,
+        "minLength": 10
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "rejectionReason",
+      "label": "Rejection Reason",
+      "placeholder": "Explain why this leave request is being rejected",
+      "conditional": {
+        "when": "decision",
+        "eq": "rejected"
+      },
+      "validate": {
+        "minLength": 20
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "conditions",
+      "label": "Approval Conditions",
+      "placeholder": "Enter conditions for approval",
+      "conditional": {
+        "when": "decision",
+        "eq": "conditional"
+      },
+      "validate": {
+        "minLength": 10
+      }
+    },
+    {
+      "type": "checkbox",
+      "key": "coveringArrangementsAdequate",
+      "label": "Covering arrangements are adequate",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "checkbox",
+      "key": "handoverComplete",
+      "label": "Handover documentation is complete",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "checkbox",
+      "key": "leaveBalanceVerified",
+      "label": "Leave balance has been verified",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "date",
+      "key": "approvalDate",
+      "label": "Approval Date",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "approverName",
+      "label": "Approver Name",
+      "placeholder": "Enter your full name",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "approverTitle",
+      "label": "Approver Title",
+      "placeholder": "Enter your title",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "additionalNotes",
+      "label": "Additional Notes",
+      "placeholder": "Any additional notes or instructions"
+    }
+  ]
+}

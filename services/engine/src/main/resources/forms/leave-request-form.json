@@ -1,0 +1,263 @@
+{
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "text": "<h3>Leave Request Form</h3><p>Submit your leave request for approval.</p>"
+    },
+    {
+      "type": "select",
+      "key": "leaveType",
+      "label": "Leave Type",
+      "values": [
+        { "label": "Annual Leave", "value": "annual" },
+        { "label": "Sick Leave", "value": "sick" },
+        { "label": "Personal Leave", "value": "personal" },
+        { "label": "Parental Leave", "value": "parental" },
+        { "label": "Bereavement Leave", "value": "bereavement" },
+        { "label": "Unpaid Leave", "value": "unpaid" },
+        { "label": "Compensatory Leave", "value": "compensatory" },
+        { "label": "Study Leave", "value": "study" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "date",
+      "key": "startDate",
+      "label": "Start Date",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "date",
+      "key": "endDate",
+      "label": "End Date",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "select",
+      "key": "startDatePeriod",
+      "label": "Start Date Period",
+      "values": [
+        { "label": "Full Day", "value": "full_day" },
+        { "label": "Morning", "value": "morning" },
+        { "label": "Afternoon", "value": "afternoon" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "select",
+      "key": "endDatePeriod",
+      "label": "End Date Period",
+      "values": [
+        { "label": "Full Day", "value": "full_day" },
+        { "label": "Morning", "value": "morning" },
+        { "label": "Afternoon", "value": "afternoon" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "number",
+      "key": "totalDays",
+      "label": "Total Days",
+      "placeholder": "Calculate total days",
+      "validate": {
+        "required": true,
+        "min": 0.5,
+        "max": 365
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "reason",
+      "label": "Reason for Leave",
+      "placeholder": "Enter reason for leave request",
+      "validate": {
+        "required": true,
+        "minLength": 10,
+        "maxLength": 500
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "contactNumber",
+      "label": "Contact Number During Leave",
+      "placeholder": "Enter contact number",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "email",
+      "key": "emergencyEmail",
+      "label": "Emergency Email",
+      "placeholder": "Enter emergency contact email",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "coveringPerson",
+      "label": "Covering Person",
+      "placeholder": "Name of person covering your responsibilities"
+    },
+    {
+      "type": "email",
+      "key": "coveringPersonEmail",
+      "label": "Covering Person Email",
+      "placeholder": "Email of covering person"
+    },
+    {
+      "type": "checkbox",
+      "key": "hasMedicalCertificate",
+      "label": "Medical certificate attached (for sick leave)",
+      "conditional": {
+        "when": "leaveType",
+        "eq": "sick"
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "medicalPractitioner",
+      "label": "Medical Practitioner Name",
+      "placeholder": "Name of doctor/clinic",
+      "conditional": {
+        "when": "leaveType",
+        "eq": "sick"
+      }
+    },
+    {
+      "type": "date",
+      "key": "medicalCertificateDate",
+      "label": "Medical Certificate Date",
+      "conditional": {
+        "when": "leaveType",
+        "eq": "sick"
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "relationship",
+      "label": "Relationship to Deceased",
+      "placeholder": "Enter relationship",
+      "conditional": {
+        "when": "leaveType",
+        "eq": "bereavement"
+      },
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "institutionName",
+      "label": "Educational Institution",
+      "placeholder": "Enter institution name",
+      "conditional": {
+        "when": "leaveType",
+        "eq": "study"
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "courseTitle",
+      "label": "Course/Program Title",
+      "placeholder": "Enter course title",
+      "conditional": {
+        "when": "leaveType",
+        "eq": "study"
+      }
+    },
+    {
+      "type": "number",
+      "key": "currentBalance",
+      "label": "Current Leave Balance",
+      "placeholder": "Your current leave balance",
+      "disabled": true
+    },
+    {
+      "type": "number",
+      "key": "balanceAfterLeave",
+      "label": "Balance After Leave",
+      "placeholder": "Calculated balance after this leave",
+      "disabled": true
+    },
+    {
+      "type": "checkbox",
+      "key": "handoverCompleted",
+      "label": "Handover documentation completed",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "checkbox",
+      "key": "projectTasksAssigned",
+      "label": "All project tasks have been assigned/delegated",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "handoverNotes",
+      "label": "Handover Notes",
+      "placeholder": "Provide details of handover arrangements",
+      "validate": {
+        "minLength": 20
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "employeeId",
+      "label": "Employee ID",
+      "placeholder": "Enter your employee ID",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "employeeName",
+      "label": "Employee Name",
+      "placeholder": "Enter your full name",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "department",
+      "label": "Department",
+      "placeholder": "Enter your department",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "position",
+      "label": "Position/Title",
+      "placeholder": "Enter your position",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "additionalComments",
+      "label": "Additional Comments",
+      "placeholder": "Any additional information"
+    }
+  ]
+}

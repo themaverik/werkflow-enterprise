@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
+             xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/"
+             id="leave_approval_definitions"
+             name="Leave Approval Definitions"
+             namespace="http://werkflow.com/dmn">
+
+  <decision id="leave_approval" name="Leave Approval Rules">
+    <description>Determines whether a leave request requires formal approval and which
+role must approve it, based on duration and leave type. Short casual leave is
+auto-approved; longer or special-category leave escalates to manager or HR.</description>
+    <decisionTable id="leave_approval_table" hitPolicy="FIRST">
+
+      <input id="input_days" label="Leave Days">
+        <inputExpression id="input_days_expr" typeRef="number">
+          <text>leaveDays</text>
+        </inputExpression>
+      </input>
+
+      <input id="input_type" label="Leave Type">
+        <inputExpression id="input_type_expr" typeRef="string">
+          <text>leaveType</text>
+        </inputExpression>
+      </input>
+
+      <output id="output_required" label="Approval Required" name="approvalRequired" typeRef="boolean"/>
+      <output id="output_approver" label="Approver Role" name="approverRole" typeRef="string"/>
+
+      <!-- Rule 1: Medical / Maternity / Paternity always requires HR -->
+      <rule id="rule_hr_leave">
+        <description>Special leave categories always require HR regardless of duration</description>
+        <inputEntry id="rule_hr_days"><text></text></inputEntry>
+        <inputEntry id="rule_hr_type"><text>"MEDICAL","MATERNITY","PATERNITY"</text></inputEntry>
+        <outputEntry id="rule_hr_req"><text>true</text></outputEntry>
+        <outputEntry id="rule_hr_approver"><text>"HR_MANAGER"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 2: > 10 days any type — HR approval -->
+      <rule id="rule_long_leave">
+        <description>Leaves longer than 10 days require HR manager approval</description>
+        <inputEntry id="rule_long_days"><text>&gt; 10</text></inputEntry>
+        <inputEntry id="rule_long_type"><text></text></inputEntry>
+        <outputEntry id="rule_long_req"><text>true</text></outputEntry>
+        <outputEntry id="rule_long_approver"><text>"HR_MANAGER"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 3: 4–10 days — manager approval -->
+      <rule id="rule_medium_leave">
+        <description>Medium-duration leave requires line manager approval</description>
+        <inputEntry id="rule_med_days"><text>[4..10]</text></inputEntry>
+        <inputEntry id="rule_med_type"><text></text></inputEntry>
+        <outputEntry id="rule_med_req"><text>true</text></outputEntry>
+        <outputEntry id="rule_med_approver"><text>"LINE_MANAGER"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 4: 1–3 days casual — auto-approved -->
+      <rule id="rule_casual_leave">
+        <description>Short casual leave is auto-approved with no human approver</description>
+        <inputEntry id="rule_cas_days"><text>[1..3]</text></inputEntry>
+        <inputEntry id="rule_cas_type"><text>"CASUAL","ANNUAL"</text></inputEntry>
+        <outputEntry id="rule_cas_req"><text>false</text></outputEntry>
+        <outputEntry id="rule_cas_approver"><text>"AUTO"</text></outputEntry>
+      </rule>
+
+    </decisionTable>
+  </decision>
+
+</definitions>
