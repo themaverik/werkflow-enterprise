@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://werkflow.com/bpmn/capex">
+
+  <process id="capex-approval-process-v2" name="CapEx Approval Process" isExecutable="true">
+
+    <documentation>Capital Expenditure approval workflow — V2 retrofitted with Action Blocks. Replaces Groovy script tasks with declarative action block service tasks.
+
+NOTE: Amount thresholds in this process (e.g. requestAmount &gt; 100000) are intentional
+demo values showing inline BPMN condition expressions. For production use, replace hardcoded
+thresholds with a Business Rule Task backed by a DMN decision table — see
+doa-routing-process.bpmn20.xml and doa-routing.dmn for the recommended pattern.</documentation>
+
+    <!-- Start Event -->
+    <startEvent id="startEvent" name="CapEx Request Submitted" flowable:formKey="capex-request">
+      <documentation>Employee submits a capital expenditure request</documentation>
+    </startEvent>
+
+    <!-- Action Block: Create CapEx Request via external API -->
+    <serviceTask id="createCapExRequest" name="Create CapEx Request"
+                 flowable:actionType="EXTERNAL_API_CALL"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>capex-service</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:string>/api/capex-requests</flowable:string></flowable:field>
+        <flowable:field name="method"><flowable:string>POST</flowable:string></flowable:field>
+        <flowable:field name="responseVariable"><flowable:string>createResponse</flowable:string></flowable:field>
+        <flowable:field name="extractFields"><flowable:string>capexRequestId:$.id,capexStatus:$.status</flowable:string></flowable:field>
+        <flowable:field name="onError"><flowable:string>FAIL</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Action Block: Check Budget via external API -->
+    <serviceTask id="checkBudget" name="Check Budget Availability"
+                 flowable:actionType="EXTERNAL_API_CALL"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>capex-service</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:string>/api/budget/check?amount=${requestAmount}&amp;category=${category}</flowable:string></flowable:field>
+        <flowable:field name="method"><flowable:string>GET</flowable:string></flowable:field>
+        <flowable:field name="responseVariable"><flowable:string>budgetCheck</flowable:string></flowable:field>
+        <flowable:field name="extractFields"><flowable:string>budgetAvailable:$.available,availableAmount:$.availableAmount</flowable:string></flowable:field>
+        <flowable:field name="onError"><flowable:string>THROW_BPMN_ERROR</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <exclusiveGateway id="budgetGateway" name="Budget Available?" />
+
+    <!-- Action Block: Manager Review -->
+    <userTask id="managerApproval" name="Manager Review"
+              flowable:actionType="HUMAN_APPROVAL"
+              flowable:candidateGroups="DEPT:FIN::DOA:L2,SUPER_ADMIN"
+              flowable:formKey="capex-approval">
+      <documentation>Finance manager reviews and approves/rejects CapEx request</documentation>
+      <extensionElements>
+        <flowable:field name="outcomeVariable"><flowable:string>managerDecision</flowable:string></flowable:field>
+      </extensionElements>
+    </userTask>
+
+    <exclusiveGateway id="amountGateway" name="Amount > $50,000?" />
+
+    <!-- Action Block: VP Review -->
+    <userTask id="vpApproval" name="VP Review"
+              flowable:actionType="HUMAN_APPROVAL"
+              flowable:candidateGroups="DEPT:FIN::DOA:L3,SUPER_ADMIN"
+              flowable:formKey="capex-approval">
+      <documentation>Finance VP reviews high-value CapEx requests over $50,000</documentation>
+      <extensionElements>
+        <flowable:field name="outcomeVariable"><flowable:string>vpDecision</flowable:string></flowable:field>
+      </extensionElements>
+    </userTask>
+
+    <exclusiveGateway id="cfoGateway" name="Amount > $250,000?" />
+
+    <!-- Action Block: CFO Review -->
+    <userTask id="cfoApproval" name="CFO Review"
+              flowable:actionType="HUMAN_APPROVAL"
+              flowable:candidateGroups="DEPT:FIN::DOA:L4,SUPER_ADMIN"
+              flowable:formKey="capex-approval">
+      <documentation>CFO reviews very high-value CapEx requests over $250,000</documentation>
+      <extensionElements>
+        <flowable:field name="outcomeVariable"><flowable:string>cfoDecision</flowable:string></flowable:field>
+      </extensionElements>
+    </userTask>
+
+    <exclusiveGateway id="mergeGateway" name="Merge Approvals" />
+    <exclusiveGateway id="decisionGateway" name="Approved?" />
+
+    <!-- Action Block: Update CapEx Status to Approved + Reserve Budget -->
+    <serviceTask id="updateApproved" name="Update Status: Approved"
+                 flowable:actionType="EXTERNAL_API_CALL"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>capex-service</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:string>/api/capex-requests/${capexRequestId}/approve</flowable:string></flowable:field>
+        <flowable:field name="method"><flowable:string>PUT</flowable:string></flowable:field>
+        <flowable:field name="responseVariable"><flowable:string>approvalResponse</flowable:string></flowable:field>
+        <flowable:field name="onError"><flowable:string>CONTINUE</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Action Block: Send Approval Notification -->
+    <serviceTask id="sendApprovalNotification" name="Send Approval Notification"
+                 flowable:actionType="NOTIFICATION"
+                 flowable:delegateExpression="${emailActionDelegate}">
+      <extensionElements>
+        <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
+        <flowable:field name="recipient"><flowable:string>${initiator}</flowable:string></flowable:field>
+        <flowable:field name="templateKey"><flowable:string>capex-approved</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Action Block: Update CapEx Status to Rejected -->
+    <serviceTask id="updateRejected" name="Update Status: Rejected"
+                 flowable:actionType="EXTERNAL_API_CALL"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>capex-service</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:string>/api/capex-requests/${capexRequestId}/reject</flowable:string></flowable:field>
+        <flowable:field name="method"><flowable:string>PUT</flowable:string></flowable:field>
+        <flowable:field name="responseVariable"><flowable:string>rejectionResponse</flowable:string></flowable:field>
+        <flowable:field name="onError"><flowable:string>CONTINUE</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Action Block: Send Rejection Notification -->
+    <serviceTask id="sendRejectionNotification" name="Send Rejection Notification"
+                 flowable:actionType="NOTIFICATION"
+                 flowable:delegateExpression="${emailActionDelegate}">
+      <extensionElements>
+        <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
+        <flowable:field name="recipient"><flowable:string>${initiator}</flowable:string></flowable:field>
+        <flowable:field name="templateKey"><flowable:string>capex-rejected</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <endEvent id="endEventApproved" name="Request Approved" />
+    <endEvent id="endEventRejected" name="Request Rejected" />
+    <endEvent id="endEventNoBudget" name="Insufficient Budget" />
+
+    <!-- Sequence Flows -->
+    <sequenceFlow id="flow0" sourceRef="startEvent" targetRef="createCapExRequest" />
+    <sequenceFlow id="flow1" sourceRef="createCapExRequest" targetRef="checkBudget" />
+    <sequenceFlow id="flow2" sourceRef="checkBudget" targetRef="budgetGateway" />
+    <sequenceFlow id="flow3" sourceRef="budgetGateway" targetRef="managerApproval">
+      <conditionExpression xsi:type="tFormalExpression">${budgetAvailable == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow4" sourceRef="budgetGateway" targetRef="endEventNoBudget">
+      <conditionExpression xsi:type="tFormalExpression">${budgetAvailable != true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow5" sourceRef="managerApproval" targetRef="amountGateway" />
+    <sequenceFlow id="flow6" sourceRef="amountGateway" targetRef="vpApproval">
+      <conditionExpression xsi:type="tFormalExpression">${requestAmount > 50000}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow7" sourceRef="amountGateway" targetRef="mergeGateway">
+      <conditionExpression xsi:type="tFormalExpression">${requestAmount &lt;= 50000}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow8" sourceRef="vpApproval" targetRef="cfoGateway" />
+    <sequenceFlow id="flow9" sourceRef="cfoGateway" targetRef="cfoApproval">
+      <conditionExpression xsi:type="tFormalExpression">${requestAmount > 250000}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow10" sourceRef="cfoGateway" targetRef="mergeGateway">
+      <conditionExpression xsi:type="tFormalExpression">${requestAmount &lt;= 250000}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow11" sourceRef="cfoApproval" targetRef="mergeGateway" />
+    <sequenceFlow id="flow12" sourceRef="mergeGateway" targetRef="decisionGateway" />
+    <sequenceFlow id="flow13" sourceRef="decisionGateway" targetRef="updateApproved">
+      <conditionExpression xsi:type="tFormalExpression">${managerDecision == 'APPROVED' || vpDecision == 'APPROVED' || cfoDecision == 'APPROVED'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow14" sourceRef="decisionGateway" targetRef="updateRejected">
+      <conditionExpression xsi:type="tFormalExpression">${managerDecision == 'REJECTED' || vpDecision == 'REJECTED' || cfoDecision == 'REJECTED'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow15" sourceRef="updateApproved" targetRef="sendApprovalNotification" />
+    <sequenceFlow id="flow16" sourceRef="sendApprovalNotification" targetRef="endEventApproved" />
+    <sequenceFlow id="flow17" sourceRef="updateRejected" targetRef="sendRejectionNotification" />
+    <sequenceFlow id="flow18" sourceRef="sendRejectionNotification" targetRef="endEventRejected" />
+
+  </process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_capex-approval-v2">
+    <bpmndi:BPMNPlane id="BPMNPlane_capex-approval-v2" bpmnElement="capex-approval-process-v2">
+      <bpmndi:BPMNShape id="startEvent_di" bpmnElement="startEvent">
+        <omgdc:Bounds x="152" y="262" width="36" height="36" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="128" y="305" width="84" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="createCapExRequest_di" bpmnElement="createCapExRequest">
+        <omgdc:Bounds x="240" y="240" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="checkBudget_di" bpmnElement="checkBudget">
+        <omgdc:Bounds x="390" y="240" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="budgetGateway_di" bpmnElement="budgetGateway" isMarkerVisible="true">
+        <omgdc:Bounds x="545" y="255" width="50" height="50" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="526" y="312" width="88" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="managerApproval_di" bpmnElement="managerApproval">
+        <omgdc:Bounds x="650" y="240" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="amountGateway_di" bpmnElement="amountGateway" isMarkerVisible="true">
+        <omgdc:Bounds x="805" y="255" width="50" height="50" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="782" y="312" width="96" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="vpApproval_di" bpmnElement="vpApproval">
+        <omgdc:Bounds x="910" y="150" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="cfoGateway_di" bpmnElement="cfoGateway" isMarkerVisible="true">
+        <omgdc:Bounds x="1065" y="165" width="50" height="50" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1040" y="222" width="100" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="cfoApproval_di" bpmnElement="cfoApproval">
+        <omgdc:Bounds x="1170" y="60" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="mergeGateway_di" bpmnElement="mergeGateway" isMarkerVisible="true">
+        <omgdc:Bounds x="1065" y="255" width="50" height="50" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1048" y="312" width="84" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="decisionGateway_di" bpmnElement="decisionGateway" isMarkerVisible="true">
+        <omgdc:Bounds x="1175" y="255" width="50" height="50" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1167" y="312" width="66" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="updateApproved_di" bpmnElement="updateApproved">
+        <omgdc:Bounds x="1290" y="170" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sendApprovalNotification_di" bpmnElement="sendApprovalNotification">
+        <omgdc:Bounds x="1450" y="170" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="updateRejected_di" bpmnElement="updateRejected">
+        <omgdc:Bounds x="1290" y="330" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sendRejectionNotification_di" bpmnElement="sendRejectionNotification">
+        <omgdc:Bounds x="1450" y="330" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="endEventApproved_di" bpmnElement="endEventApproved">
+        <omgdc:Bounds x="1612" y="192" width="36" height="36" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1590" y="235" width="80" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="endEventRejected_di" bpmnElement="endEventRejected">
+        <omgdc:Bounds x="1612" y="352" width="36" height="36" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1590" y="395" width="80" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="endEventNoBudget_di" bpmnElement="endEventNoBudget">
+        <omgdc:Bounds x="547" y="392" width="36" height="36" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="520" y="435" width="90" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <!-- Sequence Flow Edges -->
+      <bpmndi:BPMNEdge id="flow0_di" bpmnElement="flow0">
+        <omgdi:waypoint x="188" y="280" /><omgdi:waypoint x="240" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow1_di" bpmnElement="flow1">
+        <omgdi:waypoint x="340" y="280" /><omgdi:waypoint x="390" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow2_di" bpmnElement="flow2">
+        <omgdi:waypoint x="490" y="280" /><omgdi:waypoint x="545" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow3_di" bpmnElement="flow3">
+        <omgdi:waypoint x="595" y="280" /><omgdi:waypoint x="650" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow4_di" bpmnElement="flow4">
+        <omgdi:waypoint x="565" y="305" /><omgdi:waypoint x="565" y="410" /><omgdi:waypoint x="547" y="410" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow5_di" bpmnElement="flow5">
+        <omgdi:waypoint x="750" y="280" /><omgdi:waypoint x="805" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow6_di" bpmnElement="flow6">
+        <omgdi:waypoint x="830" y="255" /><omgdi:waypoint x="830" y="190" /><omgdi:waypoint x="910" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow7_di" bpmnElement="flow7">
+        <omgdi:waypoint x="855" y="280" /><omgdi:waypoint x="1065" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow8_di" bpmnElement="flow8">
+        <omgdi:waypoint x="1010" y="190" /><omgdi:waypoint x="1065" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow9_di" bpmnElement="flow9">
+        <omgdi:waypoint x="1090" y="165" /><omgdi:waypoint x="1090" y="100" /><omgdi:waypoint x="1170" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow10_di" bpmnElement="flow10">
+        <omgdi:waypoint x="1115" y="190" /><omgdi:waypoint x="1090" y="190" /><omgdi:waypoint x="1090" y="255" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow11_di" bpmnElement="flow11">
+        <omgdi:waypoint x="1270" y="100" /><omgdi:waypoint x="1090" y="100" /><omgdi:waypoint x="1090" y="255" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow12_di" bpmnElement="flow12">
+        <omgdi:waypoint x="1115" y="280" /><omgdi:waypoint x="1175" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow13_di" bpmnElement="flow13">
+        <omgdi:waypoint x="1200" y="255" /><omgdi:waypoint x="1200" y="210" /><omgdi:waypoint x="1290" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow14_di" bpmnElement="flow14">
+        <omgdi:waypoint x="1200" y="305" /><omgdi:waypoint x="1200" y="370" /><omgdi:waypoint x="1290" y="370" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow15_di" bpmnElement="flow15">
+        <omgdi:waypoint x="1390" y="210" /><omgdi:waypoint x="1450" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow16_di" bpmnElement="flow16">
+        <omgdi:waypoint x="1550" y="210" /><omgdi:waypoint x="1612" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow17_di" bpmnElement="flow17">
+        <omgdi:waypoint x="1390" y="370" /><omgdi:waypoint x="1450" y="370" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow18_di" bpmnElement="flow18">
+        <omgdi:waypoint x="1550" y="370" /><omgdi:waypoint x="1612" y="370" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>
