@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://werkflow.com/bpmn/asset-request">
+
+  <process id="asset-request-process" name="Asset Request" isExecutable="true">
+
+    <documentation>Asset request workflow with custodian review, stock check, and procurement escalation</documentation>
+
+    <!-- Start Event -->
+    <startEvent id="start" name="Asset Request Submitted"
+              flowable:formKey="asset-request-form"
+              flowable:initiator="initiatorId">
+      <documentation>Employee submits an asset request with category, quantity and office location</documentation>
+    </startEvent>
+
+    <!-- Service Task: Create Asset Request Record -->
+    <serviceTask id="createAssetRecord" name="Create Asset Request"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Creates the asset request record in the business service and sets custodianGroupName from category.responsibleGroup</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>inventory</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:string>/api/workflow/inventory/asset-requests</flowable:string></flowable:field>
+        <flowable:field name="method"><flowable:string>POST</flowable:string></flowable:field>
+        <flowable:field name="body"><flowable:string>{"requestedBy":"${initiator}","assetCategory":"${assetCategory}","justification":"${justification}"}</flowable:string></flowable:field>
+        <flowable:field name="extractFields"><flowable:string>assetRequestId:$.id,requestStatus:$.status</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- User Task: Custodian Review -->
+    <userTask id="custodianReview" name="Custodian Review"
+              flowable:candidateGroups="${custodianGroupName},SUPER_ADMIN,ADMIN">
+      <documentation>Custodian department reviews the asset request and makes an approve/reject decision</documentation>
+      <extensionElements>
+        <flowable:formProperty id="decision" name="Decision" type="enum" required="true">
+          <flowable:value id="approve" name="Approve"/>
+          <flowable:value id="reject" name="Reject"/>
+        </flowable:formProperty>
+        <flowable:formProperty id="comments" name="Comments" type="string" required="false"/>
+        <flowable:taskListener event="complete"
+          expression="${execution.setVariable('approvedByUserId', task.assignee != null ? task.assignee : 'system')}"/>
+      </extensionElements>
+    </userTask>
+
+    <!-- Exclusive Gateway: Decision? -->
+    <exclusiveGateway id="decisionGateway" name="Decision?"/>
+
+    <!-- Service Task: Check Stock -->
+    <serviceTask id="checkStock" name="Check Stock"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Calls /api/inventory/stock/availability and sets stockAvailable variable</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>inventory</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:expression>/api/workflow/inventory/stock/check?category=${assetCategory}</flowable:expression></flowable:field>
+        <flowable:field name="method"><flowable:string>GET</flowable:string></flowable:field>
+        <flowable:field name="extractFields"><flowable:string>stockAvailable:$.available,stockCount:$.count</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Exclusive Gateway: Stock Available? -->
+    <exclusiveGateway id="stockGateway" name="Stock Available?"/>
+
+    <!-- Service Task: Fulfill Request -->
+    <serviceTask id="fulfillRequest" name="Fulfill Request"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Calls /api/inventory/asset-requests/callback/approve</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>inventory</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:expression>/api/workflow/inventory/asset-requests/${assetRequestId}/fulfill</flowable:expression></flowable:field>
+        <flowable:field name="method"><flowable:string>POST</flowable:string></flowable:field>
+        <flowable:field name="body"><flowable:string>{"assignedAssetId":"${assignedAssetId}"}</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- User Task: Procurement Decision -->
+    <userTask id="procurementDecision" name="Procurement Decision"
+              flowable:candidateGroups="${procurementGroupName},SUPER_ADMIN,ADMIN">
+      <documentation>Procurement team decides whether to procure the asset or close the request without stock</documentation>
+      <extensionElements>
+        <flowable:formProperty id="procure" name="Procure Asset" type="boolean" required="true"/>
+        <flowable:formProperty id="procurementComments" name="Comments" type="string" required="false"/>
+      </extensionElements>
+    </userTask>
+
+    <!-- Exclusive Gateway: Procurement? -->
+    <exclusiveGateway id="procurementGateway" name="Procurement?"/>
+
+    <!-- Service Task: Initiate Procurement -->
+    <serviceTask id="initiateProcurement" name="Initiate Procurement"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Calls /api/inventory/asset-requests/callback/procurement</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>inventory</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:expression>/api/inventory/asset-requests/callback/procurement?processInstanceId=${processInstanceId}</flowable:expression></flowable:field>
+        <flowable:field name="method"><flowable:string>POST</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Service Task: Notify Rejection -->
+    <serviceTask id="notifyRejection" name="Notify Rejection"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <documentation>Calls /api/inventory/asset-requests/callback/reject</documentation>
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>inventory</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:expression>/api/workflow/inventory/asset-requests/${assetRequestId}/reject</flowable:expression></flowable:field>
+        <flowable:field name="method"><flowable:string>PUT</flowable:string></flowable:field>
+        <flowable:field name="body"><flowable:string>{"reason":"${rejectionReason}"}</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- End Events -->
+    <endEvent id="endFulfilled" name="Request Fulfilled"/>
+    <endEvent id="endProcurement" name="Procurement Initiated"/>
+    <endEvent id="endNoStock" name="Closed - No Stock"/>
+    <endEvent id="endRejected" name="Request Rejected"/>
+
+    <!-- Sequence Flows -->
+    <sequenceFlow id="flow1" sourceRef="start" targetRef="createAssetRecord"/>
+    <sequenceFlow id="flow1b" sourceRef="createAssetRecord" targetRef="custodianReview"/>
+    <sequenceFlow id="flow3" sourceRef="custodianReview" targetRef="decisionGateway"/>
+
+    <!-- Decision Gateway Flows -->
+    <sequenceFlow id="approve" sourceRef="decisionGateway" targetRef="checkStock">
+      <conditionExpression xsi:type="tFormalExpression">${decision == 'approve'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="reject" sourceRef="decisionGateway" targetRef="notifyRejection">
+      <conditionExpression xsi:type="tFormalExpression">${decision == 'reject'}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow4" sourceRef="checkStock" targetRef="stockGateway"/>
+
+    <!-- Stock Gateway Flows -->
+    <sequenceFlow id="stockAvailable" sourceRef="stockGateway" targetRef="fulfillRequest">
+      <conditionExpression xsi:type="tFormalExpression">${stockAvailable}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="stockUnavailable" sourceRef="stockGateway" targetRef="procurementDecision">
+      <conditionExpression xsi:type="tFormalExpression">${!stockAvailable}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow5" sourceRef="fulfillRequest" targetRef="endFulfilled"/>
+    <sequenceFlow id="flow6" sourceRef="procurementDecision" targetRef="procurementGateway"/>
+
+    <!-- Procurement Gateway Flows -->
+    <sequenceFlow id="doProcure" sourceRef="procurementGateway" targetRef="initiateProcurement">
+      <conditionExpression xsi:type="tFormalExpression">${procure}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="noProcure" sourceRef="procurementGateway" targetRef="endNoStock">
+      <conditionExpression xsi:type="tFormalExpression">${!procure}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow7" sourceRef="initiateProcurement" targetRef="endProcurement"/>
+    <sequenceFlow id="flow8" sourceRef="notifyRejection" targetRef="endRejected"/>
+
+  </process>
+
+  <!-- BPMN Diagram (Visual Layout) -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_asset-request-process">
+    <bpmndi:BPMNPlane bpmnElement="asset-request-process" id="BPMNPlane_asset-request-process">
+
+      <!-- Start Event -->
+      <bpmndi:BPMNShape bpmnElement="start" id="BPMNShape_start">
+        <omgdc:Bounds height="30.0" width="30.0" x="100.0" y="185.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Create Asset Record -->
+      <bpmndi:BPMNShape bpmnElement="createAssetRecord" id="BPMNShape_createAssetRecord">
+        <omgdc:Bounds height="80.0" width="120.0" x="145.0" y="160.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Custodian Review -->
+      <bpmndi:BPMNShape bpmnElement="custodianReview" id="BPMNShape_custodianReview">
+        <omgdc:Bounds height="80.0" width="120.0" x="360.0" y="160.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Decision Gateway -->
+      <bpmndi:BPMNShape bpmnElement="decisionGateway" id="BPMNShape_decisionGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="540.0" y="180.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Check Stock -->
+      <bpmndi:BPMNShape bpmnElement="checkStock" id="BPMNShape_checkStock">
+        <omgdc:Bounds height="80.0" width="120.0" x="640.0" y="160.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Stock Gateway -->
+      <bpmndi:BPMNShape bpmnElement="stockGateway" id="BPMNShape_stockGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="820.0" y="180.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Fulfill Request -->
+      <bpmndi:BPMNShape bpmnElement="fulfillRequest" id="BPMNShape_fulfillRequest">
+        <omgdc:Bounds height="80.0" width="120.0" x="920.0" y="160.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Procurement Decision -->
+      <bpmndi:BPMNShape bpmnElement="procurementDecision" id="BPMNShape_procurementDecision">
+        <omgdc:Bounds height="80.0" width="120.0" x="840.0" y="300.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Procurement Gateway -->
+      <bpmndi:BPMNShape bpmnElement="procurementGateway" id="BPMNShape_procurementGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="1020.0" y="320.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Initiate Procurement -->
+      <bpmndi:BPMNShape bpmnElement="initiateProcurement" id="BPMNShape_initiateProcurement">
+        <omgdc:Bounds height="80.0" width="120.0" x="1120.0" y="300.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Notify Rejection -->
+      <bpmndi:BPMNShape bpmnElement="notifyRejection" id="BPMNShape_notifyRejection">
+        <omgdc:Bounds height="80.0" width="120.0" x="640.0" y="440.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- End Events -->
+      <bpmndi:BPMNShape bpmnElement="endFulfilled" id="BPMNShape_endFulfilled">
+        <omgdc:Bounds height="28.0" width="28.0" x="1090.0" y="186.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="endProcurement" id="BPMNShape_endProcurement">
+        <omgdc:Bounds height="28.0" width="28.0" x="1290.0" y="326.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="endNoStock" id="BPMNShape_endNoStock">
+        <omgdc:Bounds height="28.0" width="28.0" x="1026.0" y="436.0"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape bpmnElement="endRejected" id="BPMNShape_endRejected">
+        <omgdc:Bounds height="28.0" width="28.0" x="810.0" y="466.0"/>
+      </bpmndi:BPMNShape>
+
+      <!-- Sequence Flow Edges -->
+      <bpmndi:BPMNEdge bpmnElement="flow1" id="BPMNEdge_flow1">
+        <omgdi:waypoint x="130.0" y="200.0"/>
+        <omgdi:waypoint x="145.0" y="200.0"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow1b" id="BPMNEdge_flow1b">
+        <omgdi:waypoint x="265.0" y="200.0"/>
+        <omgdi:waypoint x="310.0" y="200.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow2" id="BPMNEdge_flow2">
+        <omgdi:waypoint x="300.0" y="200.0"/>
+        <omgdi:waypoint x="360.0" y="200.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow3" id="BPMNEdge_flow3">
+        <omgdi:waypoint x="480.0" y="200.0"/>
+        <omgdi:waypoint x="540.0" y="200.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="approve" id="BPMNEdge_approve">
+        <omgdi:waypoint x="580.0" y="200.0"/>
+        <omgdi:waypoint x="640.0" y="200.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="reject" id="BPMNEdge_reject">
+        <omgdi:waypoint x="560.0" y="220.0"/>
+        <omgdi:waypoint x="560.0" y="480.0"/>
+        <omgdi:waypoint x="640.0" y="480.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow4" id="BPMNEdge_flow4">
+        <omgdi:waypoint x="760.0" y="200.0"/>
+        <omgdi:waypoint x="820.0" y="200.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="stockAvailable" id="BPMNEdge_stockAvailable">
+        <omgdi:waypoint x="860.0" y="200.0"/>
+        <omgdi:waypoint x="920.0" y="200.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="stockUnavailable" id="BPMNEdge_stockUnavailable">
+        <omgdi:waypoint x="840.0" y="220.0"/>
+        <omgdi:waypoint x="840.0" y="300.0"/>
+        <omgdi:waypoint x="840.0" y="300.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow5" id="BPMNEdge_flow5">
+        <omgdi:waypoint x="1040.0" y="200.0"/>
+        <omgdi:waypoint x="1090.0" y="200.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow6" id="BPMNEdge_flow6">
+        <omgdi:waypoint x="960.0" y="340.0"/>
+        <omgdi:waypoint x="1020.0" y="340.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="doProcure" id="BPMNEdge_doProcure">
+        <omgdi:waypoint x="1060.0" y="340.0"/>
+        <omgdi:waypoint x="1120.0" y="340.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="noProcure" id="BPMNEdge_noProcure">
+        <omgdi:waypoint x="1040.0" y="360.0"/>
+        <omgdi:waypoint x="1040.0" y="436.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow7" id="BPMNEdge_flow7">
+        <omgdi:waypoint x="1240.0" y="340.0"/>
+        <omgdi:waypoint x="1290.0" y="340.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow8" id="BPMNEdge_flow8">
+        <omgdi:waypoint x="760.0" y="480.0"/>
+        <omgdi:waypoint x="810.0" y="480.0"/>
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</definitions>
