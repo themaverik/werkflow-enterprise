@@ -11,6 +11,23 @@ import org.springframework.context.annotation.Configuration;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Flowable Engine Configuration
+ *
+ * Customizes the Flowable process engine for the Werkflow platform.
+ *
+ * <p>Key settings:
+ * <ul>
+ *   <li>{@code setCreateDiagramOnDeploy(false)} — prevents NPE from
+ *       {@code DefaultProcessDiagramGenerator} when BPMN files lack graphic info
+ *       (i.e., no {@code bpmndi:BPMNDiagram} section with bounds/coordinates).</li>
+ *   <li>{@code setEnableSafeBpmnXml(true)} — enables detailed validation to catch
+ *       BPMN issues early during deployment.</li>
+ *   <li>{@code setTypedEventListeners} — registers {@link GlobalTaskNotificationListener}
+ *       globally so every task assignment and completion fires an email automatically,
+ *       eliminating the need for explicit NOTIFICATION service task nodes in BPMN.</li>
+ * </ul>
+ */
 @Configuration
 public class FlowableConfig {
 
