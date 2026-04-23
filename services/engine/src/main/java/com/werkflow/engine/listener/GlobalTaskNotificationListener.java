@@ -48,8 +48,9 @@ public class GlobalTaskNotificationListener implements FlowableEventListener {
             return;
         }
 
-        FlowableEngineEventType type = (FlowableEngineEventType) event.getType();
-
+        if (!(event.getType() instanceof FlowableEngineEventType type)) {
+            return;
+        }
         switch (type) {
             case TASK_ASSIGNED  -> handleTaskAssigned(task);
             case TASK_COMPLETED -> handleTaskCompleted(task);
@@ -82,8 +83,12 @@ public class GlobalTaskNotificationListener implements FlowableEventListener {
 
         // Skip notification when the person completing the task is also the process initiator
         // (covers "Submit Request" user tasks where requester fills their own form)
-        if (startUserId == null || Objects.equals(assignee, startUserId)) {
-            log.debug("TASK_COMPLETED — skipping self-completion task='{}'", task.getId());
+        if (startUserId == null) {
+            log.warn("TASK_COMPLETED — could not resolve initiator, skipping notification task='{}'", task.getId());
+            return;
+        }
+        if (Objects.equals(assignee, startUserId)) {
+            log.debug("TASK_COMPLETED — self-completion skip task='{}'", task.getId());
             return;
         }
 
