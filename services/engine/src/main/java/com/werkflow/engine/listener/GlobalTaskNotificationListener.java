@@ -5,9 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.common.engine.api.delegate.event.FlowableEvent;
 import org.flowable.common.engine.api.delegate.event.FlowableEventListener;
+import org.flowable.engine.HistoryService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.common.engine.api.delegate.event.FlowableEngineEntityEvent;
+import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.service.impl.persistence.entity.TaskEntity;
@@ -30,9 +32,11 @@ import java.util.Objects;
  * Registered in FlowableConfig via setTypedEventListeners.
  * isFailOnException = false — email failures never abort workflows.
  *
- * RuntimeService and RepositoryService are injected lazily to break the circular
- * dependency: FlowableConfig → GlobalTaskNotificationListener → Flowable services
- * → process engine initialisation → FlowableConfig.
+ * RuntimeService, RepositoryService, and HistoryService are injected with {@code @Lazy}
+ * to break the circular dependency: FlowableConfig → GlobalTaskNotificationListener
+ * → Flowable services → process engine initialisation → FlowableConfig.
+ * All three are Flowable singleton implementations (not Spring {@code @Transactional} proxies),
+ * so CGLIB proxy resolution from Flowable command executor threads is safe.
  */
 @Slf4j
 @Component
@@ -42,18 +46,21 @@ public class GlobalTaskNotificationListener implements FlowableEventListener {
     private final UserEmailResolver emailResolver;
     private final RuntimeService runtimeService;
     private final RepositoryService repositoryService;
+    private final HistoryService historyService;
 
     @Autowired
     public GlobalTaskNotificationListener(
         NotificationService notificationService,
         UserEmailResolver emailResolver,
         @Lazy RuntimeService runtimeService,
-        @Lazy RepositoryService repositoryService
+        @Lazy RepositoryService repositoryService,
+        @Lazy HistoryService historyService
     ) {
         this.notificationService = notificationService;
         this.emailResolver       = emailResolver;
         this.runtimeService      = runtimeService;
         this.repositoryService   = repositoryService;
+        this.historyService      = historyService;
     }
 
     @Override
@@ -136,7 +143,13 @@ public class GlobalTaskNotificationListener implements FlowableEventListener {
             ProcessInstance pi = runtimeService.createProcessInstanceQuery()
                 .processInstanceId(processInstanceId)
                 .singleResult();
-            return pi != null ? pi.getStartUserId() : null;
+            if (pi != null) return pi.getStartUserId();
+
+            // Process may have just completed — fall back to history
+            HistoricProcessInstance hpi = historyService.createHistoricProcessInstanceQuery()
+                .processInstanceId(processInstanceId)
+                .singleResult();
+            return hpi != null ? hpi.getStartUserId() : null;
         } catch (Exception e) {
             log.warn("could not resolve startUserId for pi={}: {}", processInstanceId, e.getMessage());
             return null;
