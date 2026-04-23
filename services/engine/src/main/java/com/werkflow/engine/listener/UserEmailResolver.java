@@ -33,13 +33,23 @@ public class UserEmailResolver {
     /**
      * Resolves a username to an email address using Keycloak's exact-match search.
      * Returns {@link Optional#empty()} if the username is null/blank or not found.
-     * Results are cached — Keycloak is called at most once per username per process lifetime.
+     * Results are cached in-memory only on successful lookup (email found).
+     * Failures and not-found results are not cached, so transient Keycloak errors
+     * do not permanently silence notifications for a username.
      */
     public Optional<String> resolveEmail(String username) {
         if (username == null || username.isBlank()) {
             return Optional.empty();
         }
-        return cache.computeIfAbsent(username, this::lookupEmail);
+        Optional<String> cached = cache.get(username);
+        if (cached != null) {
+            return cached;
+        }
+        Optional<String> resolved = lookupEmail(username);
+        if (resolved.isPresent()) {
+            cache.putIfAbsent(username, resolved);
+        }
+        return resolved;
     }
 
     private Optional<String> lookupEmail(String username) {
@@ -47,14 +57,14 @@ public class UserEmailResolver {
             List<UserRepresentation> users =
                 keycloak.realm(realm).users().searchByUsername(username, true);
             if (users.isEmpty()) {
-                log.debug("UserEmailResolver: no Keycloak user found for username='{}'", username);
+                log.debug("no Keycloak user found for username='{}'", username);
                 return Optional.empty();
             }
             String email = users.get(0).getEmail();
-            log.debug("UserEmailResolver: resolved username='{}' → email='{}'", username, email);
+            log.debug("resolved username='{}' → '{}'", username, email);
             return Optional.ofNullable(email);
         } catch (Exception e) {
-            log.warn("UserEmailResolver: failed to resolve email for username='{}': {}", username, e.getMessage());
+            log.warn("failed to resolve email for username='{}': {}", username, e.getMessage());
             return Optional.empty();
         }
     }
