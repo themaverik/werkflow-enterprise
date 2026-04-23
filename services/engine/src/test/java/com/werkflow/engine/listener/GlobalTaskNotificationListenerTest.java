@@ -125,6 +125,27 @@ class GlobalTaskNotificationListenerTest {
     }
 
     @Test
+    void onTaskCompleted_skipsNotification_whenStartUserIdNotFound() {
+        TaskEntityImpl task = new TaskEntityImpl();
+        task.setId("task-5");
+        task.setName("Manager Approval");
+        task.setAssignee("john.manager");
+        task.setProcessInstanceId("pi-5");
+        task.setProcessDefinitionId("def-1");
+
+        // Process instance not found (returns null from query)
+        var query = mock(org.flowable.engine.runtime.ProcessInstanceQuery.class);
+        when(runtimeService.createProcessInstanceQuery()).thenReturn(query);
+        when(query.processInstanceId("pi-5")).thenReturn(query);
+        when(query.singleResult()).thenReturn(null);
+
+        FlowableEntityEventImpl event = new FlowableEntityEventImpl(task, FlowableEngineEventType.TASK_COMPLETED);
+        listener.onEvent(event);
+
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
     void isFailOnException_returnsFalse() {
         assertThat(listener.isFailOnException()).isFalse();
     }

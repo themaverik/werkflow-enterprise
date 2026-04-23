@@ -169,7 +169,9 @@ public class NotificationService {
 
             String subject = decision.equalsIgnoreCase("approved")
                 ? "Task Approved: " + taskName
-                : "Task Rejected: " + taskName;
+                : decision.equalsIgnoreCase("rejected")
+                    ? "Task Rejected: " + taskName
+                    : "Task Completed: " + taskName;
 
             sendEmail(approverEmails, subject, htmlContent, plainTextContent);
 
