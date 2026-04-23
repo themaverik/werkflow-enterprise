@@ -69,4 +69,25 @@ class UserEmailResolverTest {
 
         verify(usersResource, times(1)).searchByUsername("jane.employee", true);
     }
+
+    @Test
+    void resolveEmail_doesNotCache_whenKeycloakThrows() {
+        when(usersResource.searchByUsername("jane.employee", true))
+            .thenThrow(new RuntimeException("Keycloak unavailable"));
+
+        Optional<String> first = resolver.resolveEmail("jane.employee");
+        assertThat(first).isEmpty();
+
+        // Second call must re-query Keycloak — failure must not be cached
+        resolver.resolveEmail("jane.employee");
+        verify(usersResource, times(2)).searchByUsername("jane.employee", true);
+    }
+
+    @Test
+    void resolveEmail_returnsEmpty_whenUsernameIsBlank() {
+        Optional<String> result = resolver.resolveEmail("   ");
+
+        assertThat(result).isEmpty();
+        verifyNoInteractions(usersResource);
+    }
 }
