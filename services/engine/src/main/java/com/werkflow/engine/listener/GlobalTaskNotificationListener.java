@@ -1,7 +1,6 @@
 package com.werkflow.engine.listener;
 
 import com.werkflow.engine.service.NotificationService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.common.engine.api.delegate.event.FlowableEvent;
@@ -12,6 +11,8 @@ import org.flowable.common.engine.api.delegate.event.FlowableEngineEntityEvent;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.service.impl.persistence.entity.TaskEntity;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -28,16 +29,32 @@ import java.util.Objects;
  *
  * Registered in FlowableConfig via setTypedEventListeners.
  * isFailOnException = false — email failures never abort workflows.
+ *
+ * RuntimeService and RepositoryService are injected lazily to break the circular
+ * dependency: FlowableConfig → GlobalTaskNotificationListener → Flowable services
+ * → process engine initialisation → FlowableConfig.
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class GlobalTaskNotificationListener implements FlowableEventListener {
 
     private final NotificationService notificationService;
     private final UserEmailResolver emailResolver;
     private final RuntimeService runtimeService;
     private final RepositoryService repositoryService;
+
+    @Autowired
+    public GlobalTaskNotificationListener(
+        NotificationService notificationService,
+        UserEmailResolver emailResolver,
+        @Lazy RuntimeService runtimeService,
+        @Lazy RepositoryService repositoryService
+    ) {
+        this.notificationService = notificationService;
+        this.emailResolver       = emailResolver;
+        this.runtimeService      = runtimeService;
+        this.repositoryService   = repositoryService;
+    }
 
     @Override
     public void onEvent(FlowableEvent event) {
