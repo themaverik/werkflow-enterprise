@@ -2,6 +2,7 @@ package com.werkflow.engine.controller;
 
 import com.werkflow.engine.dto.JwtUserContext;
 import com.werkflow.engine.dto.TaskListResponse;
+import com.werkflow.engine.service.TaskService;
 import com.werkflow.engine.service.WorkflowTaskService;
 import com.werkflow.engine.util.JwtClaimsExtractor;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +38,9 @@ class WorkflowTaskControllerIntegrationTest {
 
     @MockBean
     private WorkflowTaskService workflowTaskService;
+
+    @MockBean
+    private TaskService taskService;
 
     @MockBean
     private JwtClaimsExtractor jwtClaimsExtractor;
