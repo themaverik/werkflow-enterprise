@@ -5,6 +5,7 @@ import com.werkflow.engine.exception.ProcessNotFoundException;
 import com.werkflow.engine.exception.UnauthorizedTaskAccessException;
 import com.werkflow.engine.service.ProcessMonitoringService;
 import com.werkflow.engine.util.JwtClaimsExtractor;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,9 @@ class ProcessMonitoringControllerIntegrationTest {
 
     @MockBean
     private JwtClaimsExtractor jwtClaimsExtractor;
+
+    @MockBean
+    private JwtDecoder jwtDecoder;
 
     private JwtUserContext userContext;
     private Jwt mockJwt;

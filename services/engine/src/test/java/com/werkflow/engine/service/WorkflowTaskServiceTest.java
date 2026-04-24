@@ -4,6 +4,7 @@ import com.werkflow.engine.dto.JwtUserContext;
 import com.werkflow.engine.dto.TaskListResponse;
 import com.werkflow.engine.dto.TaskQueryParams;
 import com.werkflow.engine.exception.UnauthorizedTaskAccessException;
+import com.werkflow.engine.workflow.FlowableGroupResolver;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.repository.ProcessDefinitionQuery;
@@ -20,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -34,6 +36,9 @@ class WorkflowTaskServiceTest {
 
     @Mock
     private RepositoryService repositoryService;
+
+    @Mock
+    private FlowableGroupResolver groupResolver;
 
     @Mock
     private TaskQuery taskQuery;
@@ -67,6 +72,9 @@ class WorkflowTaskServiceTest {
                 .size(20)
                 .sort("createTime,desc")
                 .build();
+
+        // Resolve as regular user — not admin, not DOA_L3/L4
+        lenient().when(groupResolver.resolveGroups(any())).thenReturn(List.of("HR_STAFF", "HR_MANAGER"));
     }
 
     @Test
