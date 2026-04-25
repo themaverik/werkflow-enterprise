@@ -18,11 +18,33 @@ import DmnTestPanel from '@/components/dmn/DmnTestPanel'
 // dmn-js requires a browser environment — load dynamically
 const DmnEditor = dynamic(() => import('@/components/dmn/DmnEditor'), { ssr: false })
 
+/**
+ * Rewrites the <decision id> and <definitions id/name> in the DMN XML so the
+ * backend-generated key matches the user-provided name instead of the generic
+ * "new_decision" default from the empty template.
+ */
+function patchDecisionXml(xml: string, name: string): string {
+  const key = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(xml, 'application/xml')
+  const decision = doc.querySelector('decision')
+  if (decision) {
+    decision.setAttribute('id', key)
+    decision.setAttribute('name', name)
+  }
+  const definitions = doc.querySelector('definitions')
+  if (definitions) {
+    definitions.setAttribute('id', `${key}_definitions`)
+    definitions.setAttribute('name', name)
+  }
+  return new XMLSerializer().serializeToString(doc)
+}
+
 export default function NewDecisionPage() {
   const t = useTranslations('decisions')
   const router = useRouter()
   const { toast } = useToast()
-  const editorRef = useRef<DmnEditorHandle>(null)
+  const editorRef = useRef<DmnEditorHandle | null>(null)
   const [name, setName] = useState('')
   const [showTestPanel, setShowTestPanel] = useState(false)
   const [deployedKey, setDeployedKey] = useState<string | null>(null)
@@ -32,10 +54,14 @@ export default function NewDecisionPage() {
       if (!name.trim()) throw new Error(t('editor.nameRequired'))
       const xml = await editorRef.current?.getXml()
       if (!xml) throw new Error(t('editor.xmlRequired'))
-      return deployDecision(name.trim(), xml)
+      // Patch the decision id/name in the XML to match the user-provided name.
+      // The DMN key is derived from <decision id="..."> by the backend, so without
+      // this patch every new decision deploys with key "new_decision".
+      const patchedXml = patchDecisionXml(xml, name.trim())
+      return deployDecision(name.trim(), patchedXml)
     },
     onSuccess: (result) => {
-      toast({ title: t('editor.deploySuccess'), description: result.key })
+      toast({ title: t('editor.deploySuccess'), description: result.name ?? result.key })
       router.push('/decisions')
     },
     onError: (err: Error) => {
@@ -81,7 +107,7 @@ export default function NewDecisionPage() {
         </Button>
       </div>
 
-      <DmnEditor ref={editorRef} />
+      <DmnEditor onInit={(handle) => { editorRef.current = handle }} />
 
       {showTestPanel && deployedKey && (
         <DmnTestPanel decisionKey={deployedKey} />

@@ -60,11 +60,11 @@ export default function ProcessesPage() {
     }
   })
 
-  // Fetch process drafts
+  // Fetch process drafts — only for users who can design processes (WORKFLOW:DESIGN permission)
   const { data: drafts, isLoading: draftsLoading, error: draftsError } = useQuery({
     queryKey: ['processDrafts'],
     queryFn: listDrafts,
-    enabled: status === 'authenticated',
+    enabled: status === 'authenticated' && isManagerOrAbove,
     retry: 2,
     retryDelay: 1000,
   })
@@ -202,19 +202,17 @@ export default function ProcessesPage() {
                         </Tooltip>
                         )}
                       </div>
-                      {latestVersion.hasStartFormKey && (
-                        <Button
-                          asChild
-                          size="sm"
-                          variant="secondary"
-                          className="w-full"
-                        >
-                          <Link href={`/processes/start/${latestVersion.id}`}>
-                            <Play className="h-4 w-4 mr-2" />
-                            Start Process
-                          </Link>
-                        </Button>
-                      )}
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="secondary"
+                        className="w-full"
+                      >
+                        <Link href={`/processes/start/${key}`}>
+                          <Play className="h-4 w-4 mr-2" />
+                          Start Process
+                        </Link>
+                      </Button>
                       {versions.length > 1 && (
                         <div className="text-xs text-muted-foreground">
                           <details className="cursor-pointer">
@@ -256,7 +254,7 @@ export default function ProcessesPage() {
         </div>
       )}
 
-      {draftsError && !draftsLoading && (
+      {draftsError && !draftsLoading && isManagerOrAbove && (
         <ErrorDisplay
           error={draftsError as Error}
           title={t('failedToLoadDrafts')}
@@ -269,55 +267,74 @@ export default function ProcessesPage() {
         <div className="mb-6">
           <h2 className="text-xl font-semibold mb-4">{t('drafts')}</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {drafts.map((draft) => (
-              <Card key={draft.processKey}>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    {draft.name || draft.processKey}
-                  </CardTitle>
-                  <CardDescription>
-                    {draft.processKey}
-                    {draft.updatedAt && ` • Last edited ${new Date(draft.updatedAt).toLocaleDateString()}`}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isManagerOrAbove && (
-                    <div className="flex gap-2">
-                      <Button asChild variant="outline" size="sm" className="flex-1">
-                        <Link href={`/processes/new?draft=${draft.processKey}`}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </Link>
-                      </Button>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="sm"
-                            style={{ backgroundColor: '#BA3920', color: 'white' }}
-                            className="hover:opacity-90"
-                            onClick={() => {
-                              setPendingConfirm({
-                                title: t('deleteDraft'),
-                                description: `${t('deleteDraft')}: "${draft.name || draft.processKey}"? This action cannot be undone.`,
-                                onConfirm: () => {
-                                  setDeletingDraftKey(draft.processKey)
-                                  deleteDraftMutation.mutate(draft.processKey)
-                                },
-                              })
-                            }}
-                            disabled={deletingDraftKey === draft.processKey}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Delete Draft</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+            {drafts.map((draft) => {
+              // Bug 5 fix: detect whether this draft is linked to a deployed process so
+              // we can show a contextual warning before the user deletes it.
+              const linkedDeployedProcess = groupedProcesses
+                ? Object.values(groupedProcesses)
+                    .flat()
+                    .find((p) => p.key === draft.processKey)
+                : undefined
+              const deployedProcessName = linkedDeployedProcess?.name || draft.processKey
+
+              return (
+                <Card key={draft.processKey}>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      {draft.name || draft.processKey}
+                    </CardTitle>
+                    <CardDescription>
+                      {draft.processKey}
+                      {draft.updatedAt && ` • Last edited ${new Date(draft.updatedAt).toLocaleDateString()}`}
+                      {linkedDeployedProcess && (
+                        <span className="ml-1 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800">
+                          Draft for deployed process
+                        </span>
+                      )}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {isManagerOrAbove && (
+                      <div className="flex gap-2">
+                        <Button asChild variant="outline" size="sm" className="flex-1">
+                          <Link href={`/processes/new?draft=${draft.processKey}`}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit
+                          </Link>
+                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              style={{ backgroundColor: '#BA3920', color: 'white' }}
+                              className="hover:opacity-90"
+                              onClick={() => {
+                                const description = linkedDeployedProcess
+                                  ? `This draft is linked to the deployed process "${deployedProcessName}". Deleting it will also remove the resume option from the edit page. This action cannot be undone.`
+                                  : `${t('deleteDraft')}: "${draft.name || draft.processKey}"? This action cannot be undone.`
+                                setPendingConfirm({
+                                  title: t('deleteDraft'),
+                                  description,
+                                  onConfirm: () => {
+                                    setDeletingDraftKey(draft.processKey)
+                                    deleteDraftMutation.mutate(draft.processKey)
+                                  },
+                                })
+                              }}
+                              disabled={deletingDraftKey === draft.processKey}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Delete Draft</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         </div>
       )}

@@ -4,6 +4,7 @@ import com.werkflow.engine.dto.*;
 import com.werkflow.engine.exception.ProcessNotFoundException;
 import com.werkflow.engine.exception.UnauthorizedTaskAccessException;
 import com.werkflow.engine.util.ProcessMonitoringUtil;
+import com.werkflow.engine.workflow.FlowableGroupResolver;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
@@ -33,8 +34,8 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for ProcessMonitoringService
@@ -56,6 +57,9 @@ class ProcessMonitoringServiceTest {
 
     @Mock
     private ProcessMonitoringUtil monitoringUtil;
+
+    @Mock
+    private FlowableGroupResolver groupResolver;
 
     @Mock
     private HistoricProcessInstanceQuery processInstanceQuery;
@@ -94,6 +98,9 @@ class ProcessMonitoringServiceTest {
                 .roles(List.of("USER", "APPROVER"))
                 .doaLevel(2)
                 .build();
+
+        // Used in validateUserAccess when user is not initiator and not directly assigned
+        lenient().when(groupResolver.resolveGroups(any())).thenReturn(List.of("FINANCE_STAFF", "APPROVERS"));
     }
 
     private HistoricProcessInstance createMockProcessInstance(String startUserId) {

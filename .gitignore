@@ -94,9 +94,18 @@ out/
 
 # Test artifacts
 .playwright/
+.playwright-cli/
 playwright-report/
 test-results/
+# Playwright CLI snapshot exports (*.yaml files generated at working dir)
+frontends/**/*.yaml
+frontends/**/*.yml
+!frontends/**/docker-compose*.yml
+!frontends/**/next.config.yml
 
 # Archives
 /archive/
 docs/archive/
+
+.gitignore export-ignore
+.gitattributes export-ignore

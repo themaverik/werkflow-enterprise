@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (typeof window !== 'undefined') {
       if (keycloakIssuer && clientId) {
-        const postLogoutUri = encodeURIComponent(window.location.origin + '/login')
+        const postLogoutUri = window.location.origin + '/login'
         const params = new URLSearchParams({ client_id: clientId, post_logout_redirect_uri: postLogoutUri })
         if (idToken) params.set('id_token_hint', idToken)
         window.location.href = `${keycloakIssuer}/protocol/openid-connect/logout?${params.toString()}`
