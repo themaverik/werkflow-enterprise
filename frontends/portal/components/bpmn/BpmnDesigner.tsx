@@ -12,6 +12,7 @@ import { generateBlankBpmn, downloadBpmn, extractProcessName } from '@/lib/bpmn/
 import { Save, Download, Upload, ZoomIn, ZoomOut, Maximize2, Settings, CheckCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { useToast } from '@/hooks/use-toast'
 import { fetchDoaLevels, DoaLevel } from '@/lib/api/doa'
 import { listCustodyMappings, CustodyMappingResponse } from '@/lib/api/custody'
 
@@ -30,6 +31,7 @@ import {
 } from 'bpmn-js-properties-panel'
 
 import FlowablePropertiesProviderModule from '@/lib/bpmn/flowable-properties-module'
+import flowableModdleDescriptor from '@/lib/bpmn/flowable-moddle.json'
 import { setFormSchemaOptions, setNotificationTemplateOptions, setGroupOptions, setProcessDefinitionOptions, setDmnDecisionOptions } from '@/lib/bpmn/flowable-properties-provider'
 import { getFormDefinitions, getNotificationTemplates, getGroups, getProcessDefinitions } from '@/lib/api/flowable'
 import { listDecisions } from '@/lib/api/dmn'
@@ -41,14 +43,72 @@ interface BpmnDesignerProps {
   processId?: string
 }
 
+/** Read a <flowable:field> string or expression value from a business object */
+function getFlowableField(bo: any, fieldName: string): string {
+  const values: any[] = bo.extensionElements?.get('values') ?? []
+  const field = values.find((v: any) => v.$type === 'flowable:Field' && v.name === fieldName)
+  return field?.expression ?? field?.string ?? ''
+}
+
+/** Validate action blocks before deploy — returns list of human-readable error strings */
+function validateActionBlocks(modeler: any): string[] {
+  const errors: string[] = []
+  try {
+    const elementRegistry = (modeler as any).get('elementRegistry')
+    const elements: any[] = elementRegistry.getAll()
+    for (const el of elements) {
+      const bo = el.businessObject
+      if (!bo) continue
+      const actionType: string = bo.get('flowable:actionType') || ''
+      const label = bo.name ? `"${bo.name}"` : `[${el.id}]`
+
+      if (actionType === 'NOTIFICATION') {
+        if (!getFlowableField(bo, 'recipient')) {
+          errors.push(`${label}: Notification task is missing a recipient.`)
+        }
+        if (!getFlowableField(bo, 'templateKey')) {
+          errors.push(`${label}: Notification task is missing a template key.`)
+        }
+      }
+
+      if (actionType === 'EXTERNAL_API_CALL') {
+        if (!bo.get('ab:url')) {
+          errors.push(`${label}: External API task is missing a URL.`)
+        }
+      }
+
+      if (actionType === 'DMN_ROUTE') {
+        if (!getFlowableField(bo, 'decisionRef') && !bo.get('flowable:decisionRef')) {
+          errors.push(`${label}: DMN Route task is missing a decision reference.`)
+        }
+      }
+
+      if (actionType === 'HUMAN_APPROVAL') {
+        const hasAssignee = !!(bo.get('flowable:assignee') || bo.get('flowable:candidateGroups'))
+        if (!hasAssignee) {
+          errors.push(`${label}: User task has no assignee or candidate groups set.`)
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('validateActionBlocks error:', err)
+  }
+  return errors
+}
+
 export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProps) {
   const t = useTranslations('bpmn')
+  const { toast } = useToast()
   const containerRef = useRef<HTMLDivElement>(null)
   const propertiesPanelRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const modelerRef = useRef<any>(null)
   const [modeler, setModeler] = useState<BpmnModeler | null>(null)
-  const [processName, setProcessName] = useState('')
+  // Bug 2 fix: seed processName from initialXml immediately so saveDraftMutation
+  // always has the correct name even before the async importXML resolves.
+  const [processName, setProcessName] = useState(() =>
+    initialXml ? (extractProcessName(initialXml) ?? '') : ''
+  )
   const [hasChanges, setHasChanges] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showProperties, setShowProperties] = useState(true)
@@ -56,21 +116,27 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
   const router = useRouter()
 
   const [selectedElement, setSelectedElement] = useState<{ type: string; businessObject: Record<string, any> } | null>(null)
+  // True when the Expression Builder panel is expanded for the current sequence flow.
+  // Auto-opens if the flow already carries a condition expression.
+  const [showExprBuilder, setShowExprBuilder] = useState(false)
 
   const [doaLevels, setDoaLevels] = useState<DoaLevel[]>([])
   const [custodyMappings, setCustodyMappings] = useState<CustodyMappingResponse[]>([])
 
   const [draftSuccess, setDraftSuccess] = useState(false)
   const [draftError, setDraftError] = useState<string | null>(null)
-  const [deployError, setDeployError] = useState<string | null>(null)
+
 
   const saveDraftMutation = useMutation({
     mutationFn: async () => {
       if (!modeler) throw new Error('Modeler not initialized')
       const { xml } = await modeler.saveXML({ format: true })
       if (!xml) throw new Error('Failed to generate XML')
-      const key = processId ? processId.split(':')[0] : (processName || 'draft')
-      return saveDraft(key, processName || 'Draft', xml)
+      // Bug 2 fix: when processId is present always derive key from it; never fall
+      // through to processName which may be empty during a failed-deploy → save-draft flow.
+      const key = processId ? processId.split(':')[0] : (processName.trim() || 'draft')
+      const name = processName.trim() || key
+      return saveDraft(key, name, xml)
     },
     onSuccess: () => {
       setHasChanges(false)
@@ -106,7 +172,10 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
         BpmnPropertiesPanelModule,
         BpmnPropertiesProviderModule,
         FlowablePropertiesProviderModule
-      ]
+      ],
+      moddleExtensions: {
+        flowable: flowableModdleDescriptor,
+      }
     })
 
     // Load initial diagram
@@ -139,7 +208,14 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
 
     const handleSelectionChange = (event: any) => {
       const elements: any[] = event.newSelection
-      setSelectedElement(elements.length === 1 ? elements[0] : null)
+      const el = elements.length === 1 ? elements[0] : null
+      setSelectedElement(el)
+      // Auto-open Expression Builder only if the flow already has a condition
+      if (el?.type === 'bpmn:SequenceFlow') {
+        setShowExprBuilder(!!el.businessObject?.conditionExpression?.body)
+      } else {
+        setShowExprBuilder(false)
+      }
     }
     eventBus.on('selection.changed', handleSelectionChange)
 
@@ -303,6 +379,30 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
         }
       }
 
+      // Bug 1 fix: morph any base bpmn:Task elements that carry flowable:delegateExpression
+      // into bpmn:ServiceTask before export. These arise when a draft was saved before the
+      // user explicitly changed the action type, so the auto-morph in setActionType never ran.
+      try {
+        const elementRegistry = (modeler as any).get('elementRegistry')
+        const bpmnReplace = (modeler as any).get('bpmnReplace')
+        const baseTasks = (elementRegistry.getAll() as any[]).filter(
+          (el: any) =>
+            el.type === 'bpmn:Task' &&
+            el.businessObject?.get('flowable:delegateExpression')
+        )
+        for (const task of baseTasks) {
+          bpmnReplace.replaceElement(task, { type: 'bpmn:ServiceTask' })
+        }
+      } catch (err) {
+        console.warn('Could not auto-morph base Task elements before deploy:', err)
+      }
+
+      // Pre-deploy validation — catch misconfigured action blocks before hitting the engine
+      const validationErrors = validateActionBlocks(modeler)
+      if (validationErrors.length > 0) {
+        throw new Error(`Process validation failed:\n${validationErrors.map(e => `• ${e}`).join('\n')}`)
+      }
+
       const { xml } = await modeler.saveXML({ format: true })
       if (!xml) throw new Error('Failed to generate XML')
 
@@ -313,12 +413,15 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
     },
     onSuccess: () => {
       setHasChanges(false)
-      setDeployError(null)
       queryClient.invalidateQueries({ queryKey: ['processDefinitions'] })
       router.push('/processes')
     },
     onError: (error: Error) => {
-      setDeployError(error.message)
+      toast({
+        title: 'Deploy Failed',
+        description: error.message,
+        variant: 'destructive',
+      })
     }
   })
 
@@ -459,9 +562,6 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
             {draftError && (
               <span className="text-sm text-red-600">{t('draftFailedInline', { error: draftError })}</span>
             )}
-            {deployError && (
-              <span className="text-sm text-red-600">{t('deployFailedInline', { error: deployError })}</span>
-            )}
             <Button
               variant="outline"
               size="sm"
@@ -497,38 +597,46 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
         {/* Properties Panel */}
         {showProperties && (
           <div className="w-80 border-l bg-white overflow-auto flex flex-col">
-            {/* Native bpmn-js properties panel — hidden when a custom panel takes over */}
+            {/* Native bpmn-js properties panel — hidden when a fully custom panel takes over */}
             <div
               ref={propertiesPanelRef}
-              className={
-                isSequenceFlow(selectedElement) || isExternalApiServiceTask(selectedElement)
-                  ? 'hidden'
-                  : 'flex-1'
-              }
+              className={isExternalApiServiceTask(selectedElement) ? 'hidden' : 'flex-1'}
             />
 
-            {/* Sequence flow condition panel */}
+            {/* Sequence flow: optional Expression Builder toggle */}
             {isSequenceFlow(selectedElement) && modeler && (
-              <div className="p-3 flex-1 overflow-auto">
-                <ExpressionBuilder
-                  value={readConditionExpression(selectedElement)}
-                  onChange={(expr) => writeConditionExpression(selectedElement, modeler, expr)}
-                  availableVariables={DEFAULT_EXPRESSION_VARIABLES}
-                  catalogValues={{
-                    ...(doaLevels.length > 0 && {
-                      doaLevel: doaLevels.map((d) => ({
-                        value: d.doaLevel,
-                        label: d.label ? `${d.doaLevel} — ${d.label}` : d.doaLevel,
-                      })),
-                    }),
-                    ...(custodyMappings.length > 0 && {
-                      custodyGroup: custodyMappings.map((m) => ({
-                        value: m.custodyGroup,
-                        label: m.displayName ? `${m.custodyGroup} — ${m.displayName}` : m.custodyGroup,
-                      })),
-                    }),
-                  }}
-                />
+              <div className="border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowExprBuilder((v) => !v)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left hover:bg-gray-50 transition-colors"
+                >
+                  <span>Expression Builder</span>
+                  <span className="text-xs text-gray-400">{showExprBuilder ? '▲' : '▼'}</span>
+                </button>
+                {showExprBuilder && (
+                  <div className="p-3 overflow-auto">
+                    <ExpressionBuilder
+                      value={readConditionExpression(selectedElement)}
+                      onChange={(expr) => writeConditionExpression(selectedElement, modeler, expr)}
+                      availableVariables={DEFAULT_EXPRESSION_VARIABLES}
+                      catalogValues={{
+                        ...(doaLevels.length > 0 && {
+                          doaLevel: doaLevels.map((d) => ({
+                            value: d.doaLevel,
+                            label: d.label ? `${d.doaLevel} — ${d.label}` : d.doaLevel,
+                          })),
+                        }),
+                        ...(custodyMappings.length > 0 && {
+                          custodyGroup: custodyMappings.map((m) => ({
+                            value: m.custodyGroup,
+                            label: m.displayName ? `${m.custodyGroup} — ${m.displayName}` : m.custodyGroup,
+                          })),
+                        }),
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             )}
 

@@ -1,0 +1,12 @@
+/*
+ * Werkflow overrides for dmn-js decision table UI.
+ * Imported after the dmn-js dist CSS so these rules take precedence.
+ */
+
+/* Reduce decision name from 21px to match ~Hit policy label size + a little */
+.dmn-decision-table-container .decision-table-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Input/Output placeholder text is set via DEFAULT_EMPTY_DMN label attributes in DmnEditor.tsx */

@@ -105,7 +105,7 @@ class FlowablePropertiesProvider {
       // --- Action Block group (any Task, including UserTask and ServiceTask) ---
       const isTask = is(element, 'bpmn:Task')
       if (isTask) {
-        const actionBlockEntries = buildActionBlockEntries(element, modeling, translate, debounce)
+        const actionBlockEntries = buildActionBlockEntries(element, modeling, translate, debounce, this._injector)
         groups.splice(generalIdx + 1, 0, {
           id: 'action-block',
           label: 'Action Block',
@@ -150,7 +150,7 @@ class FlowablePropertiesProvider {
               isEdited: isTextFieldEntryEdited,
               debounce,
               label: translate('Candidate Groups'),
-              description: translate('Comma-separated group IDs (e.g., HR_ADMIN,MANAGER)'),
+              description: translate('Comma-separated group IDs (e.g., DOA_L1,DOA_L2)'),
               getValue: () => element.businessObject.candidateGroups || '',
               setValue: (value: string) =>
                 modeling.updateProperties(element, { candidateGroups: value || undefined }),
@@ -502,36 +502,58 @@ const ACTION_TYPES = [
   { value: 'HUMAN_APPROVAL', label: 'Human Approval' },
   { value: 'NOTIFICATION', label: 'Notification' },
   { value: 'EXTERNAL_API_CALL', label: 'External API Call' },
+  { value: 'DMN_ROUTE', label: 'DMN Decision Route' },
 ]
 
 const ACTION_COLOURS: Record<string, { fill: string; stroke: string }> = {
   HUMAN_APPROVAL:    { fill: '#e3f2fd', stroke: '#1565c0' },
   NOTIFICATION:      { fill: '#fff3e0', stroke: '#e65100' },
   EXTERNAL_API_CALL: { fill: '#f3e5f5', stroke: '#6a1b9a' },
+  DMN_ROUTE:         { fill: '#e8f5e9', stroke: '#2e7d32' },
 }
 
 const DELEGATE_MAP: Record<string, string> = {
   NOTIFICATION:       '${emailActionDelegate}',
   EXTERNAL_API_CALL:  '${externalApiCallDelegate}',
+  DMN_ROUTE:          '${dmnRouteDelegate}',
 }
 
 function getActionType(element: any): string {
   return element.businessObject.get('flowable:actionType') || ''
 }
 
-function setActionType(element: any, modeling: any, value: string) {
-  modeling.updateProperties(element, { 'flowable:actionType': value || undefined })
+function setActionType(element: any, modeling: any, value: string, injector?: any) {
+  // Ensure the element is a ServiceTask — delegateExpression is invalid on plain <task>.
+  // If the user placed a generic Task and then set an action type, morph it to ServiceTask first.
+  let target = element
+  if (value && element.type !== 'bpmn:ServiceTask' && injector) {
+    try {
+      const bpmnReplace = injector.get('bpmnReplace')
+      target = bpmnReplace.replaceElement(element, { type: 'bpmn:ServiceTask' })
+    } catch {
+      // replaceElement unavailable (e.g. read-only viewer) — proceed as-is
+    }
+  }
+
+  modeling.updateProperties(target, { 'flowable:actionType': value || undefined })
 
   const delegate = DELEGATE_MAP[value] ?? undefined
-  modeling.updateProperties(element, {
+  modeling.updateProperties(target, {
     'flowable:delegateExpression': delegate,
     delegateExpression: delegate,
   })
 
+  // Seed required defaults so the delegate never throws "Required field not set"
+  if (value === 'NOTIFICATION') {
+    if (!readFlowableField(target, 'channel')) {
+      writeFlowableField(target, modeling, 'channel', 'email')
+    }
+  }
+
   if (value && ACTION_COLOURS[value]) {
-    modeling.setColor(element, ACTION_COLOURS[value])
+    modeling.setColor(target, ACTION_COLOURS[value])
   } else {
-    modeling.setColor(element, { fill: '#f9f9f9', stroke: '#bbb' })
+    modeling.setColor(target, { fill: '#f9f9f9', stroke: '#bbb' })
   }
 }
 
@@ -539,7 +561,8 @@ function buildActionBlockEntries(
   element: any,
   modeling: any,
   translate: (s: string) => string,
-  debounce: any
+  debounce: any,
+  injector?: any
 ): any[] {
   const entries: any[] = [
     {
@@ -549,7 +572,7 @@ function buildActionBlockEntries(
       isEdited: isSelectEntryEdited,
       label: translate('Action Type'),
       getValue: () => getActionType(element),
-      setValue: (value: string) => setActionType(element, modeling, value),
+      setValue: (value: string) => setActionType(element, modeling, value, injector),
       getOptions: () => ACTION_TYPES.map(t => ({ value: t.value, label: translate(t.label) })),
     },
   ]
@@ -572,11 +595,11 @@ function buildActionBlockEntries(
   if (actionType === 'NOTIFICATION') {
     entries.push(
       channelSelectEntry(element, modeling, translate),
-      textField(element, modeling, translate, debounce, 'ab-recipient',
-        translate('Recipient Expression'), 'ab:recipient', '${employee.email}'),
+      flowableFieldEntry(element, modeling, translate, debounce, 'notif-recipient',
+        translate('Recipient Expression'), 'recipient'),
       templateKeySelectEntry(element, modeling, translate),
-      textField(element, modeling, translate, debounce, 'ab-condition',
-        translate('Condition (optional)'), 'ab:condition', null),
+      flowableFieldEntry(element, modeling, translate, debounce, 'notif-condition',
+        translate('Condition (optional)'), 'condition'),
     )
   }
 
@@ -597,6 +620,33 @@ function buildActionBlockEntries(
       textField(element, modeling, translate, debounce, 'ab-sampleResponseJson',
         translate('Sample Response JSON'), 'ab:sampleResponseJson',
         translate('{"id": 123, "status": "approved"}')),
+    )
+  }
+
+  if (actionType === 'DMN_ROUTE') {
+    // decisionRef and mapDecisionResult are read by DmnRouteDelegate as @Setter Expression
+    // fields — they must be stored as <flowable:field> extension elements, not plain attributes.
+    entries.push(
+      flowableFieldEntry(element, modeling, translate, debounce, 'dmn-decisionRef',
+        translate('Decision Key'),
+        'decisionRef'),
+      {
+        id: 'dmn-mapDecisionResult',
+        element,
+        component: SelectEntry,
+        isEdited: isSelectEntryEdited,
+        label: translate('Map Result'),
+        description: translate('outputVariables: each DMN output column → process variable. singleEntry: first output value → resultVariable.'),
+        getValue: () => readFlowableField(element, 'mapDecisionResult') || 'outputVariables',
+        setValue: (value: string) => writeFlowableField(element, modeling, 'mapDecisionResult', value || 'outputVariables'),
+        getOptions: () => [
+          { value: 'outputVariables', label: translate('outputVariables (default)') },
+          { value: 'singleEntry', label: translate('singleEntry') },
+        ],
+      },
+      flowableFieldEntry(element, modeling, translate, debounce, 'dmn-resultVariable',
+        translate('Result Variable (singleEntry only)'),
+        'resultVariable'),
     )
   }
 
@@ -621,38 +671,42 @@ function textField(
   }
 }
 
+// Read/write <flowable:field> by name — shared by flowableFieldEntry and SelectEntry variants
+function readFlowableField(element: any, fieldName: string): string {
+  const ext = element.businessObject.extensionElements
+  if (!ext) return ''
+  const field = ext.get('values')?.find(
+    (v: any) => v.$type === 'flowable:Field' && v.name === fieldName)
+  return field?.expression ?? field?.string ?? ''
+}
+
+function writeFlowableField(element: any, modeling: any, fieldName: string, value: string) {
+  const bo = element.businessObject
+  const moddle = bo.$model
+  let ext = bo.extensionElements
+  if (!ext) {
+    ext = moddle.create('bpmn:ExtensionElements', { values: [] })
+    modeling.updateProperties(element, { extensionElements: ext })
+  }
+  const values: any[] = ext.get('values') ?? []
+  const filtered = values.filter(
+    (v: any) => !(v.$type === 'flowable:Field' && v.name === fieldName))
+  if (value) {
+    const isExpression = /^\$\{.+\}$/.test(value.trim())
+    // @ts-ignore
+    const field = isExpression
+      ? moddle.create('flowable:Field', { name: fieldName, expression: value })
+      : moddle.create('flowable:Field', { name: fieldName, string: value })
+    filtered.push(field)
+  }
+  ext.set('values', filtered)
+}
+
 // Writes value as a <flowable:field> extension element (required for fields read by JavaDelegate)
 function flowableFieldEntry(
   element: any, modeling: any, translate: (s: string) => string,
   debounce: any, id: string, label: string, fieldName: string
 ): any {
-  const getFlowableFieldValue = (): string => {
-    const ext = element.businessObject.extensionElements
-    if (!ext) return ''
-    const field = ext.get('values')?.find(
-      (v: any) => v.$type === 'flowable:Field' && v.name === fieldName)
-    return field?.string ?? ''
-  }
-
-  const setFlowableFieldValue = (value: string) => {
-    const bo = element.businessObject
-    const moddle = bo.$model
-    let ext = bo.extensionElements
-    if (!ext) {
-      ext = moddle.create('bpmn:ExtensionElements', { values: [] })
-      modeling.updateProperties(element, { extensionElements: ext })
-    }
-    const values: any[] = ext.get('values') ?? []
-    const filtered = values.filter(
-      (v: any) => !(v.$type === 'flowable:Field' && v.name === fieldName))
-    if (value) {
-      // @ts-ignore
-      const field = moddle.create('flowable:Field', { name: fieldName, string: value })
-      filtered.push(field)
-    }
-    ext.set('values', filtered)
-  }
-
   return {
     id,
     element,
@@ -660,18 +714,19 @@ function flowableFieldEntry(
     isEdited: isTextFieldEntryEdited,
     debounce,
     label,
-    getValue: getFlowableFieldValue,
-    setValue: setFlowableFieldValue,
+    getValue: () => readFlowableField(element, fieldName),
+    setValue: (value: string) => writeFlowableField(element, modeling, fieldName, value),
   }
 }
 
 function candidateGroupsEntry(
   element: any, modeling: any, translate: (s: string) => string, debounce: any
 ): any {
-  const availableGroupNames = groupOptions.map(g => g.name).join(', ')
-  const hint = availableGroupNames
-    ? translate(`Groups who can claim this task. Comma-separated IDs, e.g. ${availableGroupNames.split(', ').slice(0, 2).join(',')}`)
-    : translate('Comma-separated group IDs, e.g. HR_TEAM,FINANCE_TEAM. Any member of these groups will see the task in their queue.')
+  const availableIds = groupOptions.map(g => g.id)
+  const exampleIds = availableIds.length > 0
+    ? availableIds.slice(0, 2).join(',')
+    : 'DOA_L1,DOA_L2'
+  const hint = translate(`Comma-separated group IDs, e.g. ${exampleIds}. Any member of these groups will see the task in their queue.`)
   return {
     id: 'ab-candidateGroups',
     element,
@@ -693,9 +748,8 @@ function templateKeySelectEntry(element: any, modeling: any, translate: (s: stri
     component: SelectEntry,
     isEdited: isSelectEntryEdited,
     label: translate('Template Key'),
-    getValue: () => element.businessObject.get('ab:templateKey') || '',
-    setValue: (value: string) =>
-      modeling.updateProperties(element, { 'ab:templateKey': value || undefined }),
+    getValue: () => readFlowableField(element, 'templateKey') || '',
+    setValue: (value: string) => writeFlowableField(element, modeling, 'templateKey', value || ''),
     getOptions: () => {
       const options: Array<{ value: string; label: string }> = [
         { value: '', label: translate('(select template)') },
@@ -715,9 +769,8 @@ function channelSelectEntry(element: any, modeling: any, translate: (s: string) 
     component: SelectEntry,
     isEdited: isSelectEntryEdited,
     label: translate('Channel'),
-    getValue: () => element.businessObject.get('ab:channel') || 'email',
-    setValue: (value: string) =>
-      modeling.updateProperties(element, { 'ab:channel': value }),
+    getValue: () => readFlowableField(element, 'channel') || 'email',
+    setValue: (value: string) => writeFlowableField(element, modeling, 'channel', value || 'email'),
     getOptions: () => [{ value: 'email', label: translate('Email') }],
   }
 }

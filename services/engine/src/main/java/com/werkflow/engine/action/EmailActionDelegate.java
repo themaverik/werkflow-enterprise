@@ -39,7 +39,7 @@ public class EmailActionDelegate implements JavaDelegate {
 
         String recipientValue   = sanitizeEmail(getString(recipient, execution, "recipient"));
         String templateKeyValue = getString(templateKey, execution, "templateKey");
-        String channelValue     = getString(channel, execution, "channel");
+        String channelValue     = channel != null ? getString(channel, execution, "channel") : "email";
 
         Map<String, Object> variables = execution.getVariables();
 
