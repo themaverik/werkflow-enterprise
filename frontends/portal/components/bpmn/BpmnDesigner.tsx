@@ -15,6 +15,7 @@ import { useTranslations } from 'next-intl'
 import { useToast } from '@/hooks/use-toast'
 import { fetchDoaLevels, DoaLevel } from '@/lib/api/doa'
 import { listCustodyMappings, CustodyMappingResponse } from '@/lib/api/custody'
+import { useAuth } from '@/lib/auth/auth-context'
 
 // Import BPMN.js CSS
 import 'bpmn-js/dist/assets/diagram-js.css'
@@ -32,8 +33,8 @@ import {
 
 import FlowablePropertiesProviderModule from '@/lib/bpmn/flowable-properties-module'
 import flowableModdleDescriptor from '@/lib/bpmn/flowable-moddle.json'
-import { setFormSchemaOptions, setNotificationTemplateOptions, setGroupOptions, setProcessDefinitionOptions, setDmnDecisionOptions } from '@/lib/bpmn/flowable-properties-provider'
-import { getFormDefinitions, getNotificationTemplates, getGroups, getProcessDefinitions } from '@/lib/api/flowable'
+import { setFormSchemaOptions, setNotificationTemplateOptions, setGroupOptions, setProcessDefinitionOptions, setDmnDecisionOptions, setDelegateOptions, setCurrentUserRoles } from '@/lib/bpmn/flowable-properties-provider'
+import { getFormDefinitions, getNotificationTemplates, getGroups, getProcessDefinitions, getDelegates } from '@/lib/api/flowable'
 import { listDecisions } from '@/lib/api/dmn'
 
 const DEFAULT_EXPRESSION_VARIABLES = ['doaLevel', 'custodyGroup', 'totalAmount', 'status', 'departmentId', 'requesterId']
@@ -99,6 +100,7 @@ function validateActionBlocks(modeler: any): string[] {
 export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProps) {
   const t = useTranslations('bpmn')
   const { toast } = useToast()
+  const { user } = useAuth()
   const containerRef = useRef<HTMLDivElement>(null)
   const propertiesPanelRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -350,6 +352,23 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
         .catch(() => { /* non-critical, silently skip */ })
     }
 
+    const fetchDelegates = (attempt = 0) => {
+      getDelegates()
+        .then((names) => {
+          if (!cancelled) {
+            setDelegateOptions(names)
+            refreshPropertiesPanel()
+          }
+        })
+        .catch((err: any) => {
+          if (!cancelled && err?.response?.status === 401 && attempt < 3) {
+            setTimeout(() => fetchDelegates(attempt + 1), 1500)
+          } else if (!cancelled) {
+            console.error('Failed to load delegates for properties panel:', err)
+          }
+        })
+    }
+
     fetchForms()
     fetchTemplates()
     fetchGroups()
@@ -357,8 +376,16 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
     fetchDmnDecisions()
     fetchDoaLevels_()
     fetchCustodyMappings_()
+    fetchDelegates()
     return () => { cancelled = true }
   }, [])
+
+  // Sync current user roles into the properties provider for role-filtered dropdowns
+  useEffect(() => {
+    if (user?.roles) {
+      setCurrentUserRoles(user.roles)
+    }
+  }, [user?.roles])
 
   // Deploy to backend
   const deployMutation = useMutation({

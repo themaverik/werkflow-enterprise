@@ -17,6 +17,7 @@ import {
   isSelectEntryEdited,
   isTextFieldEntryEdited,
 } from '@bpmn-io/properties-panel'
+import { CandidateGroupsInput } from '@/components/bpmn/CandidateGroupsInput'
 
 /**
  * Module-level variable for form schema options.
@@ -50,6 +51,26 @@ let groupOptions: Array<{ id: string; name: string }> = []
 
 export function setGroupOptions(options: Array<{ id: string; name: string }>) {
   groupOptions = options
+}
+
+/**
+ * Module-level variable for registered JavaDelegate bean names.
+ * Set from BpmnDesigner.tsx after fetching from GET /api/delegates.
+ */
+let delegateOptions: string[] = []
+
+export function setDelegateOptions(options: string[]) {
+  delegateOptions = options
+}
+
+/**
+ * Module-level variable for the current user's roles.
+ * Set from BpmnDesigner.tsx after session resolves.
+ */
+let currentUserRoles: string[] = []
+
+export function setCurrentUserRoles(roles: string[]) {
+  currentUserRoles = roles
 }
 
 /**
@@ -312,11 +333,9 @@ class FlowablePropertiesProvider {
             {
               id: 'delegateExpression',
               element,
-              component: TextFieldEntry,
-              isEdited: isTextFieldEntryEdited,
-              debounce,
+              component: SelectEntry,
+              isEdited: isSelectEntryEdited,
               label: translate('Delegate Expression'),
-              description: translate('Spring bean expression (e.g., ${restServiceDelegate})'),
               getValue: () =>
                 element.businessObject.get('flowable:delegateExpression') ||
                 element.businessObject.delegateExpression ||
@@ -326,6 +345,13 @@ class FlowablePropertiesProvider {
                   'flowable:delegateExpression': value || undefined,
                   delegateExpression: value || undefined,
                 }),
+              getOptions: () => [
+                { value: '', label: translate('(none)') },
+                ...delegateOptions.map(name => ({
+                  value: `\${${name}}`,
+                  label: name,
+                })),
+              ],
             },
             {
               id: 'class',
@@ -719,22 +745,22 @@ function flowableFieldEntry(
   }
 }
 
+const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN', 'WORKFLOW_ADMIN']
+
 function candidateGroupsEntry(
-  element: any, modeling: any, translate: (s: string) => string, debounce: any
+  element: any, modeling: any, translate: (s: string) => string, _debounce: any
 ): any {
-  const availableIds = groupOptions.map(g => g.id)
-  const exampleIds = availableIds.length > 0
-    ? availableIds.slice(0, 2).join(',')
-    : 'DOA_L1,DOA_L2'
-  const hint = translate(`Comma-separated group IDs, e.g. ${exampleIds}. Any member of these groups will see the task in their queue.`)
+  const isAdmin = currentUserRoles.some(r => ADMIN_ROLES.includes(r))
+  const filtered = isAdmin
+    ? groupOptions
+    : groupOptions.filter(g => /^DOA_L\d+$/i.test(g.id))
+
   return {
     id: 'ab-candidateGroups',
     element,
-    component: TextFieldEntry,
-    isEdited: isTextFieldEntryEdited,
-    debounce,
+    component: CandidateGroupsInput,
     label: translate('Candidate Groups'),
-    description: hint,
+    availableGroups: filtered,
     getValue: () => element.businessObject.get('flowable:candidateGroups') || '',
     setValue: (value: string) =>
       modeling.updateProperties(element, { 'flowable:candidateGroups': value || undefined }),
