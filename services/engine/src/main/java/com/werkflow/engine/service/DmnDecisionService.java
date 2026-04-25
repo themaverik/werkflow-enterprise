@@ -73,10 +73,24 @@ public class DmnDecisionService {
 
     /**
      * Returns the raw DMN XML for the latest version of a decision.
+     * getDmnResource(String) takes a resource *name*, not a deployment ID.
+     * We resolve the correct resource name via getDeploymentResourceNames first.
      */
     public String getDecisionXml(String key, String tenantId) {
         DmnDecision decision = resolveDecision(key, tenantId);
-        try (InputStream xmlStream = dmnRepositoryService.getDmnResource(decision.getDeploymentId())) {
+        String deploymentId = decision.getDeploymentId();
+
+        List<String> resourceNames = dmnRepositoryService.getDeploymentResourceNames(deploymentId);
+        String resourceName = resourceNames.stream()
+                .filter(n -> n.endsWith(".dmn"))
+                .findFirst()
+                .orElseGet(() -> resourceNames.isEmpty() ? null : resourceNames.get(0));
+
+        if (resourceName == null) {
+            throw new IllegalStateException("No DMN resource found for deployment: " + deploymentId);
+        }
+
+        try (InputStream xmlStream = dmnRepositoryService.getResourceAsStream(deploymentId, resourceName)) {
             return new String(xmlStream.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to read DMN XML for key: " + key, e);

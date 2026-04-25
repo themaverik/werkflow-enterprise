@@ -26,7 +26,7 @@ export default function EditDecisionPage({ params }: EditDecisionPageProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
   const { toast } = useToast()
-  const editorRef = useRef<DmnEditorHandle>(null)
+  const editorRef = useRef<DmnEditorHandle | null>(null)
   const [showTestPanel, setShowTestPanel] = useState(false)
 
   const { data: meta, isLoading: metaLoading, error: metaError } = useQuery({
@@ -91,7 +91,7 @@ export default function EditDecisionPage({ params }: EditDecisionPageProps) {
         </Button>
       </div>
 
-      <DmnEditor ref={editorRef} xml={xml} />
+      <DmnEditor onInit={(handle) => { editorRef.current = handle }} xml={xml} />
 
       {showTestPanel && <DmnTestPanel decisionKey={key} />}
     </div>

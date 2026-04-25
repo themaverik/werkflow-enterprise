@@ -2,6 +2,7 @@ package com.werkflow.engine.exception;
 
 import com.werkflow.engine.dto.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.flowable.common.engine.api.FlowableException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -242,6 +243,31 @@ public class GlobalExceptionHandler {
                 .build();
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    /**
+     * Handle Flowable engine exceptions — extract root cause for a useful message.
+     * FlowableException wraps delegate/expression errors (e.g. invalid email, missing field).
+     */
+    @ExceptionHandler(FlowableException.class)
+    public ResponseEntity<ErrorResponse> handleFlowableException(
+            FlowableException ex, WebRequest request) {
+
+        Throwable root = ex;
+        while (root.getCause() != null) root = root.getCause();
+        String message = root.getMessage() != null ? root.getMessage() : ex.getMessage();
+
+        log.error("Flowable engine error: {}", message, ex);
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(OffsetDateTime.now())
+                .status(HttpStatus.UNPROCESSABLE_ENTITY.value())
+                .error("Process Execution Error")
+                .message(message)
+                .path(extractPath(request))
+                .build();
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(errorResponse);
     }
 
     /**

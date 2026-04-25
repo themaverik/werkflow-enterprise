@@ -42,8 +42,13 @@ export interface CompleteTaskRequest {
 
 // Start a new workflow process
 export async function startProcess(data: StartProcessRequest): Promise<ProcessInstanceResponse> {
-  const response = await apiClient.post('/api/process-instances', data)
-  return response.data
+  try {
+    const response = await apiClient.post('/api/process-instances', data)
+    return response.data
+  } catch (error: any) {
+    const message = error?.response?.data?.message || error?.message || 'Failed to start process'
+    throw new Error(message)
+  }
 }
 
 // Get process instance by ID
