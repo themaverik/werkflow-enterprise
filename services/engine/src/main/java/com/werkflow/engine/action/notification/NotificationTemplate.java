@@ -27,6 +27,15 @@ public class NotificationTemplate {
     @Column(name = "body", nullable = false, columnDefinition = "TEXT")
     private String body;
 
+    @Column(name = "name", length = 200)
+    private String name;
+
+    @Column(name = "design_json", columnDefinition = "TEXT")
+    private String designJson;
+
+    @Column(name = "linked_form_key", length = 100)
+    private String linkedFormKey;
+
     @Column(name = "deleted_at")
     private OffsetDateTime deletedAt;
 
