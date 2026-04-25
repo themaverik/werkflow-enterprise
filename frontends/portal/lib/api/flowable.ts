@@ -210,3 +210,9 @@ export async function getGroups(): Promise<GroupInfo[]> {
   const response = await apiClient.get('/api/groups')
   return response.data
 }
+
+// Get registered JavaDelegate bean names (for BPMN designer delegate expression dropdown)
+export async function getDelegates(): Promise<string[]> {
+  const response = await apiClient.get('/api/delegates')
+  return response.data
+}
