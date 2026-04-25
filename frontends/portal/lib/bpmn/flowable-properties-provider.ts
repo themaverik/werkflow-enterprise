@@ -768,13 +768,20 @@ function candidateGroupsEntry(
 }
 
 function templateKeySelectEntry(element: any, modeling: any, translate: (s: string) => string): any {
+  const currentKey = readFlowableField(element, 'templateKey') || ''
+  const editHref = currentKey
+    ? `/admin/email-templates/${encodeURIComponent(currentKey)}`
+    : '/admin/email-templates/new'
+  const editLabel = currentKey ? translate('Edit template →') : translate('Create template →')
+
   return {
     id: 'ab-templateKey',
     element,
     component: SelectEntry,
     isEdited: isSelectEntryEdited,
     label: translate('Template Key'),
-    getValue: () => readFlowableField(element, 'templateKey') || '',
+    description: editLabel + ` (${editHref})`,
+    getValue: () => currentKey,
     setValue: (value: string) => writeFlowableField(element, modeling, 'templateKey', value || ''),
     getOptions: () => {
       const options: Array<{ value: string; label: string }> = [
