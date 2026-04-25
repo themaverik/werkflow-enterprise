@@ -212,20 +212,33 @@ public class ProcessDefinitionService {
     }
 
     /**
-     * Get start form schema for a process definition
+     * Get start form schema for a process definition.
+     * Accepts either a full Flowable process definition ID (key:version:hash)
+     * or a plain process key — in which case the latest deployed version is used.
      */
     public TaskFormResponse getStartForm(String processDefinitionId) {
         log.info("Getting start form for process definition: {}", processDefinitionId);
 
-        ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
-            .processDefinitionId(processDefinitionId)
-            .singleResult();
+        // If the caller passed a plain key (no colons), resolve it to the latest version ID
+        ProcessDefinition processDefinition;
+        if (!processDefinitionId.contains(":")) {
+            processDefinition = repositoryService.createProcessDefinitionQuery()
+                .processDefinitionKey(processDefinitionId)
+                .latestVersion()
+                .singleResult();
+        } else {
+            processDefinition = repositoryService.createProcessDefinitionQuery()
+                .processDefinitionId(processDefinitionId)
+                .singleResult();
+        }
 
         if (processDefinition == null) {
             throw new RuntimeException("Process definition not found with ID: " + processDefinitionId);
         }
 
-        String formKey = extractStartFormKey(processDefinitionId);
+        // Always use the resolved Flowable ID (not the incoming param) for BPMN model lookup
+        String resolvedId = processDefinition.getId();
+        String formKey = extractStartFormKey(resolvedId);
 
         if (formKey == null || formKey.isEmpty()) {
             throw new RuntimeException("Process definition " + processDefinitionId + " has no start form");

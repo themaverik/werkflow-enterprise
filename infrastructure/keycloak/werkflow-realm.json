@@ -14,7 +14,6 @@
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
   "bruteForceProtected": true,
-
   "accessTokenLifespan": 3600,
   "accessTokenLifespanForImplicitFlow": 900,
   "ssoSessionIdleTimeout": 28800,
@@ -23,7 +22,6 @@
   "accessCodeLifespan": 60,
   "accessCodeLifespanUserAction": 300,
   "accessCodeLifespanLogin": 1800,
-
   "roles": {
     "realm": [
       {
@@ -76,7 +74,11 @@
         "description": "HR Department Head",
         "composite": true,
         "composites": {
-          "realm": ["asset_request_approver", "doa_approver_level1", "employee"]
+          "realm": [
+            "asset_request_approver",
+            "doa_approver_level1",
+            "employee"
+          ]
         }
       },
       {
@@ -84,7 +86,11 @@
         "description": "IT Department Head",
         "composite": true,
         "composites": {
-          "realm": ["asset_request_approver", "doa_approver_level1", "employee"]
+          "realm": [
+            "asset_request_approver",
+            "doa_approver_level1",
+            "employee"
+          ]
         }
       },
       {
@@ -92,7 +98,11 @@
         "description": "Finance Department Head",
         "composite": true,
         "composites": {
-          "realm": ["doa_approver_level3", "doa_approver_level4", "employee"]
+          "realm": [
+            "doa_approver_level3",
+            "doa_approver_level4",
+            "employee"
+          ]
         }
       },
       {
@@ -100,7 +110,11 @@
         "description": "Procurement Department Head",
         "composite": true,
         "composites": {
-          "realm": ["procurement_approver", "doa_approver_level2", "employee"]
+          "realm": [
+            "procurement_approver",
+            "doa_approver_level2",
+            "employee"
+          ]
         }
       },
       {
@@ -108,7 +122,10 @@
         "description": "Transport Department Head",
         "composite": true,
         "composites": {
-          "realm": ["transport_manager", "employee"]
+          "realm": [
+            "transport_manager",
+            "employee"
+          ]
         }
       },
       {
@@ -116,7 +133,10 @@
         "description": "Inventory Department Head",
         "composite": true,
         "composites": {
-          "realm": ["central_hub_manager", "employee"]
+          "realm": [
+            "central_hub_manager",
+            "employee"
+          ]
         }
       },
       {
@@ -223,39 +243,54 @@
       ]
     }
   },
-
   "groups": [
     {
       "name": "HR Department",
       "path": "/HR Department",
       "attributes": {
-        "department": ["HR"],
-        "cost_center_prefix": ["HR"]
+        "department": [
+          "HR"
+        ],
+        "cost_center_prefix": [
+          "HR"
+        ]
       },
-      "realmRoles": ["employee"],
+      "realmRoles": [
+        "employee"
+      ],
       "subGroups": [
         {
           "name": "Managers",
           "path": "/HR Department/Managers",
           "attributes": {
-            "role_level": ["manager"]
+            "role_level": [
+              "manager"
+            ]
           },
-          "realmRoles": ["asset_request_approver"]
+          "realmRoles": [
+            "asset_request_approver"
+          ]
         },
         {
           "name": "Specialists",
           "path": "/HR Department/Specialists",
           "attributes": {
-            "role_level": ["specialist"]
+            "role_level": [
+              "specialist"
+            ]
           }
         },
         {
           "name": "POC",
           "path": "/HR Department/POC",
           "attributes": {
-            "is_poc": ["true"]
+            "is_poc": [
+              "true"
+            ]
           },
-          "realmRoles": ["department_poc"]
+          "realmRoles": [
+            "department_poc"
+          ]
         }
       ]
     },
@@ -263,34 +298,52 @@
       "name": "IT Department",
       "path": "/IT Department",
       "attributes": {
-        "department": ["IT"],
-        "cost_center_prefix": ["IT"]
+        "department": [
+          "IT"
+        ],
+        "cost_center_prefix": [
+          "IT"
+        ]
       },
-      "realmRoles": ["employee"],
+      "realmRoles": [
+        "employee"
+      ],
       "subGroups": [
         {
           "name": "Managers",
           "path": "/IT Department/Managers",
           "attributes": {
-            "role_level": ["manager"]
+            "role_level": [
+              "manager"
+            ]
           },
-          "realmRoles": ["asset_request_approver"]
+          "realmRoles": [
+            "asset_request_approver"
+          ]
         },
         {
           "name": "Inventory",
           "path": "/IT Department/Inventory",
           "attributes": {
-            "role_level": ["specialist"]
+            "role_level": [
+              "specialist"
+            ]
           },
-          "realmRoles": ["inventory_manager"]
+          "realmRoles": [
+            "inventory_manager"
+          ]
         },
         {
           "name": "POC",
           "path": "/IT Department/POC",
           "attributes": {
-            "is_poc": ["true"]
+            "is_poc": [
+              "true"
+            ]
           },
-          "realmRoles": ["department_poc"]
+          "realmRoles": [
+            "department_poc"
+          ]
         }
       ]
     },
@@ -298,42 +351,64 @@
       "name": "Finance Department",
       "path": "/Finance Department",
       "attributes": {
-        "department": ["Finance"],
-        "cost_center_prefix": ["FIN"]
+        "department": [
+          "Finance"
+        ],
+        "cost_center_prefix": [
+          "FIN"
+        ]
       },
-      "realmRoles": ["employee"],
+      "realmRoles": [
+        "employee"
+      ],
       "subGroups": [
         {
           "name": "Managers",
           "path": "/Finance Department/Managers",
           "attributes": {
-            "role_level": ["manager"]
+            "role_level": [
+              "manager"
+            ]
           },
-          "realmRoles": ["doa_approver_level2"]
+          "realmRoles": [
+            "doa_approver_level2"
+          ]
         },
         {
           "name": "Approvers",
           "path": "/Finance Department/Approvers",
           "attributes": {
-            "role_level": ["approver"]
+            "role_level": [
+              "approver"
+            ]
           },
-          "realmRoles": ["doa_approver_level1"]
+          "realmRoles": [
+            "doa_approver_level1"
+          ]
         },
         {
           "name": "Officers",
           "path": "/Finance Department/Officers",
           "attributes": {
-            "role_level": ["officer"]
+            "role_level": [
+              "officer"
+            ]
           },
-          "realmRoles": ["finance_officer"]
+          "realmRoles": [
+            "finance_officer"
+          ]
         },
         {
           "name": "POC",
           "path": "/Finance Department/POC",
           "attributes": {
-            "is_poc": ["true"]
+            "is_poc": [
+              "true"
+            ]
           },
-          "realmRoles": ["department_poc"]
+          "realmRoles": [
+            "department_poc"
+          ]
         }
       ]
     },
@@ -341,34 +416,53 @@
       "name": "Procurement Department",
       "path": "/Procurement Department",
       "attributes": {
-        "department": ["Procurement"],
-        "cost_center_prefix": ["PROC"]
+        "department": [
+          "Procurement"
+        ],
+        "cost_center_prefix": [
+          "PROC"
+        ]
       },
-      "realmRoles": ["employee"],
+      "realmRoles": [
+        "employee"
+      ],
       "subGroups": [
         {
           "name": "Managers",
           "path": "/Procurement Department/Managers",
           "attributes": {
-            "role_level": ["manager"]
+            "role_level": [
+              "manager"
+            ]
           },
-          "realmRoles": ["procurement_approver"]
+          "realmRoles": [
+            "procurement_approver"
+          ]
         },
         {
           "name": "Specialists",
           "path": "/Procurement Department/Specialists",
           "attributes": {
-            "role_level": ["specialist"]
+            "role_level": [
+              "specialist"
+            ]
           },
-          "realmRoles": ["procurement_specialist"]
+          "realmRoles": [
+            "procurement_specialist"
+          ]
         },
         {
           "name": "POC",
           "path": "/Procurement Department/POC",
           "attributes": {
-            "is_poc": ["true"]
+            "is_poc": [
+              "true"
+            ]
           },
-          "realmRoles": ["department_poc", "procurement_approver"]
+          "realmRoles": [
+            "department_poc",
+            "procurement_approver"
+          ]
         }
       ]
     },
@@ -376,34 +470,52 @@
       "name": "Transport Department",
       "path": "/Transport Department",
       "attributes": {
-        "department": ["Transport"],
-        "cost_center_prefix": ["TRANS"]
+        "department": [
+          "Transport"
+        ],
+        "cost_center_prefix": [
+          "TRANS"
+        ]
       },
-      "realmRoles": ["employee"],
+      "realmRoles": [
+        "employee"
+      ],
       "subGroups": [
         {
           "name": "Managers",
           "path": "/Transport Department/Managers",
           "attributes": {
-            "role_level": ["manager"]
+            "role_level": [
+              "manager"
+            ]
           },
-          "realmRoles": ["transport_manager"]
+          "realmRoles": [
+            "transport_manager"
+          ]
         },
         {
           "name": "Coordinators",
           "path": "/Transport Department/Coordinators",
           "attributes": {
-            "role_level": ["coordinator"]
+            "role_level": [
+              "coordinator"
+            ]
           },
-          "realmRoles": ["transport_coordinator"]
+          "realmRoles": [
+            "transport_coordinator"
+          ]
         },
         {
           "name": "Drivers",
           "path": "/Transport Department/Drivers",
           "attributes": {
-            "role_level": ["driver"]
+            "role_level": [
+              "driver"
+            ]
           },
-          "realmRoles": ["driver"]
+          "realmRoles": [
+            "driver"
+          ]
         }
       ]
     },
@@ -411,42 +523,65 @@
       "name": "Inventory Warehouse",
       "path": "/Inventory Warehouse",
       "attributes": {
-        "department": ["Inventory"],
-        "cost_center_prefix": ["INV"]
+        "department": [
+          "Inventory"
+        ],
+        "cost_center_prefix": [
+          "INV"
+        ]
       },
-      "realmRoles": ["employee"],
+      "realmRoles": [
+        "employee"
+      ],
       "subGroups": [
         {
           "name": "Central Hub",
           "path": "/Inventory Warehouse/Central Hub",
           "attributes": {
-            "hub_id": ["CENTRAL"],
-            "hub_type": ["central"]
+            "hub_id": [
+              "CENTRAL"
+            ],
+            "hub_type": [
+              "central"
+            ]
           },
-          "realmRoles": ["central_hub_manager"]
+          "realmRoles": [
+            "central_hub_manager"
+          ]
         },
         {
           "name": "Hub A",
           "path": "/Inventory Warehouse/Hub A",
           "attributes": {
-            "hub_id": ["HUB_A"],
-            "hub_type": ["regional"]
+            "hub_id": [
+              "HUB_A"
+            ],
+            "hub_type": [
+              "regional"
+            ]
           },
-          "realmRoles": ["hub_manager"]
+          "realmRoles": [
+            "hub_manager"
+          ]
         },
         {
           "name": "Hub B",
           "path": "/Inventory Warehouse/Hub B",
           "attributes": {
-            "hub_id": ["HUB_B"],
-            "hub_type": ["regional"]
+            "hub_id": [
+              "HUB_B"
+            ],
+            "hub_type": [
+              "regional"
+            ]
           },
-          "realmRoles": ["hub_manager"]
+          "realmRoles": [
+            "hub_manager"
+          ]
         }
       ]
     }
   ],
-
   "clients": [
     {
       "clientId": "werkflow-admin-portal",
@@ -624,7 +759,6 @@
       }
     }
   ],
-
   "users": [
     {
       "username": "admin",
@@ -640,36 +774,54 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["admin", "super_admin"],
+      "realmRoles": [
+        "admin",
+        "super_admin"
+      ],
       "attributes": {
-        "department": ["IT"],
-        "employee_id": ["EMP001"],
-        "doa_level": ["4"],
-        "cost_center": ["IT-001"]
+        "department": [
+          "IT"
+        ],
+        "employee_id": [
+          "EMP001"
+        ],
+        "doa_level": [
+          "4"
+        ],
+        "cost_center": [
+          "IT-001"
+        ]
       }
     }
   ],
-
   "scopeMappings": [
     {
       "clientScope": "offline_access",
-      "roles": ["offline_access"]
+      "roles": [
+        "offline_access"
+      ]
     }
   ],
-
   "clientScopeMappings": {
     "werkflow-admin-portal": [
       {
         "client": "werkflow-admin-portal",
-        "roles": ["admin", "manager", "poc", "approver", "requester", "viewer"]
+        "roles": [
+          "admin",
+          "manager",
+          "poc",
+          "approver",
+          "requester",
+          "viewer"
+        ]
       }
     ]
   },
-
   "internationalizationEnabled": false,
-  "supportedLocales": ["en"],
+  "supportedLocales": [
+    "en"
+  ],
   "defaultLocale": "en",
-
   "authenticationFlows": [],
   "authenticatorConfig": [],
   "requiredActions": [],
@@ -679,7 +831,6 @@
   "resetCredentialsFlow": "reset credentials",
   "clientAuthenticationFlow": "clients",
   "dockerAuthenticationFlow": "docker auth",
-
   "attributes": {
     "frontendUrl": "",
     "userProfileEnabled": "true"
