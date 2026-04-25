@@ -202,19 +202,17 @@ export default function ProcessesPage() {
                         </Tooltip>
                         )}
                       </div>
-                      {latestVersion.hasStartFormKey && (
-                        <Button
-                          asChild
-                          size="sm"
-                          variant="secondary"
-                          className="w-full"
-                        >
-                          <Link href={`/processes/start/${latestVersion.id}`}>
-                            <Play className="h-4 w-4 mr-2" />
-                            Start Process
-                          </Link>
-                        </Button>
-                      )}
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="secondary"
+                        className="w-full"
+                      >
+                        <Link href={`/processes/start/${key}`}>
+                          <Play className="h-4 w-4 mr-2" />
+                          Start Process
+                        </Link>
+                      </Button>
                       {versions.length > 1 && (
                         <div className="text-xs text-muted-foreground">
                           <details className="cursor-pointer">
