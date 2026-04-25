@@ -38,9 +38,10 @@ public class NotificationTemplateService {
     private String substitute(String template, Map<String, Object> variables) {
         String result = template;
         for (Map.Entry<String, Object> entry : variables.entrySet()) {
-            String placeholder = "${" + entry.getKey() + "}";
             String value = entry.getValue() != null ? entry.getValue().toString() : "";
-            result = result.replace(placeholder, value);
+            // Support both ${key} (legacy plain-text templates) and {{key}} (Unlayer HTML templates)
+            result = result.replace("${" + entry.getKey() + "}", value);
+            result = result.replace("{{" + entry.getKey() + "}}", value);
         }
         return result;
     }
