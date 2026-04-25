@@ -1,12 +1,12 @@
 package com.werkflow.engine.security;
 
+import com.werkflow.engine.client.AdminServiceClient;
 import com.werkflow.engine.security.guard.AssetRequestGuard;
 import com.werkflow.engine.security.guard.HubManagerGuard;
 import com.werkflow.engine.security.guard.TaskGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
@@ -23,17 +23,30 @@ class WerkflowPermissionEvaluatorTest {
 
     @Mock private PermissionConfig permissionConfig;
     @Mock private KeycloakRoleExtractor roleExtractor;
+    @Mock private AdminServiceClient adminServiceClient;
     @Mock private AssetRequestGuard assetRequestGuard;
     @Mock private TaskGuard taskGuard;
     @Mock private HubManagerGuard hubManagerGuard;
     @Mock private Authentication authentication;
     @Mock private Jwt jwt;
 
-    @InjectMocks
     private WerkflowPermissionEvaluator evaluator;
 
     @BeforeEach
     void setUp() {
+        when(assetRequestGuard.supports()).thenReturn("AssetRequest");
+        when(taskGuard.supports()).thenReturn("Task");
+        when(hubManagerGuard.supports()).thenReturn("HubManager");
+
+        evaluator = new WerkflowPermissionEvaluator(
+                permissionConfig, roleExtractor, adminServiceClient,
+                List.of(assetRequestGuard, taskGuard, hubManagerGuard));
+        evaluator.buildRegistry();
+
+        // Default: no tenant-specific permissions (tests that fall through YAML check get false)
+        lenient().when(adminServiceClient.getTenantRolePermissions(any(), any())).thenReturn(Set.of());
+        lenient().when(jwt.getClaimAsString("tenant_code")).thenReturn(null);
+
         when(authentication.getPrincipal()).thenReturn(jwt);
     }
 
