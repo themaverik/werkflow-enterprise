@@ -87,6 +87,12 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
   useEffect(() => {
     if (!containerRef.current || !propertiesPanelRef.current) return
 
+    // Guard against React StrictMode double-invoke: the cleanup runs before the
+    // second invocation, destroying the first modeler. Without this flag the
+    // first modeler's in-flight importXML promise would resolve/reject on the
+    // destroyed instance, causing a spurious "Failed to load BPMN diagram" error.
+    let cancelled = false
+
     const bpmnModeler = new BpmnModeler({
       container: containerRef.current,
       keyboard: {
@@ -108,6 +114,7 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
     bpmnModeler
       .importXML(xmlToLoad)
       .then(() => {
+        if (cancelled) return
         const canvas = bpmnModeler.get('canvas')
         canvas.zoom('fit-viewport')
 
@@ -116,6 +123,7 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
         if (name) setProcessName(prev => prev || name)
       })
       .catch((err: Error) => {
+        if (cancelled) return
         console.error('Error importing BPMN:', err)
         setError('Failed to load BPMN diagram')
       })
@@ -136,6 +144,7 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
     eventBus.on('selection.changed', handleSelectionChange)
 
     return () => {
+      cancelled = true
       eventBus.off('commandStack.changed', handleChange)
       eventBus.off('selection.changed', handleSelectionChange)
       setSelectedElement(null)

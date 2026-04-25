@@ -13,7 +13,7 @@ import { useState } from 'react'
 
 export default function EditProcessPage() {
   const params = useParams()
-  const processDefinitionId = params.id as string
+  const processDefinitionId = decodeURIComponent(params.id as string)
   const processKey = processDefinitionId.includes(':')
     ? processDefinitionId.split(':')[0]
     : processDefinitionId
