@@ -23,6 +23,9 @@ export default function EditProcessPage() {
   const [xmlToLoad, setXmlToLoad] = useState<string | null>(null)
   const [showDraftBanner, setShowDraftBanner] = useState(false)
   const [draftXml, setDraftXml] = useState<string | null>(null)
+  // Bug 4 fix: increment this counter whenever the user switches XML source so
+  // BpmnDesigner remounts with the new initialXml (the init effect only runs once on mount).
+  const [loadKey, setLoadKey] = useState(0)
 
   const { isLoading, error } = useQuery({
     queryKey: ['processDefinition', processDefinitionId],
@@ -48,6 +51,7 @@ export default function EditProcessPage() {
   const handleResumeDraft = () => {
     if (draftXml) {
       setXmlToLoad(draftXml)
+      setLoadKey((k) => k + 1)
       setShowDraftBanner(false)
     }
   }
@@ -58,6 +62,8 @@ export default function EditProcessPage() {
     } catch (err) {
       console.warn('Failed to delete draft', err)
     }
+    // Remount with the deployed XML (already in xmlToLoad from queryFn)
+    setLoadKey((k) => k + 1)
     setShowDraftBanner(false)
   }
 
@@ -110,6 +116,7 @@ export default function EditProcessPage() {
       )}
       {xmlToLoad && (
         <BpmnDesigner
+          key={loadKey}
           initialXml={xmlToLoad}
           processId={processDefinitionId}
         />
