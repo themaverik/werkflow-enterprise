@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
@@ -14,7 +14,7 @@ import Link from 'next/link'
 import { createEmailTemplate } from '@/lib/api/email-templates'
 import { getFormDefinitions } from '@/lib/api/flowable'
 import dynamic from 'next/dynamic'
-import type { EmailTemplateEditorRef } from '@/components/admin/EmailTemplateEditor'
+import type { EmailTemplateEditorApi } from '@/components/admin/EmailTemplateEditor'
 
 const EmailTemplateEditor = dynamic(
   () => import('@/components/admin/EmailTemplateEditor'),
@@ -38,7 +38,10 @@ export default function NewEmailTemplatePage() {
   const { toast } = useToast()
   const { status } = useSession()
   const queryClient = useQueryClient()
-  const editorRef = useRef<EmailTemplateEditorRef>(null)
+  const editorApiRef = useRef<EmailTemplateEditorApi | null>(null)
+  const handleEditorReady = useCallback((api: EmailTemplateEditorApi) => {
+    editorApiRef.current = api
+  }, [])
 
   const [key, setKey] = useState('')
   const [name, setName] = useState('')
@@ -57,8 +60,8 @@ export default function NewEmailTemplatePage() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      if (!editorRef.current) throw new Error('Editor not ready')
-      const { html, design } = await editorRef.current.exportHtml()
+      if (!editorApiRef.current) throw new Error('Editor not ready')
+      const { html, design } = await editorApiRef.current.exportHtml()
       return createEmailTemplate({
         key: key.trim(),
         name: name.trim() || key.trim(),
@@ -99,7 +102,7 @@ export default function NewEmailTemplatePage() {
         {/* Unlayer editor */}
         <Card>
           <CardContent className="p-0 overflow-hidden rounded-lg">
-            <EmailTemplateEditor ref={editorRef} formFields={formFields} />
+            <EmailTemplateEditor formFields={formFields} onReady={handleEditorReady} />
           </CardContent>
         </Card>
 

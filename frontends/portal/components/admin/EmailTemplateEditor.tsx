@@ -1,10 +1,9 @@
 'use client'
 
-import { useRef, forwardRef, useImperativeHandle } from 'react'
-import dynamic from 'next/dynamic'
-
-// Dynamically import to avoid SSR issues (react-email-editor uses window)
-const EmailEditor = dynamic(() => import('react-email-editor'), { ssr: false })
+import { useRef } from 'react'
+// Import directly — SSR is handled by the page-level dynamic() import of this component.
+// Do NOT re-wrap with next/dynamic here: double-wrapping breaks ref forwarding.
+import EmailEditor from 'react-email-editor'
 
 export const STANDARD_MERGE_TAGS = [
   { name: 'Initiator Username', value: '{{initiator}}' },
@@ -18,71 +17,67 @@ export const STANDARD_MERGE_TAGS = [
   { name: 'Start Time', value: '{{startTime}}' },
 ]
 
-export interface EmailTemplateEditorRef {
+// Imperative API exposed via onReady callback (not ref) to work around
+// next/dynamic not forwarding refs through LoadableComponent.
+export interface EmailTemplateEditorApi {
   exportHtml: () => Promise<{ html: string; design: string }>
 }
 
 interface Props {
   initialDesign?: string | null
   formFields?: string[]
+  /** Called once Unlayer is ready — store the returned api to call exportHtml() */
+  onReady?: (api: EmailTemplateEditorApi) => void
 }
 
-const EmailTemplateEditor = forwardRef<EmailTemplateEditorRef, Props>(
-  ({ initialDesign, formFields = [] }, ref) => {
-    const editorRef = useRef<any>(null)
+export default function EmailTemplateEditor({ initialDesign, formFields = [], onReady }: Props) {
+  const editorInstanceRef = useRef<any>(null)
 
-    useImperativeHandle(ref, () => ({
+  const handleReady = (unlayer: any) => {
+    editorInstanceRef.current = unlayer
+
+    if (initialDesign) {
+      try {
+        unlayer.loadDesign(JSON.parse(initialDesign))
+      } catch {
+        // invalid stored JSON — start with blank canvas
+      }
+    }
+
+    onReady?.({
       exportHtml: () =>
         new Promise((resolve, reject) => {
-          const editor = editorRef.current?.editor
+          const editor = editorInstanceRef.current
           if (!editor) {
-            reject(new Error('Editor not ready'))
+            reject(new Error('Editor not ready — please wait for the editor to load'))
             return
           }
           editor.exportHtml((data: { html: string; design: object }) => {
             resolve({ html: data.html, design: JSON.stringify(data.design) })
           })
         }),
-    }))
-
-    const formMergeTags = formFields.map(field => ({
-      name: `Form: ${field}`,
-      value: `{{${field}}}`,
-    }))
-
-    const allMergeTags = [...STANDARD_MERGE_TAGS, ...formMergeTags]
-
-    const onReady = () => {
-      const editor = editorRef.current?.editor
-      if (!editor) return
-      if (initialDesign) {
-        try {
-          editor.loadDesign(JSON.parse(initialDesign))
-        } catch {
-          // invalid JSON — start blank
-        }
-      }
-    }
-
-    return (
-      <div className="w-full" style={{ height: '600px' }}>
-        <EmailEditor
-          ref={editorRef}
-          onReady={onReady}
-          options={{
-            mergeTags: allMergeTags,
-            displayMode: 'email',
-            features: {
-              sendTestEmail: false,
-              textEditor: { tables: true },
-            },
-          } as any}
-          style={{ height: '100%', minHeight: '600px' }}
-        />
-      </div>
-    )
+    })
   }
-)
 
-EmailTemplateEditor.displayName = 'EmailTemplateEditor'
-export default EmailTemplateEditor
+  const formMergeTags = formFields.map(field => ({
+    name: `Form: ${field}`,
+    value: `{{${field}}}`,
+  }))
+
+  return (
+    <div className="w-full" style={{ height: '600px' }}>
+      <EmailEditor
+        onReady={handleReady}
+        options={{
+          mergeTags: [...STANDARD_MERGE_TAGS, ...formMergeTags],
+          displayMode: 'email',
+          features: {
+            sendTestEmail: false,
+            textEditor: { tables: true },
+          },
+        } as any}
+        style={{ height: '100%', minHeight: '600px' }}
+      />
+    </div>
+  )
+}
