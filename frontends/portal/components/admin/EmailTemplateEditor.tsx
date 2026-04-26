@@ -65,7 +65,7 @@ export default function EmailTemplateEditor({ initialDesign, formFields = [], on
   }))
 
   return (
-    <div className="w-full" style={{ height: '600px' }}>
+    <div className="w-full h-full">
       <EmailEditor
         onReady={handleReady}
         options={{
@@ -76,7 +76,7 @@ export default function EmailTemplateEditor({ initialDesign, formFields = [], on
             textEditor: { tables: true },
           },
         } as any}
-        style={{ height: '100%', minHeight: '600px' }}
+        style={{ height: '100%', minHeight: '640px' }}
       />
     </div>
   )
