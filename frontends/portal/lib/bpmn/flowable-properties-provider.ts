@@ -324,6 +324,43 @@ class FlowablePropertiesProvider {
         })
       }
 
+      // --- Script Task ---
+      if (is(element, 'bpmn:ScriptTask')) {
+        groups.splice(generalIdx + 1, 0, {
+          id: 'flowable-script',
+          label: 'Script',
+          entries: [
+            {
+              id: 'scriptFormat',
+              element,
+              component: SelectEntry,
+              isEdited: isSelectEntryEdited,
+              label: translate('Script Format'),
+              getValue: () => element.businessObject.scriptFormat || 'javascript',
+              setValue: (value: string) =>
+                modeling.updateProperties(element, { scriptFormat: value }),
+              getOptions: () => [
+                { value: 'javascript', label: 'JavaScript' },
+                { value: 'groovy',     label: 'Groovy' },
+                { value: 'juel',       label: 'JUEL' },
+              ],
+            },
+            {
+              id: 'script',
+              element,
+              component: TextFieldEntry,
+              isEdited: isTextFieldEntryEdited,
+              debounce,
+              label: translate('Script'),
+              description: translate("e.g. execution.setVariable('decision', 'approved')"),
+              getValue: () => element.businessObject.script || '',
+              setValue: (value: string) =>
+                modeling.updateProperties(element, { script: value || undefined }),
+            },
+          ],
+        })
+      }
+
       // --- Service Task ---
       if (is(element, 'bpmn:ServiceTask')) {
         groups.splice(generalIdx + 1, 0, {
