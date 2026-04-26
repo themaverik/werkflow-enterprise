@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useCallback, useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
@@ -14,7 +14,7 @@ import Link from 'next/link'
 import { getEmailTemplate, updateEmailTemplate } from '@/lib/api/email-templates'
 import { getFormDefinitions } from '@/lib/api/flowable'
 import dynamic from 'next/dynamic'
-import type { EmailTemplateEditorRef } from '@/components/admin/EmailTemplateEditor'
+import type { EmailTemplateEditorApi } from '@/components/admin/EmailTemplateEditor'
 
 const EmailTemplateEditor = dynamic(
   () => import('@/components/admin/EmailTemplateEditor'),
@@ -39,7 +39,10 @@ export default function EditEmailTemplatePage() {
   const { toast } = useToast()
   const { status } = useSession()
   const queryClient = useQueryClient()
-  const editorRef = useRef<EmailTemplateEditorRef>(null)
+  const editorApiRef = useRef<EmailTemplateEditorApi | null>(null)
+  const handleEditorReady = useCallback((api: EmailTemplateEditorApi) => {
+    editorApiRef.current = api
+  }, [])
 
   const templateKey = decodeURIComponent(params.key as string)
 
@@ -74,8 +77,8 @@ export default function EditEmailTemplatePage() {
 
   const updateMutation = useMutation({
     mutationFn: async () => {
-      if (!editorRef.current || !template) throw new Error('Not ready')
-      const { html, design } = await editorRef.current.exportHtml()
+      if (!editorApiRef.current || !template) throw new Error('Not ready')
+      const { html, design } = await editorApiRef.current.exportHtml()
       return updateEmailTemplate(templateKey, {
         key: templateKey,
         name: name.trim() || templateKey,
@@ -133,9 +136,9 @@ export default function EditEmailTemplatePage() {
         <Card>
           <CardContent className="p-0 overflow-hidden rounded-lg">
             <EmailTemplateEditor
-              ref={editorRef}
               initialDesign={template.designJson}
               formFields={formFields}
+              onReady={handleEditorReady}
             />
           </CardContent>
         </Card>
