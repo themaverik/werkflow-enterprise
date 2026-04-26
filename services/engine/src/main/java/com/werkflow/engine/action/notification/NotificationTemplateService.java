@@ -35,6 +35,9 @@ public class NotificationTemplateService {
         return new RenderedTemplate(subject, body);
     }
 
+    private static final java.util.regex.Pattern DOUBLE_BRACE =
+        java.util.regex.Pattern.compile("\\{\\{[^}]+\\}\\}");
+
     private String substitute(String template, Map<String, Object> variables) {
         String result = template;
         for (Map.Entry<String, Object> entry : variables.entrySet()) {
@@ -43,6 +46,10 @@ public class NotificationTemplateService {
             result = result.replace("${" + entry.getKey() + "}", value);
             result = result.replace("{{" + entry.getKey() + "}}", value);
         }
+        // Remove any unreplaced {{var}} placeholders so they don't appear literally in emails.
+        // Variables missing from the process context (e.g. decision on auto-approved paths)
+        // will render as empty string rather than the raw tag.
+        result = DOUBLE_BRACE.matcher(result).replaceAll("");
         return result;
     }
 }
