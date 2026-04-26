@@ -37,7 +37,23 @@ import { setFormSchemaOptions, setNotificationTemplateOptions, setGroupOptions, 
 import { getFormDefinitions, getNotificationTemplates, getGroups, getProcessDefinitions, getDelegates } from '@/lib/api/flowable'
 import { listDecisions } from '@/lib/api/dmn'
 
-const DEFAULT_EXPRESSION_VARIABLES = ['doaLevel', 'custodyGroup', 'totalAmount', 'status', 'departmentId', 'requesterId']
+// Standard Flowable process variables available in any workflow
+const STANDARD_EXPRESSION_VARIABLES = [
+  'initiator', 'approvalRequired', 'decision', 'processInstanceId',
+  'doaLevel', 'custodyGroup', 'totalAmount', 'status', 'departmentId', 'requesterId',
+]
+
+function extractFormFieldKeys(formJson: string): string[] {
+  try {
+    const schema = JSON.parse(formJson)
+    const components: any[] = schema.components ?? schema.fields ?? []
+    return components
+      .filter((c: any) => c.key && c.key !== 'submit')
+      .map((c: any) => c.key as string)
+  } catch {
+    return []
+  }
+}
 
 interface BpmnDesignerProps {
   initialXml?: string
@@ -124,6 +140,7 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
 
   const [doaLevels, setDoaLevels] = useState<DoaLevel[]>([])
   const [custodyMappings, setCustodyMappings] = useState<CustodyMappingResponse[]>([])
+  const [formFieldVariables, setFormFieldVariables] = useState<string[]>([])
 
   const [draftSuccess, setDraftSuccess] = useState(false)
   const [draftError, setDraftError] = useState<string | null>(null)
@@ -250,6 +267,12 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
         .then((forms) => {
           if (!cancelled) {
             setFormSchemaOptions(forms.map((f) => ({ key: f.key, name: f.name })))
+            // Collect all unique field keys across all forms for Expression Builder variables
+            const allFieldKeys = new Set<string>()
+            for (const f of forms) {
+              for (const k of extractFormFieldKeys(f.formJson || '')) allFieldKeys.add(k)
+            }
+            setFormFieldVariables(Array.from(allFieldKeys))
             refreshPropertiesPanel()
           }
         })
@@ -443,10 +466,16 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
       queryClient.invalidateQueries({ queryKey: ['processDefinitions'] })
       router.push('/processes')
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      // Extract the Flowable engine error message from the response body when available
+      const responseData = error?.response?.data
+      const engineMsg =
+        typeof responseData === 'string'
+          ? responseData
+          : responseData?.message ?? responseData?.error ?? null
       toast({
         title: 'Deploy Failed',
-        description: error.message,
+        description: engineMsg || error.message,
         variant: 'destructive',
       })
     }
@@ -646,7 +675,9 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
                     <ExpressionBuilder
                       value={readConditionExpression(selectedElement)}
                       onChange={(expr) => writeConditionExpression(selectedElement, modeler, expr)}
-                      availableVariables={DEFAULT_EXPRESSION_VARIABLES}
+                      availableVariables={[...STANDARD_EXPRESSION_VARIABLES, ...formFieldVariables].filter(
+                        (v, i, a) => a.indexOf(v) === i  // deduplicate
+                      )}
                       catalogValues={{
                         ...(doaLevels.length > 0 && {
                           doaLevel: doaLevels.map((d) => ({

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -67,7 +67,13 @@ export default function ExpressionBuilder({
   const [conditions, setConditions] = useState<ExpressionCondition[]>([])
   const [manualExpression, setManualExpression] = useState(value || '')
   const [copied, setCopied] = useState(false)
+  const [applied, setApplied] = useState(false)
   const [mode, setMode] = useState<'visual' | 'manual'>('visual')
+
+  // Sync manual input when the selected BPMN element changes (value prop changes)
+  useEffect(() => {
+    setManualExpression(value || '')
+  }, [value])
 
   const addCondition = () => {
     setConditions([
@@ -143,7 +149,14 @@ export default function ExpressionBuilder({
 
   const handleManualChange = (expr: string) => {
     setManualExpression(expr)
-    if (onChange) onChange(expr)
+  }
+
+  const applyManualExpression = () => {
+    if (onChange) {
+      onChange(manualExpression)
+      setApplied(true)
+      setTimeout(() => setApplied(false), 1500)
+    }
   }
 
   return (
@@ -302,17 +315,21 @@ export default function ExpressionBuilder({
             </Button>
           </>
         ) : (
-          <div>
+          <div className="space-y-2">
             <Label className="text-xs">{t('expression')}</Label>
             <Input
               value={manualExpression}
               onChange={(e) => handleManualChange(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && applyManualExpression()}
               placeholder={placeholder}
               className="font-mono text-xs"
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              Example: ${'{totalAmount > 100000 && departmentId == "HR"}'}
-            </p>
+            <div className="flex items-center gap-2">
+              <Button size="sm" className="text-xs h-7" onClick={applyManualExpression}>
+                {applied ? <><CheckCircle2 className="h-3 w-3 mr-1 text-green-400" />Applied</> : 'Apply'}
+              </Button>
+              <p className="text-xs text-muted-foreground">or press Enter</p>
+            </div>
           </div>
         )}
 
