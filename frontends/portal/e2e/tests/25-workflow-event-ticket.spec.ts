@@ -72,24 +72,51 @@ const EVENT_TICKET_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
 
     <exclusiveGateway id="ticketRouteGateway" name="Ticket Route?" />
 
+    <!-- Free path: auto-set decision=approved then notify -->
+    <scriptTask id="setDecisionApproved" name="Set Decision: Approved" scriptFormat="javascript">
+      <script>execution.setVariable('decision', 'approved')</script>
+    </scriptTask>
+
+    <serviceTask id="notifyFree" name="Send Ticket Confirmation"
+                 flowable:delegateExpression="\${emailActionDelegate}">
+      <extensionElements>
+        <flowable:field name="recipient"><flowable:expression>\${email}</flowable:expression></flowable:field>
+        <flowable:field name="templateKey"><flowable:string>event-ticket-request</flowable:string></flowable:field>
+        <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
     <endEvent id="endConfirmed" name="Ticket Confirmed" />
 
+    <!-- Paid/VIP path: organiser reviews, decision set by task completion form -->
     <userTask id="organiserReview" name="Organiser Review"
               flowable:candidateGroups="DOA_L1,DOA_L2,SUPER_ADMIN" />
 
+    <serviceTask id="notifyPaid" name="Send Ticket Decision"
+                 flowable:delegateExpression="\${emailActionDelegate}">
+      <extensionElements>
+        <flowable:field name="recipient"><flowable:expression>\${email}</flowable:expression></flowable:field>
+        <flowable:field name="templateKey"><flowable:string>event-ticket-request</flowable:string></flowable:field>
+        <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
     <endEvent id="endDecisionMade" name="Ticket Decision Made" />
 
-    <sequenceFlow id="flow1" sourceRef="startEvent"          targetRef="routeByTicketType" />
-    <sequenceFlow id="flow2" sourceRef="routeByTicketType"   targetRef="ticketRouteGateway" />
+    <sequenceFlow id="flow1"     sourceRef="startEvent"          targetRef="routeByTicketType" />
+    <sequenceFlow id="flow2"     sourceRef="routeByTicketType"   targetRef="ticketRouteGateway" />
 
-    <sequenceFlow id="flowFree" sourceRef="ticketRouteGateway" targetRef="endConfirmed">
+    <sequenceFlow id="flowFree"  sourceRef="ticketRouteGateway"  targetRef="setDecisionApproved">
       <conditionExpression xsi:type="tFormalExpression">\${approvalRequired == false}</conditionExpression>
     </sequenceFlow>
-    <sequenceFlow id="flowPaid" sourceRef="ticketRouteGateway" targetRef="organiserReview">
+    <sequenceFlow id="flowPaid"  sourceRef="ticketRouteGateway"  targetRef="organiserReview">
       <conditionExpression xsi:type="tFormalExpression">\${approvalRequired == true}</conditionExpression>
     </sequenceFlow>
 
-    <sequenceFlow id="flow6" sourceRef="organiserReview"  targetRef="endDecisionMade" />
+    <sequenceFlow id="flow3"     sourceRef="setDecisionApproved" targetRef="notifyFree" />
+    <sequenceFlow id="flow4"     sourceRef="notifyFree"          targetRef="endConfirmed" />
+    <sequenceFlow id="flow5"     sourceRef="organiserReview"     targetRef="notifyPaid" />
+    <sequenceFlow id="flow6"     sourceRef="notifyPaid"          targetRef="endDecisionMade" />
 
   </process>
 
@@ -104,14 +131,23 @@ const EVENT_TICKET_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
       <bpmndi:BPMNShape id="ticketRouteGateway_di" bpmnElement="ticketRouteGateway" isMarkerVisible="true">
         <omgdc:Bounds x="395" y="275" width="50" height="50" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="setDecisionApproved_di" bpmnElement="setDecisionApproved">
+        <omgdc:Bounds x="490" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="notifyFree_di" bpmnElement="notifyFree">
+        <omgdc:Bounds x="640" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="endConfirmed_di" bpmnElement="endConfirmed">
-        <omgdc:Bounds x="497" y="192" width="36" height="36" />
+        <omgdc:Bounds x="792" y="182" width="36" height="36" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="organiserReview_di" bpmnElement="organiserReview">
         <omgdc:Bounds x="490" y="260" width="100" height="80" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="notifyPaid_di" bpmnElement="notifyPaid">
+        <omgdc:Bounds x="640" y="260" width="100" height="80" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="endDecisionMade_di" bpmnElement="endDecisionMade">
-        <omgdc:Bounds x="645" y="282" width="36" height="36" />
+        <omgdc:Bounds x="792" y="282" width="36" height="36" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="flow1_di" bpmnElement="flow1">
         <omgdi:waypoint x="188" y="300" /><omgdi:waypoint x="240" y="300" />
@@ -120,13 +156,22 @@ const EVENT_TICKET_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
         <omgdi:waypoint x="340" y="300" /><omgdi:waypoint x="395" y="300" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flowFree_di" bpmnElement="flowFree">
-        <omgdi:waypoint x="420" y="275" /><omgdi:waypoint x="420" y="210" /><omgdi:waypoint x="497" y="210" />
+        <omgdi:waypoint x="420" y="275" /><omgdi:waypoint x="420" y="200" /><omgdi:waypoint x="490" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flowPaid_di" bpmnElement="flowPaid">
         <omgdi:waypoint x="445" y="300" /><omgdi:waypoint x="490" y="300" />
       </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow3_di" bpmnElement="flow3">
+        <omgdi:waypoint x="590" y="200" /><omgdi:waypoint x="640" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow4_di" bpmnElement="flow4">
+        <omgdi:waypoint x="740" y="200" /><omgdi:waypoint x="792" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow5_di" bpmnElement="flow5">
+        <omgdi:waypoint x="590" y="300" /><omgdi:waypoint x="640" y="300" />
+      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow6_di" bpmnElement="flow6">
-        <omgdi:waypoint x="590" y="300" /><omgdi:waypoint x="645" y="300" />
+        <omgdi:waypoint x="740" y="300" /><omgdi:waypoint x="792" y="300" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
