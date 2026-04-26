@@ -133,7 +133,7 @@ export default function EditEmailTemplatePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
         {/* Unlayer editor */}
-        <div className="rounded-lg border bg-card shadow-sm overflow-hidden" style={{ height: '640px' }}>
+        <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
           <EmailTemplateEditor
             initialDesign={template.designJson}
             formFields={formFields}

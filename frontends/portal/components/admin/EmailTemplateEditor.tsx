@@ -65,9 +65,10 @@ export default function EmailTemplateEditor({ initialDesign, formFields = [], on
   }))
 
   return (
-    <div className="w-full h-full">
+    <div style={{ width: '100%', height: '640px' }}>
       <EmailEditor
         onReady={handleReady}
+        minHeight={640}
         options={{
           mergeTags: [...STANDARD_MERGE_TAGS, ...formMergeTags],
           displayMode: 'email',
@@ -76,7 +77,7 @@ export default function EmailTemplateEditor({ initialDesign, formFields = [], on
             textEditor: { tables: true },
           },
         } as any}
-        style={{ height: '100%', minHeight: '640px' }}
+        style={{ width: '100%', height: '640px' }}
       />
     </div>
   )
