@@ -174,7 +174,7 @@ MONITORING       (ADMIN, SUPER_ADMIN — M6)
 - [ ] **Email Templates** — move to Design Studio section; existing list + editor UI unchanged
 - [ ] **Dashboard** — overview cards, recent activity, quick actions, Tenant Setup checklist widget
 - [ ] **Connectors** — aligned to new table pattern
-- [ ] **Tenant Setup sub-pages** — Approval Authority, Role Mappings, Departments, Custody Groups, Form Components (all new — M3 Group 3a)
+- [ ] **Tenant Setup sub-pages** — Approval Authority, Role Mappings, Departments, Custody Groups (all new — M3 Group 3a)
 
 #### Editor CSS Theming
 
