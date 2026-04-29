@@ -34,14 +34,52 @@ import {
 import FlowablePropertiesProviderModule from '@/lib/bpmn/flowable-properties-module'
 import flowableModdleDescriptor from '@/lib/bpmn/flowable-moddle.json'
 import { setFormSchemaOptions, setNotificationTemplateOptions, setGroupOptions, setProcessDefinitionOptions, setDmnDecisionOptions, setDelegateOptions, setCurrentUserRoles } from '@/lib/bpmn/flowable-properties-provider'
-import { getFormDefinitions, getNotificationTemplates, getGroups, getProcessDefinitions, getDelegates } from '@/lib/api/flowable'
-import { listDecisions } from '@/lib/api/dmn'
+import { getFormDefinitions, getFormDefinition, getNotificationTemplates, getGroups, getProcessDefinitions, getDelegates } from '@/lib/api/flowable'
+import { listDecisions, getDecisionXml } from '@/lib/api/dmn'
 
-// Standard Flowable process variables available in any workflow
+// Variables set by Flowable engine infrastructure — present in every process instance
 const STANDARD_EXPRESSION_VARIABLES = [
-  'initiator', 'approvalRequired', 'decision', 'processInstanceId',
-  'doaLevel', 'custodyGroup', 'totalAmount', 'status', 'departmentId', 'requesterId',
+  'initiator',        // user who started the process
+  'processInstanceId',
+  'decision',         // set by ApprovalTaskCompletionListener or script task
+  'approvalRequired', // common DMN output
+  'approvedBy',
+  'approvedAt',
+  'approvalComments',
+  'rejectionReason',
 ]
+
+/** Walk the bpmn-js element registry to find all form keys and DMN decision keys
+ *  referenced in the current diagram. Only these are relevant for expression variables. */
+function extractReferencedKeys(modeler: any): { formKeys: string[]; dmnKeys: string[] } {
+  const elementRegistry = modeler.get('elementRegistry')
+  const formKeys = new Set<string>()
+  const dmnKeys = new Set<string>()
+
+  elementRegistry.getAll().forEach((element: any) => {
+    const bo = element.businessObject
+    if (!bo) return
+
+    // Form key on start events and user tasks
+    if (bo.$type === 'bpmn:StartEvent' || bo.$type === 'bpmn:UserTask') {
+      const fk = bo.get('flowable:formKey')
+      if (fk) formKeys.add(fk)
+    }
+
+    // DMN decisionRef in service task flowable:field extensions
+    if (bo.$type === 'bpmn:ServiceTask') {
+      const fields: any[] = bo.extensionElements?.values
+        ?.filter((v: any) => v.$type === 'flowable:Field') ?? []
+      const actionType = fields.find((f: any) => f.name === 'actionType')?.stringValue
+      if (actionType === 'DMN_ROUTE') {
+        const ref = fields.find((f: any) => f.name === 'decisionRef')?.stringValue
+        if (ref) dmnKeys.add(ref)
+      }
+    }
+  })
+
+  return { formKeys: Array.from(formKeys), dmnKeys: Array.from(dmnKeys) }
+}
 
 function extractFormFieldKeys(formJson: string): string[] {
   try {
@@ -50,6 +88,27 @@ function extractFormFieldKeys(formJson: string): string[] {
     return components
       .filter((c: any) => c.key && c.key !== 'submit')
       .map((c: any) => c.key as string)
+  } catch {
+    return []
+  }
+}
+
+/** Parse a DMN XML string and return input expression names + output column names. */
+function extractDmnVariables(dmnXml: string): string[] {
+  try {
+    const doc = new DOMParser().parseFromString(dmnXml, 'application/xml')
+    const vars: string[] = []
+    // Input columns: <inputExpression> text content = the variable name
+    doc.querySelectorAll('inputExpression').forEach((el) => {
+      const v = el.textContent?.trim()
+      if (v) vars.push(v)
+    })
+    // Output columns: <output name="..."> attribute
+    doc.querySelectorAll('output').forEach((el) => {
+      const v = el.getAttribute('name')
+      if (v) vars.push(v)
+    })
+    return vars
   } catch {
     return []
   }
@@ -221,9 +280,39 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
 
     // Listen for diagram changes
     const eventBus = bpmnModeler.get('eventBus')
-    const handleChange = () => setHasChanges(true)
+
+    // Fetch expression variables scoped to this process (form keys + DMN columns referenced in diagram)
+    let variableRefreshTimer: ReturnType<typeof setTimeout> | null = null
+    const doRefreshProcessVariables = (mod: any) => {
+      if (!mod) return
+      const { formKeys, dmnKeys } = extractReferencedKeys(mod)
+      const allVars = new Set<string>()
+      const formPromises = formKeys.map((key) =>
+        getFormDefinition(key)
+          .then((f) => { for (const k of extractFormFieldKeys(f.formJson || '')) allVars.add(k) })
+          .catch(() => {})
+      )
+      const dmnPromises = dmnKeys.map((key) =>
+        getDecisionXml(key)
+          .then((xml) => { for (const v of extractDmnVariables(xml)) allVars.add(v) })
+          .catch(() => {})
+      )
+      Promise.all([...formPromises, ...dmnPromises]).then(() => {
+        if (!cancelled) setFormFieldVariables(Array.from(allVars))
+      })
+    }
+
+    // Debounced re-derive when diagram changes (form key assigned, DMN key set, etc.)
+    const handleChange = () => {
+      setHasChanges(true)
+      if (variableRefreshTimer) clearTimeout(variableRefreshTimer)
+      variableRefreshTimer = setTimeout(() => doRefreshProcessVariables(bpmnModeler), 800)
+    }
 
     eventBus.on('commandStack.changed', handleChange)
+
+    // Initial variable load once modeler is ready
+    doRefreshProcessVariables(bpmnModeler)
 
     const handleSelectionChange = (event: any) => {
       const elements: any[] = event.newSelection
@@ -240,6 +329,7 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
 
     return () => {
       cancelled = true
+      if (variableRefreshTimer) clearTimeout(variableRefreshTimer)
       eventBus.off('commandStack.changed', handleChange)
       eventBus.off('selection.changed', handleSelectionChange)
       setSelectedElement(null)
@@ -263,16 +353,11 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
     }
 
     const fetchForms = (attempt = 0) => {
+      // Fetch all forms for the form-picker dropdown (assign form to task)
       getFormDefinitions()
         .then((forms) => {
           if (!cancelled) {
             setFormSchemaOptions(forms.map((f) => ({ key: f.key, name: f.name })))
-            // Collect all unique field keys across all forms for Expression Builder variables
-            const allFieldKeys = new Set<string>()
-            for (const f of forms) {
-              for (const k of extractFormFieldKeys(f.formJson || '')) allFieldKeys.add(k)
-            }
-            setFormFieldVariables(Array.from(allFieldKeys))
             refreshPropertiesPanel()
           }
         })
@@ -285,7 +370,7 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
         })
     }
 
-    const fetchTemplates = (attempt = 0) => {
+        const fetchTemplates = (attempt = 0) => {
       getNotificationTemplates()
         .then((templates) => {
           if (!cancelled) {
@@ -727,6 +812,7 @@ function readConditionExpression(element: { type: string; businessObject: Record
 }
 
 function writeConditionExpression(element: { type: string; businessObject: Record<string, any> } | null, modeler: any, expression: string): void {
+  if (!element || !modeler) return
   const moddle = modeler.get('moddle')
   const modeling = modeler.get('modeling')
   if (!expression) {

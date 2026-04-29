@@ -65,15 +65,16 @@ export default function FormJsEditor({
     // Listen to schema changes — deserialize string property values back to
     // objects/arrays before propagating the schema to the parent.
     editor.on('changed', () => {
-      editor.saveSchema().then((updatedSchema: any) => {
+      try {
+        const updatedSchema = editor.saveSchema();
         const deserializedSchema = deserializeSchemaProperties(updatedSchema);
 
         if (onSchemaChange) {
           onSchemaChange(deserializedSchema);
         }
-      }).catch((err: any) => {
+      } catch (err) {
         console.error('Failed to save schema:', err);
-      });
+      }
     });
 
     // Cleanup
@@ -103,7 +104,7 @@ export default function FormJsEditor({
     setSaveMessage('');
 
     try {
-      const schemaToSave = deserializeSchemaProperties(await editorRef.current.saveSchema());
+      const schemaToSave = deserializeSchemaProperties(editorRef.current.saveSchema());
       await onSave(schemaToSave);
       setSaveMessage('Form saved successfully!');
 
