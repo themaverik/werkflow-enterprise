@@ -1,9 +1,4 @@
-/**
- * Simple Toast Hook
- *
- * Provides user-friendly toast notifications for Service Registry operations.
- * Can be replaced with more sophisticated toast library later (e.g., sonner, react-hot-toast)
- */
+import { toast as sonnerToast } from 'sonner'
 
 type ToastType = 'default' | 'destructive' | 'success'
 
@@ -15,30 +10,19 @@ interface ToastOptions {
 }
 
 export function useToast() {
-  const toast = ({ title, description, variant, duration = 3000 }: ToastOptions) => {
-    // For now, use console logging (can be replaced with proper toast UI later)
+  const toast = ({ title, description, variant, duration = 4000 }: ToastOptions) => {
     const message = description ? `${title}: ${description}` : title
 
     if (variant === 'destructive') {
-      console.error('[Toast Error]', message)
+      sonnerToast.error(title, { description, duration })
     } else if (variant === 'success') {
-      console.log('[Toast Success]', message)
+      sonnerToast.success(title, { description, duration })
     } else {
-      console.log('[Toast]', message)
-    }
-
-    // In browser environment, show native alert for important messages
-    if (typeof window !== 'undefined' && variant === 'destructive') {
-      // Only show alert for errors in development
-      if (process.env.NODE_ENV === 'development') {
-        // Silent for now - proper toast UI can be added later
-      }
+      sonnerToast(title, { description, duration })
     }
   }
 
-  return {
-    toast
-  }
+  return { toast }
 }
 
 export { useToast as default }

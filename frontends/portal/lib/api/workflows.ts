@@ -44,7 +44,9 @@ export interface CompleteTaskRequest {
 export async function startProcess(data: StartProcessRequest): Promise<ProcessInstanceResponse> {
   try {
     const response = await apiClient.post('/api/process-instances', data)
-    return response.data
+    // Engine returns { id, ... } — normalize to { processInstanceId, ... }
+    const raw = response.data
+    return { ...raw, processInstanceId: raw.id ?? raw.processInstanceId }
   } catch (error: any) {
     const message = error?.response?.data?.message || error?.message || 'Failed to start process'
     throw new Error(message)

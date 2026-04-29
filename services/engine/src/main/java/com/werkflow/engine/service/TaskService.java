@@ -2,6 +2,7 @@ package com.werkflow.engine.service;
 
 import com.werkflow.engine.dto.CompleteTaskRequest;
 import com.werkflow.engine.dto.TaskResponse;
+import com.werkflow.engine.exception.TaskNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.RepositoryService;
@@ -145,7 +146,7 @@ public class TaskService {
             .singleResult();
 
         if (task == null) {
-            throw new RuntimeException("Task not found with ID: " + taskId);
+            throw new TaskNotFoundException(taskId);
         }
 
         return mapToResponse(task);
