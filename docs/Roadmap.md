@@ -88,10 +88,11 @@
 #### Group 3a — Tenant Setup UI (ADR-006)
 
 - [ ] `Tenant Setup` sidebar section (ADMIN/SUPER_ADMIN guard)
-- [ ] `/admin/tenant/approval-authority` — two-layer configVars UI (level definitions + role→level mapping)
-- [ ] `/admin/tenant/role-mappings` — Tier 1 read-only + Tier 2 editable rows
-- [ ] `/admin/custody` → `/admin/tenant/custody-groups` redirect
-- [ ] `/admin/departments` → `/admin/tenant/departments` redirect
+- [ ] `/admin/tenant/approval-authority` — two-layer configVars UI: L1–L4 threshold amounts + role→level mapping (ADR-002)
+- [ ] `/admin/tenant/role-mappings` — Tier 1 read-only + Tier 2 editable rows (ADR-003)
+- [ ] `/admin/tenant/departments` — reads from ERP; redirect from `/admin/departments` (ADR-005)
+- [ ] `/admin/tenant/custody-groups` — reads from ERP; redirect from `/admin/custody` (ADR-004)
+- [ ] `/admin/tenant/form-components` — allowed field type allowlist + CSS theme variables (ADR-007)
 - [ ] Tenant Setup checklist widget on `/admin/dashboard`
 
 #### Group 3b — Custody Move to ERP (ADR-004)
@@ -131,20 +132,53 @@
 
 #### Navigation Overhaul
 
-- [ ] Dark sidebar: sections General / Design Studio / Admin with icon + label items
+Full sidebar structure (role-gated):
+
+```
+GENERAL          (all roles)
+  Dashboard
+  My Tasks
+  My Requests
+  Service Catalog          ← new
+
+DESIGN STUDIO    (WORKFLOW_ADMIN, ADMIN, SUPER_ADMIN)
+  Processes
+  Forms
+  Decisions
+  Email Templates          ← move from Admin; already built (S28.9)
+
+ADMIN            (ADMIN, SUPER_ADMIN)
+  Connectors               ← existing
+
+TENANT SETUP     (ADMIN, SUPER_ADMIN)
+  Approval Authority       ← ADR-002
+  Role Mappings            ← ADR-003
+  Departments              ← ADR-005
+  Custody Groups           ← ADR-004
+  Form Components          ← ADR-007
+
+MONITORING       (ADMIN, SUPER_ADMIN — M6)
+  Analytics Dashboard
+  Process Health
+```
+
+- [ ] Dark sidebar: five sections with icon + label nav items; role-gated visibility per section
+- [ ] Move Email Templates nav item from Admin → Design Studio section
 - [ ] User profile card at sidebar bottom (avatar, name, role)
 - [ ] Notification bell + user avatar in top-right header
 
 #### Screen Overhaul
 
-- [ ] **Service Catalog** (new) — card grid of available processes; category filter pills; step tags; Submit Request CTA
+- [ ] **Service Catalog** (new) — card grid of available processes; category filter pills; step tags; working days estimate; Submit Request CTA
 - [ ] **My Tasks** — stat cards row; All/Mine/Overdue/Unassigned tabs; task table with assignee avatar, priority badge, status badge, due date, View/Claim actions
 - [ ] **My Requests** — request list with status tracking
 - [ ] **Forms** — stat cards; tabs; search; category pills; table with Form/Process/Fields/Submissions/Status/Updated; inline actions
 - [ ] **Processes** — stat cards; Deployed/Drafts tabs; card grid; active instances + versions; Start Workflow + action icons
 - [ ] **Decisions** — aligned to Forms list pattern
-- [ ] **Dashboard** — overview cards, recent activity, quick actions
-- [ ] **Admin screens** — Authority Levels, Departments, Connectors, Custody Mappings aligned to new patterns
+- [ ] **Email Templates** — move to Design Studio section; existing list + editor UI unchanged
+- [ ] **Dashboard** — overview cards, recent activity, quick actions, Tenant Setup checklist widget
+- [ ] **Connectors** — aligned to new table pattern
+- [ ] **Tenant Setup sub-pages** — Approval Authority, Role Mappings, Departments, Custody Groups, Form Components (all new — M3 Group 3a)
 
 #### Editor CSS Theming
 
@@ -175,10 +209,11 @@
 **Estimate**: 12–14 hours
 
 - [ ] Backend: process execution stats, task metrics, user/group workload (all < 1s for 100k+ instances)
-- [ ] Frontend: overview stat cards, line chart (executions over time), bar chart (by status), task bottleneck table, SLA dashboard, CSV/PDF export
-- [ ] Activate analytics + monitoring sidebar links
-- [ ] Health check endpoints on all services
-- [ ] Dead-letter job UI (view, retry)
+- [ ] Frontend Analytics Dashboard (`/admin/analytics`): overview stat cards, line chart (executions over time), bar chart (by status), task bottleneck table, SLA dashboard, CSV/PDF export
+- [ ] Frontend Process Health (`/admin/monitoring`): dead-letter job UI (view, retry), active instance count, SLA at-risk list
+- [ ] Add Monitoring sidebar section (ADMIN/SUPER_ADMIN): Analytics Dashboard + Process Health links
+- [ ] Activate existing analytics sidebar link (commented since S23)
+- [ ] Health check endpoints on all services (`/actuator/health`)
 - [ ] Troubleshooting runbook
 
 ---
