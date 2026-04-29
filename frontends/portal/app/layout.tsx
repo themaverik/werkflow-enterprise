@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Roboto } from "next/font/google"
 import { NextIntlClientProvider } from "next-intl"
 import { getMessages } from "next-intl/server"
+import { Toaster } from "sonner"
 import "./globals.css"
 import { Providers } from "./providers"
 
@@ -24,6 +25,7 @@ export default async function RootLayout({
       <body className={roboto.className}>
         <NextIntlClientProvider messages={messages}>
           <Providers>{children}</Providers>
+          <Toaster richColors position="top-right" />
         </NextIntlClientProvider>
       </body>
     </html>

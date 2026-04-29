@@ -56,6 +56,41 @@ const OPERATORS = [
  * - Real-time expression preview
  * - Copy to clipboard
  */
+// Parse a simple Flowable EL expression back into ExpressionCondition[].
+// Supports: ${var op val}, ${var.method('val')}, multi-condition with && / ||
+function parseSingleCondition(expr: string, logicalOp?: 'AND' | 'OR'): ExpressionCondition | null {
+  const s = expr.trim()
+  // method call: var.contains('val'), var.startsWith('val'), var.endsWith('val')
+  const methodMatch = s.match(/^(\w+)\.(contains|startsWith|endsWith)\('([^']*)'\)$/)
+  if (methodMatch) {
+    return { variable: methodMatch[1], operator: methodMatch[2], value: methodMatch[3], logicalOperator: logicalOp }
+  }
+  // comparison: var op 'str', var op number, var op bare-word
+  const compMatch = s.match(/^(\w+)\s*(==|!=|>=|<=|>|<)\s*(?:'([^']*)'|([\d.]+(?:\.\d+)?)|(\w+))$/)
+  if (compMatch) {
+    const val = compMatch[3] ?? compMatch[4] ?? compMatch[5] ?? ''
+    return { variable: compMatch[1], operator: compMatch[2], value: val, logicalOperator: logicalOp }
+  }
+  return null
+}
+
+function parseExpression(expr: string): ExpressionCondition[] {
+  if (!expr) return []
+  const inner = expr.trim().replace(/^\$\{/, '').replace(/\}$/, '').trim()
+  if (!inner) return []
+  // split on && / || while keeping the operator tokens
+  const parts = inner.split(/\s*(&&|\|\|)\s*/)
+  const result: ExpressionCondition[] = []
+  for (let i = 0; i < parts.length; i += 2) {
+    const condStr = parts[i]?.trim()
+    if (!condStr) continue
+    const logicalOp = i === 0 ? undefined : (parts[i - 1] === '&&' ? 'AND' : 'OR') as 'AND' | 'OR'
+    const cond = parseSingleCondition(condStr, logicalOp)
+    if (cond) result.push(cond)
+  }
+  return result
+}
+
 export default function ExpressionBuilder({
   value,
   onChange,
@@ -64,15 +99,16 @@ export default function ExpressionBuilder({
   placeholder = 'Build your expression'
 }: ExpressionBuilderProps) {
   const t = useTranslations('bpmn')
-  const [conditions, setConditions] = useState<ExpressionCondition[]>([])
+  const [conditions, setConditions] = useState<ExpressionCondition[]>(() => parseExpression(value || ''))
   const [manualExpression, setManualExpression] = useState(value || '')
   const [copied, setCopied] = useState(false)
   const [applied, setApplied] = useState(false)
   const [mode, setMode] = useState<'visual' | 'manual'>('visual')
 
-  // Sync manual input when the selected BPMN element changes (value prop changes)
+  // Sync both states when the selected BPMN element changes (value prop changes)
   useEffect(() => {
     setManualExpression(value || '')
+    setConditions(parseExpression(value || ''))
   }, [value])
 
   const addCondition = () => {
@@ -171,7 +207,13 @@ export default function ExpressionBuilder({
             <Button
               variant={mode === 'visual' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setMode('visual')}
+              onClick={() => {
+                if (mode === 'manual') {
+                  // Parse manual expression → conditions before switching
+                  setConditions(parseExpression(manualExpression))
+                }
+                setMode('visual')
+              }}
               className="text-xs"
             >
               {t('visual')}
@@ -179,7 +221,14 @@ export default function ExpressionBuilder({
             <Button
               variant={mode === 'manual' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setMode('manual')}
+              onClick={() => {
+                if (mode === 'visual') {
+                  // Sync built expression → manual input before switching
+                  const expr = buildExpression(conditions)
+                  if (expr) setManualExpression(expr)
+                }
+                setMode('manual')
+              }}
               className="text-xs"
             >
               {t('manual')}
@@ -362,13 +411,7 @@ export default function ExpressionBuilder({
           <Label className="text-xs font-semibold">{t('commonExamples')}</Label>
           <div className="space-y-1 mt-2">
             <code className="block text-xs bg-muted px-2 py-1 rounded">
-              ${'{totalAmount > 100000}'}
-            </code>
-            <code className="block text-xs bg-muted px-2 py-1 rounded">
-              ${'{status == "APPROVED"}'}
-            </code>
-            <code className="block text-xs bg-muted px-2 py-1 rounded">
-              ${'{totalAmount > 50000 && departmentId == "HR"}'}
+              ${"{status == 'APPROVED'}"}
             </code>
           </div>
         </div>

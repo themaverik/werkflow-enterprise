@@ -106,6 +106,7 @@ export default function TaskDetailPage() {
         taskId,
         data: {
           variables: {
+            decision: 'approve',
             approved: true,
             approvalComment: comment,
             approvedBy: user?.username,
@@ -135,6 +136,7 @@ export default function TaskDetailPage() {
         taskId,
         data: {
           variables: {
+            decision: 'reject',
             approved: false,
             rejectionReason: comment,
             rejectedBy: user?.username,
@@ -164,6 +166,7 @@ export default function TaskDetailPage() {
         taskId,
         data: {
           variables: {
+            decision: 'escalate',
             escalated: true,
             escalationReason: reason,
             escalatedBy: user?.username,
