@@ -92,7 +92,6 @@
 - [ ] `/admin/tenant/role-mappings` — Tier 1 read-only + Tier 2 editable rows (ADR-003)
 - [ ] `/admin/tenant/departments` — reads from ERP; redirect from `/admin/departments` (ADR-005)
 - [ ] `/admin/tenant/custody-groups` — reads from ERP; redirect from `/admin/custody` (ADR-004)
-- [ ] `/admin/tenant/form-components` — allowed field type allowlist + CSS theme variables (ADR-007)
 - [ ] Tenant Setup checklist widget on `/admin/dashboard`
 
 #### Group 3b — Custody Move to ERP (ADR-004)
@@ -113,8 +112,7 @@
 - [ ] `FormJsEditor.tsx` — fetch tenant component allowlist; pass `createPaletteFilterModule(allowedTypes)` to `FormEditor`
 - [ ] `FormJsEditor.tsx` — fetch `CSS_THEME` config vars; apply as inline style on `.fjs-container`
 - [ ] `lib/forms/createPaletteFilterModule.ts` — deregisters non-allowed types on `form.init`
-- [ ] Admin: `GET /api/v1/config/form-components` with default allowlist fallback
-- [ ] Admin: `CSS_THEME` as valid `ConfigurationVariable` type with CSS variable value validation
+- [ ] `GET /api/v1/config/form-components` — hardcoded default allowlist; no admin UI (deferred post-demo)
 
 ---
 
@@ -155,8 +153,6 @@ TENANT SETUP     (ADMIN, SUPER_ADMIN)
   Role Mappings            ← ADR-003
   Departments              ← ADR-005
   Custody Groups           ← ADR-004
-  Form Components          ← ADR-007
-
 MONITORING       (ADMIN, SUPER_ADMIN — M6)
   Analytics Dashboard
   Process Health
