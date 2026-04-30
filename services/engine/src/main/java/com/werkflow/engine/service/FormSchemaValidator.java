@@ -1,6 +1,7 @@
 package com.werkflow.engine.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.werkflow.engine.exception.FormFieldTypeNotImplementedException;
 import com.werkflow.engine.exception.FormValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -9,17 +10,39 @@ import java.util.*;
 
 /**
  * Service for validating form-js schemas and form data submissions.
- * Validates the structure of form schemas and submitted data against schemas.
+ *
+ * Field type categories (ADR-007):
+ *   A — VARIABLE_TYPES: produce process variables on submit
+ *   B — DISPLAY_TYPES: display-only; excluded from variablesToSave
+ *   C — SERVICE_TYPES: service-integration fields; not yet supported on submit (501)
+ *   D — anything outside A+B+C: invalid (400)
  */
 @Service
 @Slf4j
 public class FormSchemaValidator {
 
-    private static final Set<String> VALID_FIELD_TYPES = Set.of(
+    static final Set<String> VARIABLE_TYPES = Set.of(
             "textfield", "number", "textarea", "checkbox", "radio", "select",
-            "date", "time", "datetime", "email", "button", "html", "text",
-            "group", "columns", "checklist", "taglist", "image", "spacer"
+            "date", "time", "datetime", "email", "checklist", "taglist",
+            "group", "columns"
     );
+
+    static final Set<String> DISPLAY_TYPES = Set.of(
+            "html", "text", "button", "image", "spacer"
+    );
+
+    static final Set<String> SERVICE_TYPES = Set.of(
+            "dynamiclist"
+    );
+
+    private static final Set<String> VALID_FIELD_TYPES;
+    static {
+        Set<String> all = new HashSet<>();
+        all.addAll(VARIABLE_TYPES);
+        all.addAll(DISPLAY_TYPES);
+        all.addAll(SERVICE_TYPES);
+        VALID_FIELD_TYPES = Collections.unmodifiableSet(all);
+    }
 
     /**
      * Validate a form-js schema structure
@@ -97,10 +120,26 @@ public class FormSchemaValidator {
     }
 
     /**
+     * Returns the set of form data keys whose schema type is display-only (Category B).
+     * Used by TaskFormService to filter keys before storing process variables.
+     */
+    public Set<String> extractDisplayOnlyKeys(JsonNode schema) {
+        Map<String, JsonNode> defs = extractFieldDefinitions(schema);
+        Set<String> result = new HashSet<>();
+        for (Map.Entry<String, JsonNode> e : defs.entrySet()) {
+            String type = e.getValue().has("type") ? e.getValue().get("type").asText() : "";
+            if (DISPLAY_TYPES.contains(type)) {
+                result.add(e.getKey());
+            }
+        }
+        return result;
+    }
+
+    /**
      * Check if component type requires a key
      */
     private boolean requiresKey(String type) {
-        return !Set.of("html", "text", "button", "spacer", "image").contains(type);
+        return !DISPLAY_TYPES.contains(type);
     }
 
     /**
@@ -131,6 +170,19 @@ public class FormSchemaValidator {
         for (Map.Entry<String, JsonNode> entry : fieldDefinitions.entrySet()) {
             String fieldKey = entry.getKey();
             JsonNode fieldDef = entry.getValue();
+            String type = fieldDef.has("type") ? fieldDef.get("type").asText() : "";
+
+            // Skip display-only (B) and service-type (C) fields — no data expected for B;
+            // C types that carry submitted data are rejected with 501 below.
+            if (DISPLAY_TYPES.contains(type)) {
+                continue;
+            }
+            if (SERVICE_TYPES.contains(type)) {
+                if (formData.containsKey(fieldKey)) {
+                    throw new FormFieldTypeNotImplementedException(type);
+                }
+                continue;
+            }
 
             // Check required fields
             if (isRequired(fieldDef)) {
