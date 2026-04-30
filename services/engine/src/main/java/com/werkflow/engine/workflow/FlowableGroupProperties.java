@@ -10,20 +10,9 @@ import java.util.Map;
 /**
  * Typed binding for app.flowable configuration.
  *
- * Example YAML:
- * <pre>
- * app:
- *   flowable:
- *     role-mappings:
- *       admin:               [ADMIN, SUPER_ADMIN]
- *       super_admin:         [SUPER_ADMIN]
- *       doa_approver_level1: [DOA_L1]
- *       doa_approver_level2: [DOA_L1, DOA_L2]
- *       doa_approver_level3: [DOA_L1, DOA_L2, DOA_L3]
- *       doa_approver_level4: [DOA_L1, DOA_L2, DOA_L3, DOA_L4]
- *       workflow_designer:   [WORKFLOW_DESIGNER]
- *     include-department-as-group: true
- * </pre>
+ * Typed binding for app.flowable static role mappings (YAML fallback).
+ * DOA role mappings are DB-backed per tenant (ADR-003); this YAML covers
+ * system-level roles only (admin, super_admin, workflow_designer).
  *
  * Fails fast at startup if YAML is malformed or role-mappings is empty.
  */
