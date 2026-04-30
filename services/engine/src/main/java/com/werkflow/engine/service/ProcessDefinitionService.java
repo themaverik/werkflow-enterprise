@@ -45,20 +45,36 @@ public class ProcessDefinitionService {
     private final FormSchemaService formSchemaService;
 
     /**
-     * Deploy a new process definition from BPMN XML string
+     * Deploy a new process definition from BPMN XML string.
      */
     @Transactional
     public ProcessDefinitionResponse deployProcessDefinition(String bpmnXml, String resourceName) {
+        return deployProcessDefinition(bpmnXml, resourceName, null);
+    }
+
+    /**
+     * Deploy a process definition, optionally linking it to a parent deployment for bundle grouping (ADR-009).
+     * When {@code parentDeploymentId} is set, Flowable resolves resources from the parent deployment
+     * first, enabling incremental updates within a bundle without redundant re-deployment of unchanged files.
+     */
+    @Transactional
+    public ProcessDefinitionResponse deployProcessDefinition(String bpmnXml, String resourceName,
+                                                             String parentDeploymentId) {
         validateBpmnExpressions(bpmnXml);
-        log.info("Deploying process definition: {}", resourceName);
+        log.info("Deploying process definition: {} (parentDeploymentId={})", resourceName, parentDeploymentId);
 
         try (InputStream inputStream = new java.io.ByteArrayInputStream(
                 bpmnXml.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
 
-            Deployment deployment = repositoryService.createDeployment()
+            var builder = repositoryService.createDeployment()
                 .name(resourceName)
-                .addInputStream(resourceName, inputStream)
-                .deploy();
+                .addInputStream(resourceName, inputStream);
+
+            if (parentDeploymentId != null && !parentDeploymentId.isBlank()) {
+                builder = builder.parentDeploymentId(parentDeploymentId);
+            }
+
+            Deployment deployment = builder.deploy();
 
             log.info("Process definition deployed. Deployment ID: {}", deployment.getId());
 
