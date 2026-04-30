@@ -15,8 +15,8 @@
 |------|--------|
 | E2E quality gate | 7/7 specs passing |
 | ADRs | ADR-001 through ADR-009 written |
-| Active milestone | M3 — ADR Core Implementation (M1 + M2 both complete) |
-| Branch | feature/m2-adr-foundation (ready to PR/merge) |
+| Active milestone | M3 — Groups 2a/2b/2c complete; Groups 3a–3d next |
+| Branch | feature/m3-adr-core (in progress) |
 
 ---
 
@@ -57,31 +57,38 @@
 **Deps**: M1 (ERP APIs) + M2 complete — both done, M3 ready to start
 **Estimate**: 24–30 hours
 
-### Group 2a — FlowableGroupResolver Simplification (ADR-003)
+### Group 2a — FlowableGroupResolver Simplification (ADR-003) ✅ COMPLETE
 
-- [ ] Remove `doa_approver_level1/2/3/4` from `FlowableGroupProperties` YAML
-- [ ] Remove `doaLevel` cumulative loop and compound group emission from `FlowableGroupResolver`
-- [ ] Remove `adminServiceClient.getTenantDepartmentCodes()` and `getTenantCrossDeptThreshold()` calls
-- [ ] Add `RoleGroupMapping` table to admin-service + Flyway migration
-- [ ] Add `RoleGroupMappingService` with 5-min cache per tenant
-- [ ] Add `GET/POST/DELETE /api/v1/config/role-mappings` endpoints
-- [ ] Add `UserGroupLookupProxy` SPI wrapper
+**Committed**: 2026-04-30 — commit 9dae8d8
 
-### Group 2b — configVars Admin API (ADR-002)
+- [x] Remove `doa_approver_level1/2/3/4` from `FlowableGroupProperties` YAML
+- [x] Remove `doaLevel` cumulative loop and compound group emission from `FlowableGroupResolver`
+- [x] Remove `adminServiceClient.getTenantDepartmentCodes()` and `getTenantCrossDeptThreshold()` calls
+- [x] Add `RoleGroupMapping` table to admin-service + Flyway migration (V3)
+- [x] Add `RoleGroupMappingService` with 5-min cache per tenant (via AdminServiceClient Caffeine)
+- [x] Add `GET/POST/DELETE /api/v1/config/role-mappings` endpoints
+- [x] Add `UserGroupLookupProxy` SPI interface
 
-- [ ] `GET/POST/PUT/DELETE /api/v1/config/vars` for tenant `ConfigurationVariable` entries
-- [ ] Two-layer data: Level definitions (L1–L4 → amounts) + Role-to-level mapping (role → level)
-- [ ] Remove `DoaThresholdService` and associated admin-service DOA threshold methods
+### Group 2b — configVars Admin API (ADR-002) ✅ COMPLETE
 
-### Group 2c — BPMN Action Blocks (ADR-009)
+**Committed**: 2026-04-30 — commit 5d4e16c
 
-- [ ] `SEND_NOTIFICATION` block — channel multi-select, template picker, recipient expression, condition expression
-- [ ] `CALL_SUBPROCESS` block — process key picker, in/out variable mapping table
-- [ ] `GROOVY_SCRIPT` block — inline script editor, admin-restricted
-- [ ] `MANUAL_STEP` block — description field, confirmation required flag
-- [ ] Remove `DmnEvaluationDelegate` from action block options
-- [ ] Signal throw event: signal name enum picker (not free-text)
-- [ ] `NotificationDelegate` — Slack/WhatsApp adapters or explicit `UnsupportedOperationException`
+- [x] `GET/POST/PUT/DELETE /api/v1/config/vars` for tenant `ConfigurationVariable` entries
+- [x] Two-layer data: Level definitions (L1–L4 → amounts) + Role-to-level mapping (role → level)
+- [x] Remove `crossDeptDoaThreshold` from Tenant entity + V4 migration drops DB column
+- [x] `AdminServiceClient.getConfigVars(tenantCode)` with 5-min cache (prepares DmnConfigVariableInjector)
+
+### Group 2c — BPMN Action Blocks (ADR-009) ✅ COMPLETE
+
+**Committed**: 2026-04-30 — commit 4ce7b89
+
+- [x] `SEND_NOTIFICATION` block — channel multi-select (Email + Slack/WhatsApp stubs), template picker, recipient, condition
+- [x] `CALL_SUBPROCESS` block — processKey, inVariables, outVariables fields + `CallSubprocessDelegate`
+- [x] `GROOVY_SCRIPT` block — inline script editor, admin-restricted label
+- [x] `MANUAL_STEP` block — stepDescription + confirmationRequired fields
+- [x] Remove `DMN_ROUTE` from action block options (native BusinessRuleTask per ADR-009)
+- [x] Signal throw event: signal name dropdown (reads `bpmn:Signal` elements from diagram)
+- [x] `SlackNotificationChannel` + `WhatsAppNotificationChannel` stubs (`UnsupportedOperationException`)
 
 ### Group 3a — Tenant Setup UI (ADR-006)
 
