@@ -22,14 +22,13 @@ class TenantRepositoryTest {
         Tenant tenant = new Tenant();
         tenant.setTenantCode("default");
         tenant.setName("Default Organisation");
-        tenant.setCrossDeptDoaThreshold(4);
         tenant.setActive(true);
 
         when(repo.findByTenantCode("default")).thenReturn(Optional.of(tenant));
 
         Optional<Tenant> found = repo.findByTenantCode("default");
         assertThat(found).isPresent();
-        assertThat(found.get().getCrossDeptDoaThreshold()).isEqualTo(4);
+        assertThat(found.get().getTenantCode()).isEqualTo("default");
     }
 
     @Test
