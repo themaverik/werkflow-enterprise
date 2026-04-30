@@ -205,6 +205,9 @@ app:
   admin-service:
     url: ${ADMIN_SERVICE_URL:http://localhost:8083}
 
+  erp-service:
+    url: ${ERP_SERVICE_URL:http://localhost:8085}
+
   # Flowable group resolution — static fallback role-to-group mappings.
   # DOA role mappings are now DB-backed per tenant (role_group_mappings table, ADR-003).
   flowable:
