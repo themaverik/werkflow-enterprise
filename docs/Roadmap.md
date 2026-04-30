@@ -2,7 +2,7 @@
 
 **Repo scope**: Enterprise-only engine, admin-service, and portal features
 **Master Roadmap**: `~/Projects/werkflow-platform/docs/Roadmap.md` (authoritative for all future tasks)
-**Last Updated**: 2026-04-30
+**Last Updated**: 2026-04-30 (session end)
 **Target**: Internal Enterprise Demo — June 2026
 
 > Future tasks in this file are synced from the master Roadmap. Do not add tasks here without adding them to master first.
@@ -15,7 +15,8 @@
 |------|--------|
 | E2E quality gate | 7/7 specs passing |
 | ADRs | ADR-001 through ADR-009 written |
-| Active milestone | M3 — Groups 2a/2b/2c complete; Groups 3a–3d next |
+| Active milestone | M3 — Groups 2a/2b/2c complete; Groups 3b/3c next (3a/3d merged into M4) |
+| Next session | Groups 3b + 3c + M5 together |
 | Branch | feature/m3-adr-core (in progress) |
 
 ---
@@ -54,8 +55,9 @@
 
 ## M3 — ADR Core Implementation
 
-**Deps**: M1 (ERP APIs) + M2 complete — both done, M3 ready to start
-**Estimate**: 24–30 hours
+**Deps**: M1 (ERP APIs) + M2 complete — both done
+**Estimate**: 8–10 hours remaining (Groups 3a/3d moved to M4)
+**Next session**: Groups 3b + 3c + M5 together
 
 ### Group 2a — FlowableGroupResolver Simplification (ADR-003) ✅ COMPLETE
 
@@ -90,15 +92,6 @@
 - [x] Signal throw event: signal name dropdown (reads `bpmn:Signal` elements from diagram)
 - [x] `SlackNotificationChannel` + `WhatsAppNotificationChannel` stubs (`UnsupportedOperationException`)
 
-### Group 3a — Tenant Setup UI (ADR-006)
-
-- [ ] `Tenant Setup` sidebar section (ADMIN/SUPER_ADMIN guard)
-- [ ] `/admin/tenant/approval-authority` — two-layer configVars UI: L1–L4 threshold amounts + role→level mapping (ADR-002)
-- [ ] `/admin/tenant/role-mappings` — Tier 1 read-only + Tier 2 editable rows (ADR-003)
-- [ ] `/admin/tenant/departments` — reads from ERP; redirect from `/admin/departments` (ADR-005)
-- [ ] `/admin/tenant/custody-groups` — reads from ERP; redirect from `/admin/custody` (ADR-004)
-- [ ] Tenant Setup checklist widget on `/admin/dashboard`
-
 ### Group 3b — Custody Move to ERP (ADR-004)
 
 - [ ] Remove custody DB table from admin-service
@@ -112,20 +105,29 @@
 - [ ] Remove `departments` table from admin-service
 - [ ] Department-scoped query filter in `TaskService` and `ProcessMonitoringService` (ERP-enabled guard)
 
+---
+
+## M4 — UI Full Visual Overhaul + Tenant Setup + Form Editor
+
+**Deps**: M3 Groups 3b/3c complete (ERP custody + department APIs wired)
+**Estimate**: 28–32 hours
+**Design handoff**: 2026-04-30
+
+### Group 3a — Tenant Setup UI (ADR-006)
+
+- [ ] `Tenant Setup` sidebar section (ADMIN/SUPER_ADMIN guard)
+- [ ] `/admin/tenant/approval-authority` — two-layer configVars UI: L1–L4 threshold amounts + role→level mapping (ADR-002)
+- [ ] `/admin/tenant/role-mappings` — Tier 1 read-only + Tier 2 editable rows (ADR-003)
+- [ ] `/admin/tenant/departments` — reads from ERP; redirect from `/admin/departments` (ADR-005)
+- [ ] `/admin/tenant/custody-groups` — reads from ERP; redirect from `/admin/custody` (ADR-004)
+- [ ] Tenant Setup checklist widget on `/admin/dashboard`
+
 ### Group 3d — Form Editor Improvements (ADR-007)
 
 - [ ] `FormJsEditor.tsx` — fetch tenant component allowlist; pass `createPaletteFilterModule(allowedTypes)` to `FormEditor`
 - [ ] `FormJsEditor.tsx` — fetch `CSS_THEME` config vars; apply as inline style on `.fjs-container`
 - [ ] `lib/forms/createPaletteFilterModule.ts` — deregisters non-allowed types on `form.init`
 - [ ] `GET /api/v1/config/form-components` — hardcoded default allowlist; no admin UI (deferred post-demo)
-
----
-
-## M4 — UI Full Visual Overhaul
-
-**Deps**: M3 complete (Tenant Setup + config screens must exist)
-**Estimate**: 20–24 hours
-**Design handoff**: 2026-04-30
 
 ### Design System Foundation
 
@@ -179,7 +181,7 @@ MONITORING       (ADMIN, SUPER_ADMIN — M6)
 - [ ] **Email Templates** — move to Design Studio section; existing list + editor UI unchanged
 - [ ] **Dashboard** — overview cards, recent activity, quick actions, Tenant Setup checklist widget
 - [ ] **Connectors** — aligned to new table pattern
-- [ ] **Tenant Setup sub-pages** — Approval Authority, Role Mappings, Departments, Custody Groups (all new — M3 Group 3a)
+- [ ] **Tenant Setup sub-pages** — Approval Authority, Role Mappings, Departments, Custody Groups (see Group 3a above)
 
 ### Editor CSS Theming
 
