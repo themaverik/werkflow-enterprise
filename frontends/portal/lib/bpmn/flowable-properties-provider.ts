@@ -230,12 +230,42 @@ class FlowablePropertiesProvider {
         })
       }
 
-      // --- Signal Events (Flowable-specific: correlation key for targeted delivery) ---
+      // --- Signal Events (Flowable-specific: signal name picker + correlation key) ---
       if (hasSignalDefinition(element)) {
+        // Collect signal names defined in the diagram for the enum picker
+        const definitions = element.businessObject.$parent?.$parent ?? element.businessObject.$parent
+        const signalOptions: Array<{ value: string; label: string }> = [
+          { value: '', label: translate('(select signal)') },
+        ]
+        try {
+          const rootElements = definitions?.rootElements ?? []
+          for (const el of rootElements) {
+            if (el.$type === 'bpmn:Signal' && el.name) {
+              signalOptions.push({ value: el.name, label: el.name })
+            }
+          }
+        } catch {
+          // diagram walk failed — options remain empty (free entry still works via correlationKey)
+        }
+
         groups.splice(generalIdx + 1, 0, {
           id: 'flowable-signal',
           label: 'Signal (Flowable)',
           entries: [
+            {
+              id: 'signalName',
+              element,
+              component: SelectEntry,
+              isEdited: isSelectEntryEdited,
+              label: translate('Signal Name'),
+              description: translate('Select a signal defined in this diagram.'),
+              getValue: () => element.businessObject.get('flowable:signalName') || '',
+              setValue: (value: string) =>
+                modeling.updateProperties(element, {
+                  'flowable:signalName': value || undefined,
+                }),
+              getOptions: () => signalOptions,
+            },
             {
               id: 'signalCorrelationKey',
               element,
@@ -562,23 +592,27 @@ function formKeyEntry(element: any, modeling: any, translate: (s: string) => str
 
 const ACTION_TYPES = [
   { value: '', label: '(none)' },
-  { value: 'HUMAN_APPROVAL', label: 'Human Approval' },
-  { value: 'NOTIFICATION', label: 'Notification' },
+  { value: 'HUMAN_APPROVAL',    label: 'Human Approval' },
+  { value: 'SEND_NOTIFICATION', label: 'Send Notification' },
   { value: 'EXTERNAL_API_CALL', label: 'External API Call' },
-  { value: 'DMN_ROUTE', label: 'DMN Decision Route' },
+  { value: 'CALL_SUBPROCESS',   label: 'Call Subprocess' },
+  { value: 'GROOVY_SCRIPT',     label: 'Groovy Script (Admin)' },
+  { value: 'MANUAL_STEP',       label: 'Manual Step' },
 ]
 
 const ACTION_COLOURS: Record<string, { fill: string; stroke: string }> = {
   HUMAN_APPROVAL:    { fill: '#e3f2fd', stroke: '#1565c0' },
-  NOTIFICATION:      { fill: '#fff3e0', stroke: '#e65100' },
+  SEND_NOTIFICATION: { fill: '#fff3e0', stroke: '#e65100' },
   EXTERNAL_API_CALL: { fill: '#f3e5f5', stroke: '#6a1b9a' },
-  DMN_ROUTE:         { fill: '#e8f5e9', stroke: '#2e7d32' },
+  CALL_SUBPROCESS:   { fill: '#e8f5e9', stroke: '#2e7d32' },
+  GROOVY_SCRIPT:     { fill: '#fce4ec', stroke: '#c62828' },
+  MANUAL_STEP:       { fill: '#f3e5f5', stroke: '#4a148c' },
 }
 
 const DELEGATE_MAP: Record<string, string> = {
-  NOTIFICATION:       '${emailActionDelegate}',
-  EXTERNAL_API_CALL:  '${externalApiCallDelegate}',
-  DMN_ROUTE:          '${dmnRouteDelegate}',
+  SEND_NOTIFICATION: '${emailActionDelegate}',
+  EXTERNAL_API_CALL: '${externalApiCallDelegate}',
+  CALL_SUBPROCESS:   '${callSubprocessDelegate}',
 }
 
 function getActionType(element: any): string {
@@ -607,7 +641,7 @@ function setActionType(element: any, modeling: any, value: string, injector?: an
   })
 
   // Seed required defaults so the delegate never throws "Required field not set"
-  if (value === 'NOTIFICATION') {
+  if (value === 'SEND_NOTIFICATION') {
     if (!readFlowableField(target, 'channel')) {
       writeFlowableField(target, modeling, 'channel', 'email')
     }
@@ -655,7 +689,7 @@ function buildActionBlockEntries(
     )
   }
 
-  if (actionType === 'NOTIFICATION') {
+  if (actionType === 'SEND_NOTIFICATION') {
     entries.push(
       channelSelectEntry(element, modeling, translate),
       flowableFieldEntry(element, modeling, translate, debounce, 'notif-recipient',
@@ -686,30 +720,60 @@ function buildActionBlockEntries(
     )
   }
 
-  if (actionType === 'DMN_ROUTE') {
-    // decisionRef and mapDecisionResult are read by DmnRouteDelegate as @Setter Expression
-    // fields — they must be stored as <flowable:field> extension elements, not plain attributes.
+  if (actionType === 'CALL_SUBPROCESS') {
     entries.push(
-      flowableFieldEntry(element, modeling, translate, debounce, 'dmn-decisionRef',
-        translate('Decision Key'),
-        'decisionRef'),
+      flowableFieldEntry(element, modeling, translate, debounce, 'sub-processKey',
+        translate('Process Key'), 'processKey'),
+      flowableFieldEntry(element, modeling, translate, debounce, 'sub-inVariables',
+        translate('In Variables (comma-separated)'), 'inVariables'),
+      flowableFieldEntry(element, modeling, translate, debounce, 'sub-outVariables',
+        translate('Out Variables (comma-separated)'), 'outVariables'),
+    )
+  }
+
+  if (actionType === 'GROOVY_SCRIPT') {
+    entries.push(
       {
-        id: 'dmn-mapDecisionResult',
+        id: 'gs-script',
+        element,
+        component: TextFieldEntry,
+        isEdited: isTextFieldEntryEdited,
+        debounce,
+        label: translate('Groovy Script'),
+        description: translate('Admin-restricted. execution.setVariable("key", value) to write process variables.'),
+        getValue: () => element.businessObject.get('flowable:script') || '',
+        setValue: (value: string) =>
+          modeling.updateProperties(element, { 'flowable:script': value || undefined }),
+      },
+    )
+  }
+
+  if (actionType === 'MANUAL_STEP') {
+    entries.push(
+      {
+        id: 'ms-description',
+        element,
+        component: TextFieldEntry,
+        isEdited: isTextFieldEntryEdited,
+        debounce,
+        label: translate('Step Description'),
+        description: translate('Instructions shown to the assignee.'),
+        getValue: () => readFlowableField(element, 'stepDescription') || '',
+        setValue: (value: string) => writeFlowableField(element, modeling, 'stepDescription', value || ''),
+      },
+      {
+        id: 'ms-confirmationRequired',
         element,
         component: SelectEntry,
         isEdited: isSelectEntryEdited,
-        label: translate('Map Result'),
-        description: translate('outputVariables: each DMN output column → process variable. singleEntry: first output value → resultVariable.'),
-        getValue: () => readFlowableField(element, 'mapDecisionResult') || 'outputVariables',
-        setValue: (value: string) => writeFlowableField(element, modeling, 'mapDecisionResult', value || 'outputVariables'),
+        label: translate('Confirmation Required'),
+        getValue: () => readFlowableField(element, 'confirmationRequired') || 'true',
+        setValue: (value: string) => writeFlowableField(element, modeling, 'confirmationRequired', value),
         getOptions: () => [
-          { value: 'outputVariables', label: translate('outputVariables (default)') },
-          { value: 'singleEntry', label: translate('singleEntry') },
+          { value: 'true',  label: translate('Yes') },
+          { value: 'false', label: translate('No') },
         ],
       },
-      flowableFieldEntry(element, modeling, translate, debounce, 'dmn-resultVariable',
-        translate('Result Variable (singleEntry only)'),
-        'resultVariable'),
     )
   }
 
@@ -841,7 +905,11 @@ function channelSelectEntry(element: any, modeling: any, translate: (s: string) 
     label: translate('Channel'),
     getValue: () => readFlowableField(element, 'channel') || 'email',
     setValue: (value: string) => writeFlowableField(element, modeling, 'channel', value || 'email'),
-    getOptions: () => [{ value: 'email', label: translate('Email') }],
+    getOptions: () => [
+      { value: 'email',    label: translate('Email') },
+      { value: 'slack',    label: translate('Slack (coming soon)') },
+      { value: 'whatsapp', label: translate('WhatsApp (coming soon)') },
+    ],
   }
 }
 
