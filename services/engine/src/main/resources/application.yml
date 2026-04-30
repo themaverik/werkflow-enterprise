@@ -205,19 +205,14 @@ app:
   admin-service:
     url: ${ADMIN_SERVICE_URL:http://localhost:8083}
 
-  # Flowable group resolution — maps Keycloak roles to Flowable candidateGroup identifiers
-  # Higher DOA levels inherit all lower levels (L3 user gets DOA_L1, DOA_L2, DOA_L3)
-  # BPMN specifies the minimum required level only
+  # Flowable group resolution — static fallback role-to-group mappings.
+  # DOA role mappings are now DB-backed per tenant (role_group_mappings table, ADR-003).
   flowable:
     include-department-as-group: false
     role-mappings:
-      admin:               [ADMIN, SUPER_ADMIN]
-      super_admin:         [SUPER_ADMIN]
-      doa_approver_level1: [DOA_L1]
-      doa_approver_level2: [DOA_L1, DOA_L2]
-      doa_approver_level3: [DOA_L1, DOA_L2, DOA_L3]
-      doa_approver_level4: [DOA_L1, DOA_L2, DOA_L3, DOA_L4]
-      workflow_designer:   [WORKFLOW_DESIGNER]
+      admin:             [ADMIN, SUPER_ADMIN]
+      super_admin:       [SUPER_ADMIN]
+      workflow_designer: [WORKFLOW_DESIGNER]
 
   # Connector fallback URLs (used by TenantEndpointResolver when TenantServiceEndpoint has no entry)
   # Prefer configuring connectors via the Admin UI (TenantServiceEndpoint table).
