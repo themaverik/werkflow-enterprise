@@ -461,8 +461,8 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
     }
 
     const fetchCustodyMappings_ = () => {
-      listCustodyMappings('default')
-        .then((mappings) => { if (!cancelled) setCustodyMappings(mappings) })
+      listCustodyMappings()
+        .then((page) => { if (!cancelled) setCustodyMappings(page.content) })
         .catch(() => { /* non-critical, silently skip */ })
     }
 
@@ -778,8 +778,8 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
                         }),
                         ...(custodyMappings.length > 0 && {
                           custodyGroup: custodyMappings.map((m) => ({
-                            value: m.custodyGroup,
-                            label: m.displayName ? `${m.custodyGroup} — ${m.displayName}` : m.custodyGroup,
+                            value: m.custodyOwner,
+                            label: `${m.custodyOwner} (${m.candidateGroups.join(', ')})`,
                           })),
                         }),
                       }}
