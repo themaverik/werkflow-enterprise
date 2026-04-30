@@ -38,6 +38,7 @@ const sidebarSections: SidebarSection[] = [
       { labelKey: 'connectors', label: 'Connectors', href: '/admin/connectors', requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'custodyMappings', label: 'Custody Mappings', href: '/admin/custody', requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'emailTemplates', label: 'Email Templates', href: '/admin/email-templates', requiredRoles: ['ADMIN', 'SUPER_ADMIN', 'WORKFLOW_ADMIN'] },
+      { labelKey: 'deadLetterJobs', label: 'Failed Jobs', href: '/admin/jobs/dead-letter', requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
     ],
   },
   // System section hidden until Monitoring and Analytics are implemented
