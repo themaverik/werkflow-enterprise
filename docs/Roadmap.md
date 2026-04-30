@@ -2,7 +2,7 @@
 
 **Repo scope**: Enterprise-only engine, admin-service, and portal features
 **Master Roadmap**: `~/Projects/werkflow-platform/docs/Roadmap.md` (authoritative for all future tasks)
-**Last Updated**: 2026-04-29
+**Last Updated**: 2026-04-30
 **Target**: Internal Enterprise Demo — June 2026
 
 > Future tasks in this file are synced from the master Roadmap. Do not add tasks here without adding them to master first.
@@ -15,51 +15,49 @@
 |------|--------|
 | E2E quality gate | 7/7 specs passing |
 | ADRs | ADR-001 through ADR-009 written |
-| Active milestone | M2 — ADR Foundation + Performance (no deps, ready to start) |
-| Blocked on | M3 waits for ERP M1 (P1.6.1–P1.6.3) |
+| Active milestone | M3 — ADR Core Implementation (M1 + M2 both complete) |
+| Branch | feature/m2-adr-foundation (ready to PR/merge) |
 
 ---
 
-## Active Milestones
+## M2 — ADR Foundation + Performance ✅ COMPLETE
 
-### M2 — ADR Foundation + Performance
+**Committed**: 2026-04-30 — commits a2b53ce, f048a98, 5ab62b4
 
-**Deps**: none — start now
-**Estimate**: 12–14 hours
+### Engine Quick Wins (ADR-009)
 
-#### Engine Quick Wins (ADR-009)
+- [x] Add `parentDeploymentId` to `ProcessDefinitionService` for bundle deployments
+- [x] Add transient variables to `ExternalApiCallDelegate` — raw API response transient (`storeRawResponse`), masked response persists
+- [x] Add task-local variables pattern to `ExternalApiCallDelegate` for parallel branch isolation (`useLocalVariables`)
 
-- [ ] Add `parentDeploymentId` to `ProcessDeploymentService` for bundle deployments
-- [ ] Add transient variables to `ExternalApiCallDelegate` — raw API response transient, masked response persists to DB
-- [ ] Add task-local variables pattern to `ExternalApiCallDelegate` for parallel branch outputs
+### Form Field Types (ADR-007)
 
-#### Form Field Types (ADR-007)
+- [x] Refactor `FormSchemaValidator.java` — four sets: `VARIABLE_TYPES (A)`, `DISPLAY_TYPES (B)`, `SERVICE_TYPES (C)`, `INVALID_TYPES (D)`
+- [x] `validateFormSchema()` — accepts A+B+C; rejects D with `400 Invalid component type`
+- [x] `validateFormData()` — skips B; throws `FormFieldTypeNotImplementedException` (501) for C on submit
+- [x] `TaskFormService.java` — filter Category B keys before `variablesToSave`
+- [x] `FormFieldTypeNotImplementedException` + `GlobalExceptionHandler` 501 handler
 
-- [ ] Refactor `FormSchemaValidator.java` — four sets: `VARIABLE_TYPES (A)`, `DISPLAY_TYPES (B)`, `SERVICE_TYPES (C)`, `INVALID_TYPES (D)`
-- [ ] `validateFormSchema()` — accepts A+B+C; rejects D with `400 Invalid component type`
-- [ ] `validateFormData()` — skips B+C; returns `501` for C types on submit
-- [ ] `TaskFormService.java` — filter Category B keys before `variablesToSave`; `dynamiclist` → Flowable `json` type
+### Signal Tenant Scoping (ADR-008)
 
-#### Signal Tenant Scoping (ADR-008)
+- [x] `TenantAwareSignalService` — wraps `signalEventReceivedWithTenantId` + async variant; validates non-blank tenantId
+- [x] 8 tests; no direct calls to non-tenant `runtimeService.signalEventReceived()` allowed
 
-- [ ] Create `TenantAwareSignalService` — wraps `signalEventReceivedWithTenantId` and async variant; injects `tenantId` from security context
-- [ ] Enforce no direct calls to non-tenant `runtimeService.signalEventReceived()`
+### Performance
 
-#### Performance
-
-- [ ] Async history: `async-history-enabled: true`, batch size 100
-- [ ] Async email: move sending to background `EmailJobHandler`
-- [ ] Flowable query predicates + DB indexes on common task query columns
-- [ ] Dead-letter job monitoring UI (view, retry, update before retry)
+- [x] Async history: `async-history-enabled: true`, pool 2/4 — history writes off the process transaction
+- [x] DB indexes: `FlowableIndexCreator` adds 6 indexes on `ACT_RU_TASK` + `ACT_RU_IDENTITYLINK`
+- [x] Dead-letter job monitoring: `JobManagementController` + portal `/admin/jobs/dead-letter` page + 5 tests
+- [⏸️] Async email via Flowable `EmailJobHandler` — deferred; `@Async+@Retryable` already in place
 
 ---
 
-### M3 — ADR Core Implementation
+## M3 — ADR Core Implementation
 
-**Deps**: M1 (ERP APIs) + M2 complete
+**Deps**: M1 (ERP APIs) + M2 complete — both done, M3 ready to start
 **Estimate**: 24–30 hours
 
-#### Group 2a — FlowableGroupResolver Simplification (ADR-003)
+### Group 2a — FlowableGroupResolver Simplification (ADR-003)
 
 - [ ] Remove `doa_approver_level1/2/3/4` from `FlowableGroupProperties` YAML
 - [ ] Remove `doaLevel` cumulative loop and compound group emission from `FlowableGroupResolver`
@@ -69,13 +67,13 @@
 - [ ] Add `GET/POST/DELETE /api/v1/config/role-mappings` endpoints
 - [ ] Add `UserGroupLookupProxy` SPI wrapper
 
-#### Group 2b — configVars Admin API (ADR-002)
+### Group 2b — configVars Admin API (ADR-002)
 
 - [ ] `GET/POST/PUT/DELETE /api/v1/config/vars` for tenant `ConfigurationVariable` entries
 - [ ] Two-layer data: Level definitions (L1–L4 → amounts) + Role-to-level mapping (role → level)
 - [ ] Remove `DoaThresholdService` and associated admin-service DOA threshold methods
 
-#### Group 2c — BPMN Action Blocks (ADR-009)
+### Group 2c — BPMN Action Blocks (ADR-009)
 
 - [ ] `SEND_NOTIFICATION` block — channel multi-select, template picker, recipient expression, condition expression
 - [ ] `CALL_SUBPROCESS` block — process key picker, in/out variable mapping table
@@ -85,7 +83,7 @@
 - [ ] Signal throw event: signal name enum picker (not free-text)
 - [ ] `NotificationDelegate` — Slack/WhatsApp adapters or explicit `UnsupportedOperationException`
 
-#### Group 3a — Tenant Setup UI (ADR-006)
+### Group 3a — Tenant Setup UI (ADR-006)
 
 - [ ] `Tenant Setup` sidebar section (ADMIN/SUPER_ADMIN guard)
 - [ ] `/admin/tenant/approval-authority` — two-layer configVars UI: L1–L4 threshold amounts + role→level mapping (ADR-002)
@@ -94,20 +92,20 @@
 - [ ] `/admin/tenant/custody-groups` — reads from ERP; redirect from `/admin/custody` (ADR-004)
 - [ ] Tenant Setup checklist widget on `/admin/dashboard`
 
-#### Group 3b — Custody Move to ERP (ADR-004)
+### Group 3b — Custody Move to ERP (ADR-004)
 
 - [ ] Remove custody DB table from admin-service
 - [ ] Update portal `/admin/tenant/custody-groups` to call ERP `GET/POST/PUT/DELETE /api/v1/custody-mappings`
 - [ ] Add `custodyVars` context builder in `DmnConfigVariableInjector` (5-min cache per tenant)
 
-#### Group 3c — Department Simplification (ADR-005)
+### Group 3c — Department Simplification (ADR-005)
 
 - [ ] `SetOwningDepartmentDelegate` — resolves submitter ERP dept → `owningDepartment` variable; fallback to form value
 - [ ] `FlowableGroupResolver` Step 4: fetch user ERP dept → emit `${deptCode}_APPROVER`
 - [ ] Remove `departments` table from admin-service
 - [ ] Department-scoped query filter in `TaskService` and `ProcessMonitoringService` (ERP-enabled guard)
 
-#### Group 3d — Form Editor Improvements (ADR-007)
+### Group 3d — Form Editor Improvements (ADR-007)
 
 - [ ] `FormJsEditor.tsx` — fetch tenant component allowlist; pass `createPaletteFilterModule(allowedTypes)` to `FormEditor`
 - [ ] `FormJsEditor.tsx` — fetch `CSS_THEME` config vars; apply as inline style on `.fjs-container`
@@ -116,19 +114,19 @@
 
 ---
 
-### M4 — UI Full Visual Overhaul
+## M4 — UI Full Visual Overhaul
 
 **Deps**: M3 complete (Tenant Setup + config screens must exist)
 **Estimate**: 20–24 hours
 **Design handoff**: 2026-04-30
 
-#### Design System Foundation
+### Design System Foundation
 
 - [ ] Tailwind config: primary purple palette, dark sidebar tokens, badge colour map
 - [ ] CSS custom properties: `--sidebar-bg`, `--primary`, `--primary-foreground`, `--badge-*`
 - [ ] Shared components: `StatCard`, `FilterPills`, `StatusBadge`, `PriorityBadge`, `AvatarCell`
 
-#### Navigation Overhaul
+### Navigation Overhaul
 
 Full sidebar structure (role-gated):
 
@@ -163,7 +161,7 @@ MONITORING       (ADMIN, SUPER_ADMIN — M6)
 - [ ] User profile card at sidebar bottom (avatar, name, role)
 - [ ] Notification bell + user avatar in top-right header
 
-#### Screen Overhaul
+### Screen Overhaul
 
 - [ ] **Service Catalog** (new) — card grid of available processes; category filter pills; step tags; working days estimate; Submit Request CTA
 - [ ] **My Tasks** — stat cards row; All/Mine/Overdue/Unassigned tabs; task table with assignee avatar, priority badge, status badge, due date, View/Claim actions
@@ -176,7 +174,7 @@ MONITORING       (ADMIN, SUPER_ADMIN — M6)
 - [ ] **Connectors** — aligned to new table pattern
 - [ ] **Tenant Setup sub-pages** — Approval Authority, Role Mappings, Departments, Custody Groups (all new — M3 Group 3a)
 
-#### Editor CSS Theming
+### Editor CSS Theming
 
 - [ ] **bpmn-js** — canvas bg, toolbar buttons, properties panel bg/text (~3h)
 - [ ] **form-js** — container bg, field labels/inputs, buttons, palette panel (~2h)
@@ -185,7 +183,7 @@ MONITORING       (ADMIN, SUPER_ADMIN — M6)
 
 ---
 
-### M5 — ADR Signal Events
+## M5 — ADR Signal Events
 
 **Deps**: M3 complete
 **Estimate**: 6–8 hours
@@ -198,7 +196,7 @@ MONITORING       (ADMIN, SUPER_ADMIN — M6)
 
 ---
 
-### M6 — Analytics + Basic Monitoring
+## M6 — Analytics + Basic Monitoring
 
 **Deps**: M3 (Flowable history + config tables)
 **Parallel-safe**: alongside M4/M5
@@ -206,15 +204,14 @@ MONITORING       (ADMIN, SUPER_ADMIN — M6)
 
 - [ ] Backend: process execution stats, task metrics, user/group workload (all < 1s for 100k+ instances)
 - [ ] Frontend Analytics Dashboard (`/admin/analytics`): overview stat cards, line chart (executions over time), bar chart (by status), task bottleneck table, SLA dashboard, CSV/PDF export
-- [ ] Frontend Process Health (`/admin/monitoring`): dead-letter job UI (view, retry), active instance count, SLA at-risk list
+- [ ] Frontend Process Health (`/admin/monitoring`): active instance count, SLA at-risk list (dead-letter UI now in M2)
 - [ ] Add Monitoring sidebar section (ADMIN/SUPER_ADMIN): Analytics Dashboard + Process Health links
-- [ ] Activate existing analytics sidebar link (commented since S23)
 - [ ] Health check endpoints on all services (`/actuator/health`)
 - [ ] Troubleshooting runbook
 
 ---
 
-### M7 — CI/CD + Production Readiness
+## M7 — CI/CD + Production Readiness
 
 **Deps**: none hard; slot after M2 is stable
 **Parallel-safe**: alongside M4–M6
@@ -240,10 +237,10 @@ MONITORING       (ADMIN, SUPER_ADMIN — M6)
 
 ---
 
-## Historical Summary — Completed (S21–S28.10)
+## Historical Summary — Completed (S21–M2)
 
-| Sprint | Highlights |
-|--------|-----------|
+| Sprint / Milestone | Highlights |
+|--------------------|-----------|
 | S21–S23 | OSS cleanup, IP prep, i18n (next-intl) |
 | S24–S25 | Multi-tenancy security, history cleanup, 3 sample BPMNs + Flyway seeds |
 | S26–S26.7 | CI/CD (v1.0.0 tagged), OSS/enterprise repo split, Flyway V1+V2 squash |
@@ -256,3 +253,4 @@ MONITORING       (ADMIN, SUPER_ADMIN — M6)
 | S28.10 | BPMN smart dropdowns — delegate expression select, candidate groups tag-select |
 | E2E Gate | 7/7 specs pass; mike.it 4th test user added |
 | ADR Session | ADR-002 through ADR-009 written (2026-04-28) |
+| M2 | Engine QW (ADR-009) + Form types (ADR-007) + Signal scoping (ADR-008) + async history + DB indexes + dead-letter UI |
