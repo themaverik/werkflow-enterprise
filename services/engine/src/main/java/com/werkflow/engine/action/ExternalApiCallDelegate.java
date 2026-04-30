@@ -53,6 +53,10 @@ public class ExternalApiCallDelegate implements JavaDelegate {
     @Setter private Expression extractFields;
     @Setter private Expression maskFields;
     @Setter private Expression onError;
+    /** When true, stores the raw (pre-mask) response as a transient variable named {@code <responseVar>Raw}. */
+    @Setter private Expression storeRawResponse;
+    /** When true, stores the masked response as a task-local variable (isolated to the current execution branch). */
+    @Setter private Expression useLocalVariables;
 
     public ExternalApiCallDelegate(SsrfGuard ssrfGuard, ResponseMasker responseMasker,
                                    SecretsResolver secretsResolver,
@@ -150,6 +154,12 @@ public class ExternalApiCallDelegate implements JavaDelegate {
             List<String> designerMaskFields = parseMaskFields(getString(maskFields, execution, null));
             String maskedBody = responseMasker.mask(rawBody, designerMaskFields);
 
+            // 6a. Optionally store raw (pre-mask) body as a transient variable — not persisted to history
+            boolean shouldStoreRaw = "true".equalsIgnoreCase(getString(storeRawResponse, execution, "false"));
+            if (shouldStoreRaw) {
+                execution.setTransientVariable(responseVar + "Raw", rawBody);
+            }
+
             // 7. Extract named fields via JSONPath into process variables
             String extractSpec = getString(extractFields, execution, null);
             if (extractSpec != null && !extractSpec.isBlank()) {
@@ -157,8 +167,13 @@ public class ExternalApiCallDelegate implements JavaDelegate {
                 applyExtractions(maskedBody, extractions, execution);
             }
 
-            // 8. Store masked result in process variable
-            execution.setVariable(responseVar, maskedBody);
+            // 8. Store masked result — task-local when useLocalVariables=true (parallel branches), else global
+            boolean shouldUseLocal = "true".equalsIgnoreCase(getString(useLocalVariables, execution, "false"));
+            if (shouldUseLocal) {
+                execution.setVariableLocal(responseVar, maskedBody);
+            } else {
+                execution.setVariable(responseVar, maskedBody);
+            }
 
             // 9. Write audit log
             writeAuditLog(execution, resolvedUrl, methodValue, maskedBody, httpResult.status(),
