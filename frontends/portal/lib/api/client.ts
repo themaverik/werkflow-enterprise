@@ -10,6 +10,7 @@ import { emitTokenExpired } from '@/lib/auth/token-expired-event'
 // - Forms: /werkflow/api/forms/*
 const API_BASE_URL = process.env.NEXT_PUBLIC_ENGINE_API_URL || 'http://localhost:8081'
 const ADMIN_API_BASE_URL = process.env.NEXT_PUBLIC_ADMIN_SERVICE_URL || 'http://localhost:8083'
+const ERP_API_BASE_URL = process.env.NEXT_PUBLIC_ERP_API_URL || 'http://localhost:8085'
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -25,6 +26,15 @@ export const apiClient = axios.create({
 
 export const adminApiClient = axios.create({
   baseURL: ADMIN_API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 30000,
+  validateStatus: (status) => status >= 200 && status < 400,
+})
+
+export const erpApiClient = axios.create({
+  baseURL: ERP_API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -54,6 +64,7 @@ const authInterceptor = async (config: any) => {
 
 apiClient.interceptors.request.use(authInterceptor, (error) => Promise.reject(error))
 adminApiClient.interceptors.request.use(authInterceptor, (error) => Promise.reject(error))
+erpApiClient.interceptors.request.use(authInterceptor, (error) => Promise.reject(error))
 
 // Response interceptor for error handling
 const errorInterceptor = (error: any) => {
@@ -78,5 +89,6 @@ const errorInterceptor = (error: any) => {
 
 apiClient.interceptors.response.use((response) => response, errorInterceptor)
 adminApiClient.interceptors.response.use((response) => response, errorInterceptor)
+erpApiClient.interceptors.response.use((response) => response, errorInterceptor)
 
 export default apiClient

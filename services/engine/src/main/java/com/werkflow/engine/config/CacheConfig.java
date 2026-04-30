@@ -29,6 +29,8 @@ public class CacheConfig {
             Caffeine.newBuilder().expireAfterWrite(300, TimeUnit.SECONDS).maximumSize(100).build());
         manager.registerCustomCache("configVars",
             Caffeine.newBuilder().expireAfterWrite(300, TimeUnit.SECONDS).maximumSize(100).build());
+        manager.registerCustomCache("custodyMappings",
+            Caffeine.newBuilder().expireAfterWrite(300, TimeUnit.SECONDS).maximumSize(100).build());
         Caffeine<Object, Object> defaultSpec = Caffeine.newBuilder()
             .expireAfterWrite(30, TimeUnit.SECONDS).maximumSize(100).recordStats();
         for (String name : List.of("serviceUrls", "processDefinitionNames", "formSchemas", "doaThresholds")) {
