@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Component
@@ -39,29 +40,17 @@ public class AdminServiceClient {
         }
     }
 
-    @Cacheable(value = "tenantConfig", key = "'threshold:' + #tenantCode")
-    public int getTenantCrossDeptThreshold(String tenantCode) {
-        String url = adminServiceUrl + "/api/internal/tenants/{tenantCode}/cross-dept-threshold";
+    @Cacheable(value = "roleMappings", key = "#tenantCode")
+    public Map<String, List<String>> getRoleMappings(String tenantCode) {
+        String url = adminServiceUrl + "/api/v1/config/role-mappings/by-role?tenantCode={tenantCode}";
         try {
-            Integer result = restTemplate.getForObject(url, Integer.class, tenantCode);
-            return result != null ? result : 4;
-        } catch (Exception e) {
-            log.warn("AdminServiceClient: failed to fetch cross-dept threshold for {} — {}", tenantCode, e.getMessage());
-            return 4;
-        }
-    }
-
-    @Cacheable(value = "tenantConfig", key = "'deptCodes:' + #tenantCode")
-    public List<String> getTenantDepartmentCodes(String tenantCode) {
-        String url = adminServiceUrl + "/api/departments/codes?tenantCode={tenantCode}";
-        try {
-            ResponseEntity<List<String>> resp = restTemplate.exchange(
+            ResponseEntity<Map<String, List<String>>> resp = restTemplate.exchange(
                 url, HttpMethod.GET, null,
-                new ParameterizedTypeReference<List<String>>() {}, tenantCode);
-            return resp.getBody() != null ? resp.getBody() : List.of();
+                new ParameterizedTypeReference<Map<String, List<String>>>() {}, tenantCode);
+            return resp.getBody() != null ? resp.getBody() : Map.of();
         } catch (Exception e) {
-            log.warn("AdminServiceClient: failed to fetch dept codes for {} — {}", tenantCode, e.getMessage());
-            return List.of();
+            log.warn("AdminServiceClient: failed to fetch role mappings for {} — {}", tenantCode, e.getMessage());
+            return Map.of();
         }
     }
 
