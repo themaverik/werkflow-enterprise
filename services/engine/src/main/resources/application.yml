@@ -97,6 +97,16 @@ flowable:
   # History level: none, activity, audit, full
   history-level: ${FLOWABLE_HISTORY_LEVEL:full}
 
+  # Async history — decouples history writes from process execution transaction (ADR-M2-perf)
+  # History events are queued and written by the async executor, reducing p99 latency on hot paths.
+  async-history-enabled: ${FLOWABLE_ASYNC_HISTORY_ENABLED:true}
+  async-history-executor-activate: ${FLOWABLE_ASYNC_HISTORY_EXECUTOR_ACTIVATE:true}
+  async-history:
+    executor:
+      core-pool-size: ${FLOWABLE_ASYNC_HISTORY_CORE_POOL_SIZE:2}
+      max-pool-size: ${FLOWABLE_ASYNC_HISTORY_MAX_POOL_SIZE:4}
+      queue-size: 100
+
   # History cleanup — prevents unbounded DB growth (estimated 50MB/day at full history level)
   # Runs nightly at 01:00; retains data for 365 days; processes in batches to avoid table locks
   enable-history-cleaning: ${FLOWABLE_ENABLE_HISTORY_CLEANING:true}
