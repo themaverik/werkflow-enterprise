@@ -1,5 +1,7 @@
 package com.werkflow.engine.service;
 
+import com.werkflow.engine.client.AdminServiceClient;
+import com.werkflow.engine.client.UserProfileDto;
 import com.werkflow.engine.dto.*;
 import com.werkflow.engine.exception.ProcessNotFoundException;
 import com.werkflow.engine.exception.UnauthorizedTaskAccessException;
@@ -17,6 +19,7 @@ import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.history.HistoricTaskInstance;
 import org.flowable.variable.api.history.HistoricVariableInstance;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -39,6 +42,10 @@ public class ProcessMonitoringService {
     private final RepositoryService repositoryService;
     private final ProcessMonitoringUtil monitoringUtil;
     private final FlowableGroupResolver groupResolver;
+    private final AdminServiceClient adminServiceClient;
+
+    @Value("${werkflow.erp.enabled:false}")
+    private boolean erpEnabled;
 
     /**
      * Get detailed information about a process instance
@@ -404,6 +411,17 @@ public class ProcessMonitoringService {
         }
     }
 
+    private String resolveUserDepartment(JwtUserContext userContext) {
+        try {
+            String tenantCode = userContext.getTenantCode() != null ? userContext.getTenantCode() : "default";
+            UserProfileDto profile = adminServiceClient.getUserProfile(userContext.getUserId(), tenantCode);
+            return profile != null ? profile.getDepartmentCode() : null;
+        } catch (Exception e) {
+            log.warn("ProcessMonitoringService: could not resolve ERP dept for {} — {}", userContext.getUserId(), e.getMessage());
+            return null;
+        }
+    }
+
     /**
      * Validate user access to process instance
      * User must be the initiator or involved in any task
@@ -457,6 +475,22 @@ public class ProcessMonitoringService {
 
             if (candidateTaskCount > 0) {
                 return;
+            }
+        }
+
+        // Dept scoping — ADR-005: if ERP is enabled, allow access when owningDepartment matches user's dept
+        if (erpEnabled) {
+            String userDept = resolveUserDepartment(userContext);
+            if (userDept != null) {
+                List<HistoricVariableInstance> vars = historyService.createHistoricVariableInstanceQuery()
+                        .processInstanceId(processInstanceId)
+                        .variableName("owningDepartment")
+                        .list();
+                boolean deptMatch = vars.stream()
+                        .anyMatch(v -> userDept.equals(String.valueOf(v.getValue())));
+                if (deptMatch) {
+                    return;
+                }
             }
         }
 
