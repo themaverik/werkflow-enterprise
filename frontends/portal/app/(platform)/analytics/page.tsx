@@ -103,7 +103,7 @@ export default function AnalyticsPage() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard icon={Activity}      label="Total Executions" value={procStats?.totalCount ?? 0}                            iconColor="#7c3aed" />
+          <StatCard icon={Activity}      label="Total Executions" value={procStats?.totalCount ?? 0}                            iconColor="#149ba5" />
           <StatCard icon={CheckCircle}   label="Success Rate"     value={`${(procStats?.successRate ?? 0).toFixed(1)}%`}        iconColor="#16a34a" />
           <StatCard icon={AlertTriangle} label="Overdue Tasks"    value={taskMetrics?.overdueCount ?? 0}                        iconColor="#dc2626" />
           <StatCard icon={TrendingUp}    label="SLA Compliance"   value={`${(taskMetrics?.slaCompliancePct ?? 0).toFixed(1)}%`} iconColor="#1d4ed8" />
@@ -120,7 +120,7 @@ export default function AnalyticsPage() {
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Line type="monotone" dataKey="count" stroke="#7c3aed" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="count" stroke="#149ba5" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           )}

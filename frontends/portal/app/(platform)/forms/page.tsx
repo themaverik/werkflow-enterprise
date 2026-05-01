@@ -95,7 +95,7 @@ export default function FormsPage() {
 
       {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-3 mb-6">
-        <StatCard icon={FileText} label="Total Forms"   value={forms?.length ?? 0}                        iconColor="#7c3aed" />
+        <StatCard icon={FileText} label="Total Forms"   value={forms?.length ?? 0}                        iconColor="#149ba5" />
         <StatCard icon={Activity}  label="Deployed"      value={forms?.filter((f) => !!f.key).length ?? 0} iconColor="#16a34a" />
         <StatCard icon={Plus}      label="Created Today" value={0}                                         iconColor="#1d4ed8" />
       </div>

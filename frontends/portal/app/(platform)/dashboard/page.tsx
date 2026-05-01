@@ -63,7 +63,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard icon={ClipboardList} label={t('myTasks')}      value={summary?.myTasks ?? 0}      iconColor="#7c3aed" />
+            <StatCard icon={ClipboardList} label={t('myTasks')}      value={summary?.myTasks ?? 0}      iconColor="#149ba5" />
             <StatCard icon={Users}         label={t('teamTasks')}    value={summary?.teamTasks ?? 0}    iconColor="#1d4ed8" />
             <StatCard icon={AlertTriangle} label={t('overdue')}      value={summary?.overdue ?? 0}      iconColor="#dc2626" />
             <StatCard icon={TrendingUp}    label={t('highPriority')} value={summary?.highPriority ?? 0} iconColor="#c27b00" />

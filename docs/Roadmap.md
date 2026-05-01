@@ -111,7 +111,25 @@
 
 **Deps**: M3 Groups 3b/3c complete (ERP custody + department APIs wired)
 **Estimate**: 28–32 hours
-**Design handoff**: 2026-04-30
+**Status**: READY — all deps complete; plan mode required before coding
+
+### Design Reference
+
+All screens must be implemented against the approved Figma-export HTML designs:
+
+**Local path**: `/Users/lamteiwahlang/Projects/Werkflow Redesigned Final/`
+
+| File | Covers |
+|------|--------|
+| `Werkflow Redesigned.html` | Employee Portal — Dashboard, My Tasks, My Requests, Service Catalog, Processes, Forms, Decisions |
+| `Werkflow Employee Portal.html` | Full portal shell — sidebar, header, navigation structure |
+| `Werkflow Editor Theming.html` | BPMN / Form / DMN editor CSS theming targets |
+| `Werkflow Email Templates.html` | Email Templates screen (Design Studio section) |
+| `Werkflow Login.html` | Login page |
+| `Werkflow Landing Page.html` | Public landing page |
+| `uploads/` | Component screenshots — DMN Table, Form Editor, Process, Email Template |
+
+**Rule**: Open the relevant HTML file before implementing any screen. Derive all colours, spacing, typography, and component structure from the design files — do not guess or invent.
 
 ### Group 3a — Tenant Setup UI (ADR-006)
 

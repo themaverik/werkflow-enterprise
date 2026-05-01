@@ -1,12 +1,10 @@
-/* Werkflow Branding for Keycloak Login */
+/* Werkflow Keycloak Login Theme — teal accent #149ba5 */
 
-* {
-  box-sizing: border-box;
-}
+*, *::before, *::after { box-sizing: border-box; }
 
 .login-pf body {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: #111c27;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -16,98 +14,96 @@
 }
 
 .login-pf .login-pf-page {
-  background: rgba(255, 255, 255, 0.98);
+  background: rgba(255,255,255,0.98);
   border-radius: 16px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
-  max-width: 420px;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06);
+  max-width: 440px;
   width: 100%;
   overflow: hidden;
 }
 
 /* Header branding */
 .login-pf .login-pf-header {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
-  border-bottom: 2px solid #f0f0f0;
-  padding: 50px 40px 40px 40px;
+  background: linear-gradient(135deg, rgba(20,155,165,0.06) 0%, rgba(17,28,39,0.04) 100%);
+  border-bottom: 1px solid #e2eaee;
+  padding: 44px 40px 36px 40px;
   text-align: center;
 }
 
-/* Logo SVG */
+/* Logo icon */
 .login-pf .werkflow-logo {
-  width: 60px;
-  height: 60px;
-  margin: 0 auto 20px auto;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 18px auto;
   display: block;
 }
 
 /* Header text */
 .login-pf .login-pf-header .login-pf-header-text {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 800;
-  color: #667eea;
-  letter-spacing: -0.8px;
+  color: #0f1e2a;
+  letter-spacing: -0.6px;
   margin: 0;
   line-height: 1.2;
 }
 
 .login-pf .login-pf-header .login-pf-header-subtitle {
   font-size: 13px;
-  color: #999;
-  margin-top: 8px;
+  color: #6b7e8c;
+  margin-top: 6px;
   font-weight: 500;
-  letter-spacing: 0.3px;
 }
 
 /* Form container */
 .login-pf #kc-form {
-  padding: 40px;
+  padding: 36px 40px;
 }
 
 .login-pf #kc-form-wrapper {
   width: 100%;
 }
 
-/* Form styling */
+/* Form groups */
 .login-pf .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .login-pf .form-group label {
-  color: #555;
+  color: #374151;
   font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   display: block;
   font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .login-pf input[type="text"],
 .login-pf input[type="password"],
 .login-pf input[type="email"] {
   width: 100%;
-  border: 2px solid #e8e8e8;
-  border-radius: 8px;
-  padding: 14px 16px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 9px;
+  padding: 10px 14px;
   font-size: 14px;
-  transition: all 0.3s ease;
-  background: #fafafa;
+  transition: border-color .15s, box-shadow .15s;
+  background: #fff;
+  color: #111827;
+  font-family: inherit;
+  outline: none;
 }
 
 .login-pf input[type="text"]:focus,
 .login-pf input[type="password"]:focus,
 .login-pf input[type="email"]:focus {
-  border-color: #667eea;
-  background: white;
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-  outline: none;
+  border-color: #149ba5;
+  box-shadow: 0 0 0 3px rgba(20,155,165,0.13);
 }
 
-/* Checkbox styling */
+/* Checkbox */
 .login-pf .checkbox {
   display: flex;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .login-pf .checkbox label {
@@ -117,77 +113,75 @@
   font-weight: 500;
   font-size: 13px;
   cursor: pointer;
-  text-transform: none;
-  letter-spacing: 0;
+  color: #6b7e8c;
 }
 
 .login-pf .checkbox input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   margin-right: 8px;
   cursor: pointer;
-  accent-color: #667eea;
+  accent-color: #149ba5;
 }
 
-/* Button styling */
+/* Buttons */
 .login-pf .btn {
   border: none;
-  border-radius: 8px;
-  font-weight: 700;
-  padding: 14px 28px;
+  border-radius: 9px;
+  font-weight: 600;
+  padding: 11px 24px;
   font-size: 14px;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
+  transition: background .15s, transform .1s;
   cursor: pointer;
   display: inline-block;
   width: 100%;
   text-align: center;
+  font-family: inherit;
+  letter-spacing: 0.01em;
 }
 
 .login-pf #kc-form-buttons {
   display: flex;
-  gap: 12px;
-  margin-top: 30px;
+  gap: 10px;
+  margin-top: 24px;
 }
 
 .login-pf .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #149ba5;
   color: white;
   flex: 1;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 14px rgba(20,155,165,0.25);
 }
 
 .login-pf .btn-primary:hover {
-  background: linear-gradient(135deg, #5568d3 0%, #6a3f94 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  background: #0e7a82;
+  transform: translateY(-1px);
 }
 
 .login-pf .btn-primary:active,
 .login-pf .btn-primary:focus {
-  background: linear-gradient(135deg, #4856b8 0%, #5d358a 100%);
+  background: #0b636a;
   transform: translateY(0);
   outline: none;
 }
 
 .login-pf .btn-default {
-  background: #f5f5f5;
-  color: #333;
-  border: 1px solid #ddd;
+  background: #f5f7f9;
+  color: #374151;
+  border: 1px solid #e2eaee;
 }
 
 .login-pf .btn-default:hover {
-  background: #efefef;
-  border-color: #ccc;
+  background: #edf0f3;
+  border-color: #c8d0d8;
 }
 
-/* Alert boxes */
+/* Alerts */
 .login-pf .alert {
   border-radius: 8px;
   border: 1px solid;
-  padding: 14px 16px;
-  margin-bottom: 20px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
   font-size: 13px;
   line-height: 1.5;
 }
@@ -211,85 +205,47 @@
 }
 
 .login-pf .alert-info {
-  background-color: #eff6ff;
-  border-color: #bfdbfe;
-  color: #0c4a6e;
+  background-color: #e6f7f8;
+  border-color: #a8dde0;
+  color: #0e5f65;
 }
 
 /* Links */
 .login-pf a {
-  color: #667eea;
+  color: #149ba5;
   text-decoration: none;
   font-weight: 500;
-  transition: all 0.3s ease;
+  transition: color .15s;
 }
 
 .login-pf a:hover {
-  color: #764ba2;
+  color: #0e7a82;
   text-decoration: underline;
 }
 
-/* Footer text */
+/* Footer */
 .login-pf .login-pf-footer {
   text-align: center;
-  padding: 0 40px 40px 40px;
+  padding: 0 40px 36px 40px;
   margin-top: 0;
   border-top: none;
 }
 
 .login-pf .login-pf-footer span {
   display: block;
-  color: #888;
+  color: #94a3b8;
   font-size: 12px;
-  margin: 12px 0;
+  margin: 10px 0;
   line-height: 1.5;
 }
 
 /* Responsive */
 @media (max-width: 480px) {
-  .login-pf body {
-    padding: 10px;
-  }
-
-  .login-pf .login-pf-page {
-    border-radius: 12px;
-  }
-
-  .login-pf .login-pf-header {
-    padding: 40px 24px 30px 24px;
-  }
-
-  .login-pf .login-pf-header .login-pf-header-text {
-    font-size: 26px;
-  }
-
-  .login-pf .login-pf-header .login-pf-header-subtitle {
-    font-size: 12px;
-  }
-
-  .login-pf .werkflow-logo {
-    width: 50px;
-    height: 50px;
-    margin-bottom: 16px;
-  }
-
-  .login-pf #kc-form {
-    padding: 24px;
-  }
-
-  .login-pf .login-pf-footer {
-    padding: 0 24px 24px 24px;
-  }
-
-  .login-pf .btn {
-    padding: 12px 20px;
-    font-size: 13px;
-  }
-}
-
-/* Print styles */
-@media print {
-  .login-pf {
-    display: none;
-  }
+  .login-pf body { padding: 10px; }
+  .login-pf .login-pf-page { border-radius: 12px; }
+  .login-pf .login-pf-header { padding: 36px 24px 28px; }
+  .login-pf .login-pf-header .login-pf-header-text { font-size: 24px; }
+  .login-pf #kc-form { padding: 24px; }
+  .login-pf .login-pf-footer { padding: 0 24px 24px; }
+  .login-pf .btn { padding: 10px 18px; font-size: 13px; }
 }

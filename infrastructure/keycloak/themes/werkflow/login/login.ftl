@@ -3,22 +3,18 @@
     <#if section = "header">
         <div class="login-pf-header">
             <div class="login-pf-logo">
-                <svg class="werkflow-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="50" cy="50" r="45" fill="#667eea" opacity="0.1"/>
-                    <g transform="translate(50,50)">
-                        <circle cx="-20" cy="-20" r="8" fill="#667eea"/>
-                        <circle cx="20" cy="-20" r="8" fill="#764ba2"/>
-                        <circle cx="0" cy="25" r="8" fill="#667eea"/>
-                        <line x1="-20" y1="-20" x2="0" y2="25" stroke="#667eea" stroke-width="2"/>
-                        <line x1="20" y1="-20" x2="0" y2="25" stroke="#764ba2" stroke-width="2"/>
-                    </g>
+                <svg class="werkflow-logo" viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="52" height="52" rx="13" fill="#149ba5"/>
+                    <polyline points="26,10 10,19 26,28 42,19 26,10" fill="none" stroke="#fff" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/>
+                    <polyline points="10,34 26,43 42,34" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/>
+                    <polyline points="10,26.5 26,35.5 42,26.5" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/>
                 </svg>
             </div>
             <div class="login-pf-header-text">
                 Werkflow
             </div>
             <div class="login-pf-header-subtitle">
-                Enterprise Workflow Management Platform
+                Enterprise Workflow Platform
             </div>
         </div>
     <#elseif section = "form">
