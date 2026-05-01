@@ -69,7 +69,7 @@ export default function DecisionsPage() {
 
       {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <StatCard icon={GitBranch} label="Total Decisions" value={decisions?.length ?? 0}                        iconColor="#7c3aed" />
+        <StatCard icon={GitBranch} label="Total Decisions" value={decisions?.length ?? 0}                        iconColor="#149ba5" />
         <StatCard icon={Activity}  label="Deployed"         value={decisions?.filter((d) => !!d.key).length ?? 0} iconColor="#16a34a" />
       </div>
 

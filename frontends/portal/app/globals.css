@@ -11,7 +11,7 @@
     --sidebar-dim-text: rgba(255,255,255,0.35);
     --sidebar-nav-text: rgba(255,255,255,0.6);
     --sidebar-active-text: #ffffff;
-    --sidebar-active-bg: rgba(124,58,237,0.28);
+    --sidebar-active-bg: rgba(20,155,165,0.22);
     --sidebar-hover-bg: rgba(255,255,255,0.05);
 
     /* Surface */
@@ -26,8 +26,8 @@
     --border: 207 26% 88%;
     --input: 207 26% 88%;
 
-    /* Brand — purple primary */
-    --primary: 263 79% 56%;
+    /* Brand — teal primary */
+    --primary: 184 78% 36%;
     --primary-foreground: 0 0% 100%;
     --secondary: 210 20% 96%;
     --secondary-foreground: 211 60% 10%;
@@ -35,11 +35,11 @@
     /* States */
     --muted: 210 20% 96%;
     --muted-foreground: 207 14% 47%;
-    --accent: 263 79% 56%;
+    --accent: 184 78% 36%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 56%;
     --destructive-foreground: 0 0% 100%;
-    --ring: 263 79% 56%;
+    --ring: 184 78% 36%;
     --radius: 0.5rem;
 
     /* Semantic badge tokens */
@@ -55,9 +55,9 @@
     --badge-blue: #1d4ed8;
     --badge-blue-bg: #eff6ff;
     --badge-blue-border: #bfdbfe;
-    --badge-purple: #7c3aed;
-    --badge-purple-bg: #f5f3ff;
-    --badge-purple-border: #ddd6fe;
+    --badge-teal: #149ba5;
+    --badge-teal-bg: #e6f7f8;
+    --badge-teal-border: #a8dde0;
   }
 }
 
@@ -259,9 +259,9 @@
   border-bottom: 2px solid #149ba5 !important;
 }
 .dmn-decision-table-container thead .output-cell {
-  background: rgba(124,58,237,0.08) !important;
-  color: #7c3aed !important;
-  border-bottom: 2px solid #7c3aed !important;
+  background: rgba(20,155,165,0.06) !important;
+  color: #0e7a82 !important;
+  border-bottom: 2px solid #0e7a82 !important;
 }
 
 /* Generic th/td */
