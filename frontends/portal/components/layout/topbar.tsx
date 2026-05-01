@@ -1,3 +1,5 @@
+'use client'
+
 import { Bell, Search } from 'lucide-react'
 import { UserMenu } from '@/components/auth/user-menu'
 
@@ -14,13 +16,14 @@ export function TopBar() {
             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
           />
           <input
+            aria-label="Search"
             placeholder="Search..."
             className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
       </div>
       <div className="ml-auto flex items-center gap-3">
-        <button className="relative p-2 rounded-lg hover:bg-muted transition-colors">
+        <button aria-label="Notifications" className="relative p-2 rounded-lg hover:bg-muted transition-colors">
           <Bell size={18} className="text-muted-foreground" />
         </button>
         <UserMenu />
