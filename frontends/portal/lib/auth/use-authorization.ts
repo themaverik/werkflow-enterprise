@@ -26,7 +26,8 @@ export interface UseAuthorizationReturn {
  */
 export function useAuthorization(options?: UseAuthorizationOptions): UseAuthorizationReturn {
   const { user, token, isAuthenticated } = useAuth()
-  const [routeAccessCache, setRouteAccessCache] = useState<Map<string, boolean>>(new Map())
+  // MED-04: cache entries carry a timestamp; stale entries are re-evaluated after 5 minutes
+  const [routeAccessCache, setRouteAccessCache] = useState<Map<string, { result: boolean; timestamp: number }>>(new Map())
 
   const hasRole = useCallback((role: string): boolean => {
     if (!isAuthenticated || !user) return false
@@ -53,10 +54,19 @@ export function useAuthorization(options?: UseAuthorizationOptions): UseAuthoriz
       return false
     }
 
-    // Check cache first
+    // Check cache first — evict entries older than 5 minutes (MED-04)
+    const CACHE_TTL_MS = 5 * 60 * 1000
     const cached = routeAccessCache.get(routePath)
     if (cached !== undefined) {
-      return cached
+      if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        return cached.result
+      }
+      // Stale entry — remove and re-evaluate below
+      setRouteAccessCache(prev => {
+        const next = new Map(prev)
+        next.delete(routePath)
+        return next
+      })
     }
 
     try {
@@ -74,8 +84,8 @@ export function useAuthorization(options?: UseAuthorizationOptions): UseAuthoriz
       const data = await response.json()
       const hasAccess = data.hasAccess === true
 
-      // Cache the result
-      setRouteAccessCache(prev => new Map(prev).set(routePath, hasAccess))
+      // Cache the result with a timestamp
+      setRouteAccessCache(prev => new Map(prev).set(routePath, { result: hasAccess, timestamp: Date.now() }))
 
       if (!hasAccess) {
         options?.onDenied?.()

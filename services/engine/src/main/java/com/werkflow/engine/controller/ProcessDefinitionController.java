@@ -33,18 +33,19 @@ public class ProcessDefinitionController {
     private final ProcessDefinitionService processDefinitionService;
     private final ProcessCustodyService processCustodyService;
 
-    public record DeployRequest(String name, String bpmnXml, String owningDepartment) {}
+    public record DeployRequest(String name, String bpmnXml, String owningDepartment, String parentDeploymentId) {}
 
     @PostMapping(value = "/deploy", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasPermission(null, 'WORKFLOW:DEPLOY')")
-    @Operation(summary = "Deploy a new process definition", description = "Deploy a BPMN 2.0 XML string")
+    @Operation(summary = "Deploy a new process definition", description = "Deploy a BPMN 2.0 XML string. " +
+        "Set parentDeploymentId to link this deployment to a bundle (ADR-009).")
     public ResponseEntity<ProcessDefinitionResponse> deployProcessDefinition(
         @RequestBody DeployRequest deployRequest,
         Authentication authentication
     ) {
         String resourceName = deployRequest.name().toLowerCase().replaceAll("\\s+", "-") + ".bpmn20.xml";
         ProcessDefinitionResponse response = processDefinitionService.deployProcessDefinition(
-                deployRequest.bpmnXml(), resourceName);
+                deployRequest.bpmnXml(), resourceName, deployRequest.parentDeploymentId());
 
         if (deployRequest.owningDepartment() != null && !deployRequest.owningDepartment().isBlank()) {
             JwtUserContext user = extractUserContext(authentication);

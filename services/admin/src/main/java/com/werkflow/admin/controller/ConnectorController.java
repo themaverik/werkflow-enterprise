@@ -59,7 +59,7 @@ public class ConnectorController {
     }
 
     @GetMapping("/internal/endpoints/resolve")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPER_ADMIN') or hasAuthority('ROLE_ENGINE_SERVICE')")
     @Operation(summary = "Resolve connector endpoint", description = "Resolve the base URL for a connector key scoped to a tenant and environment (internal use)")
     public ResponseEntity<String> resolveEndpoint(
             @RequestParam String tenantCode,

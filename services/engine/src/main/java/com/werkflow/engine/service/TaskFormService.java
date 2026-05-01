@@ -21,6 +21,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -177,11 +178,14 @@ public class TaskFormService {
                     submittedBy
             );
 
-            // Prepare variables to save to process
+            // Prepare variables to save to process — exclude display-only (Category B) keys
+            Set<String> displayOnlyKeys = formSchemaValidator.extractDisplayOnlyKeys(formSchema.getSchemaJson());
             Map<String, Object> variablesToSave = new HashMap<>();
-
-            // Add form data to variables
-            variablesToSave.putAll(request.getFormData());
+            request.getFormData().forEach((key, value) -> {
+                if (!displayOnlyKeys.contains(key)) {
+                    variablesToSave.put(key, value);
+                }
+            });
 
             // Add any additional variables from request
             if (request.getVariables() != null) {

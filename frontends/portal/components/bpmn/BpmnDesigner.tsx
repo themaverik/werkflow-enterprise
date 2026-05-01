@@ -138,7 +138,7 @@ function validateActionBlocks(modeler: any): string[] {
       const actionType: string = bo.get('flowable:actionType') || ''
       const label = bo.name ? `"${bo.name}"` : `[${el.id}]`
 
-      if (actionType === 'NOTIFICATION') {
+      if (actionType === 'SEND_NOTIFICATION') {
         if (!getFlowableField(bo, 'recipient')) {
           errors.push(`${label}: Notification task is missing a recipient.`)
         }
@@ -153,9 +153,15 @@ function validateActionBlocks(modeler: any): string[] {
         }
       }
 
-      if (actionType === 'DMN_ROUTE') {
-        if (!getFlowableField(bo, 'decisionRef') && !bo.get('flowable:decisionRef')) {
-          errors.push(`${label}: DMN Route task is missing a decision reference.`)
+      if (actionType === 'CALL_SUBPROCESS') {
+        if (!getFlowableField(bo, 'processKey')) {
+          errors.push(`${label}: Call Subprocess task is missing a process key.`)
+        }
+      }
+
+      if (actionType === 'GROOVY_SCRIPT') {
+        if (!bo.get('flowable:script')) {
+          errors.push(`${label}: Groovy Script task has no script content.`)
         }
       }
 
@@ -455,8 +461,8 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
     }
 
     const fetchCustodyMappings_ = () => {
-      listCustodyMappings('default')
-        .then((mappings) => { if (!cancelled) setCustodyMappings(mappings) })
+      listCustodyMappings()
+        .then((page) => { if (!cancelled) setCustodyMappings(page.content) })
         .catch(() => { /* non-critical, silently skip */ })
     }
 
@@ -772,8 +778,8 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
                         }),
                         ...(custodyMappings.length > 0 && {
                           custodyGroup: custodyMappings.map((m) => ({
-                            value: m.custodyGroup,
-                            label: m.displayName ? `${m.custodyGroup} — ${m.displayName}` : m.custodyGroup,
+                            value: m.custodyOwner,
+                            label: `${m.custodyOwner} (${m.candidateGroups.join(', ')})`,
                           })),
                         }),
                       }}

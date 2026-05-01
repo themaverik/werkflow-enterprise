@@ -9,6 +9,9 @@
              expressionLanguage="http://www.w3.org/1999/XPath"
              targetNamespace="http://werkflow.com/bpmn/asset-request">
 
+  <!-- ADR-008: catches signal thrown by procurement-approval-process -->
+  <signal id="procurementApprovedSignal" name="procurementApproved" flowable:scope="global"/>
+
   <process id="asset-request-process" name="Asset Request" isExecutable="true">
 
     <documentation>Asset request workflow with custodian review, stock check, and procurement escalation</documentation>
@@ -47,6 +50,14 @@
           expression="${execution.setVariable('approvedByUserId', task.assignee != null ? task.assignee : 'system')}"/>
       </extensionElements>
     </userTask>
+    <!-- PT48H non-interrupting reminder -->
+    <boundaryEvent id="timerReminder_custodian" attachedToRef="custodianReview" cancelActivity="false">
+      <timerEventDefinition><timeDuration>PT48H</timeDuration></timerEventDefinition>
+    </boundaryEvent>
+    <!-- PT72H interrupting escalation -->
+    <boundaryEvent id="timerEscalate_custodian" attachedToRef="custodianReview" cancelActivity="true">
+      <timerEventDefinition><timeDuration>PT72H</timeDuration></timerEventDefinition>
+    </boundaryEvent>
 
     <!-- Exclusive Gateway: Decision? -->
     <exclusiveGateway id="decisionGateway" name="Decision?"/>
@@ -87,6 +98,12 @@
         <flowable:formProperty id="procurementComments" name="Comments" type="string" required="false"/>
       </extensionElements>
     </userTask>
+    <boundaryEvent id="timerReminder_procurement" attachedToRef="procurementDecision" cancelActivity="false">
+      <timerEventDefinition><timeDuration>PT48H</timeDuration></timerEventDefinition>
+    </boundaryEvent>
+    <boundaryEvent id="timerEscalate_procurement" attachedToRef="procurementDecision" cancelActivity="true">
+      <timerEventDefinition><timeDuration>PT72H</timeDuration></timerEventDefinition>
+    </boundaryEvent>
 
     <!-- Exclusive Gateway: Procurement? -->
     <exclusiveGateway id="procurementGateway" name="Procurement?"/>
@@ -101,6 +118,14 @@
         <flowable:field name="method"><flowable:string>POST</flowable:string></flowable:field>
       </extensionElements>
     </serviceTask>
+    <boundaryEvent id="errorBoundary_initiateProcurement" attachedToRef="initiateProcurement" cancelActivity="true">
+      <errorEventDefinition/>
+    </boundaryEvent>
+
+    <!-- M5: Signal catch — wait for procurement-approval-process to complete (ADR-008) -->
+    <intermediateCatchEvent id="catchProcurementApproved" name="Wait: Procurement Approved">
+      <signalEventDefinition signalRef="procurementApprovedSignal"/>
+    </intermediateCatchEvent>
 
     <!-- Service Task: Notify Rejection -->
     <serviceTask id="notifyRejection" name="Notify Rejection"
@@ -154,8 +179,52 @@
       <conditionExpression xsi:type="tFormalExpression">${!procure}</conditionExpression>
     </sequenceFlow>
 
-    <sequenceFlow id="flow7" sourceRef="initiateProcurement" targetRef="endProcurement"/>
+    <sequenceFlow id="flow7" sourceRef="initiateProcurement" targetRef="catchProcurementApproved"/>
+    <sequenceFlow id="flow7b" sourceRef="catchProcurementApproved" targetRef="endProcurement"/>
     <sequenceFlow id="flow8" sourceRef="notifyRejection" targetRef="endRejected"/>
+
+    <!-- Timer reminder flows (non-interrupting PT48H) -->
+    <serviceTask id="sendReminderNotification" name="Send Approval Reminder"
+                 flowable:actionType="NOTIFICATION"
+                 flowable:delegateExpression="${notificationDelegate}">
+      <extensionElements>
+        <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
+        <flowable:field name="templateKey"><flowable:string>approval-reminder</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+    <endEvent id="endReminder" name="Reminder Sent"/>
+    <sequenceFlow id="flow_reminder_custodian" sourceRef="timerReminder_custodian" targetRef="sendReminderNotification"/>
+    <sequenceFlow id="flow_reminder_procurement" sourceRef="timerReminder_procurement" targetRef="sendReminderNotification"/>
+    <sequenceFlow id="flow_reminder_end" sourceRef="sendReminderNotification" targetRef="endReminder"/>
+
+    <!-- Timer escalation flows (interrupting PT72H) -->
+    <serviceTask id="sendEscalationNotification" name="Send Escalation Notice"
+                 flowable:actionType="NOTIFICATION"
+                 flowable:delegateExpression="${notificationDelegate}">
+      <extensionElements>
+        <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
+        <flowable:field name="templateKey"><flowable:string>approval-escalation</flowable:string></flowable:field>
+        <flowable:field name="recipient"><flowable:string>SUPER_ADMIN</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+    <endEvent id="endEscalated" name="Escalated"/>
+    <sequenceFlow id="flow_escalate_custodian" sourceRef="timerEscalate_custodian" targetRef="sendEscalationNotification"/>
+    <sequenceFlow id="flow_escalate_procurement" sourceRef="timerEscalate_procurement" targetRef="sendEscalationNotification"/>
+    <sequenceFlow id="flow_escalate_end" sourceRef="sendEscalationNotification" targetRef="endEscalated"/>
+
+    <!-- Error boundary flows -->
+    <serviceTask id="notifyServiceError" name="Notify Service Error"
+                 flowable:actionType="NOTIFICATION"
+                 flowable:delegateExpression="${notificationDelegate}">
+      <extensionElements>
+        <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
+        <flowable:field name="templateKey"><flowable:string>process-error</flowable:string></flowable:field>
+        <flowable:field name="recipient"><flowable:string>SUPER_ADMIN</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+    <endEvent id="endServiceError" name="Process Error"/>
+    <sequenceFlow id="flow_error_initiateProcurement" sourceRef="errorBoundary_initiateProcurement" targetRef="notifyServiceError"/>
+    <sequenceFlow id="flow_error_end" sourceRef="notifyServiceError" targetRef="endServiceError"/>
 
   </process>
 

@@ -1,5 +1,7 @@
 package com.werkflow.engine.service;
 
+import com.werkflow.engine.client.AdminServiceClient;
+import com.werkflow.engine.client.UserProfileDto;
 import com.werkflow.engine.dto.JwtUserContext;
 import com.werkflow.engine.dto.TaskListResponse;
 import com.werkflow.engine.dto.TaskQueryParams;
@@ -14,6 +16,7 @@ import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.TaskQuery;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +36,10 @@ public class WorkflowTaskService {
     private final org.flowable.engine.TaskService flowableTaskService;
     private final RepositoryService repositoryService;
     private final FlowableGroupResolver groupResolver;
+    private final AdminServiceClient adminServiceClient;
+
+    @Value("${werkflow.erp.enabled:false}")
+    private boolean erpEnabled;
 
     /**
      * Get tasks assigned to the authenticated user
@@ -50,7 +57,11 @@ public class WorkflowTaskService {
         boolean isHighAuthority = resolvedGroups.contains(FlowableGroups.DOA_L3)
                 || resolvedGroups.contains(FlowableGroups.DOA_L4);
         if (isAdmin || isHighAuthority) {
-            TaskQuery allQuery = flowableTaskService.createTaskQuery().active();
+            // H-1/HIGH-03: apply tenant filter even on admin/DOA bypass path
+            String adminTenantCode = userContext.getTenantCode() != null ? userContext.getTenantCode() : "default";
+            TaskQuery allQuery = flowableTaskService.createTaskQuery()
+                    .taskTenantId(adminTenantCode)
+                    .active();
             allQuery = applyFilters(allQuery, params);
             allQuery = applySorting(allQuery, params);
             long totalCount = allQuery.count();
@@ -65,6 +76,12 @@ public class WorkflowTaskService {
         TaskQuery query = flowableTaskService.createTaskQuery()
                 .taskAssignee(userContext.getUserId())
                 .active();
+
+        // Dept scoping — ADR-005: only show tasks from the user's owning department
+        String deptCode = resolveUserDepartment(userContext);
+        if (deptCode != null) {
+            query = query.processVariableValueEquals("owningDepartment", deptCode);
+        }
 
         // Apply filters
         query = applyFilters(query, params);
@@ -106,6 +123,9 @@ public class WorkflowTaskService {
             return buildEmptyTaskListResponse();
         }
 
+        // Dept scoping — ADR-005
+        String deptCode = resolveUserDepartment(userContext);
+
         // Build base query
         TaskQuery query;
 
@@ -132,6 +152,11 @@ public class WorkflowTaskService {
             query = query.taskUnassigned();
         }
 
+        // Dept scoping — ADR-005
+        if (deptCode != null) {
+            query = query.processVariableValueEquals("owningDepartment", deptCode);
+        }
+
         // Apply filters
         query = applyFilters(query, params);
 
@@ -153,6 +178,21 @@ public class WorkflowTaskService {
 
         // Build paginated response
         return buildTaskListResponse(responses, params, totalCount, "/workflows/tasks/group-tasks");
+    }
+
+    /**
+     * Returns the ERP department code for a user, or null if ERP is disabled or unavailable.
+     */
+    private String resolveUserDepartment(JwtUserContext userContext) {
+        if (!erpEnabled) return null;
+        try {
+            String tenantCode = userContext.getTenantCode() != null ? userContext.getTenantCode() : "default";
+            UserProfileDto profile = adminServiceClient.getUserProfile(userContext.getUserId(), tenantCode);
+            return profile != null ? profile.getDepartmentCode() : null;
+        } catch (Exception e) {
+            log.warn("WorkflowTaskService: could not resolve ERP dept for {} — {}", userContext.getUserId(), e.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -258,8 +298,11 @@ public class WorkflowTaskService {
                 .map(IdentityLink::getUserId)
                 .collect(Collectors.toList());
 
-        // Get task variables
-        Map<String, Object> variables = flowableTaskService.getVariables(task.getId());
+        // Get task variables — strip security-sensitive keys before returning (CRIT-01)
+        Map<String, Object> rawVariables = flowableTaskService.getVariables(task.getId());
+        Map<String, Object> variables = rawVariables.entrySet().stream()
+                .filter(e -> !isSecuritySensitiveKey(e.getKey()))
+                .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         // Calculate execution duration
         long executionDuration = task.getCreateTime() != null
@@ -299,9 +342,9 @@ public class WorkflowTaskService {
     }
 
     /**
-     * Get process definition name from cache
-     * @param processDefinitionId Process definition ID
-     * @return Process definition name
+     * Get process definition name from cache.
+     * L-7: uses "Unknown Process" as fallback to match ProcessMonitoringService and avoid
+     * cache-collision side-effects when both services share the same cache name.
      */
     @Cacheable(value = "processDefinitionNames", key = "#processDefinitionId")
     public String getProcessDefinitionName(String processDefinitionId) {
@@ -310,11 +353,24 @@ public class WorkflowTaskService {
                     .createProcessDefinitionQuery()
                     .processDefinitionId(processDefinitionId)
                     .singleResult();
-            return procDef != null ? procDef.getName() : null;
+            return procDef != null ? procDef.getName() : "Unknown Process";
         } catch (Exception e) {
             log.error("Error fetching process definition name for ID: {}", processDefinitionId, e);
-            return null;
+            return "Unknown Process";
         }
+    }
+
+    /**
+     * Returns true if the variable key is security-sensitive and should be stripped from
+     * API responses. Covers JWT/token keys (case-insensitive) and internal system variables.
+     */
+    private static boolean isSecuritySensitiveKey(String key) {
+        if (key == null) return true;
+        String lower = key.toLowerCase();
+        return lower.equals("authorizationtoken") || lower.equals("token")
+            || lower.equals("jwt") || lower.equals("bearer")
+            || lower.startsWith("authorizationtoken") || lower.startsWith("bearer")
+            || lower.startsWith("jwt");
     }
 
     /**

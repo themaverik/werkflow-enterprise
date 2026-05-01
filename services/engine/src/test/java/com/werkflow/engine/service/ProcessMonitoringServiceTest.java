@@ -1,5 +1,6 @@
 package com.werkflow.engine.service;
 
+import com.werkflow.engine.client.AdminServiceClient;
 import com.werkflow.engine.dto.*;
 import com.werkflow.engine.exception.ProcessNotFoundException;
 import com.werkflow.engine.exception.UnauthorizedTaskAccessException;
@@ -60,6 +61,9 @@ class ProcessMonitoringServiceTest {
 
     @Mock
     private FlowableGroupResolver groupResolver;
+
+    @Mock
+    private AdminServiceClient adminServiceClient;
 
     @Mock
     private HistoricProcessInstanceQuery processInstanceQuery;
