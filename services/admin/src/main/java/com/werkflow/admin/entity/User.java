@@ -68,8 +68,8 @@ public class User {
     @Column
     private Integer doaLevel;
 
-    @Column(name = "department_id")
-    private Long departmentId;
+    @Column(length = 50)
+    private String departmentCode;
 
     @Column
     private LocalDate hireDate;

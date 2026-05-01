@@ -29,9 +29,6 @@ public class Tenant {
     private String keycloakRealm;
 
     @Column(nullable = false)
-    private int crossDeptDoaThreshold = 4;
-
-    @Column(nullable = false)
     private boolean active = true;
 
     @CreatedDate @Column(nullable = false, updatable = false)

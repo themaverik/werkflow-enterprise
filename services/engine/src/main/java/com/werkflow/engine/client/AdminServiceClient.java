@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Component
@@ -39,33 +40,38 @@ public class AdminServiceClient {
         }
     }
 
-    @Cacheable(value = "tenantConfig", key = "'threshold:' + #tenantCode")
-    public int getTenantCrossDeptThreshold(String tenantCode) {
-        String url = adminServiceUrl + "/api/internal/tenants/{tenantCode}/cross-dept-threshold";
+    @Cacheable(value = "configVars", key = "#tenantCode")
+    public Map<String, String> getConfigVars(String tenantCode) {
+        String url = adminServiceUrl + "/api/v1/config/vars/map?tenantCode={tenantCode}";
         try {
-            Integer result = restTemplate.getForObject(url, Integer.class, tenantCode);
-            return result != null ? result : 4;
-        } catch (Exception e) {
-            log.warn("AdminServiceClient: failed to fetch cross-dept threshold for {} — {}", tenantCode, e.getMessage());
-            return 4;
-        }
-    }
-
-    @Cacheable(value = "tenantConfig", key = "'deptCodes:' + #tenantCode")
-    public List<String> getTenantDepartmentCodes(String tenantCode) {
-        String url = adminServiceUrl + "/api/departments/codes?tenantCode={tenantCode}";
-        try {
-            ResponseEntity<List<String>> resp = restTemplate.exchange(
+            ResponseEntity<Map<String, String>> resp = restTemplate.exchange(
                 url, HttpMethod.GET, null,
-                new ParameterizedTypeReference<List<String>>() {}, tenantCode);
-            return resp.getBody() != null ? resp.getBody() : List.of();
+                new ParameterizedTypeReference<Map<String, String>>() {}, tenantCode);
+            return resp.getBody() != null ? resp.getBody() : Map.of();
         } catch (Exception e) {
-            log.warn("AdminServiceClient: failed to fetch dept codes for {} — {}", tenantCode, e.getMessage());
-            return List.of();
+            log.warn("AdminServiceClient: failed to fetch config vars for {} — {}", tenantCode, e.getMessage());
+            return Map.of();
         }
     }
 
-    @Cacheable(value = "tenantConfig", key = "'rolePerms:' + #tenantCode + ':' + #roleNames")
+    @Cacheable(value = "roleMappings", key = "#tenantCode")
+    public Map<String, List<String>> getRoleMappings(String tenantCode) {
+        String url = adminServiceUrl + "/api/v1/config/role-mappings/by-role?tenantCode={tenantCode}";
+        try {
+            ResponseEntity<Map<String, List<String>>> resp = restTemplate.exchange(
+                url, HttpMethod.GET, null,
+                new ParameterizedTypeReference<Map<String, List<String>>>() {}, tenantCode);
+            return resp.getBody() != null ? resp.getBody() : Map.of();
+        } catch (Exception e) {
+            log.warn("AdminServiceClient: failed to fetch role mappings for {} — {}", tenantCode, e.getMessage());
+            return Map.of();
+        }
+    }
+
+    // M-9: sort roleNames before building the cache key so ["ADMIN","USER"] and ["USER","ADMIN"]
+    // map to the same cache entry and avoid duplicate HTTP calls.
+    @Cacheable(value = "tenantConfig",
+        key = "'rolePerms:' + #tenantCode + ':' + T(java.util.Arrays).toString(#roleNames.stream().sorted().toArray())")
     public Set<String> getTenantRolePermissions(String tenantCode, List<String> roleNames) {
         if (roleNames == null || roleNames.isEmpty()) return Set.of();
         String roles = String.join(",", roleNames);

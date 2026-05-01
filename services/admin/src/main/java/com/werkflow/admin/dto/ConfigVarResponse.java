@@ -2,12 +2,13 @@ package com.werkflow.admin.dto;
 
 import java.time.LocalDateTime;
 
-public record CustodyMappingResponse(
+public record ConfigVarResponse(
     Long id,
     String tenantCode,
-    String categoryKey,
-    String custodyGroup,
-    String displayName,
+    String varKey,
+    String varValue,
+    String varType,
+    String description,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {}

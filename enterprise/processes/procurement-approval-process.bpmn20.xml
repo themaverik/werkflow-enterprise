@@ -9,6 +9,9 @@
              expressionLanguage="http://www.w3.org/1999/XPath"
              targetNamespace="http://werkflow.com/bpmn/procurement">
 
+  <!-- ADR-008: cross-process signal — thrown by procurement, caught by asset-request -->
+  <signal id="procurementApprovedSignal" name="procurementApproved" flowable:scope="global"/>
+
   <process id="procurement-approval-process" name="Procurement Approval Process" isExecutable="true">
 
     <documentation>Purchase request approval workflow with vendor selection and DMN-backed approval routing.
@@ -34,6 +37,9 @@ to adjust spend thresholds and category rules — no code changes required.</doc
         <flowable:field name="extractFields"><flowable:string>purchaseRequestId:$.id</flowable:string></flowable:field>
       </extensionElements>
     </serviceTask>
+    <boundaryEvent id="errorBoundary_createRequest" attachedToRef="createPurchaseRequest" cancelActivity="true">
+      <errorEventDefinition/>
+    </boundaryEvent>
 
     <!-- Step 2: Fetch Approved Vendors -->
     <serviceTask id="fetchVendors" name="Fetch Approved Vendors"
@@ -127,18 +133,38 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
               flowable:formKey="procurement-approval">
       <documentation>Manager reviews mid-range procurement requests. Sets decision = approve or reject.</documentation>
     </userTask>
+    <!-- PT48H non-interrupting reminder -->
+    <boundaryEvent id="timerReminder_manager" attachedToRef="managerApproval" cancelActivity="false">
+      <timerEventDefinition><timeDuration>PT48H</timeDuration></timerEventDefinition>
+    </boundaryEvent>
+    <!-- PT72H interrupting escalation -->
+    <boundaryEvent id="timerEscalate_manager" attachedToRef="managerApproval" cancelActivity="true">
+      <timerEventDefinition><timeDuration>PT72H</timeDuration></timerEventDefinition>
+    </boundaryEvent>
 
     <userTask id="committeeApproval" name="Committee Approval"
               flowable:candidateGroups="DOA_L1,SUPER_ADMIN"
               flowable:formKey="procurement-approval">
       <documentation>Procurement committee reviews high-value requests. Sets decision = approve or reject.</documentation>
     </userTask>
+    <boundaryEvent id="timerReminder_committee" attachedToRef="committeeApproval" cancelActivity="false">
+      <timerEventDefinition><timeDuration>PT48H</timeDuration></timerEventDefinition>
+    </boundaryEvent>
+    <boundaryEvent id="timerEscalate_committee" attachedToRef="committeeApproval" cancelActivity="true">
+      <timerEventDefinition><timeDuration>PT72H</timeDuration></timerEventDefinition>
+    </boundaryEvent>
 
     <userTask id="boardApproval" name="Board Approval"
               flowable:candidateGroups="DOA_L1,SUPER_ADMIN"
               flowable:formKey="procurement-approval">
       <documentation>Board reviews large IT/infrastructure spend. Sets decision = approve or reject.</documentation>
     </userTask>
+    <boundaryEvent id="timerReminder_board" attachedToRef="boardApproval" cancelActivity="false">
+      <timerEventDefinition><timeDuration>PT48H</timeDuration></timerEventDefinition>
+    </boundaryEvent>
+    <boundaryEvent id="timerEscalate_board" attachedToRef="boardApproval" cancelActivity="true">
+      <timerEventDefinition><timeDuration>PT72H</timeDuration></timerEventDefinition>
+    </boundaryEvent>
 
     <!-- All human approval paths converge here -->
     <exclusiveGateway id="approvalJoin" name="Approval Complete"/>
@@ -152,12 +178,41 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
 
     <sequenceFlow id="flow_join_decision" sourceRef="approvalJoin" targetRef="approvalDecisionGateway"/>
 
-    <sequenceFlow id="approved" sourceRef="approvalDecisionGateway" targetRef="createPurchaseOrder">
+    <sequenceFlow id="approved" sourceRef="approvalDecisionGateway" targetRef="throwProcurementApproved">
       <conditionExpression xsi:type="tFormalExpression">${decision == 'approve'}</conditionExpression>
     </sequenceFlow>
+    <sequenceFlow id="flow_signal_to_po" sourceRef="throwProcurementApproved" targetRef="createPurchaseOrder"/>
     <sequenceFlow id="rejected" sourceRef="approvalDecisionGateway" targetRef="updateRejected">
       <conditionExpression xsi:type="tFormalExpression">${decision == 'reject'}</conditionExpression>
     </sequenceFlow>
+
+    <!-- M5: Signal throw after final approval — ADR-008 -->
+    <intermediateThrowEvent id="throwProcurementApproved" name="Signal: Procurement Approved">
+      <signalEventDefinition signalRef="procurementApprovedSignal"/>
+    </intermediateThrowEvent>
+
+    <!-- Timer reminder tasks (non-interrupting PT48H) -->
+    <serviceTask id="sendReminderNotification" name="Send Approval Reminder"
+                 flowable:actionType="NOTIFICATION"
+                 flowable:delegateExpression="${notificationDelegate}">
+      <extensionElements>
+        <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
+        <flowable:field name="templateKey"><flowable:string>approval-reminder</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+    <endEvent id="endReminder" name="Reminder Sent"/>
+
+    <!-- Timer escalation tasks (interrupting PT72H) -->
+    <serviceTask id="sendEscalationNotification" name="Send Escalation Notice"
+                 flowable:actionType="NOTIFICATION"
+                 flowable:delegateExpression="${notificationDelegate}">
+      <extensionElements>
+        <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
+        <flowable:field name="templateKey"><flowable:string>approval-escalation</flowable:string></flowable:field>
+        <flowable:field name="recipient"><flowable:string>SUPER_ADMIN</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+    <endEvent id="endEscalated" name="Escalated"/>
 
     <!-- Approval path: create and send purchase order -->
     <serviceTask id="createPurchaseOrder" name="Create Purchase Order"
@@ -171,6 +226,9 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
         <flowable:field name="extractFields"><flowable:string>poNumber:$.poNumber</flowable:string></flowable:field>
       </extensionElements>
     </serviceTask>
+    <boundaryEvent id="errorBoundary_createPO" attachedToRef="createPurchaseOrder" cancelActivity="true">
+      <errorEventDefinition/>
+    </boundaryEvent>
 
     <serviceTask id="sendPOToVendor" name="Send PO to Vendor"
                  flowable:delegateExpression="${externalApiCallDelegate}">
@@ -181,6 +239,9 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
         <flowable:field name="method"><flowable:string>POST</flowable:string></flowable:field>
       </extensionElements>
     </serviceTask>
+    <boundaryEvent id="errorBoundary_sendPO" attachedToRef="sendPOToVendor" cancelActivity="true">
+      <errorEventDefinition/>
+    </boundaryEvent>
 
     <serviceTask id="updateApproved" name="Update Status: Approved"
                  flowable:delegateExpression="${externalApiCallDelegate}">
@@ -246,6 +307,35 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
     <!-- Sequence Flows: rejection path -->
     <sequenceFlow id="flow13" sourceRef="updateRejected" targetRef="sendRejectionNotification"/>
     <sequenceFlow id="flow14" sourceRef="sendRejectionNotification" targetRef="endEventRejected"/>
+
+    <!-- Timer reminder flows (non-interrupting PT48H — same notification task, shared) -->
+    <sequenceFlow id="flow_reminder_manager" sourceRef="timerReminder_manager" targetRef="sendReminderNotification"/>
+    <sequenceFlow id="flow_reminder_committee" sourceRef="timerReminder_committee" targetRef="sendReminderNotification"/>
+    <sequenceFlow id="flow_reminder_board" sourceRef="timerReminder_board" targetRef="sendReminderNotification"/>
+    <sequenceFlow id="flow_reminder_end" sourceRef="sendReminderNotification" targetRef="endReminder"/>
+
+    <!-- Timer escalation flows (interrupting PT72H) -->
+    <sequenceFlow id="flow_escalate_manager" sourceRef="timerEscalate_manager" targetRef="sendEscalationNotification"/>
+    <sequenceFlow id="flow_escalate_committee" sourceRef="timerEscalate_committee" targetRef="sendEscalationNotification"/>
+    <sequenceFlow id="flow_escalate_board" sourceRef="timerEscalate_board" targetRef="sendEscalationNotification"/>
+    <sequenceFlow id="flow_escalate_end" sourceRef="sendEscalationNotification" targetRef="endEscalated"/>
+
+    <!-- Error boundary flows — service task failures notify and terminate -->
+    <serviceTask id="notifyServiceError" name="Notify Service Error"
+                 flowable:actionType="NOTIFICATION"
+                 flowable:delegateExpression="${notificationDelegate}">
+      <extensionElements>
+        <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
+        <flowable:field name="templateKey"><flowable:string>process-error</flowable:string></flowable:field>
+        <flowable:field name="recipient"><flowable:string>SUPER_ADMIN</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+    <endEvent id="endServiceError" name="Process Error"/>
+
+    <sequenceFlow id="flow_error_createRequest" sourceRef="errorBoundary_createRequest" targetRef="notifyServiceError"/>
+    <sequenceFlow id="flow_error_createPO" sourceRef="errorBoundary_createPO" targetRef="notifyServiceError"/>
+    <sequenceFlow id="flow_error_sendPO" sourceRef="errorBoundary_sendPO" targetRef="notifyServiceError"/>
+    <sequenceFlow id="flow_error_end" sourceRef="notifyServiceError" targetRef="endServiceError"/>
 
   </process>
 

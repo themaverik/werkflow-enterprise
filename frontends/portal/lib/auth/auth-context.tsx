@@ -32,6 +32,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(status === 'loading')
 
+  // MED-11: force sign-out when the refresh token has expired
+  useEffect(() => {
+    if (status === 'authenticated' && (session as any)?.error === 'RefreshAccessTokenError') {
+      signOut({ redirect: true, callbackUrl: '/login' })
+    }
+  }, [session, status])
+
   // Update user when session changes
   useEffect(() => {
     if (status === 'authenticated' && session) {

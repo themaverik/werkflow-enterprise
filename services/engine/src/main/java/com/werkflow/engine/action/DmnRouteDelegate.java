@@ -1,5 +1,6 @@
 package com.werkflow.engine.action;
 
+import com.werkflow.engine.dmn.DmnConfigVariableInjector;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -42,6 +43,7 @@ import java.util.Map;
 public class DmnRouteDelegate implements JavaDelegate {
 
     private final DmnDecisionService dmnDecisionService;
+    private final DmnConfigVariableInjector configVariableInjector;
 
     /** DMN decision key to evaluate (required). */
     @Setter
@@ -58,8 +60,9 @@ public class DmnRouteDelegate implements JavaDelegate {
     @Setter
     private Expression resultVariable;
 
-    public DmnRouteDelegate(DmnDecisionService dmnDecisionService) {
+    public DmnRouteDelegate(DmnDecisionService dmnDecisionService, DmnConfigVariableInjector configVariableInjector) {
         this.dmnDecisionService = dmnDecisionService;
+        this.configVariableInjector = configVariableInjector;
     }
 
     @Override
@@ -71,14 +74,15 @@ public class DmnRouteDelegate implements JavaDelegate {
         log.info("DmnRouteDelegate: evaluating decision '{}' (mapping={}) for process instance {}",
                 decisionKey, mapping, execution.getProcessInstanceId());
 
-        // Collect ALL current process variables as DMN input variables
-        Map<String, Object> inputVariables = new HashMap<>(execution.getVariables());
-
         // Resolve tenantId: try process execution tenant first, fall back to "default"
         String tenantId = execution.getTenantId();
         if (tenantId == null || tenantId.isBlank()) {
             tenantId = "default";
         }
+
+        // Collect ALL current process variables as DMN input variables, then enrich with
+        // configVars and custodyVars from admin/ERP services (ADR-002, ADR-004).
+        Map<String, Object> inputVariables = configVariableInjector.enrich(tenantId, new HashMap<>(execution.getVariables()));
 
         try {
             Map<String, Object> result = dmnDecisionService

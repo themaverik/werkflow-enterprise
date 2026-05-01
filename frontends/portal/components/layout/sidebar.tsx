@@ -38,16 +38,16 @@ const sidebarSections: SidebarSection[] = [
       { labelKey: 'connectors', label: 'Connectors', href: '/admin/connectors', requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'custodyMappings', label: 'Custody Mappings', href: '/admin/custody', requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'emailTemplates', label: 'Email Templates', href: '/admin/email-templates', requiredRoles: ['ADMIN', 'SUPER_ADMIN', 'WORKFLOW_ADMIN'] },
+      { labelKey: 'deadLetterJobs', label: 'Failed Jobs', href: '/admin/jobs/dead-letter', requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
     ],
   },
-  // System section hidden until Monitoring and Analytics are implemented
-  // {
-  //   titleKey: 'system',
-  //   items: [
-  //     { labelKey: 'monitoring', label: 'Monitoring', href: '/monitoring', requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
-  //     { labelKey: 'analytics', label: 'Analytics', href: '/analytics', requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
-  //   ],
-  // },
+  {
+    titleKey: 'system',
+    items: [
+      { labelKey: 'analytics', label: 'Analytics', href: '/analytics', requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'processHealth', label: 'Process Health', href: '/monitoring', requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+    ],
+  },
 ]
 
 export function Sidebar() {

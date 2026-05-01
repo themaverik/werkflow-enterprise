@@ -15,7 +15,7 @@ public class UserProfileController {
     private final UserService userService;
 
     @GetMapping("/{keycloakId}/profile")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('ROLE_ENGINE_SERVICE') or hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPER_ADMIN')")
     public ResponseEntity<UserProfileResponse> getProfile(
             @PathVariable String keycloakId,
             @RequestParam(required = false, defaultValue = "default") String tenantCode) {

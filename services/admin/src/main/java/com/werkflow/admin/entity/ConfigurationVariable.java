@@ -11,32 +11,28 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "departments")
+@Table(name = "configuration_variables")
 @Getter @Setter @NoArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
-public class Department {
+public class ConfigurationVariable {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "organization_id", nullable = false)
-    private Organization organization;
+    @Column(nullable = false, length = 50)
+    private String tenantCode;
 
     @Column(nullable = false, length = 100)
-    private String name;
+    private String varKey;
 
-    @Column(length = 50)
-    private String code;
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String varValue;
+
+    @Column(nullable = false, length = 20)
+    private String varType = "STRING";
 
     @Column(length = 500)
     private String description;
-
-    @Column(length = 50)
-    private String tenantCode;
-
-    @Column(nullable = false)
-    private boolean active = true;
 
     @CreatedDate @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

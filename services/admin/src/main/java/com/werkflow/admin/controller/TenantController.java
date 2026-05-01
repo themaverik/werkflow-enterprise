@@ -1,23 +1,15 @@
 package com.werkflow.admin.controller;
 
-import com.werkflow.admin.repository.TenantRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Tenant internal endpoints. cross-dept-threshold removed (ADR-002) —
+ * DOA thresholds are now stored as configuration_variables per tenant.
+ */
 @RestController
 @RequestMapping("/api/internal/tenants")
 @RequiredArgsConstructor
 public class TenantController {
-
-    private final TenantRepository tenantRepository;
-
-    @GetMapping("/{tenantCode}/cross-dept-threshold")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Integer> getCrossDeptThreshold(@PathVariable String tenantCode) {
-        return tenantRepository.findByTenantCode(tenantCode)
-            .map(t -> ResponseEntity.ok(t.getCrossDeptDoaThreshold()))
-            .orElse(ResponseEntity.ok(4));
-    }
+    // Retained as placeholder; individual tenant operations delegated to service-specific controllers.
 }

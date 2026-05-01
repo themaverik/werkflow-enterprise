@@ -1,22 +1,27 @@
-import { adminApiClient } from './client'
+import { erpApiClient } from './client'
 
 // ==================== TYPE DEFINITIONS ====================
 
 export interface CustodyMappingResponse {
   id: number
-  tenantCode: string
-  categoryKey: string
-  custodyGroup: string
-  displayName: string | null
+  tenantId: string
+  custodyOwner: string
+  candidateGroups: string[]
   createdAt: string
   updatedAt: string
 }
 
 export interface CustodyMappingRequest {
-  tenantCode: string
-  categoryKey: string
-  custodyGroup: string
-  displayName?: string
+  custodyOwner: string
+  candidateGroups: string[]
+}
+
+export interface CustodyMappingPage {
+  content: CustodyMappingResponse[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
 }
 
 // ==================== API ERROR CLASS ====================
@@ -53,7 +58,7 @@ function handleApiError(error: unknown, context: string): never {
       (error as { code?: string }).code === 'ERR_NETWORK')
   ) {
     throw new CustodyApiError(
-      'Cannot connect to Admin service. Please ensure the backend is running.',
+      'Cannot connect to ERP service. Please ensure the backend is running.',
       0
     )
   }
@@ -65,23 +70,23 @@ function handleApiError(error: unknown, context: string): never {
 
 // ==================== API FUNCTIONS ====================
 
-export async function listCustodyMappings(tenantCode: string): Promise<CustodyMappingResponse[]> {
+export async function listCustodyMappings(page = 0, size = 50): Promise<CustodyMappingPage> {
   try {
-    const response = await adminApiClient.get('/api/custody-mappings', {
-      params: { tenantCode },
+    const response = await erpApiClient.get('/api/v1/custody-mappings', {
+      params: { page, size, sort: 'custodyOwner,asc' },
     })
-    return Array.isArray(response.data) ? response.data : response.data.content || []
+    return response.data
   } catch (error: unknown) {
-    handleApiError(error, `list-custody-mappings-${tenantCode}`)
+    handleApiError(error, 'list-custody-mappings')
   }
 }
 
 export async function createCustodyMapping(request: CustodyMappingRequest): Promise<CustodyMappingResponse> {
   try {
-    const response = await adminApiClient.post('/api/custody-mappings', request)
+    const response = await erpApiClient.post('/api/v1/custody-mappings', request)
     return response.data
   } catch (error: unknown) {
-    handleApiError(error, `create-custody-mapping-${request.categoryKey}`)
+    handleApiError(error, `create-custody-mapping-${request.custodyOwner}`)
   }
 }
 
@@ -90,7 +95,7 @@ export async function updateCustodyMapping(
   request: CustodyMappingRequest
 ): Promise<CustodyMappingResponse> {
   try {
-    const response = await adminApiClient.put(`/api/custody-mappings/${id}`, request)
+    const response = await erpApiClient.put(`/api/v1/custody-mappings/${id}`, request)
     return response.data
   } catch (error: unknown) {
     handleApiError(error, `update-custody-mapping-${id}`)
@@ -99,7 +104,7 @@ export async function updateCustodyMapping(
 
 export async function deleteCustodyMapping(id: number): Promise<void> {
   try {
-    await adminApiClient.delete(`/api/custody-mappings/${id}`)
+    await erpApiClient.delete(`/api/v1/custody-mappings/${id}`)
   } catch (error: unknown) {
     handleApiError(error, `delete-custody-mapping-${id}`)
   }

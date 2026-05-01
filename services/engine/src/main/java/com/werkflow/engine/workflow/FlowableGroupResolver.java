@@ -14,26 +14,27 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Resolves Flowable candidateGroup identifiers for a user — five-step pipeline.
+ * Resolves Flowable candidateGroup identifiers for a user — three-step pipeline.
  *
- * Phase 2 note: emits BOTH old format (DOA_L1) and new prefix format (DOA:L1) simultaneously
- * so existing BPMN candidateGroups continue to match while Phase 3 migrates them.
- * Phase 3 removes old-format output once all BPMN is updated.
+ * ADR-003: DoA cumulative loop and cross-dept compound groups removed.
+ * Role→group mapping is now DB-backed per tenant (role_group_mappings table),
+ * merged with YAML fallback entries (admin, super_admin, workflow_designer).
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class FlowableGroupResolver {
+public class FlowableGroupResolver implements UserGroupLookupProxy {
 
     private final FlowableGroupProperties properties;
     private final AdminServiceClient adminServiceClient;
 
+    @Override
     public List<String> resolveGroups(JwtUserContext userContext) {
         Set<String> resolved = new LinkedHashSet<>();
         String userId     = userContext.getUserId();
         String tenantCode = userContext.getTenantCode() != null ? userContext.getTenantCode() : "default";
 
-        // Step 1: resolve user record from admin-service (doaLevel, departmentCode)
+        // Step 1: resolve user record from admin-service (departmentCode)
         UserProfileDto profile = null;
         try {
             profile = adminServiceClient.getUserProfile(userId, tenantCode);
@@ -42,60 +43,51 @@ public class FlowableGroupResolver {
                 userId, e.getMessage());
         }
 
-        // Step 2: emit system groups from Keycloak roles via YAML role-mappings
+        // Step 2: emit groups from YAML role-mappings merged with DB role-group mappings
         List<String> roles = userContext.getRoles();
         if (roles != null) {
-            Map<String, List<String>> roleMappings = properties.getRoleMappings();
+            Map<String, List<String>> yamlMappings = properties.getRoleMappings();
+            Map<String, List<String>> dbMappings   = fetchDbRoleMappings(tenantCode);
+
             for (String role : roles) {
-                List<String> groups = roleMappings.get(role.toLowerCase());
-                if (groups != null) resolved.addAll(groups);
-                else log.debug("No role mapping for '{}' — skipped", role);
+                String key = role.toLowerCase();
+                List<String> yamlGroups = yamlMappings.get(key);
+                if (yamlGroups != null) resolved.addAll(yamlGroups);
+
+                List<String> dbGroups = dbMappings.get(key);
+                if (dbGroups != null) resolved.addAll(dbGroups);
+
+                if (yamlGroups == null && dbGroups == null) {
+                    log.debug("No role mapping for '{}' — skipped", role);
+                }
             }
         }
 
         if (profile == null) {
-            log.debug("FlowableGroupResolver: no profile for user {} — returning YAML groups only", userId);
+            log.debug("FlowableGroupResolver: no profile for user {} — returning mapped groups only", userId);
             return new ArrayList<>(resolved);
         }
 
-        // Step 3: emit DoA groups (cumulative), both old and new format
-        Integer doaLevel = profile.getDoaLevel();
-        if (doaLevel != null && doaLevel > 0) {
-            for (int level = 1; level <= doaLevel; level++) {
-                resolved.add("DOA:L" + level);  // new prefix format (Phase 3+)
-                resolved.add("DOA_L" + level);  // old format (Phase 2 backward compat)
-            }
-        }
-
-        // Step 4: emit department groups and compound groups
+        // Step 3: emit department visibility group (scoping, not approval routing)
         String deptCode = profile.getDepartmentCode();
         if (deptCode != null && !deptCode.isBlank()) {
             resolved.add("DEPT:" + deptCode);
-            if (doaLevel != null && doaLevel > 0) {
-                for (int level = 1; level <= doaLevel; level++) {
-                    resolved.add("DEPT:" + deptCode + "::DOA:L" + level);
-                }
-            }
 
-            // Cross-dept authority: if doaLevel >= tenant threshold, emit compounds for ALL depts
-            if (doaLevel != null) {
-                int threshold = adminServiceClient.getTenantCrossDeptThreshold(tenantCode);
-                if (doaLevel >= threshold) {
-                    List<String> allCodes = adminServiceClient.getTenantDepartmentCodes(tenantCode);
-                    for (String code : allCodes) {
-                        if (!code.equals(deptCode)) {
-                            resolved.add("DEPT:" + code);
-                            for (int level = 1; level <= doaLevel; level++) {
-                                resolved.add("DEPT:" + code + "::DOA:L" + level);
-                            }
-                        }
-                    }
-                }
-            }
+            // Step 4 (ERP tier): emit department approval-routing group — ADR-005
+            resolved.add(deptCode + "_APPROVER");
         }
 
-        // Step 5: deduplicated (LinkedHashSet preserves insertion order)
         log.debug("Resolved groups for user {}: {}", userId, resolved);
         return new ArrayList<>(resolved);
+    }
+
+    private Map<String, List<String>> fetchDbRoleMappings(String tenantCode) {
+        try {
+            return adminServiceClient.getRoleMappings(tenantCode);
+        } catch (Exception e) {
+            log.warn("FlowableGroupResolver: failed to fetch DB role mappings for tenant {} — {}",
+                tenantCode, e.getMessage());
+            return Map.of();
+        }
     }
 }
