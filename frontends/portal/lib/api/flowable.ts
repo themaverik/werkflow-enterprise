@@ -32,6 +32,7 @@ export interface ProcessDefinitionResponse {
   hasStartFormKey?: boolean
   startFormKey?: string
   owningDepartment?: string
+  category?: string
   suspended?: boolean
 }
 

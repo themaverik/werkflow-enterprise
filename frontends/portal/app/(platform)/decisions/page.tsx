@@ -91,6 +91,7 @@ export default function DecisionsPage() {
             <tr className="border-b border-border">
               <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Key</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Hit Policy</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
             </tr>
@@ -100,6 +101,7 @@ export default function DecisionsPage() {
               <tr key={decision.id} className="hover:bg-muted/30 transition-colors">
                 <td className="px-4 py-3 font-medium">{decision.name}</td>
                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{decision.key}</td>
+                <td className="px-4 py-3 text-xs text-muted-foreground">{decision.hitPolicy ?? '—'}</td>
                 <td className="px-4 py-3"><StatusBadge status="completed" /></td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-1">
@@ -125,7 +127,7 @@ export default function DecisionsPage() {
             ))}
             {filteredDecisions.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-sm">
                   No decisions found.
                 </td>
               </tr>
