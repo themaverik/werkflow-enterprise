@@ -21,10 +21,12 @@ import com.werkflow.engine.security.PermissionConfig;
 import com.werkflow.engine.security.WerkflowPermissionEvaluator;
 import org.springframework.beans.factory.annotation.Value;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Security configuration for the Engine Service
@@ -38,6 +40,9 @@ public class SecurityConfig {
 
     @Value("${werkflow.security.expose-management-endpoints:false}")
     private boolean exposeManagementEndpoints;
+
+    @Value("${werkflow.security.cors.allowed-origins:http://localhost:4000,http://localhost:4001}")
+    private String[] corsAllowedOrigins;
 
     @Bean
     public MethodSecurityExpressionHandler methodSecurityExpressionHandler(
@@ -111,8 +116,8 @@ public class SecurityConfig {
                 }
             }
 
-            // Combine all roles and add ROLE_ prefix
-            return realmRoles.stream()
+            // HIGH-02: combine BOTH realm roles AND resource roles into the security context
+            return Stream.concat(realmRoles.stream(), resourceRoles.stream())
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
                 .collect(Collectors.toSet());
         });
@@ -123,10 +128,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(
-            "http://localhost:4000",  // Admin Portal
-            "http://localhost:4001"   // HR Portal
-        ));
+        // M-8: CORS origins driven from config (werkflow.security.cors.allowed-origins)
+        configuration.setAllowedOrigins(Arrays.asList(corsAllowedOrigins));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

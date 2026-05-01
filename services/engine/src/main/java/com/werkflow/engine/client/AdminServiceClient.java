@@ -68,7 +68,10 @@ public class AdminServiceClient {
         }
     }
 
-    @Cacheable(value = "tenantConfig", key = "'rolePerms:' + #tenantCode + ':' + #roleNames")
+    // M-9: sort roleNames before building the cache key so ["ADMIN","USER"] and ["USER","ADMIN"]
+    // map to the same cache entry and avoid duplicate HTTP calls.
+    @Cacheable(value = "tenantConfig",
+        key = "'rolePerms:' + #tenantCode + ':' + T(java.util.Arrays).toString(#roleNames.stream().sorted().toArray())")
     public Set<String> getTenantRolePermissions(String tenantCode, List<String> roleNames) {
         if (roleNames == null || roleNames.isEmpty()) return Set.of();
         String roles = String.join(",", roleNames);

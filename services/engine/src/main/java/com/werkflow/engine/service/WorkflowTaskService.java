@@ -57,7 +57,11 @@ public class WorkflowTaskService {
         boolean isHighAuthority = resolvedGroups.contains(FlowableGroups.DOA_L3)
                 || resolvedGroups.contains(FlowableGroups.DOA_L4);
         if (isAdmin || isHighAuthority) {
-            TaskQuery allQuery = flowableTaskService.createTaskQuery().active();
+            // H-1/HIGH-03: apply tenant filter even on admin/DOA bypass path
+            String adminTenantCode = userContext.getTenantCode() != null ? userContext.getTenantCode() : "default";
+            TaskQuery allQuery = flowableTaskService.createTaskQuery()
+                    .taskTenantId(adminTenantCode)
+                    .active();
             allQuery = applyFilters(allQuery, params);
             allQuery = applySorting(allQuery, params);
             long totalCount = allQuery.count();
@@ -294,8 +298,11 @@ public class WorkflowTaskService {
                 .map(IdentityLink::getUserId)
                 .collect(Collectors.toList());
 
-        // Get task variables
-        Map<String, Object> variables = flowableTaskService.getVariables(task.getId());
+        // Get task variables — strip security-sensitive keys before returning (CRIT-01)
+        Map<String, Object> rawVariables = flowableTaskService.getVariables(task.getId());
+        Map<String, Object> variables = rawVariables.entrySet().stream()
+                .filter(e -> !isSecuritySensitiveKey(e.getKey()))
+                .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         // Calculate execution duration
         long executionDuration = task.getCreateTime() != null
@@ -335,9 +342,9 @@ public class WorkflowTaskService {
     }
 
     /**
-     * Get process definition name from cache
-     * @param processDefinitionId Process definition ID
-     * @return Process definition name
+     * Get process definition name from cache.
+     * L-7: uses "Unknown Process" as fallback to match ProcessMonitoringService and avoid
+     * cache-collision side-effects when both services share the same cache name.
      */
     @Cacheable(value = "processDefinitionNames", key = "#processDefinitionId")
     public String getProcessDefinitionName(String processDefinitionId) {
@@ -346,11 +353,24 @@ public class WorkflowTaskService {
                     .createProcessDefinitionQuery()
                     .processDefinitionId(processDefinitionId)
                     .singleResult();
-            return procDef != null ? procDef.getName() : null;
+            return procDef != null ? procDef.getName() : "Unknown Process";
         } catch (Exception e) {
             log.error("Error fetching process definition name for ID: {}", processDefinitionId, e);
-            return null;
+            return "Unknown Process";
         }
+    }
+
+    /**
+     * Returns true if the variable key is security-sensitive and should be stripped from
+     * API responses. Covers JWT/token keys (case-insensitive) and internal system variables.
+     */
+    private static boolean isSecuritySensitiveKey(String key) {
+        if (key == null) return true;
+        String lower = key.toLowerCase();
+        return lower.equals("authorizationtoken") || lower.equals("token")
+            || lower.equals("jwt") || lower.equals("bearer")
+            || lower.startsWith("authorizationtoken") || lower.startsWith("bearer")
+            || lower.startsWith("jwt");
     }
 
     /**
