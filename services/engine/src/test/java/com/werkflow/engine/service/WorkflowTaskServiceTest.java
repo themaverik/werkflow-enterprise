@@ -1,5 +1,6 @@
 package com.werkflow.engine.service;
 
+import com.werkflow.engine.client.AdminServiceClient;
 import com.werkflow.engine.dto.JwtUserContext;
 import com.werkflow.engine.dto.TaskListResponse;
 import com.werkflow.engine.dto.TaskQueryParams;
@@ -39,6 +40,9 @@ class WorkflowTaskServiceTest {
 
     @Mock
     private FlowableGroupResolver groupResolver;
+
+    @Mock
+    private AdminServiceClient adminServiceClient;
 
     @Mock
     private TaskQuery taskQuery;
@@ -210,6 +214,8 @@ class WorkflowTaskServiceTest {
                 .email("jane.doe@example.com")
                 .groups(Collections.emptyList())
                 .build();
+
+        when(groupResolver.resolveGroups(userWithoutGroups)).thenReturn(Collections.emptyList());
 
         // Act
         TaskListResponse response = workflowTaskService.getGroupTasks(userWithoutGroups, defaultParams);
