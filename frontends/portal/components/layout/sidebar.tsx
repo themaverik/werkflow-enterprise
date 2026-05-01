@@ -15,7 +15,6 @@ import type { LucideIcon } from 'lucide-react'
 
 interface NavItem {
   labelKey: string
-  label: string
   href: string
   icon: LucideIcon
   requiredRoles?: string[]
@@ -30,42 +29,42 @@ const sidebarSections: SidebarSection[] = [
   {
     titleKey: 'general',
     items: [
-      { labelKey: 'dashboard',      label: 'Dashboard',       href: '/dashboard',  icon: LayoutDashboard },
-      { labelKey: 'myTasks',        label: 'My Tasks',        href: '/tasks',      icon: CheckSquare },
-      { labelKey: 'myRequests',     label: 'My Requests',     href: '/requests',   icon: FileText },
-      { labelKey: 'serviceCatalog', label: 'Service Catalog', href: '/services',   icon: BookOpen },
+      { labelKey: 'dashboard',      href: '/dashboard',  icon: LayoutDashboard },
+      { labelKey: 'myTasks',        href: '/tasks',      icon: CheckSquare },
+      { labelKey: 'myRequests',     href: '/requests',   icon: FileText },
+      { labelKey: 'serviceCatalog', href: '/services',   icon: BookOpen },
     ],
   },
   {
     titleKey: 'designStudio',
     items: [
-      { labelKey: 'processes',      label: 'Processes',       href: '/processes',             icon: Workflow,          requiredRoles: ['ADMIN', 'WORKFLOW_ADMIN', 'WORKFLOW_DESIGNER', 'SUPER_ADMIN'] },
-      { labelKey: 'forms',          label: 'Forms',           href: '/forms',                 icon: FormInput,         requiredRoles: ['ADMIN', 'WORKFLOW_ADMIN', 'WORKFLOW_DESIGNER', 'SUPER_ADMIN'] },
-      { labelKey: 'decisions',      label: 'Decisions',       href: '/decisions',             icon: GitBranch,         requiredRoles: ['ADMIN', 'WORKFLOW_ADMIN', 'WORKFLOW_DESIGNER', 'SUPER_ADMIN'] },
-      { labelKey: 'emailTemplates', label: 'Email Templates', href: '/admin/email-templates', icon: Mail,              requiredRoles: ['ADMIN', 'WORKFLOW_ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'processes',      href: '/processes',             icon: Workflow,          requiredRoles: ['ADMIN', 'WORKFLOW_ADMIN', 'WORKFLOW_DESIGNER', 'SUPER_ADMIN'] },
+      { labelKey: 'forms',          href: '/forms',                 icon: FormInput,         requiredRoles: ['ADMIN', 'WORKFLOW_ADMIN', 'WORKFLOW_DESIGNER', 'SUPER_ADMIN'] },
+      { labelKey: 'decisions',      href: '/decisions',             icon: GitBranch,         requiredRoles: ['ADMIN', 'WORKFLOW_ADMIN', 'WORKFLOW_DESIGNER', 'SUPER_ADMIN'] },
+      { labelKey: 'emailTemplates', href: '/admin/email-templates', icon: Mail,              requiredRoles: ['ADMIN', 'WORKFLOW_ADMIN', 'SUPER_ADMIN'] },
     ],
   },
   {
     titleKey: 'admin',
     items: [
-      { labelKey: 'connectors',     label: 'Connectors',  href: '/admin/connectors',        icon: Link2,       requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
-      { labelKey: 'deadLetterJobs', label: 'Failed Jobs', href: '/admin/jobs/dead-letter',  icon: AlertCircle, requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'connectors',     href: '/admin/connectors',        icon: Link2,       requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'deadLetterJobs', href: '/admin/jobs/dead-letter',  icon: AlertCircle, requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
     ],
   },
   {
     titleKey: 'tenantSetup',
     items: [
-      { labelKey: 'approvalAuthority', label: 'Approval Authority', href: '/admin/tenant/approval-authority', icon: ShieldCheck,       requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
-      { labelKey: 'roleMappings',      label: 'Role Mappings',      href: '/admin/tenant/role-mappings',      icon: Users,             requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
-      { labelKey: 'departments',       label: 'Departments',        href: '/admin/tenant/departments',        icon: Building2,         requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
-      { labelKey: 'custodyGroups',     label: 'Custody Groups',     href: '/admin/tenant/custody-groups',     icon: BriefcaseBusiness, requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'approvalAuthority', href: '/admin/tenant/approval-authority', icon: ShieldCheck,       requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'roleMappings',      href: '/admin/tenant/role-mappings',      icon: Users,             requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'departments',       href: '/admin/tenant/departments',        icon: Building2,         requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'custodyGroups',     href: '/admin/tenant/custody-groups',     icon: BriefcaseBusiness, requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
     ],
   },
   {
     titleKey: 'monitoring',
     items: [
-      { labelKey: 'analytics',     label: 'Analytics',      href: '/analytics',  icon: TrendingUp, requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
-      { labelKey: 'processHealth', label: 'Process Health', href: '/monitoring', icon: Activity,   requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'analytics',     href: '/analytics',  icon: TrendingUp, requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'processHealth', href: '/monitoring', icon: Activity,   requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
     ],
   },
 ]
@@ -153,11 +152,11 @@ export function Sidebar() {
         <div className="flex items-center gap-2.5">
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-            style={{ background: '#7c3aed' }}
+            style={{ background: 'hsl(var(--primary))' }}
           >
             {displayName
               .split(' ')
-              .map((n: string) => n[0])
+              .map((n: string) => n[0] ?? '')
               .join('')
               .slice(0, 2)
               .toUpperCase()}
