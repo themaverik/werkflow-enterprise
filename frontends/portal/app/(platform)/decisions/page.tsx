@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import { useTranslations } from 'next-intl'
-import { Plus, Trash2, Pencil, Clock, Table2, GitBranch, Activity, Edit } from 'lucide-react'
+import { Plus, Trash2, GitBranch, Activity, Edit } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ErrorDisplay, LoadingState } from '@/components/ui/error-display'
@@ -36,6 +36,7 @@ export default function DecisionsPage() {
     enabled: status === 'authenticated',
     retry: 2,
     retryDelay: 1000,
+    staleTime: 60_000,
   })
 
   const deleteMutation = useMutation({
@@ -86,7 +87,7 @@ export default function DecisionsPage() {
       </div>
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" aria-label="Decisions">
           <thead>
             <tr className="border-b border-border">
               <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
@@ -102,19 +103,20 @@ export default function DecisionsPage() {
                 <td className="px-4 py-3 font-medium">{decision.name}</td>
                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{decision.key}</td>
                 <td className="px-4 py-3 text-xs text-muted-foreground">{decision.hitPolicy ?? '—'}</td>
-                <td className="px-4 py-3"><StatusBadge status="completed" /></td>
+                <td className="px-4 py-3"><StatusBadge status="active" /></td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-1">
-                    <Button asChild variant="ghost" size="sm">
+                    <Button asChild variant="ghost" size="sm" aria-label="Edit decision">
                       <Link href={`/decisions/${decision.key}/edit`}><Edit size={14} /></Link>
                     </Button>
-                    <Button asChild variant="ghost" size="sm">
+                    <Button asChild variant="ghost" size="sm" aria-label="View decision executions">
                       <Link href={`/decisions/${decision.key}/executions`}><Activity size={14} /></Link>
                     </Button>
                     {canManage && (
                       <Button
                         variant="ghost"
                         size="sm"
+                        aria-label="Delete decision"
                         onClick={() => setPendingDelete(decision)}
                         className="text-destructive hover:text-destructive"
                       >
