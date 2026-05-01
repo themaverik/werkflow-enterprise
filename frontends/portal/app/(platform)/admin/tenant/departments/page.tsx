@@ -1,7 +1,9 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
+import { toast } from 'sonner'
 import { useAuthorization } from '@/lib/auth/use-authorization'
 
 interface Department {
@@ -32,17 +34,20 @@ export default function DepartmentsPage() {
     staleTime: 60_000,
   })
 
+  useEffect(() => {
+    if (error) toast.error('Failed to load departments')
+  }, [error])
+
   if (!hasAnyRole(['ADMIN', 'SUPER_ADMIN'])) {
     return <p className="text-destructive">Access denied.</p>
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Departments</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Departments are managed in the ERP system. This is a read-only view.</p>
       </div>
-      {error && <p className="text-sm text-destructive">Failed to load departments.</p>}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <table className="w-full text-sm" aria-label="Departments">
           <thead>

@@ -68,7 +68,7 @@ export default function ApprovalAuthorityPage() {
   const doaMap = Object.fromEntries((doaVars ?? []).map((v) => [v.varKey, v]))
 
   return (
-    <div className="space-y-8 max-w-3xl">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Approval Authority</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Configure DOA threshold amounts per level and role-to-level assignments</p>

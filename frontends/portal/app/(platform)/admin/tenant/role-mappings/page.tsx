@@ -79,7 +79,7 @@ export default function RoleMappingsPage() {
   ] as const
 
   return (
-    <div className="space-y-8 max-w-3xl">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Role Mappings</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Tier 1 is read-only (Keycloak realm roles). Tier 2 is editable (custom group assignments).</p>
