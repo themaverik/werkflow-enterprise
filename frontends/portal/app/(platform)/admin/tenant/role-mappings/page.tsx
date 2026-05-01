@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface RoleGroupMapping {
   id?: string
@@ -59,11 +60,13 @@ export default function RoleMappingsPage() {
   const addMutation = useMutation({
     mutationFn: (body: Omit<RoleGroupMapping, 'id'>) => addRoleMapping(body, token),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['roleMappings'] }); setNewRole(''); setNewGroup('') },
+    onError: () => toast.error('Failed to add role mapping — admin service may be unavailable'),
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteRoleMapping(id, token),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['roleMappings'] }),
+    onError: () => toast.error('Failed to delete role mapping'),
   })
 
   if (!hasAnyRole(['ADMIN', 'SUPER_ADMIN'])) {
@@ -85,9 +88,6 @@ export default function RoleMappingsPage() {
         <p className="text-sm text-muted-foreground mt-0.5">Tier 1 is read-only (Keycloak realm roles). Tier 2 is editable (custom group assignments).</p>
       </div>
 
-      {(addMutation.isError || deleteMutation.isError) && (
-        <p className="text-sm text-destructive">Operation failed. Please try again.</p>
-      )}
 
       {sections.map(({ tier, label, rows, editable }) => (
         <section key={tier}>

@@ -83,12 +83,17 @@ export default function ConnectorsPage() {
       )}
 
       {!isLoading && error && (
-        <Card className="border-destructive">
-          <CardContent className="pt-6">
-            <div className="space-y-3">
-              <p className="text-destructive font-semibold">{t('error')}</p>
-              <p className="text-sm text-muted-foreground">{(error as Error).message}</p>
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
+        <Card className="border-destructive/40 bg-destructive/5">
+          <CardContent className="pt-5 pb-5">
+            <div className="flex items-start gap-4">
+              <div className="w-9 h-9 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0 mt-0.5">
+                <RefreshCw size={16} className="text-destructive" />
+              </div>
+              <div className="flex-1 space-y-1">
+                <p className="text-sm font-semibold text-destructive">Unable to load connectors</p>
+                <p className="text-sm text-muted-foreground">The admin service may be temporarily unavailable. Ensure all backend services are running.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => refetch()} className="shrink-0">
                 {t('retry')}
               </Button>
             </div>
