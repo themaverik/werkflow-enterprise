@@ -52,8 +52,7 @@ const config = {
           foreground: 'hsl(var(--card-foreground))',
         },
         sidebar: {
-          DEFAULT: '#111c27',
-          border: 'rgba(255,255,255,0.07)',
+          DEFAULT: 'hsl(var(--sidebar-bg-hsl))',
         },
         popover: {
           DEFAULT: 'hsl(var(--popover))',
