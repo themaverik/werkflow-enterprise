@@ -1,5 +1,7 @@
 package com.werkflow.engine.service;
 
+import com.werkflow.engine.client.AdminServiceClient;
+import com.werkflow.engine.client.UserProfileDto;
 import com.werkflow.engine.dto.JwtUserContext;
 import com.werkflow.engine.dto.TaskListResponse;
 import com.werkflow.engine.dto.TaskQueryParams;
@@ -14,6 +16,7 @@ import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.TaskQuery;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +36,10 @@ public class WorkflowTaskService {
     private final org.flowable.engine.TaskService flowableTaskService;
     private final RepositoryService repositoryService;
     private final FlowableGroupResolver groupResolver;
+    private final AdminServiceClient adminServiceClient;
+
+    @Value("${werkflow.erp.enabled:false}")
+    private boolean erpEnabled;
 
     /**
      * Get tasks assigned to the authenticated user
@@ -65,6 +72,12 @@ public class WorkflowTaskService {
         TaskQuery query = flowableTaskService.createTaskQuery()
                 .taskAssignee(userContext.getUserId())
                 .active();
+
+        // Dept scoping — ADR-005: only show tasks from the user's owning department
+        String deptCode = resolveUserDepartment(userContext);
+        if (deptCode != null) {
+            query = query.processVariableValueEquals("owningDepartment", deptCode);
+        }
 
         // Apply filters
         query = applyFilters(query, params);
@@ -106,6 +119,9 @@ public class WorkflowTaskService {
             return buildEmptyTaskListResponse();
         }
 
+        // Dept scoping — ADR-005
+        String deptCode = resolveUserDepartment(userContext);
+
         // Build base query
         TaskQuery query;
 
@@ -132,6 +148,11 @@ public class WorkflowTaskService {
             query = query.taskUnassigned();
         }
 
+        // Dept scoping — ADR-005
+        if (deptCode != null) {
+            query = query.processVariableValueEquals("owningDepartment", deptCode);
+        }
+
         // Apply filters
         query = applyFilters(query, params);
 
@@ -153,6 +174,21 @@ public class WorkflowTaskService {
 
         // Build paginated response
         return buildTaskListResponse(responses, params, totalCount, "/workflows/tasks/group-tasks");
+    }
+
+    /**
+     * Returns the ERP department code for a user, or null if ERP is disabled or unavailable.
+     */
+    private String resolveUserDepartment(JwtUserContext userContext) {
+        if (!erpEnabled) return null;
+        try {
+            String tenantCode = userContext.getTenantCode() != null ? userContext.getTenantCode() : "default";
+            UserProfileDto profile = adminServiceClient.getUserProfile(userContext.getUserId(), tenantCode);
+            return profile != null ? profile.getDepartmentCode() : null;
+        } catch (Exception e) {
+            log.warn("WorkflowTaskService: could not resolve ERP dept for {} — {}", userContext.getUserId(), e.getMessage());
+            return null;
+        }
     }
 
     /**

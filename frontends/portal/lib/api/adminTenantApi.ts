@@ -1,4 +1,4 @@
-import { adminApiClient, apiClient } from './client'
+import { adminApiClient, apiClient, erpApiClient } from './client'
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -97,7 +97,7 @@ export async function updateDoaThreshold(id: number, update: DoaThresholdUpdate)
 
 export async function getDepartments(tenantCode = 'default'): Promise<Department[]> {
   try {
-    const response = await adminApiClient.get('/api/departments', {
+    const response = await erpApiClient.get('/api/v1/departments', {
       params: { tenantCode },
     })
     return Array.isArray(response.data) ? response.data : response.data.content || []
@@ -108,7 +108,7 @@ export async function getDepartments(tenantCode = 'default'): Promise<Department
 
 export async function createDepartment(req: DepartmentRequest): Promise<Department> {
   try {
-    const response = await adminApiClient.post('/api/departments', req)
+    const response = await erpApiClient.post('/api/v1/departments', req)
     return response.data
   } catch (error: any) {
     handleApiError(error, req.name)

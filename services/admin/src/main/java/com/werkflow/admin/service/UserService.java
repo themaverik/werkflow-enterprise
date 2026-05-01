@@ -7,7 +7,6 @@ import com.werkflow.admin.dto.UserResponse;
 import com.werkflow.admin.entity.Organization;
 import com.werkflow.admin.entity.Role;
 import com.werkflow.admin.entity.User;
-import com.werkflow.admin.repository.DepartmentRepository;
 import com.werkflow.admin.repository.OrganizationRepository;
 import com.werkflow.admin.repository.RoleRepository;
 import com.werkflow.admin.repository.UserRepository;
@@ -27,7 +26,6 @@ public class UserService {
     private final UserRepository userRepository;
     private final OrganizationRepository organizationRepository;
     private final RoleRepository roleRepository;
-    private final DepartmentRepository departmentRepository;
 
     @Transactional
     public UserResponse createUser(UserRequest request) {
@@ -201,16 +199,11 @@ public class UserService {
     public UserProfileResponse getUserProfile(String keycloakId, String tenantCode) {
         User user = userRepository.findByKeycloakId(keycloakId)
             .orElseThrow(() -> new RuntimeException("User not found: " + keycloakId));
-        String deptCode = null;
-        if (user.getDepartmentId() != null) {
-            deptCode = departmentRepository.findById(user.getDepartmentId())
-                .map(d -> d.getCode()).orElse(null);
-        }
         return UserProfileResponse.builder()
             .keycloakId(keycloakId)
             .tenantCode(user.getTenantCode() != null ? user.getTenantCode() : tenantCode)
             .doaLevel(user.getDoaLevel())
-            .departmentCode(deptCode)
+            .departmentCode(user.getDepartmentCode())
             .build();
     }
 
