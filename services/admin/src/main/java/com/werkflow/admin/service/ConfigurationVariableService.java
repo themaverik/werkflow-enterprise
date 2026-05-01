@@ -45,14 +45,22 @@ public class ConfigurationVariableService {
     @Transactional
     public ConfigVarResponse update(Long id, ConfigVarRequest request) {
         ConfigurationVariable existing = repository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Config var not found: " + id));
+            .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.NOT_FOUND, "Config var not found: " + id));
+        // MED-05: tenant_code must not change on update — prevents cross-tenant variable hijack
+        if (!existing.getTenantCode().equals(request.tenantCode())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.FORBIDDEN,
+                "Cannot change tenant ownership of a config var");
+        }
         return toResponse(repository.save(fromRequest(existing, request)));
     }
 
     @Transactional
     public void delete(Long id) {
         if (!repository.existsById(id)) {
-            throw new RuntimeException("Config var not found: " + id);
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.NOT_FOUND, "Config var not found: " + id);
         }
         repository.deleteById(id);
     }

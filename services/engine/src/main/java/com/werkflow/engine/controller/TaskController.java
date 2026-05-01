@@ -62,7 +62,8 @@ public class TaskController {
         @RequestParam(required = false) String dueBefore,
         @RequestParam(required = false) String dueAfter
     ) {
-        String userId = jwt.getClaimAsString("preferred_username");
+        // L-4: use sub (stable Keycloak UUID) instead of preferred_username for all task ops
+        String userId = jwt.getSubject();
         List<TaskResponse> tasks;
 
         JwtUserContext userContext = jwtClaimsExtractor.extractUserContext(jwt);
@@ -120,7 +121,8 @@ public class TaskController {
     @GetMapping("/my-tasks")
     @Operation(summary = "Get tasks assigned to current user")
     public ResponseEntity<List<TaskResponse>> getMyTasks(@AuthenticationPrincipal Jwt jwt) {
-        String userId = jwt.getClaimAsString("preferred_username");
+        // L-4: use sub (stable Keycloak UUID) instead of preferred_username for all task ops
+        String userId = jwt.getSubject();
         List<TaskResponse> responses = taskService.getTasksForUser(userId);
         return ResponseEntity.ok(responses);
     }
@@ -166,7 +168,8 @@ public class TaskController {
         @Parameter(description = "Task ID") @PathVariable String id,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        String userId = jwt.getClaimAsString("preferred_username");
+        // L-4: use sub (stable Keycloak UUID) instead of preferred_username for all task ops
+        String userId = jwt.getSubject();
         JwtUserContext userContext = jwtClaimsExtractor.extractUserContext(jwt);
         List<String> userGroups = groupResolver.resolveGroups(userContext);
         verifyTaskAccess(id, userId, userGroups); // C1: must be candidate group member
@@ -180,7 +183,8 @@ public class TaskController {
         @Parameter(description = "Task ID") @PathVariable String id,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        String userId = jwt.getClaimAsString("preferred_username");
+        // L-4: use sub (stable Keycloak UUID) instead of preferred_username for all task ops
+        String userId = jwt.getSubject();
         JwtUserContext userContext = jwtClaimsExtractor.extractUserContext(jwt);
         List<String> userGroups = groupResolver.resolveGroups(userContext);
         verifyTaskAccess(id, userId, userGroups);
@@ -206,7 +210,8 @@ public class TaskController {
         @RequestBody(required = false) CompleteTaskRequest request,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        String userId = jwt.getClaimAsString("preferred_username");
+        // L-4: use sub (stable Keycloak UUID) instead of preferred_username for all task ops
+        String userId = jwt.getSubject();
         JwtUserContext userContext = jwtClaimsExtractor.extractUserContext(jwt);
         List<String> userGroups = groupResolver.resolveGroups(userContext);
         verifyTaskAccess(id, userId, userGroups); // C2: must be assignee or candidate group member
@@ -221,7 +226,8 @@ public class TaskController {
         @Parameter(description = "Task ID") @PathVariable String id,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        String userId = jwt.getClaimAsString("preferred_username");
+        // L-4: use sub (stable Keycloak UUID) instead of preferred_username for all task ops
+        String userId = jwt.getSubject();
         JwtUserContext userContext = jwtClaimsExtractor.extractUserContext(jwt);
         List<String> userGroups = groupResolver.resolveGroups(userContext);
         verifyTaskAccess(id, userId, userGroups); // C3: must be assignee or candidate group member
@@ -236,7 +242,8 @@ public class TaskController {
         @RequestBody Map<String, Object> variables,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        String userId = jwt.getClaimAsString("preferred_username");
+        // L-4: use sub (stable Keycloak UUID) instead of preferred_username for all task ops
+        String userId = jwt.getSubject();
         JwtUserContext userContext = jwtClaimsExtractor.extractUserContext(jwt);
         List<String> userGroups = groupResolver.resolveGroups(userContext);
         verifyTaskAccess(id, userId, userGroups); // C3: must be assignee or candidate group member
@@ -250,7 +257,8 @@ public class TaskController {
         @Parameter(description = "Task ID") @PathVariable String id,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        String userId = jwt.getClaimAsString("preferred_username");
+        // L-4: use sub (stable Keycloak UUID) instead of preferred_username for all task ops
+        String userId = jwt.getSubject();
         JwtUserContext userContext = jwtClaimsExtractor.extractUserContext(jwt);
         List<String> userGroups = groupResolver.resolveGroups(userContext);
         verifyTaskAccess(id, userId, userGroups);
@@ -307,7 +315,8 @@ public class TaskController {
         @Parameter(description = "Comment message") @RequestBody String message,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        String userId = jwt.getClaimAsString("preferred_username");
+        // L-4: use sub (stable Keycloak UUID) instead of preferred_username for all task ops
+        String userId = jwt.getSubject();
         JwtUserContext userContext = jwtClaimsExtractor.extractUserContext(jwt);
         List<String> userGroups = groupResolver.resolveGroups(userContext);
         verifyTaskAccess(id, userId, userGroups);

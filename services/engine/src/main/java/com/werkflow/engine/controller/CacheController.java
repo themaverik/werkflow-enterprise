@@ -22,7 +22,7 @@ public class CacheController {
      * POST /internal/cache/endpoints/invalidate?tenantCode=X&connectorKey=Y
      */
     @PostMapping("/endpoints/invalidate")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPER_ADMIN')")
     public ResponseEntity<Void> invalidateEndpoint(
             @RequestParam String tenantCode,
             @RequestParam String connectorKey) {
