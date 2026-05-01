@@ -6,6 +6,7 @@ import '@bpmn-io/form-js/dist/assets/form-js.css';
 import '@bpmn-io/form-js/dist/assets/form-js-editor.css';
 import '@bpmn-io/form-js-editor/dist/assets/form-js-editor.css';
 import { serializeSchemaProperties, deserializeSchemaProperties } from '@/lib/forms/propertyValueSerializer';
+import { createPaletteFilterModule } from '@/lib/forms/createPaletteFilterModule';
 
 interface FormJsEditorProps {
   schema?: any;
@@ -43,38 +44,74 @@ export default function FormJsEditor({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Initialize form-js editor
-    const editor = new FormEditor({
-      container: containerRef.current
-    });
+    // accessToken: this component has no session/auth context; using empty string as fallback.
+    // Replace with a real token source (e.g. useSession) if auth is added to this component.
+    const accessToken = '';
 
-    editorRef.current = editor;
+    const init = async () => {
+      if (!containerRef.current) return;
 
-    // Import initial schema — serialize object/array property values to strings
-    // so the form-js-editor properties panel can display them in text inputs.
-    const initialSchema = serializeSchemaProperties(schema || {
-      type: 'default',
-      components: [],
-      schemaVersion: 9
-    });
+      // Fetch allowlist — fall back to safe defaults if unavailable
+      const allowlistRes = await fetch('/api/proxy/admin/config/form-components', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }).catch(() => null)
+      const allowedTypes: string[] = allowlistRes?.ok
+        ? (await allowlistRes.json() as string[])
+        : ['textfield', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'button']
 
-    editor.importSchema(initialSchema).catch((err) => {
-      console.error('Failed to import form schema:', err);
-    });
+      // Fetch tenant CSS theme vars — no-op if empty
+      const cssRes = await fetch('/api/proxy/admin/config/vars?type=CSS_THEME', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }).catch(() => null)
+      const cssVars: Array<{ varKey: string; varValue: string }> = cssRes?.ok
+        ? (await cssRes.json() as Array<{ varKey: string; varValue: string }>)
+        : []
 
-    // Listen to schema changes — deserialize string property values back to
-    // objects/arrays before propagating the schema to the parent.
-    editor.on('changed', () => {
-      try {
-        const updatedSchema = editor.saveSchema();
-        const deserializedSchema = deserializeSchemaProperties(updatedSchema);
+      // Initialize form-js editor
+      const editor = new FormEditor({
+        container: containerRef.current,
+        additionalModules: [createPaletteFilterModule(allowedTypes)],
+      });
 
-        if (onSchemaChange) {
-          onSchemaChange(deserializedSchema);
-        }
-      } catch (err) {
-        console.error('Failed to save schema:', err);
+      editorRef.current = editor;
+
+      // Import initial schema — serialize object/array property values to strings
+      // so the form-js-editor properties panel can display them in text inputs.
+      const initialSchema = serializeSchemaProperties(schema || {
+        type: 'default',
+        components: [],
+        schemaVersion: 9
+      });
+
+      await editor.importSchema(initialSchema).catch((err) => {
+        console.error('Failed to import form schema:', err);
+      });
+
+      // Apply tenant CSS theme vars to the editor container
+      if (containerRef.current && cssVars.length) {
+        cssVars.forEach(({ varKey, varValue }) => {
+          containerRef.current!.style.setProperty(varKey, varValue)
+        })
       }
+
+      // Listen to schema changes — deserialize string property values back to
+      // objects/arrays before propagating the schema to the parent.
+      editor.on('changed', () => {
+        try {
+          const updatedSchema = editor.saveSchema();
+          const deserializedSchema = deserializeSchemaProperties(updatedSchema);
+
+          if (onSchemaChange) {
+            onSchemaChange(deserializedSchema);
+          }
+        } catch (err) {
+          console.error('Failed to save schema:', err);
+        }
+      });
+    };
+
+    init().catch((err) => {
+      console.error('Failed to initialise form editor:', err);
     });
 
     // Cleanup
