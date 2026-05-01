@@ -11,7 +11,6 @@ import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.*;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -40,6 +39,14 @@ public class JwtDecoderConfig {
     private String jwkSetUri;
 
     /**
+     * M-2: valid JWT issuer URIs driven from config so different environments
+     * (dev, staging, prod) can declare their own issuer lists without code changes.
+     * Comma-separated list: e.g. "http://localhost:8090/realms/werkflow,http://keycloak:8080/realms/werkflow"
+     */
+    @Value("${werkflow.security.valid-issuers:http://localhost:8090/realms/werkflow,http://keycloak:8080/realms/werkflow}")
+    private List<String> validIssuers;
+
+    /**
      * Creates a custom JwtDecoder that accepts tokens from multiple valid issuers.
      *
      * The decoder validates:
@@ -59,11 +66,7 @@ public class JwtDecoderConfig {
             .withJwkSetUri(jwkSetUri)
             .build();
 
-        // Define valid issuers - both external and internal URLs
-        List<String> validIssuers = Arrays.asList(
-            "http://localhost:8090/realms/werkflow",  // External/browser access
-            "http://keycloak:8080/realms/werkflow"    // Internal Docker network
-        );
+        // M-2: valid issuers are driven from config (werkflow.security.valid-issuers)
 
         logger.info("Configured valid JWT issuers: {}", validIssuers);
 

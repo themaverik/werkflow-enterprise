@@ -29,28 +29,42 @@ class FlowableGroupResolverTest {
             "admin",       List.of("ADMIN", "SUPER_ADMIN"),
             "super_admin", List.of("SUPER_ADMIN")
         ));
+        when(adminServiceClient.getRoleMappings("default")).thenReturn(Map.of());
     }
 
     @Test
-    void step3_doaLevel2_emitsBothFormats() {
-        UserProfileDto profile = new UserProfileDto("user-1", "default", 2, "FIN");
-        when(adminServiceClient.getUserProfile("user-1", "default")).thenReturn(profile);
+    void step2_adminRole_emitsAdminAndSuperAdmin() {
+        when(adminServiceClient.getUserProfile("admin-1", "default"))
+            .thenReturn(new UserProfileDto("admin-1", "default", null, null));
 
         JwtUserContext ctx = JwtUserContext.builder()
-            .userId("user-1").tenantCode("default").roles(List.of()).build();
+            .userId("admin-1").tenantCode("default").roles(List.of("admin")).build();
 
         List<String> groups = resolver.resolveGroups(ctx);
 
-        assertThat(groups).contains("DOA:L1", "DOA:L2");
-        assertThat(groups).contains("DOA_L1", "DOA_L2");
-        assertThat(groups).doesNotContain("DOA:L3", "DOA_L3");
+        assertThat(groups).contains("ADMIN", "SUPER_ADMIN");
     }
 
     @Test
-    void step4_emitsDeptGroup_andDeptDoaCompound() {
-        UserProfileDto profile = new UserProfileDto("user-1", "default", 2, "FIN");
-        when(adminServiceClient.getUserProfile("user-1", "default")).thenReturn(profile);
-        when(adminServiceClient.getTenantCrossDeptThreshold("default")).thenReturn(4);
+    void step2_dbRoleMappings_mergedWithYaml() {
+        when(adminServiceClient.getRoleMappings("default"))
+            .thenReturn(Map.of("finance_approver", List.of("DOA:L2")));
+        when(adminServiceClient.getUserProfile("user-1", "default"))
+            .thenReturn(new UserProfileDto("user-1", "default", null, "FIN"));
+
+        JwtUserContext ctx = JwtUserContext.builder()
+            .userId("user-1").tenantCode("default").roles(List.of("finance_approver")).build();
+
+        List<String> groups = resolver.resolveGroups(ctx);
+
+        assertThat(groups).contains("DOA:L2");
+        assertThat(groups).doesNotContain("DOA_L1", "DOA_L2"); // old cumulative format removed
+    }
+
+    @Test
+    void step3_emitsDeptGroup_fromErpProfile() {
+        when(adminServiceClient.getUserProfile("user-1", "default"))
+            .thenReturn(new UserProfileDto("user-1", "default", null, "FIN"));
 
         JwtUserContext ctx = JwtUserContext.builder()
             .userId("user-1").tenantCode("default").roles(List.of()).build();
@@ -58,36 +72,20 @@ class FlowableGroupResolverTest {
         List<String> groups = resolver.resolveGroups(ctx);
 
         assertThat(groups).contains("DEPT:FIN");
-        assertThat(groups).contains("DEPT:FIN::DOA:L1", "DEPT:FIN::DOA:L2");
-        assertThat(groups).doesNotContain("DEPT:FIN::DOA:L3");
+        assertThat(groups).doesNotContain("DEPT:FIN::DOA:L1"); // compound groups removed
     }
 
     @Test
-    void step4_highDoaAboveThreshold_emitsAllDepts() {
-        UserProfileDto profile = new UserProfileDto("user-1", "default", 4, "FIN");
-        when(adminServiceClient.getUserProfile("user-1", "default")).thenReturn(profile);
-        when(adminServiceClient.getTenantCrossDeptThreshold("default")).thenReturn(4);
-        when(adminServiceClient.getTenantDepartmentCodes("default")).thenReturn(List.of("FIN", "IT", "HR"));
+    void noDeptCode_emitsNoDeptGroup() {
+        when(adminServiceClient.getUserProfile("user-1", "default"))
+            .thenReturn(new UserProfileDto("user-1", "default", null, null));
 
         JwtUserContext ctx = JwtUserContext.builder()
             .userId("user-1").tenantCode("default").roles(List.of()).build();
 
         List<String> groups = resolver.resolveGroups(ctx);
 
-        assertThat(groups).contains("DEPT:IT::DOA:L1", "DEPT:IT::DOA:L4");
-        assertThat(groups).contains("DEPT:HR::DOA:L1", "DEPT:HR::DOA:L4");
-    }
-
-    @Test
-    void step2_adminRole_emitsAdminAndSuperAdmin() {
-        UserProfileDto profile = new UserProfileDto("admin-1", "default", null, null);
-        when(adminServiceClient.getUserProfile("admin-1", "default")).thenReturn(profile);
-
-        JwtUserContext ctx = JwtUserContext.builder()
-            .userId("admin-1").tenantCode("default").roles(List.of("admin")).build();
-
-        List<String> groups = resolver.resolveGroups(ctx);
-        assertThat(groups).contains("ADMIN", "SUPER_ADMIN");
+        assertThat(groups).noneMatch(g -> g.startsWith("DEPT:"));
     }
 
     @Test
@@ -99,7 +97,24 @@ class FlowableGroupResolverTest {
             .userId("user-1").tenantCode("default").roles(List.of("admin")).build();
 
         List<String> groups = resolver.resolveGroups(ctx);
+
         assertThat(groups).contains("ADMIN", "SUPER_ADMIN");
         assertThat(groups).doesNotContain("DOA:L1");
+    }
+
+    @Test
+    void dbMappingsFetchFails_gracefullyFallsBackToYaml() {
+        when(adminServiceClient.getRoleMappings("default"))
+            .thenThrow(new RuntimeException("DB unavailable"));
+        when(adminServiceClient.getUserProfile("user-1", "default"))
+            .thenReturn(new UserProfileDto("user-1", "default", null, "IT"));
+
+        JwtUserContext ctx = JwtUserContext.builder()
+            .userId("user-1").tenantCode("default").roles(List.of("admin")).build();
+
+        List<String> groups = resolver.resolveGroups(ctx);
+
+        assertThat(groups).contains("ADMIN", "SUPER_ADMIN");
+        assertThat(groups).contains("DEPT:IT");
     }
 }

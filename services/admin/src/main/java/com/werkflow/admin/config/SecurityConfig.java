@@ -13,6 +13,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
@@ -35,8 +36,15 @@ public class SecurityConfig {
     @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
     private String jwkSetUri;
 
+    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
+    private String issuerUri;
+
     @Value("${app.cors.allowed-origins:http://localhost:4000,http://localhost:4001}")
     private String[] allowedOrigins;
+
+    /** C-2: when false (default), actuator/Swagger require ADMIN/SUPER_ADMIN — never public. */
+    @Value("${werkflow.security.expose-management-endpoints:false}")
+    private boolean exposeManagementEndpoints;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -44,41 +52,50 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                // Public endpoints
-                .requestMatchers("/actuator/**", "/actuator/health/**", "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
-                .requestMatchers("/health", "/health/**").permitAll()
+            .authorizeHttpRequests(auth -> {
+                // C-2: actuator/health is always public; all other actuator + Swagger endpoints
+                // require authentication when exposeManagementEndpoints=false (the default).
+                auth.requestMatchers("/actuator/health", "/actuator/health/**").permitAll();
+                if (exposeManagementEndpoints) {
+                    auth.requestMatchers("/actuator/**", "/api-docs/**", "/swagger-ui/**",
+                            "/swagger-ui.html", "/v3/api-docs/**").permitAll();
+                } else {
+                    auth.requestMatchers("/actuator/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                        .requestMatchers("/api-docs/**", "/swagger-ui/**",
+                            "/swagger-ui.html", "/v3/api-docs/**").authenticated();
+                }
+                auth.requestMatchers("/health", "/health/**").permitAll()
 
                 // Route configuration - authenticated users can read
-                .requestMatchers(HttpMethod.GET, "/api/routes/**").authenticated()
+                    .requestMatchers(HttpMethod.GET, "/api/routes/**").authenticated()
 
                 // Service Registry - authenticated users can read, admins can write
-                .requestMatchers(HttpMethod.GET, "/api/services/**").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/services/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/services/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/services/**").hasRole("SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/api/services/**").authenticated()
+                    .requestMatchers(HttpMethod.POST, "/api/services/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/api/services/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/api/services/**").hasRole("SUPER_ADMIN")
 
                 // User management - ADMIN only
-                .requestMatchers(HttpMethod.POST, "/api/users/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/users/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/api/users/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/api/users/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("SUPER_ADMIN")
 
                 // Organization management - SUPER_ADMIN only
-                .requestMatchers(HttpMethod.POST, "/api/organizations/**").hasRole("SUPER_ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/organizations/**").hasRole("SUPER_ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/organizations/**").hasRole("SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/api/organizations/**").hasRole("SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/api/organizations/**").hasRole("SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/api/organizations/**").hasRole("SUPER_ADMIN")
 
                 // Role management - SUPER_ADMIN only
-                .requestMatchers(HttpMethod.POST, "/api/roles/**").hasRole("SUPER_ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/roles/**").hasRole("SUPER_ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/roles/**").hasRole("SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/api/roles/**").hasRole("SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/api/roles/**").hasRole("SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/api/roles/**").hasRole("SUPER_ADMIN")
 
                 // Read operations - authenticated users
-                .requestMatchers(HttpMethod.GET, "/api/**").authenticated()
+                    .requestMatchers(HttpMethod.GET, "/api/**").authenticated()
 
                 // All other requests require authentication
-                .anyRequest().authenticated()
-            )
+                    .anyRequest().authenticated();
+            })
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt
                     .jwtAuthenticationConverter(jwtAuthenticationConverter())
@@ -90,7 +107,10 @@ public class SecurityConfig {
 
     @Bean
     public JwtDecoder jwtDecoder() {
-        return NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
+        // HIGH-01: add issuer validation so tokens from foreign issuers are rejected
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
+        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuerUri));
+        return decoder;
     }
 
     @Bean

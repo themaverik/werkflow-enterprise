@@ -7,14 +7,15 @@ import com.werkflow.admin.dto.UserResponse;
 import com.werkflow.admin.entity.Organization;
 import com.werkflow.admin.entity.Role;
 import com.werkflow.admin.entity.User;
-import com.werkflow.admin.repository.DepartmentRepository;
 import com.werkflow.admin.repository.OrganizationRepository;
 import com.werkflow.admin.repository.RoleRepository;
 import com.werkflow.admin.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -27,26 +28,29 @@ public class UserService {
     private final UserRepository userRepository;
     private final OrganizationRepository organizationRepository;
     private final RoleRepository roleRepository;
-    private final DepartmentRepository departmentRepository;
 
     @Transactional
     public UserResponse createUser(UserRequest request) {
         log.info("Creating user: {} ({})", request.getUsername(), request.getEmail());
 
         if (userRepository.existsByKeycloakId(request.getKeycloakId())) {
-            throw new RuntimeException("User with Keycloak ID '" + request.getKeycloakId() + "' already exists");
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "User with Keycloak ID '" + request.getKeycloakId() + "' already exists");
         }
 
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("User with username '" + request.getUsername() + "' already exists");
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "User with username '" + request.getUsername() + "' already exists");
         }
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("User with email '" + request.getEmail() + "' already exists");
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "User with email '" + request.getEmail() + "' already exists");
         }
 
         Organization organization = organizationRepository.findById(request.getOrganizationId())
-            .orElseThrow(() -> new RuntimeException("Organization not found with ID: " + request.getOrganizationId()));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "Organization not found with ID: " + request.getOrganizationId()));
 
         User.UserBuilder builder = User.builder()
             .keycloakId(request.getKeycloakId())
@@ -72,7 +76,8 @@ public class UserService {
 
         if (request.getManagerId() != null) {
             User manager = userRepository.findById(request.getManagerId())
-                .orElseThrow(() -> new RuntimeException("Manager not found with ID: " + request.getManagerId()));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Manager not found with ID: " + request.getManagerId()));
             builder.manager(manager);
         }
 
@@ -94,7 +99,8 @@ public class UserService {
         log.debug("Fetching user with ID: {}", id);
 
         User user = userRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "User not found with ID: " + id));
 
         return mapToResponse(user);
     }
@@ -104,7 +110,8 @@ public class UserService {
         log.debug("Fetching user with Keycloak ID: {}", keycloakId);
 
         User user = userRepository.findByKeycloakId(keycloakId)
-            .orElseThrow(() -> new RuntimeException("User not found with Keycloak ID: " + keycloakId));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "User not found with Keycloak ID: " + keycloakId));
 
         return mapToResponse(user);
     }
@@ -114,7 +121,8 @@ public class UserService {
         log.debug("Fetching user with username: {}", username);
 
         User user = userRepository.findByUsername(username)
-            .orElseThrow(() -> new RuntimeException("User not found with username: " + username));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "User not found with username: " + username));
 
         return mapToResponse(user);
     }
@@ -133,16 +141,19 @@ public class UserService {
         log.info("Updating user with ID: {}", id);
 
         User user = userRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "User not found with ID: " + id));
 
         if (!user.getUsername().equals(request.getUsername()) &&
             userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("User with username '" + request.getUsername() + "' already exists");
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "User with username '" + request.getUsername() + "' already exists");
         }
 
         if (!user.getEmail().equals(request.getEmail()) &&
             userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("User with email '" + request.getEmail() + "' already exists");
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "User with email '" + request.getEmail() + "' already exists");
         }
 
         user.setUsername(request.getUsername());
@@ -170,7 +181,8 @@ public class UserService {
 
         if (request.getManagerId() != null) {
             User manager = userRepository.findById(request.getManagerId())
-                .orElseThrow(() -> new RuntimeException("Manager not found with ID: " + request.getManagerId()));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Manager not found with ID: " + request.getManagerId()));
             user.setManager(manager);
         }
 
@@ -190,7 +202,7 @@ public class UserService {
         log.info("Deleting user with ID: {}", id);
 
         if (!userRepository.existsById(id)) {
-            throw new RuntimeException("User not found with ID: " + id);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with ID: " + id);
         }
 
         userRepository.deleteById(id);
@@ -200,17 +212,13 @@ public class UserService {
     @Transactional(readOnly = true)
     public UserProfileResponse getUserProfile(String keycloakId, String tenantCode) {
         User user = userRepository.findByKeycloakId(keycloakId)
-            .orElseThrow(() -> new RuntimeException("User not found: " + keycloakId));
-        String deptCode = null;
-        if (user.getDepartmentId() != null) {
-            deptCode = departmentRepository.findById(user.getDepartmentId())
-                .map(d -> d.getCode()).orElse(null);
-        }
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "User not found: " + keycloakId));
         return UserProfileResponse.builder()
             .keycloakId(keycloakId)
             .tenantCode(user.getTenantCode() != null ? user.getTenantCode() : tenantCode)
             .doaLevel(user.getDoaLevel())
-            .departmentCode(deptCode)
+            .departmentCode(user.getDepartmentCode())
             .build();
     }
 

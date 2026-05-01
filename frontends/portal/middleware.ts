@@ -5,12 +5,13 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth
   const { pathname, search } = req.nextUrl
 
-  // Public routes that don't require authentication
+  // Public routes that don't require authentication.
+  // CRIT-05: only /api/auth/* is public — all other /api/* routes go through auth.
   const isPublicRoute =
     pathname === '/' ||
     pathname === '/login' ||
     pathname.startsWith('/error') ||
-    pathname.startsWith('/api') ||
+    pathname.startsWith('/api/auth') ||
     pathname.startsWith('/_next') ||
     pathname === '/favicon.ico'
 

@@ -246,6 +246,26 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handle service-type form field submit — field type not yet supported (ADR-007 Category C).
+     */
+    @ExceptionHandler(FormFieldTypeNotImplementedException.class)
+    public ResponseEntity<ErrorResponse> handleFormFieldTypeNotImplemented(
+            FormFieldTypeNotImplementedException ex, WebRequest request) {
+
+        log.warn("Form field type not implemented: {}", ex.getMessage());
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(OffsetDateTime.now())
+                .status(HttpStatus.NOT_IMPLEMENTED.value())
+                .error(HttpStatus.NOT_IMPLEMENTED.getReasonPhrase())
+                .message(ex.getMessage())
+                .path(extractPath(request))
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(errorResponse);
+    }
+
+    /**
      * Handle Flowable engine exceptions — extract root cause for a useful message.
      * FlowableException wraps delegate/expression errors (e.g. invalid email, missing field).
      */
