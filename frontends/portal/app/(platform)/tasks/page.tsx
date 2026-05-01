@@ -10,10 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TaskList } from './components/TaskList'
 import { useTasks, useClaimTask, useTaskSummary } from '@/lib/hooks/useTasks'
-import { mapGroupsToCandidateGroups } from '@/lib/utils/jwt'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useToast } from '@/hooks/use-toast'
-import type { TaskFilter } from '@/lib/types/task'
 
 const TAB_OPTIONS = [
   { key: 'all',        label: 'All' },
