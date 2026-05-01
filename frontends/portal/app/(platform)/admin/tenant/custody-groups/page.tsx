@@ -11,12 +11,12 @@ interface CustodyMapping {
 }
 
 async function fetchCustodyMappings(token: string): Promise<CustodyMapping[]> {
-  const res = await fetch('/api/proxy/erp/custody-mappings', {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  const res = await fetch('/api/proxy/erp/custody-mappings', { headers: { Authorization: `Bearer ${token}` } })
   if (!res.ok) throw new Error('Failed to fetch custody mappings')
   const body: unknown = await res.json()
-  return (body as { content?: CustodyMapping[] }).content ?? (body as CustodyMapping[])
+  if (Array.isArray(body)) return body as CustodyMapping[]
+  const paged = body as { content?: unknown }
+  return Array.isArray(paged.content) ? (paged.content as CustodyMapping[]) : []
 }
 
 export default function CustodyGroupsPage() {
@@ -24,14 +24,16 @@ export default function CustodyGroupsPage() {
   const { hasAnyRole } = useAuthorization()
   const token = (session?.accessToken as string) ?? ''
 
-  if (!hasAnyRole(['ADMIN', 'SUPER_ADMIN'])) return <p className="text-destructive">Access denied.</p>
-
   const { data: mappings, isLoading, error } = useQuery({
     queryKey: ['custodyMappings'],
     queryFn: () => fetchCustodyMappings(token),
     enabled: status === 'authenticated',
     staleTime: 60_000,
   })
+
+  if (!hasAnyRole(['ADMIN', 'SUPER_ADMIN'])) {
+    return <p className="text-destructive">Access denied.</p>
+  }
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -54,11 +56,15 @@ export default function CustodyGroupsPage() {
               <tr key={m.id} className="hover:bg-muted/30">
                 <td className="px-4 py-3 font-mono text-xs">{m.custodyOwner}</td>
                 <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-1">
-                    {m.candidateGroups.map((g) => (
-                      <span key={g} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">{g}</span>
-                    ))}
-                  </div>
+                  {m.candidateGroups.length === 0 ? (
+                    <span className="text-muted-foreground text-xs">—</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {m.candidateGroups.map((g) => (
+                        <span key={g} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">{g}</span>
+                      ))}
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}

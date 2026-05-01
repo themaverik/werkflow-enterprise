@@ -12,12 +12,12 @@ interface Department {
 }
 
 async function fetchDepartments(token: string): Promise<Department[]> {
-  const res = await fetch('/api/proxy/erp/departments', {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  const res = await fetch('/api/proxy/erp/departments', { headers: { Authorization: `Bearer ${token}` } })
   if (!res.ok) throw new Error('Failed to fetch departments')
   const body: unknown = await res.json()
-  return (body as { content?: Department[] }).content ?? (body as Department[])
+  if (Array.isArray(body)) return body as Department[]
+  const paged = body as { content?: unknown }
+  return Array.isArray(paged.content) ? (paged.content as Department[]) : []
 }
 
 export default function DepartmentsPage() {
@@ -25,14 +25,16 @@ export default function DepartmentsPage() {
   const { hasAnyRole } = useAuthorization()
   const token = (session?.accessToken as string) ?? ''
 
-  if (!hasAnyRole(['ADMIN', 'SUPER_ADMIN'])) return <p className="text-destructive">Access denied.</p>
-
   const { data: depts, isLoading, error } = useQuery({
     queryKey: ['erpDepartments'],
     queryFn: () => fetchDepartments(token),
     enabled: status === 'authenticated',
     staleTime: 60_000,
   })
+
+  if (!hasAnyRole(['ADMIN', 'SUPER_ADMIN'])) {
+    return <p className="text-destructive">Access denied.</p>
+  }
 
   return (
     <div className="space-y-6 max-w-3xl">

@@ -42,11 +42,7 @@ export default function ApprovalAuthorityPage() {
   const qc = useQueryClient()
   const [editValues, setEditValues] = useState<Record<string, string>>({})
 
-  if (!hasAnyRole(['ADMIN', 'SUPER_ADMIN'])) {
-    return <p className="text-destructive">Access denied.</p>
-  }
-
-  const { data: doaVars } = useQuery({
+  const { data: doaVars, isLoading: loadingDoa, isError: doaError } = useQuery({
     queryKey: ['configVars', 'DOA_THRESHOLD'],
     queryFn: () => fetchConfigVars('DOA_THRESHOLD', token),
     enabled: status === 'authenticated',
@@ -65,6 +61,10 @@ export default function ApprovalAuthorityPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['configVars'] }),
   })
 
+  if (!hasAnyRole(['ADMIN', 'SUPER_ADMIN'])) {
+    return <p className="text-destructive">Access denied.</p>
+  }
+
   const doaMap = Object.fromEntries((doaVars ?? []).map((v) => [v.varKey, v]))
 
   return (
@@ -76,6 +76,7 @@ export default function ApprovalAuthorityPage() {
 
       <section>
         <h2 className="text-base font-semibold mb-3">Threshold Amounts</h2>
+        {doaError && <p className="text-sm text-destructive mb-2">Failed to load threshold amounts.</p>}
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <table className="w-full text-sm" aria-label="DOA threshold amounts">
             <thead>
@@ -86,6 +87,7 @@ export default function ApprovalAuthorityPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
+              {loadingDoa && <tr><td colSpan={3} className="px-4 py-6 text-center text-muted-foreground text-sm">Loading...</td></tr>}
               {DOA_LEVELS.map((level) => {
                 const existing = doaMap[level]
                 const draft = editValues[level] ?? existing?.varValue ?? ''
