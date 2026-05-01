@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { FileText, Plus, Trash2, Download, Eye, Activity, ExternalLink, Play, GitBranch, SlidersHorizontal, GitMerge, Rocket, ChevronRight, Pencil, Workflow } from "lucide-react"
+import { FileText, Plus, Trash2, Download, Activity, ExternalLink, Play, GitBranch, SlidersHorizontal, GitMerge, Rocket, ChevronRight, Pencil, Workflow } from "lucide-react"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
@@ -185,7 +185,7 @@ export default function ProcessesPage() {
                           className="flex-1"
                         >
                           <Link href={`/processes/edit/${latestVersion.id}`}>
-                            <Eye className="h-4 w-4 mr-2" />
+                            <Pencil className="h-4 w-4 mr-2" />
                             Edit
                           </Link>
                         </Button>
@@ -304,6 +304,7 @@ export default function ProcessesPage() {
                     <CardTitle className="text-lg flex items-center gap-2">
                       <FileText className="h-5 w-5" />
                       {draft.name || draft.processKey}
+                      <StatusBadge status="draft" />
                     </CardTitle>
                     <CardDescription>
                       {draft.processKey}

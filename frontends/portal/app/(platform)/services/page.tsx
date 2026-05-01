@@ -33,7 +33,7 @@ export default function ServiceCatalogPage() {
     ...Array.from(
       new Set(
         (processes ?? []).map(
-          (p) => (p as { owningDepartment?: string }).owningDepartment ?? 'General'
+          (p) => p.category ?? 'General'
         )
       )
     ),
@@ -48,7 +48,7 @@ export default function ServiceCatalogPage() {
       ? (processes ?? [])
       : (processes ?? []).filter(
           (p) =>
-            ((p as { owningDepartment?: string }).owningDepartment ?? 'General') === activeDept
+            (p.category ?? 'General') === activeDept
         )
 
   return (
@@ -71,8 +71,7 @@ export default function ServiceCatalogPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((process) => {
-            const dept =
-              (process as { owningDepartment?: string }).owningDepartment ?? 'General'
+            const dept = process.category ?? 'General'
             const color = DEPT_COLORS[dept] ?? DEPT_COLORS.default
             return (
               <div
@@ -104,7 +103,7 @@ export default function ServiceCatalogPage() {
                 </div>
 
                 <Button asChild size="sm" className="w-full mt-auto">
-                  <Link href={`/processes/start/${process.key}`}>
+                  <Link href={`/processes/start/${process.id}`}>
                     Submit Request <ChevronRight size={14} className="ml-1" />
                   </Link>
                 </Button>
