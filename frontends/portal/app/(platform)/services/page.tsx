@@ -14,7 +14,15 @@ const DEPT_COLORS: Record<string, string> = {
   Finance: '#16a34a',
   IT: '#0891b2',
   Procurement: '#dc2626',
+  Operations: '#c27b00',
+  Legal: '#475569',
   default: '#6b7e8c',
+}
+
+function labelFromCategory(raw: string | undefined): string {
+  if (!raw) return 'General'
+  const last = raw.split('/').filter(Boolean).pop() ?? raw
+  return last.charAt(0).toUpperCase() + last.slice(1)
 }
 
 export default function ServiceCatalogPage() {
@@ -33,7 +41,7 @@ export default function ServiceCatalogPage() {
     ...Array.from(
       new Set(
         (processes ?? []).map(
-          (p) => p.category ?? 'General'
+          (p) => labelFromCategory(p.category)
         )
       )
     ),
@@ -47,12 +55,11 @@ export default function ServiceCatalogPage() {
     activeDept === 'all'
       ? (processes ?? [])
       : (processes ?? []).filter(
-          (p) =>
-            (p.category ?? 'General') === activeDept
+          (p) => labelFromCategory(p.category) === activeDept
         )
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Service Catalog</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Browse and start available workflows</p>
@@ -73,7 +80,7 @@ export default function ServiceCatalogPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((process) => {
-            const dept = process.category ?? 'General'
+            const dept = labelFromCategory(process.category)
             const color = DEPT_COLORS[dept] ?? DEPT_COLORS.default
             return (
               <div

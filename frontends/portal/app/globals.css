@@ -186,8 +186,14 @@
   letter-spacing: 0.07em;
 }
 .fjs-palette-field:hover {
-  background: rgba(255,255,255,0.07) !important;
+  background: rgba(255,255,255,0.12) !important;
   border-color: rgba(20,155,165,0.5) !important;
+  color: rgba(255,255,255,0.9) !important;
+}
+.fjs-palette-field:hover .fjs-palette-field-label,
+.fjs-palette-field:hover span,
+.fjs-palette-field:hover svg {
+  color: rgba(255,255,255,0.9) !important;
 }
 
 /* Selected field highlight */
@@ -286,6 +292,24 @@
 .dmn-decision-table-container td:focus-within {
   outline: 2px solid #149ba5 !important;
   outline-offset: -2px;
+}
+
+/* Hit policy select — white text on teal cell */
+.dmn-decision-table-container .hit-policy-cell select,
+.dmn-decision-table-container .hit-policy-cell input {
+  color: #fff !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  font-weight: 700;
+}
+
+/* "Click to set Input/Output" — normal weight, muted */
+.dmn-decision-table-container .cell-value:empty::before,
+.dmn-decision-table-container td .no-content-message,
+.dmn-decision-table-container .input-cell .cell-header,
+.dmn-decision-table-container .output-cell .cell-header {
+  font-weight: 400 !important;
+  opacity: 0.65;
 }
 
 /* Add column/row buttons */
