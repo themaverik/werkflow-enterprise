@@ -10,7 +10,7 @@ import { Clock, ChevronRight, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const DEPT_COLORS: Record<string, string> = {
-  HR: '#7c3aed',
+  HR: '#149ba5',
   Finance: '#16a34a',
   IT: '#0891b2',
   Procurement: '#dc2626',

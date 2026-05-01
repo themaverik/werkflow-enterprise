@@ -116,7 +116,7 @@ export default function ProcessesPage() {
 
       {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-3 mb-6">
-        <StatCard icon={Workflow}  label="Deployed"    value={processes?.length ?? 0}  iconColor="#7c3aed" />
+        <StatCard icon={Workflow}  label="Deployed"    value={processes?.length ?? 0}  iconColor="#149ba5" />
         <StatCard icon={FileText}  label="Drafts"      value={drafts?.length ?? 0}     iconColor="#1d4ed8" />
         <StatCard icon={Activity}  label="Active Runs" value={0}                       iconColor="#16a34a" />
       </div>
