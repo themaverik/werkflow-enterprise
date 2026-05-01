@@ -20,7 +20,14 @@
     "analytics": "Analytics",
     "processDesigner": "Process Designer",
     "formBuilder": "Form Builder",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "serviceCatalog": "Service Catalog",
+    "tenantSetup": "Tenant Setup",
+    "approvalAuthority": "Approval Authority",
+    "roleMappings": "Role Mappings",
+    "custodyGroups": "Custody Groups",
+    "deadLetterJobs": "Failed Jobs",
+    "processHealth": "Process Health"
   },
   "dashboard": {
     "title": "Dashboard",
