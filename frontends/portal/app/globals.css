@@ -70,8 +70,235 @@
   }
 }
 
-/* BPMN.js specific styles */
-.djs-container { font-family: Arial, sans-serif; }
+/* ── BPMN-JS THEME ──────────────────────────────────────── */
+
+/* Properties-panel CSS custom properties */
+:root {
+  --color-blue-base:     #149ba5;
+  --color-blue-light:    #dff4f5;
+  --color-blue-lighter:  #f0fafb;
+  --color-blue-dark:     #0e7a83;
+  --color-grey-lightest: #f0f4f6;
+  --color-grey-lighter:  #e2eaee;
+  --color-grey-light:    #a8b9c4;
+}
+
+/* Canvas background */
+.djs-container > svg,
+.djs-container {
+  background-color: hsl(var(--background));
+  font-family: var(--font-dm-sans), sans-serif;
+}
+
+/* Palette (tool sidebar) — dark to match Werkflow sidebar */
+.djs-palette {
+  background: var(--sidebar-bg);
+  border-color: var(--sidebar-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+}
+.djs-palette .entry {
+  color: var(--sidebar-nav-text);
+}
+.djs-palette .entry:hover,
+.djs-palette .entry.active {
+  background: rgba(20,155,165,0.2);
+  color: #fff;
+  border-radius: 6px;
+}
+
+/* Context pad (mini toolbar on element) */
+.djs-context-pad .entry {
+  background-color: #149ba5;
+  border-radius: 5px;
+}
+
+/* Element selection / hover highlight */
+.djs-element.selected .djs-outline {
+  stroke: #149ba5;
+}
+.djs-element.hover .djs-outline {
+  stroke: #149ba5;
+  stroke-opacity: 0.5;
+}
+
+/* Hit target — keep transparent */
+.djs-container .djs-element .djs-hit {
+  fill: transparent;
+}
+
+/* Properties panel chrome */
+.bio-properties-panel {
+  background: var(--card) !important;
+  border-left: 1px solid var(--sidebar-border) !important;
+  font-family: var(--font-dm-sans), sans-serif;
+  font-size: 12px;
+}
+.bio-properties-panel-header {
+  background: var(--sidebar-bg) !important;
+  color: #fff !important;
+}
+.bio-properties-panel input,
+.bio-properties-panel select,
+.bio-properties-panel textarea {
+  background: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-radius: 6px;
+}
+.bio-properties-panel label {
+  color: hsl(var(--muted-foreground)) !important;
+  font-size: 12px;
+}
+.bio-properties-panel-input:focus {
+  border-color: #149ba5 !important;
+  box-shadow: 0 0 0 2px rgba(20,155,165,0.2) !important;
+}
+
+/* ── FORM-JS THEME ────────────────────────────────────────── */
+
+/* Root CSS variables consumed by form-js */
+.fjs-container,
+.fjs-editor-container {
+  --font-family: var(--font-dm-sans), sans-serif;
+  --color-accent: #149ba5;
+  --color-accent-light: #dff4f5;
+  --color-accent-dark: #0e7a83;
+  --color-borders: #e2eaee;
+  --color-background: hsl(var(--background));
+  --color-white: #ffffff;
+  --color-text: hsl(var(--foreground));
+  --color-text-light: hsl(var(--muted-foreground));
+  --color-selection: rgba(20,155,165,0.15);
+  font-family: var(--font-dm-sans), sans-serif;
+}
+
+/* Palette sidebar — dark to match BPMN palette */
+.fjs-palette-container {
+  background: var(--sidebar-bg) !important;
+  border-color: var(--sidebar-border) !important;
+  color: var(--sidebar-nav-text) !important;
+}
+.fjs-palette-group-title {
+  background: rgba(255,255,255,0.05);
+  color: var(--sidebar-dim-text);
+  font-size: 10px;
+  letter-spacing: 0.07em;
+}
+.fjs-palette-field:hover {
+  background: rgba(255,255,255,0.07) !important;
+  border-color: rgba(20,155,165,0.5) !important;
+}
+
+/* Selected field highlight */
+.fjs-form-field.selected > .fjs-form-field-placeholder {
+  outline: 2px solid #149ba5;
+  border-radius: 6px;
+  background: rgba(20,155,165,0.06);
+}
+.fjs-form-field-placeholder input:focus,
+.fjs-form-field-placeholder textarea:focus {
+  border-color: #149ba5 !important;
+  box-shadow: 0 0 0 3px rgba(20,155,165,0.15) !important;
+}
+
+/* Form field inputs */
+.fjs-form-field input,
+.fjs-form-field select,
+.fjs-form-field textarea {
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 6px !important;
+  background: var(--card) !important;
+}
+.fjs-form-field label {
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Properties panel */
+.fjs-properties-panel {
+  font-family: var(--font-dm-sans), sans-serif;
+  font-size: 12px;
+}
+.fjs-properties-panel-header {
+  background: var(--sidebar-bg) !important;
+  color: #fff !important;
+}
+.fjs-properties-panel-group-header-title {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+
+/* ── DMN-JS THEME ─────────────────────────────────────────── */
+
+/* Table container */
+.dmn-decision-table-container {
+  font-family: var(--font-dm-sans), sans-serif;
+  font-size: 13px;
+  border-color: hsl(var(--border));
+}
+
+/* Decision name header bar */
+.dmn-decision-table-container .decision-table-properties {
+  background: var(--sidebar-bg) !important;
+  color: #ffffff !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+.dmn-decision-table-container .hit-policy-cell {
+  background: #149ba5 !important;
+  color: #fff !important;
+  border-color: rgba(255,255,255,0.15) !important;
+  font-weight: 700;
+}
+
+/* Column headers */
+.dmn-decision-table-container thead .input-cell {
+  background: rgba(20,155,165,0.1) !important;
+  color: #149ba5 !important;
+  border-bottom: 2px solid #149ba5 !important;
+}
+.dmn-decision-table-container thead .output-cell {
+  background: rgba(124,58,237,0.08) !important;
+  color: #7c3aed !important;
+  border-bottom: 2px solid #7c3aed !important;
+}
+
+/* Generic th/td */
+.dmn-decision-table-container .tjs-table th {
+  background: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
+  font-weight: 600;
+  font-size: 12px;
+}
+.dmn-decision-table-container .tjs-table td {
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+/* Row hover */
+.dmn-decision-table-container tbody tr:hover td,
+.dmn-decision-table-container .tjs-table tr:hover td {
+  background-color: #f0fafb !important;
+}
+
+/* Cell focus */
+.dmn-decision-table-container td.focused,
+.dmn-decision-table-container td:focus-within {
+  outline: 2px solid #149ba5 !important;
+  outline-offset: -2px;
+}
+
+/* Add column/row buttons */
+.dmn-decision-table-container .add-rule,
+.dmn-decision-table-container .add-input,
+.dmn-decision-table-container .add-output {
+  color: #149ba5;
+  border-color: #149ba5;
+  background-color: rgba(20,155,165,0.08);
+}
+.dmn-decision-table-container .add-rule:hover {
+  background-color: rgba(20,155,165,0.18);
+}
 
 /* Thin scrollbar */
 ::-webkit-scrollbar { width: 5px; }
