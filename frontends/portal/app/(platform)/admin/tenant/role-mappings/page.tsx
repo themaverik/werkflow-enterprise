@@ -49,8 +49,6 @@ export default function RoleMappingsPage() {
   const [newRole, setNewRole] = useState('')
   const [newGroup, setNewGroup] = useState('')
 
-  if (!hasAnyRole(['ADMIN', 'SUPER_ADMIN'])) return <p className="text-destructive">Access denied.</p>
-
   const { data: mappings, isLoading } = useQuery({
     queryKey: ['roleMappings'],
     queryFn: () => fetchRoleMappings(token),
@@ -68,6 +66,10 @@ export default function RoleMappingsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['roleMappings'] }),
   })
 
+  if (!hasAnyRole(['ADMIN', 'SUPER_ADMIN'])) {
+    return <p className="text-destructive">Access denied.</p>
+  }
+
   const tier1 = mappings?.filter((m) => m.tier === 1) ?? []
   const tier2 = mappings?.filter((m) => m.tier === 2) ?? []
 
@@ -82,6 +84,10 @@ export default function RoleMappingsPage() {
         <h1 className="text-2xl font-bold text-foreground">Role Mappings</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Tier 1 is read-only (Keycloak realm roles). Tier 2 is editable (custom group assignments).</p>
       </div>
+
+      {(addMutation.isError || deleteMutation.isError) && (
+        <p className="text-sm text-destructive">Operation failed. Please try again.</p>
+      )}
 
       {sections.map(({ tier, label, rows, editable }) => (
         <section key={tier}>
@@ -107,7 +113,11 @@ export default function RoleMappingsPage() {
                           size="sm"
                           className="text-destructive"
                           aria-label={`Delete mapping for ${m.roleName}`}
-                          onClick={() => m.id && deleteMutation.mutate(m.id)}
+                          onClick={() => {
+                            if (m.id && window.confirm(`Delete mapping for role "${m.roleName}"?`)) {
+                              deleteMutation.mutate(m.id)
+                            }
+                          }}
                           disabled={deleteMutation.isPending}
                         >
                           <Trash2 size={14} strokeWidth={1.8} />
