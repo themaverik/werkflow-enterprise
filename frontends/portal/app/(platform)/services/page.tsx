@@ -1,211 +1,117 @@
 'use client'
 
 import { useState } from 'react'
-import { useServices } from '@/lib/hooks/useServiceRegistry'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import Link from 'next/link'
+import { useQuery } from '@tanstack/react-query'
+import { useSession } from 'next-auth/react'
+import { getProcessDefinitions } from '@/lib/api/flowable'
+import { FilterPills } from '@/components/ui/filter-pills'
+import { Clock, ChevronRight, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Plus, Search, RefreshCw, ExternalLink, Clock, Activity } from 'lucide-react'
-import ServiceCard from './components/ServiceCard'
-import ServiceEditModal from './components/ServiceEditModal'
-import ServiceEndpointsModal from './components/ServiceEndpointsModal'
-import type { Service } from '@/lib/api/services'
 
-/**
- * Service Registry Page
- *
- * Centralized management of all microservices in the Werkflow platform.
- * Enables no-code service URL configuration and endpoint discovery.
- *
- * Features:
- * - View all registered services
- * - Edit service URLs per environment
- * - Test service connectivity
- * - View service endpoints and documentation
- * - Monitor service health
- */
-export default function ServicesPage() {
-  const { data: services, isLoading, error, refetch } = useServices()
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedService, setSelectedService] = useState<Service | null>(null)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isEndpointsModalOpen, setIsEndpointsModalOpen] = useState(false)
+const DEPT_COLORS: Record<string, string> = {
+  HR: '#7c3aed',
+  Finance: '#16a34a',
+  IT: '#0891b2',
+  Procurement: '#dc2626',
+  default: '#6b7e8c',
+}
 
-  const handleEditService = (service: Service) => {
-    setSelectedService(service)
-    setIsEditModalOpen(true)
-  }
+export default function ServiceCatalogPage() {
+  const { status } = useSession()
+  const [activeDept, setActiveDept] = useState('all')
 
-  const handleViewEndpoints = (service: Service) => {
-    setSelectedService(service)
-    setIsEndpointsModalOpen(true)
-  }
+  const { data: processes, isLoading } = useQuery({
+    queryKey: ['processDefinitions'],
+    queryFn: getProcessDefinitions,
+    enabled: status === 'authenticated',
+    staleTime: 60000,
+  })
 
-  const filteredServices = services?.filter(service =>
-    service.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    service.serviceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    service.description.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const departments = [
+    'all',
+    ...Array.from(
+      new Set(
+        (processes ?? []).map(
+          (p) => (p as { owningDepartment?: string }).owningDepartment ?? 'General'
+        )
+      )
+    ),
+  ]
+  const deptOptions = departments.map((d) => ({
+    key: d,
+    label: d === 'all' ? 'All Services' : d,
+  }))
 
-  const activeServicesCount = services?.filter(s => s.healthStatus === 'HEALTHY').length || 0
-  const totalServicesCount = services?.length || 0
-  const avgResponseTime = services?.length
-    ? Math.round(services.reduce((sum, s) => sum + (s.responseTime || 0), 0) / services.length)
-    : 0
+  const filtered =
+    activeDept === 'all'
+      ? (processes ?? [])
+      : (processes ?? []).filter(
+          (p) =>
+            ((p as { owningDepartment?: string }).owningDepartment ?? 'General') === activeDept
+        )
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Service Registry</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage microservices and configure service endpoints
-          </p>
-        </div>
-        <Button onClick={() => refetch()} variant="outline">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+    <div className="space-y-6 max-w-5xl">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Service Catalog</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Browse and start available workflows</p>
       </div>
 
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Services</p>
-                <p className="text-2xl font-bold">{totalServicesCount}</p>
-              </div>
-              <Activity className="h-8 w-8 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
+      <FilterPills options={deptOptions} active={activeDept} onChange={setActiveDept} />
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active Services</p>
-                <p className="text-2xl font-bold">{activeServicesCount}</p>
-              </div>
-              <div className="h-3 w-3 rounded-full bg-green-500 animate-pulse" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Avg Response Time</p>
-                <p className="text-2xl font-bold">{avgResponseTime}ms</p>
-              </div>
-              <Clock className="h-8 w-8 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Search and Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search services by name or description..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Services Grid */}
-      {isLoading && (
-        <div className="text-center py-12">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-          <p className="text-muted-foreground mt-2">Loading services...</p>
-        </div>
-      )}
-
-      {error && (
-        <Card className="border-destructive">
-          <CardContent className="pt-6">
-            <div className="space-y-3">
-              <p className="text-destructive font-semibold">Error loading services</p>
-              <p className="text-sm text-muted-foreground">{error.message}</p>
-              {error.message.includes('backend service') && (
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                  <p className="text-sm text-yellow-800">
-                    <strong>Backend Service Not Available</strong>
-                    <br />
-                    Please ensure the Werkflow Engine service is running at http://localhost:8081
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                    onClick={() => refetch()}
-                  >
-                    Retry Connection
-                  </Button>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {!isLoading && !error && filteredServices && filteredServices.length === 0 && (
-        <Card>
-          <CardContent className="pt-6 text-center py-12">
-            <p className="text-muted-foreground">No services found</p>
-            {searchQuery && (
-              <Button
-                variant="link"
-                onClick={() => setSearchQuery('')}
-                className="mt-2"
-              >
-                Clear search
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {!isLoading && !error && filteredServices && filteredServices.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredServices.map((service) => (
-            <ServiceCard
-              key={service.id}
-              service={service}
-              onEdit={handleEditService}
-              onViewEndpoints={handleViewEndpoints}
-            />
+      {isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-card border border-border rounded-xl p-5 h-48 animate-pulse" />
           ))}
         </div>
-      )}
+      ) : filtered.length === 0 ? (
+        <p className="text-muted-foreground text-sm">No services available.</p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((process) => {
+            const dept =
+              (process as { owningDepartment?: string }).owningDepartment ?? 'General'
+            const color = DEPT_COLORS[dept] ?? DEPT_COLORS.default
+            return (
+              <div
+                key={process.id}
+                className="bg-card border border-border rounded-xl p-5 flex flex-col gap-3 hover:shadow-sm transition-shadow"
+              >
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ background: color + '18' }}
+                  >
+                    <Play size={16} style={{ color }} strokeWidth={1.8} />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground text-sm leading-snug">
+                      {process.name || process.key}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{dept}</p>
+                  </div>
+                </div>
 
-      {/* Modals */}
-      {selectedService && (
-        <>
-          <ServiceEditModal
-            service={selectedService}
-            open={isEditModalOpen}
-            onOpenChange={setIsEditModalOpen}
-          />
-          <ServiceEndpointsModal
-            service={selectedService}
-            open={isEndpointsModalOpen}
-            onOpenChange={setIsEndpointsModalOpen}
-          />
-        </>
+                <p className="text-xs text-muted-foreground leading-relaxed flex-1">
+                  Start this workflow to submit a request.
+                </p>
+
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock size={12} />
+                  <span>Working days may vary</span>
+                </div>
+
+                <Button asChild size="sm" className="w-full mt-auto">
+                  <Link href={`/processes/start/${process.key}`}>
+                    Submit Request <ChevronRight size={14} className="ml-1" />
+                  </Link>
+                </Button>
+              </div>
+            )
+          })}
+        </div>
       )}
     </div>
   )
