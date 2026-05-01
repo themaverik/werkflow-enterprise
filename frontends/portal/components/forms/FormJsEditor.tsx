@@ -56,7 +56,7 @@ export default function FormJsEditor({
         headers: { Authorization: `Bearer ${accessToken}` },
       }).catch(() => null)
       const allowedTypes: string[] = allowlistRes?.ok
-        ? (await allowlistRes.json() as string[])
+        ? (await allowlistRes.json().catch(() => null) as string[] | null) ?? ['textfield', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'button']
         : ['textfield', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'button']
 
       // Fetch tenant CSS theme vars — no-op if empty
@@ -64,7 +64,7 @@ export default function FormJsEditor({
         headers: { Authorization: `Bearer ${accessToken}` },
       }).catch(() => null)
       const cssVars: Array<{ varKey: string; varValue: string }> = cssRes?.ok
-        ? (await cssRes.json() as Array<{ varKey: string; varValue: string }>)
+        ? (await cssRes.json().catch(() => null) as Array<{ varKey: string; varValue: string }> | null) ?? []
         : []
 
       // Initialize form-js editor
@@ -88,9 +88,10 @@ export default function FormJsEditor({
       });
 
       // Apply tenant CSS theme vars to the editor container
-      if (containerRef.current && cssVars.length) {
+      const container = containerRef.current
+      if (container && cssVars.length) {
         cssVars.forEach(({ varKey, varValue }) => {
-          containerRef.current!.style.setProperty(varKey, varValue)
+          if (varKey.startsWith('--')) container.style.setProperty(varKey, varValue)
         })
       }
 
