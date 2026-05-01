@@ -1,5 +1,5 @@
 <#import "template.ftl" as layout>
-<@layout.registrationLayout displayInfo=social.displaySocialProviders; section>
+<@layout.registrationLayout displayInfo=(social.providers?has_content); section>
     <#if section = "header">
         <div class="login-pf-header">
             <div class="login-pf-logo">
@@ -75,7 +75,7 @@
             </div>
         </#if>
     <#elseif section = "socialProviders" >
-        <#if social.displaySocialProviders>
+        <#if social.providers?has_content>
             <div id="kc-social-providers">
                 <ul>
                     <#list social.providers as p>
