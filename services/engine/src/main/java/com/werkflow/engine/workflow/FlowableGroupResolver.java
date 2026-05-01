@@ -68,10 +68,13 @@ public class FlowableGroupResolver implements UserGroupLookupProxy {
             return new ArrayList<>(resolved);
         }
 
-        // Step 3: emit department group from ERP profile
+        // Step 3: emit department visibility group (scoping, not approval routing)
         String deptCode = profile.getDepartmentCode();
         if (deptCode != null && !deptCode.isBlank()) {
             resolved.add("DEPT:" + deptCode);
+
+            // Step 4 (ERP tier): emit department approval-routing group — ADR-005
+            resolved.add(deptCode + "_APPROVER");
         }
 
         log.debug("Resolved groups for user {}: {}", userId, resolved);
