@@ -129,7 +129,7 @@
 
 /* Properties panel chrome */
 .bio-properties-panel {
-  background: var(--card) !important;
+  background: hsl(var(--card)) !important;
   border-left: 1px solid var(--sidebar-border) !important;
   font-family: var(--font-dm-sans), sans-serif;
   font-size: 12px;
@@ -208,7 +208,7 @@
 .fjs-form-field textarea {
   border: 1px solid hsl(var(--border)) !important;
   border-radius: 6px !important;
-  background: var(--card) !important;
+  background: hsl(var(--card)) !important;
 }
 .fjs-form-field label {
   color: hsl(var(--muted-foreground));
