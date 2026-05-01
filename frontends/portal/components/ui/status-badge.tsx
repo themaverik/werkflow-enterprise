@@ -1,10 +1,11 @@
-type Status = 'active' | 'completed' | 'suspended' | 'failed' | string
+type Status = 'active' | 'completed' | 'suspended' | 'failed' | 'draft' | string
 
 const STATUS_STYLES: Record<string, { bg: string; color: string; border: string; label: string }> = {
   active:    { bg: 'var(--badge-blue-bg)',    color: 'var(--badge-blue)',    border: 'var(--badge-blue-border)',    label: 'Active' },
   completed: { bg: 'var(--badge-success-bg)', color: 'var(--badge-success)', border: 'var(--badge-success-border)', label: 'Completed' },
   suspended: { bg: 'var(--badge-warning-bg)', color: 'var(--badge-warning)', border: 'var(--badge-warning-border)', label: 'Suspended' },
   failed:    { bg: 'var(--badge-danger-bg)',  color: 'var(--badge-danger)',  border: 'var(--badge-danger-border)',  label: 'Failed' },
+  draft:     { bg: 'hsl(220 13% 91%)',        color: 'hsl(220 13% 40%)',     border: 'hsl(220 13% 80%)',            label: 'Draft' },
 }
 
 export function StatusBadge({ status }: { status: Status }) {

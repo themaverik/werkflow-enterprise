@@ -21,7 +21,7 @@ export default function ServiceCatalogPage() {
   const { status } = useSession()
   const [activeDept, setActiveDept] = useState('all')
 
-  const { data: processes, isLoading } = useQuery({
+  const { data: processes, isLoading, error } = useQuery({
     queryKey: ['processDefinitions'],
     queryFn: getProcessDefinitions,
     enabled: status === 'authenticated',
@@ -66,6 +66,8 @@ export default function ServiceCatalogPage() {
             <div key={i} className="bg-card border border-border rounded-xl p-5 h-48 animate-pulse" />
           ))}
         </div>
+      ) : error ? (
+        <div className="text-sm text-destructive">Failed to load services. Please try again.</div>
       ) : filtered.length === 0 ? (
         <p className="text-muted-foreground text-sm">No services available.</p>
       ) : (
@@ -98,12 +100,12 @@ export default function ServiceCatalogPage() {
                 </p>
 
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Clock size={12} />
+                  <Clock size={14} />
                   <span>Working days may vary</span>
                 </div>
 
                 <Button asChild size="sm" className="w-full mt-auto">
-                  <Link href={`/processes/start/${process.id}`}>
+                  <Link href={`/processes/start/${process.key}`}>
                     Submit Request <ChevronRight size={14} className="ml-1" />
                   </Link>
                 </Button>

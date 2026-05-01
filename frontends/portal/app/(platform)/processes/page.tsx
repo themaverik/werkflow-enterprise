@@ -48,6 +48,7 @@ export default function ProcessesPage() {
     enabled: status === 'authenticated',
     retry: 2,
     retryDelay: 1000,
+    staleTime: 60_000,
   })
 
   // Delete deployment mutation
@@ -71,6 +72,7 @@ export default function ProcessesPage() {
     enabled: status === 'authenticated' && isManagerOrAbove,
     retry: 2,
     retryDelay: 1000,
+    staleTime: 60_000,
   })
 
   // Delete draft mutation
@@ -165,7 +167,7 @@ export default function ProcessesPage() {
                 <Card key={key}>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
+                      <FileText size={20} strokeWidth={1.8} />
                       {latestVersion.name || key}
                       <StatusBadge status="active" />
                     </CardTitle>
@@ -185,7 +187,7 @@ export default function ProcessesPage() {
                           className="flex-1"
                         >
                           <Link href={`/processes/edit/${latestVersion.id}`}>
-                            <Pencil className="h-4 w-4 mr-2" />
+                            <Pencil size={16} strokeWidth={1.8} className="mr-2" />
                             Edit
                           </Link>
                         </Button>
@@ -193,9 +195,10 @@ export default function ProcessesPage() {
                         <Button
                           variant="outline"
                           size="sm"
+                          aria-label="Download process"
                           onClick={() => handleDownload(latestVersion.id, latestVersion.name || key)}
                         >
-                          <Download className="h-4 w-4" />
+                          <Download size={16} strokeWidth={1.8} />
                         </Button>
                         {canEditProcess(latestVersion.owningDepartment) && (
                         <Tooltip>
@@ -204,6 +207,7 @@ export default function ProcessesPage() {
                               size="sm"
                               style={{ backgroundColor: '#BA3920', color: 'white' }}
                               className="hover:opacity-90"
+                              aria-label="Delete process"
                               onClick={() => {
                                 setPendingConfirm({
                                   title: t('deleteProcess'),
@@ -216,7 +220,7 @@ export default function ProcessesPage() {
                               }}
                               disabled={deletingId === latestVersion.deploymentId}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 size={16} strokeWidth={1.8} />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>Delete Process</TooltipContent>
@@ -257,7 +261,7 @@ export default function ProcessesPage() {
                                       size="sm"
                                       onClick={() => handleDownload(version.id, version.name || key)}
                                     >
-                                      <Download className="h-3 w-3" />
+                                      <Download size={12} strokeWidth={1.8} />
                                     </Button>
                                   </div>
                                 </div>
@@ -302,7 +306,7 @@ export default function ProcessesPage() {
                 <Card key={draft.processKey}>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
+                      <FileText size={20} strokeWidth={1.8} />
                       {draft.name || draft.processKey}
                       <StatusBadge status="draft" />
                     </CardTitle>
@@ -321,7 +325,7 @@ export default function ProcessesPage() {
                       <div className="flex gap-2">
                         <Button asChild variant="outline" size="sm" className="flex-1">
                           <Link href={`/processes/new?draft=${draft.processKey}`}>
-                            <Pencil className="h-4 w-4 mr-2" />
+                            <Pencil size={16} strokeWidth={1.8} className="mr-2" />
                             Edit
                           </Link>
                         </Button>
@@ -346,7 +350,7 @@ export default function ProcessesPage() {
                               }}
                               disabled={deletingDraftKey === draft.processKey}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 size={16} strokeWidth={1.8} />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>Delete Draft</TooltipContent>
@@ -365,13 +369,13 @@ export default function ProcessesPage() {
       {!isLoading && (!processes || processes.length === 0) && (
         <Card className="mb-6">
           <CardContent className="py-12 text-center">
-            <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <FileText size={48} strokeWidth={1.5} className="mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">{t('noProcessesDeployed')}</h3>
             <p className="text-muted-foreground mb-4">{t('noProcessesDesc')}</p>
             {isManagerOrAbove && (
               <Button asChild>
                 <Link href="/processes/new">
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus size={16} strokeWidth={1.8} className="mr-2" />
                   {t('createNewProcess')}
                 </Link>
               </Button>
@@ -385,7 +389,7 @@ export default function ProcessesPage() {
       <Card className="border-2">
         <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950 dark:to-teal-950">
           <CardTitle className="flex items-center gap-2">
-            <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+            <FileText size={24} strokeWidth={1.8} className="text-emerald-600 dark:text-emerald-400" />
             How to Create a Process
           </CardTitle>
           <CardDescription>
@@ -406,13 +410,13 @@ export default function ProcessesPage() {
                   <div className={`flex h-11 w-11 items-center justify-center rounded-full ${step.bg} ${step.text} font-bold text-lg`}>
                     {index + 1}
                   </div>
-                  <step.Icon className={`h-5 w-5 ${step.text}`} />
+                  <step.Icon size={20} strokeWidth={1.8} className={step.text} />
                   <p className="text-sm font-semibold leading-snug">{step.title}</p>
                   <p className="text-xs text-muted-foreground leading-relaxed">{step.desc}</p>
                 </div>
                 {index < arr.length - 1 && (
                   <div className="hidden lg:flex items-center justify-center w-4 shrink-0 text-muted-foreground">
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight size={16} strokeWidth={1.8} />
                   </div>
                 )}
               </div>
@@ -424,7 +428,7 @@ export default function ProcessesPage() {
               <p className="text-sm text-muted-foreground mb-3">Ready to design your first workflow?</p>
               <Button asChild className="w-full sm:w-auto">
                 <Link href="/processes/new">
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus size={16} strokeWidth={1.8} className="mr-2" />
                   Create New Process
                 </Link>
               </Button>
