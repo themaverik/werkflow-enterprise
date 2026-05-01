@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 export function createPaletteFilterModule(allowedTypes: string[]) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function PaletteFilterModule(formFields: any) {
     const originalInit = formFields.init?.bind(formFields) as ((...args: unknown[]) => void) | undefined
     formFields.init = function (...args: unknown[]) {
