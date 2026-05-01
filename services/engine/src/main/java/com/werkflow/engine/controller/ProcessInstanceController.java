@@ -3,6 +3,7 @@ package com.werkflow.engine.controller;
 import com.werkflow.engine.dto.ProcessInstanceResponse;
 import com.werkflow.engine.dto.StartProcessRequest;
 import com.werkflow.engine.service.ProcessInstanceService;
+import com.werkflow.engine.util.JwtClaimsExtractor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -30,6 +31,7 @@ import java.util.Map;
 public class ProcessInstanceController {
 
     private final ProcessInstanceService processInstanceService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     @PostMapping
     @Operation(summary = "Start a new process instance")
@@ -37,34 +39,43 @@ public class ProcessInstanceController {
         @Valid @RequestBody StartProcessRequest request,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        String userId = jwt.getClaimAsString("preferred_username");
-        ProcessInstanceResponse response = processInstanceService.startProcessInstance(
-            request, userId, jwt.getTokenValue());
+        String userId = jwt.getSubject();
+        String tenantId = jwt.getClaimAsString("tenant_code");
+        ProcessInstanceResponse response = processInstanceService.startProcessInstance(request, userId, tenantId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping
     @Operation(summary = "Get all active process instances")
-    public ResponseEntity<List<ProcessInstanceResponse>> getAllProcessInstances() {
-        List<ProcessInstanceResponse> responses = processInstanceService.getAllProcessInstances();
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPER_ADMIN')")
+    public ResponseEntity<List<ProcessInstanceResponse>> getAllProcessInstances(
+        @AuthenticationPrincipal Jwt jwt
+    ) {
+        String tenantId = jwt.getClaimAsString("tenant_code");
+        List<ProcessInstanceResponse> responses = processInstanceService.getAllProcessInstances(tenantId);
         return ResponseEntity.ok(responses);
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get process instance by ID")
     public ResponseEntity<ProcessInstanceResponse> getProcessInstanceById(
-        @Parameter(description = "Process instance ID") @PathVariable String id
+        @Parameter(description = "Process instance ID") @PathVariable String id,
+        @AuthenticationPrincipal Jwt jwt
     ) {
-        ProcessInstanceResponse response = processInstanceService.getProcessInstanceById(id);
+        String tenantId = jwt.getClaimAsString("tenant_code");
+        ProcessInstanceResponse response = processInstanceService.getProcessInstanceById(id, tenantId);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/definition-key/{key}")
     @Operation(summary = "Get process instances by process definition key")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPER_ADMIN')")
     public ResponseEntity<List<ProcessInstanceResponse>> getProcessInstancesByDefinitionKey(
-        @Parameter(description = "Process definition key") @PathVariable String key
+        @Parameter(description = "Process definition key") @PathVariable String key,
+        @AuthenticationPrincipal Jwt jwt
     ) {
-        List<ProcessInstanceResponse> responses = processInstanceService.getProcessInstancesByDefinitionKey(key);
+        String tenantId = jwt.getClaimAsString("tenant_code");
+        List<ProcessInstanceResponse> responses = processInstanceService.getProcessInstancesByDefinitionKey(key, tenantId);
         return ResponseEntity.ok(responses);
     }
 
@@ -102,9 +113,11 @@ public class ProcessInstanceController {
     @GetMapping("/{id}/variables")
     @Operation(summary = "Get process variables")
     public ResponseEntity<Map<String, Object>> getProcessVariables(
-        @Parameter(description = "Process instance ID") @PathVariable String id
+        @Parameter(description = "Process instance ID") @PathVariable String id,
+        @AuthenticationPrincipal Jwt jwt
     ) {
-        Map<String, Object> variables = processInstanceService.getProcessVariables(id);
+        String tenantId = jwt.getClaimAsString("tenant_code");
+        Map<String, Object> variables = processInstanceService.getProcessVariables(id, tenantId);
         return ResponseEntity.ok(variables);
     }
 

@@ -39,19 +39,15 @@ public class SetOwningDepartmentDelegate implements JavaDelegate {
                 return;
             }
         } catch (Exception e) {
-            log.warn("SetOwningDepartmentDelegate: ERP lookup failed for user {} — {}; using form fallback",
-                    submitterId, e.getMessage());
+            log.warn("SetOwningDepartmentDelegate: ERP lookup failed for user {} in process {} — leaving owningDepartment unset. Reason: {}",
+                    submitterId, execution.getProcessInstanceId(), e.getMessage());
         }
 
-        // Preserve any form-supplied value already in the process context
-        Object existing = execution.getVariable("owningDepartment");
-        if (existing != null) {
-            log.debug("SetOwningDepartmentDelegate: retained form-supplied owningDepartment={} for process {}",
-                    existing, execution.getProcessInstanceId());
-        } else {
-            log.debug("SetOwningDepartmentDelegate: no department resolved for process {}",
-                    execution.getProcessInstanceId());
-        }
+        // HIGH-09: do NOT fall back to any user-supplied value for owningDepartment.
+        // If ERP is unavailable, leave the variable unset so tasks are not misrouted.
+        // The process must handle the unset case explicitly (e.g. via a boundary error event).
+        log.warn("SetOwningDepartmentDelegate: owningDepartment not resolved for process {} — variable left unset",
+                execution.getProcessInstanceId());
     }
 
     private String resolveSubmitterId(DelegateExecution execution) {

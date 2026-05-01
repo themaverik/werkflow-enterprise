@@ -238,7 +238,7 @@ public class ProcessMonitoringService {
                 .processDefinitionKey(historicInstance.getProcessDefinitionKey())
                 .name(getProcessDefinitionName(historicInstance.getProcessDefinitionId()))
                 .status(determineProcessStatus(historicInstance))
-                .startTime(historicInstance.getStartTime().toInstant())
+                .startTime(historicInstance.getStartTime() != null ? historicInstance.getStartTime().toInstant() : null)
                 .initiatorUsername(historicInstance.getStartUserId());
 
         // Set end time and duration if completed

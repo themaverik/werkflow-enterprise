@@ -12,9 +12,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -29,21 +32,49 @@ public class ProcessInstanceService {
     private final IdentityService identityService;
 
     /**
+     * Keys that must never be exposed in API responses or supplied by users at process start.
+     * CRIT-01 / HIGH-05: prevents JWT token leakage and security variable override.
+     */
+    private static final Set<String> SECURITY_VAR_DENYLIST = new HashSet<>(Arrays.asList(
+        "authorizationToken", "owningDepartment", "submitterId", "initiator"
+    ));
+
+    /**
+     * Strips security-sensitive variable keys from a variables map (case-insensitive prefix check
+     * for token/jwt/bearer keys, and exact match for denylist keys).
+     */
+    static Map<String, Object> stripSecurityVariables(Map<String, Object> vars) {
+        if (vars == null) return Map.of();
+        Map<String, Object> result = new HashMap<>(vars);
+        result.keySet().removeIf(key -> {
+            if (key == null) return true;
+            if (SECURITY_VAR_DENYLIST.contains(key)) return true;
+            // Strip keys containing EL metacharacters
+            if (key.contains("$") || key.contains("#{")) return true;
+            // Strip token-related keys (case-insensitive prefix match)
+            String lower = key.toLowerCase();
+            return lower.equals("token") || lower.equals("jwt") || lower.equals("bearer")
+                || lower.startsWith("authorizationtoken") || lower.startsWith("token")
+                || lower.startsWith("jwt") || lower.startsWith("bearer");
+        });
+        return result;
+    }
+
+    /**
      * Start a new process instance
      */
     @Transactional
-    public ProcessInstanceResponse startProcessInstance(StartProcessRequest request, String userId, String jwtToken) {
+    public ProcessInstanceResponse startProcessInstance(StartProcessRequest request, String userId, String tenantId) {
         log.info("Starting process instance: {} by user: {}", request.getProcessDefinitionKey(), userId);
 
-        Map<String, Object> variables = request.getVariables() != null
-            ? new HashMap<>(request.getVariables()) : new HashMap<>();
-
-        if (jwtToken != null) {
-            variables.put("authorizationToken", "Bearer " + jwtToken);
-        }
+        // CRIT-01 / HIGH-05: strip user-supplied security variables before passing to Flowable
+        Map<String, Object> variables = stripSecurityVariables(
+            request.getVariables() != null ? request.getVariables() : Map.of()
+        );
 
         // Normalize: map estimatedAmount to requestAmount for BPMN gateway expressions
         if (variables.containsKey("estimatedAmount") && !variables.containsKey("requestAmount")) {
+            variables = new HashMap<>(variables);
             variables.put("requestAmount", variables.get("estimatedAmount"));
         }
 
@@ -66,12 +97,14 @@ public class ProcessInstanceService {
     }
 
     /**
-     * Get all active process instances
+     * Get all active process instances scoped to the caller's tenant.
+     * CRIT-02: tenant isolation enforced via processInstanceTenantId.
      */
-    public List<ProcessInstanceResponse> getAllProcessInstances() {
-        log.debug("Fetching all active process instances");
+    public List<ProcessInstanceResponse> getAllProcessInstances(String tenantId) {
+        log.debug("Fetching all active process instances for tenant: {}", tenantId);
 
         List<ProcessInstance> instances = runtimeService.createProcessInstanceQuery()
+            .processInstanceTenantId(tenantId)
             .active()
             .list();
 
@@ -81,9 +114,10 @@ public class ProcessInstanceService {
     }
 
     /**
-     * Get process instance by ID
+     * Get process instance by ID.
+     * CRIT-03: tenant ownership check — the instance's tenantId must match the caller's.
      */
-    public ProcessInstanceResponse getProcessInstanceById(String id) {
+    public ProcessInstanceResponse getProcessInstanceById(String id, String callerTenantId) {
         log.debug("Fetching process instance by ID: {}", id);
 
         ProcessInstance processInstance = runtimeService.createProcessInstanceQuery()
@@ -94,25 +128,35 @@ public class ProcessInstanceService {
             throw new RuntimeException("Process instance not found with ID: " + id);
         }
 
-        Map<String, Object> variables = runtimeService.getVariables(id);
+        // Tenant ownership check — SUPER_ADMIN callers pass null to skip
+        if (callerTenantId != null && !callerTenantId.isBlank()
+                && !callerTenantId.equals(processInstance.getTenantId())) {
+            log.warn("Tenant mismatch: caller tenant={} vs instance tenant={} for process {}",
+                callerTenantId, processInstance.getTenantId(), id);
+            throw new RuntimeException("Process instance not found with ID: " + id);
+        }
+
+        Map<String, Object> variables = stripSecurityVariables(runtimeService.getVariables(id));
 
         return mapToResponse(processInstance, variables);
     }
 
     /**
-     * Get process instances by process definition key
+     * Get process instances by process definition key scoped to the caller's tenant.
+     * CRIT-02: tenant isolation enforced via processInstanceTenantId.
      */
-    public List<ProcessInstanceResponse> getProcessInstancesByDefinitionKey(String key) {
-        log.debug("Fetching process instances for process definition: {}", key);
+    public List<ProcessInstanceResponse> getProcessInstancesByDefinitionKey(String key, String tenantId) {
+        log.debug("Fetching process instances for process definition: {} tenant: {}", key, tenantId);
 
         List<ProcessInstance> instances = runtimeService.createProcessInstanceQuery()
             .processDefinitionKey(key)
+            .processInstanceTenantId(tenantId)
             .active()
             .list();
 
         return instances.stream()
             .map(pi -> {
-                Map<String, Object> variables = runtimeService.getVariables(pi.getId());
+                Map<String, Object> variables = stripSecurityVariables(runtimeService.getVariables(pi.getId()));
                 return mapToResponse(pi, variables);
             })
             .collect(Collectors.toList());
@@ -155,22 +199,39 @@ public class ProcessInstanceService {
     }
 
     /**
-     * Get process variables
+     * Get process variables, stripping security-sensitive keys before returning.
+     * CRIT-01 / CRIT-03: prevents token/secret leakage via the variables API.
      */
-    public Map<String, Object> getProcessVariables(String processInstanceId) {
+    public Map<String, Object> getProcessVariables(String processInstanceId, String callerTenantId) {
         log.debug("Fetching variables for process instance: {}", processInstanceId);
 
-        return runtimeService.getVariables(processInstanceId);
+        // Tenant check before exposing variables
+        ProcessInstance processInstance = runtimeService.createProcessInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .singleResult();
+
+        if (processInstance == null) {
+            throw new RuntimeException("Process instance not found with ID: " + processInstanceId);
+        }
+
+        if (callerTenantId != null && !callerTenantId.isBlank()
+                && !callerTenantId.equals(processInstance.getTenantId())) {
+            throw new RuntimeException("Process instance not found with ID: " + processInstanceId);
+        }
+
+        return stripSecurityVariables(runtimeService.getVariables(processInstanceId));
     }
 
     /**
-     * Set process variables
+     * Set process variables, stripping security-sensitive keys to prevent override.
+     * HIGH-05: prevents EL injection and security variable override.
      */
     @Transactional
     public void setProcessVariables(String processInstanceId, Map<String, Object> variables) {
         log.info("Setting variables for process instance: {}", processInstanceId);
 
-        runtimeService.setVariables(processInstanceId, variables);
+        Map<String, Object> safe = stripSecurityVariables(variables);
+        runtimeService.setVariables(processInstanceId, safe);
 
         log.info("Variables set successfully");
     }

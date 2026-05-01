@@ -68,8 +68,11 @@ export const authConfig = {
         const realmAccess = (profile as any)?.realm_access
         token.roles = realmAccess?.roles || []
 
-        console.log('Realm access: ', realmAccess)
-        console.log('Relam Roles: ', realmAccess?.roles)
+        // HIGH-08: JWT claims must not be logged in production
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Realm access: ', realmAccess)
+          console.log('Realm Roles: ', realmAccess?.roles)
+        }
 
         try {
           const decodedToken = decodeJwt(account.access_token || '') as KeycloakJWTPayload;
@@ -154,6 +157,11 @@ export const authConfig = {
       return session
     },
     authorized({ auth, request: { nextUrl } }) {
+      // MED-11: force re-auth when refresh token has expired
+      if ((auth as any)?.error === 'RefreshAccessTokenError') {
+        return false
+      }
+
       const isLoggedIn = !!auth?.user
       const pathname = nextUrl.pathname
 
