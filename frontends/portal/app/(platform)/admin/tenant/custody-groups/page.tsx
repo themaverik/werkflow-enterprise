@@ -1,7 +1,9 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
+import { toast } from 'sonner'
 import { useAuthorization } from '@/lib/auth/use-authorization'
 
 interface CustodyMapping {
@@ -31,17 +33,20 @@ export default function CustodyGroupsPage() {
     staleTime: 60_000,
   })
 
+  useEffect(() => {
+    if (error) toast.error('Failed to load custody mappings')
+  }, [error])
+
   if (!hasAnyRole(['ADMIN', 'SUPER_ADMIN'])) {
     return <p className="text-destructive">Access denied.</p>
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Custody Groups</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Custody owner to candidate group mappings from ERP.</p>
       </div>
-      {error && <p className="text-sm text-destructive">Failed to load custody mappings.</p>}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <table className="w-full text-sm" aria-label="Custody group mappings">
           <thead>
