@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { FileText, Plus, Trash2, Download, Eye, Activity, ExternalLink, Play, GitBranch, SlidersHorizontal, GitMerge, Rocket, ChevronRight, Pencil } from "lucide-react"
+import { FileText, Plus, Trash2, Download, Eye, Activity, ExternalLink, Play, GitBranch, SlidersHorizontal, GitMerge, Rocket, ChevronRight, Pencil, Workflow } from "lucide-react"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
@@ -15,6 +15,9 @@ import { ErrorDisplay, LoadingState } from "@/components/ui/error-display"
 import { useAuthorization } from "@/lib/auth/use-authorization"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { StatCard } from '@/components/ui/stat-card'
+import { FilterPills } from '@/components/ui/filter-pills'
+import { StatusBadge } from '@/components/ui/status-badge'
 
 const MANAGER_ROLES = ['ADMIN', 'SUPER_ADMIN', 'WORKFLOW_ADMIN', 'WORKFLOW_DESIGNER', 'HR_ADMIN', 'FINANCE_ADMIN', 'PROCUREMENT_ADMIN', 'INVENTORY_ADMIN']
 
@@ -24,6 +27,7 @@ export default function ProcessesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deletingDraftKey, setDeletingDraftKey] = useState<string | null>(null)
   const [pendingConfirm, setPendingConfirm] = useState<{ title: string; description: string; onConfirm: () => void } | null>(null)
+  const [activeView, setActiveView] = useState('deployed')
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const { hasAnyRole, getDepartment } = useAuthorization()
@@ -103,16 +107,32 @@ export default function ProcessesPage() {
 
   return (
     <div className="container py-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">{t('title')}</h1>
-          <p className="text-muted-foreground">{t('subtitle')}</p>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold">{t('title')}</h1>
+        <p className="text-muted-foreground">{t('subtitle')}</p>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid gap-4 sm:grid-cols-3 mb-6">
+        <StatCard icon={Workflow}  label="Deployed"    value={processes?.length ?? 0}  iconColor="#7c3aed" />
+        <StatCard icon={FileText}  label="Drafts"      value={drafts?.length ?? 0}     iconColor="#1d4ed8" />
+        <StatCard icon={Activity}  label="Active Runs" value={0}                       iconColor="#16a34a" />
+      </div>
+
+      {/* Tab filter + create button */}
+      <div className="flex items-center justify-between mb-4">
+        <FilterPills
+          options={[
+            { key: 'deployed', label: 'Deployed' },
+            { key: 'drafts',   label: 'Drafts' },
+          ]}
+          active={activeView}
+          onChange={setActiveView}
+        />
         {isManagerOrAbove && (
-          <Button asChild size="lg">
+          <Button asChild size="sm">
             <Link href="/processes/new">
-              <Plus className="h-4 w-4 mr-2" />
-              {t('createNewProcess')}
+              <Plus size={14} className="mr-1" />{t('newProcess')}
             </Link>
           </Button>
         )}
@@ -132,7 +152,7 @@ export default function ProcessesPage() {
       )}
 
       {/* Deployed Processes */}
-      {!isLoading && groupedProcesses && Object.keys(groupedProcesses).length > 0 && (
+      {activeView === 'deployed' && !isLoading && groupedProcesses && Object.keys(groupedProcesses).length > 0 && (
         <div className="mb-6">
           <h2 className="text-xl font-semibold mb-4">{t('deployedProcesses')}</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -147,6 +167,7 @@ export default function ProcessesPage() {
                     <CardTitle className="text-lg flex items-center gap-2">
                       <FileText className="h-5 w-5" />
                       {latestVersion.name || key}
+                      <StatusBadge status="active" />
                     </CardTitle>
                     <CardDescription>
                       Version {latestVersion.version} • {versions.length} version{versions.length > 1 ? 's' : ''} deployed
@@ -254,7 +275,7 @@ export default function ProcessesPage() {
         </div>
       )}
 
-      {draftsError && !draftsLoading && isManagerOrAbove && (
+      {activeView === 'drafts' && draftsError && !draftsLoading && isManagerOrAbove && (
         <ErrorDisplay
           error={draftsError as Error}
           title={t('failedToLoadDrafts')}
@@ -263,7 +284,7 @@ export default function ProcessesPage() {
       )}
 
       {/* Drafts */}
-      {drafts && drafts.length > 0 && (
+      {activeView === 'drafts' && drafts && drafts.length > 0 && (
         <div className="mb-6">
           <h2 className="text-xl font-semibold mb-4">{t('drafts')}</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

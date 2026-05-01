@@ -124,7 +124,8 @@
     "readyToDesign": "Ready to design your first workflow?",
     "howToCreate": "How to Create a Process",
     "howToCreateDesc": "Five steps to design and deploy a BPMN workflow",
-    "delete": "Delete"
+    "delete": "Delete",
+    "newProcess": "New Process"
   },
   "forms": {
     "title": "Form Designer",
