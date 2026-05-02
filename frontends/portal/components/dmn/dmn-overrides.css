@@ -9,4 +9,28 @@
   font-weight: 600;
 }
 
-/* Input/Output placeholder text is set via DEFAULT_EMPTY_DMN label attributes in DmnEditor.tsx */
+/* Override dmn-js placeholder text — match font of set columns, use muted color */
+.dmn-decision-table-container thead .input-expression:empty::before {
+  content: 'Click to set Input';
+  opacity: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: hsl(207 14% 57%);
+}
+.dmn-decision-table-container thead .output-name:empty::before {
+  content: 'Click to set Output';
+  opacity: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: hsl(207 14% 57%);
+}
+
+/* DRD definitions panel */
+.dmn-drd-container .dmn-definitions .dmn-definitions-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+.dmn-drd-container .dmn-definitions .dmn-definitions-id {
+  font-size: 11px;
+  opacity: 0.6;
+}

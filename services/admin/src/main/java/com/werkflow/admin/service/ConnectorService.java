@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -56,7 +57,16 @@ public class ConnectorService {
     @Transactional(readOnly = true)
     public List<ConnectorResponse> listByTenant(String tenantCode) {
         return endpointRepo.findByTenantCodeAndActiveTrue(tenantCode).stream()
-            .map(ep -> toResponse(ep, findCredential(tenantCode, ep.getConnectorKey())))
+            .flatMap(ep -> {
+                Optional<TenantApiCredential> cred =
+                    credentialRepo.findByTenantCodeAndConnectorKey(tenantCode, ep.getConnectorKey());
+                if (cred.isEmpty()) {
+                    log.warn("No credential found for connector '{}' tenant '{}' — skipping",
+                             ep.getConnectorKey(), tenantCode);
+                    return Stream.<ConnectorResponse>empty();
+                }
+                return Stream.of(toResponse(ep, cred.get()));
+            })
             .toList();
     }
 
@@ -122,6 +132,7 @@ public class ConnectorService {
         String apiKey = secretsResolver.resolve(cred.getSecretRef());
         String authHeader = cred.getHeaderName() != null ? cred.getHeaderName() : "Authorization";
         String authValue = switch (cred.getAuthScheme()) {
+            case "NONE" -> null;
             case "BEARER" -> "Bearer " + apiKey;
             case "API_KEY" -> apiKey;
             case "BASIC" -> "Basic " + apiKey;
@@ -140,7 +151,11 @@ public class ConnectorService {
 
         var entity = restClient.method(HttpMethod.valueOf(request.getMethod()))
             .uri(fullUrl)
-            .header(authHeader, authValue)
+            .headers(headers -> {
+                if (authValue != null) {
+                    headers.set(authHeader, authValue);
+                }
+            })
             .retrieve()
             .onStatus(HttpStatusCode::is4xxClientError, (req, res) -> {})
             .onStatus(HttpStatusCode::is5xxServerError, (req, res) -> {})
