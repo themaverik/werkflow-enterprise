@@ -208,7 +208,7 @@ app:
     url: ${ADMIN_SERVICE_URL:http://localhost:8083}
 
   erp-service:
-    url: ${ERP_SERVICE_URL:http://localhost:8085}
+    url: ${ERP_SERVICE_URL:http://localhost:8084}
 
   # Flowable group resolution — static fallback role-to-group mappings.
   # DOA role mappings are now DB-backed per tenant (role_group_mappings table, ADR-003).
@@ -224,7 +224,7 @@ app:
   # These are last-resort defaults only.
   services:
     fallback:
-      procurement: ${PROCUREMENT_SERVICE_URL:http://localhost:8085}
+      procurement: ${PROCUREMENT_SERVICE_URL:http://localhost:8084}
       inventory:   ${INVENTORY_SERVICE_URL:http://localhost:8084}
 
 # Admin Service Configuration (for service registry redirection)
