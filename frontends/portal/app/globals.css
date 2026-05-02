@@ -173,27 +173,113 @@
   font-family: var(--font-dm-sans), sans-serif;
 }
 
-/* Palette sidebar — dark to match BPMN palette */
+/* ── Palette sidebar — dark to match Werkflow sidebar ── */
 .fjs-palette-container {
-  background: var(--sidebar-bg) !important;
-  border-color: var(--sidebar-border) !important;
-  color: var(--sidebar-nav-text) !important;
+  background: #111c27 !important;
+  border-color: rgba(255,255,255,0.07) !important;
+  color: rgba(255,255,255,0.6) !important;
 }
+
+/* Search input area */
+.fjs-palette-search-container {
+  padding: 8px 10px !important;
+  border-bottom: 1px solid rgba(255,255,255,0.07) !important;
+  background: #111c27 !important;
+}
+.fjs-palette-search {
+  width: 100% !important;
+  padding: 5px 8px !important;
+  background: rgba(255,255,255,0.08) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 5px !important;
+  font-size: 11px !important;
+  color: #ffffff !important;
+  outline: none !important;
+  font-family: inherit !important;
+}
+.fjs-palette-search::placeholder {
+  color: rgba(255,255,255,0.3) !important;
+}
+.fjs-palette-search:focus {
+  border-color: rgba(20,155,165,0.6) !important;
+  box-shadow: 0 0 0 2px rgba(20,155,165,0.15) !important;
+}
+.fjs-palette-search-icon {
+  color: rgba(255,255,255,0.3) !important;
+}
+
+/* Group headers */
 .fjs-palette-group-title {
-  background: rgba(255,255,255,0.05);
-  color: var(--sidebar-dim-text);
-  font-size: 10px;
-  letter-spacing: 0.07em;
+  background: rgba(255,255,255,0.05) !important;
+  color: rgba(255,255,255,0.35) !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.07em !important;
+  text-transform: uppercase !important;
+  padding: 6px 10px 3px !important;
 }
+
+/* Tile grid */
+.fjs-palette-fields {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 2px !important;
+  padding: 4px !important;
+}
+
+/* Individual tiles */
+.fjs-palette-field {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  padding: 6px 4px !important;
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  border-radius: 6px !important;
+  cursor: grab !important;
+  transition: background 120ms ease, border-color 120ms ease !important;
+  min-height: 56px !important;
+}
+
+/* Tile icon container */
+.fjs-palette-field-icon,
+.fjs-palette-field > svg {
+  color: rgba(255,255,255,0.7) !important;
+  width: 22px !important;
+  height: 18px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Tile label */
+.fjs-palette-field span,
+.fjs-palette-field-text {
+  font-size: 9px !important;
+  font-weight: 500 !important;
+  color: rgba(255,255,255,0.6) !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+  word-break: break-word !important;
+}
+
+/* Tile hover */
 .fjs-palette-field:hover {
-  background: rgba(255,255,255,0.12) !important;
+  background: rgba(255,255,255,0.06) !important;
   border-color: rgba(20,155,165,0.5) !important;
+}
+.fjs-palette-field:hover span,
+.fjs-palette-field:hover .fjs-palette-field-text,
+.fjs-palette-field:hover .fjs-palette-field-icon,
+.fjs-palette-field:hover > svg {
   color: rgba(255,255,255,0.9) !important;
 }
-.fjs-palette-field:hover .fjs-palette-field-label,
-.fjs-palette-field:hover span,
-.fjs-palette-field:hover svg {
-  color: rgba(255,255,255,0.9) !important;
+
+/* Tile active / drag start */
+.fjs-palette-field:active {
+  cursor: grabbing !important;
+  background: rgba(20,155,165,0.15) !important;
+  border-color: #149ba5 !important;
 }
 
 /* Selected field highlight */
@@ -251,11 +337,16 @@
   color: #ffffff !important;
   border-color: rgba(255,255,255,0.08) !important;
 }
-.dmn-decision-table-container .hit-policy-cell {
-  background: #149ba5 !important;
+/* Hit policy editor input — white text on dark header */
+.dmn-decision-table-container .hit-policy .dms-input {
   color: #fff !important;
-  border-color: rgba(255,255,255,0.15) !important;
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(255,255,255,0.2) !important;
   font-weight: 700;
+}
+.dmn-decision-table-container .hit-policy .dms-input:focus {
+  border-color: #149ba5 !important;
+  box-shadow: 0 0 0 2px rgba(20,155,165,0.2) !important;
 }
 
 /* Column headers */
@@ -294,20 +385,43 @@
   outline-offset: -2px;
 }
 
-/* Hit policy select — white text on teal cell */
-.dmn-decision-table-container .hit-policy-cell select,
-.dmn-decision-table-container .hit-policy-cell input {
-  color: #fff !important;
-  background: transparent !important;
-  border-color: transparent !important;
-  font-weight: 700;
+/* Hit policy dropdown options portal */
+.dms-select-options {
+  background-color: #111c27 !important;
+  border-color: rgba(255,255,255,0.1) !important;
+  color: rgba(255,255,255,0.85) !important;
+}
+.dms-select-options .option:hover,
+.dms-select-options .option:focus {
+  background-color: rgba(20,155,165,0.25) !important;
+}
+.dms-select-options .option.active {
+  color: #149ba5 !important;
 }
 
-/* "Click to set Input/Output" — normal weight, muted */
+/* Normalize all column header text — same 13px as Annotations */
+.dmn-decision-table-container thead th,
+.dmn-decision-table-container thead .input-cell,
+.dmn-decision-table-container thead .output-cell {
+  font-size: 13px !important;
+}
+.dmn-decision-table-container thead [contenteditable],
+.dmn-decision-table-container thead .clause,
+.dmn-decision-table-container thead .input-expression,
+.dmn-decision-table-container thead .output-expression,
+.dmn-decision-table-container thead .input-label,
+.dmn-decision-table-container thead .output-label,
+.dmn-decision-table-container .cell-value,
+.dmn-decision-table-container .no-content {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+/* "Click to set Input/Output" placeholder — muted, same size */
 .dmn-decision-table-container .cell-value:empty::before,
 .dmn-decision-table-container td .no-content-message,
 .dmn-decision-table-container .input-cell .cell-header,
 .dmn-decision-table-container .output-cell .cell-header {
+  font-size: 13px !important;
   font-weight: 400 !important;
   opacity: 0.65;
 }
