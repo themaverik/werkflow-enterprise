@@ -2,16 +2,16 @@
 
 import Link from 'next/link'
 import {
-  Play, Pencil, Trash2, Download, Plus, ChevronRight,
+  Play, Pencil, Trash2, Plus, ChevronRight,
   Search, GitBranch, SlidersHorizontal, GitMerge, Rocket,
+  Link2, FileText, History,
 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import {
-  getProcessDefinitions, deleteDeployment, getProcessDefinitionXml,
+  getProcessDefinitions, deleteDeployment,
   listDrafts, deleteDraft,
 } from '@/lib/api/flowable'
-import { downloadBpmn } from '@/lib/bpmn/utils'
 import { useState, useEffect, CSSProperties } from 'react'
 import { useTranslations } from 'next-intl'
 import { useAuthorization } from '@/lib/auth/use-authorization'
@@ -31,6 +31,52 @@ const T = {
   warning: '#c27b00',
   warningBg: '#fffbeb',
   danger: '#dc2626',
+}
+
+// ─── Tag colour palette ───────────────────────────────────────────────────────
+const TAG_PALETTE: Record<string, string> = {
+  'Approval':    '#2563eb',
+  'Legal':       '#7c3aed',
+  'Operations':  '#0891b2',
+  'Procurement': '#059669',
+  'Finance':     '#d97706',
+  'HR':          '#dc2626',
+  'IT':          '#6b7280',
+  'Onboarding':  '#0d9488',
+  'Cap-Ex':      '#b45309',
+  'Expense':     '#c026d3',
+}
+
+const FALLBACK_COLORS = [
+  '#2563eb', '#7c3aed', '#059669', '#d97706',
+  '#dc2626', '#0891b2', '#c026d3', '#b45309',
+]
+
+function slugifyTag(raw: string): string {
+  const segment = raw.split('/').filter(Boolean).pop() ?? raw
+  return segment.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function tagColor(tag: string): string {
+  if (TAG_PALETTE[tag]) return TAG_PALETTE[tag]
+  let hash = 0
+  for (let i = 0; i < tag.length; i++) hash = (hash * 31 + tag.charCodeAt(i)) >>> 0
+  return FALLBACK_COLORS[hash % FALLBACK_COLORS.length]
+}
+
+function primaryColorForProcess(tags: string[]): string {
+  return tags.length > 0 ? tagColor(tags[0]) : ACCENT
+}
+
+function getProcessTags(process: ProcessDef): string[] {
+  const seen = new Set<string>()
+  const tags: string[] = []
+  for (const raw of [process.owningDepartment, process.category]) {
+    if (!raw) continue
+    const label = slugifyTag(raw)
+    if (!seen.has(label)) { seen.add(label); tags.push(label) }
+  }
+  return tags
 }
 
 const MANAGER_ROLES = [
@@ -193,20 +239,6 @@ export default function ProcessesPage() {
     },
   })
 
-  // ── Download handler ─────────────────────────────────────────────────────────
-  const handleDownload = async (processDefinitionId: string, name: string) => {
-    try {
-      const xml = await getProcessDefinitionXml(processDefinitionId)
-      downloadBpmn(xml, `${name}.bpmn20.xml`)
-    } catch (err) {
-      toastHook({
-        title: t('downloadFailed'),
-        description: err instanceof Error ? err.message : 'Unknown error',
-        variant: 'destructive',
-      })
-    }
-  }
-
   // ── Grouping ─────────────────────────────────────────────────────────────────
   type ProcessDef = NonNullable<typeof processes>[number]
 
@@ -219,12 +251,10 @@ export default function ProcessesPage() {
     {},
   )
 
-  // ── Tag list from owningDepartment values ────────────────────────────────────
+  // ── Tag list from owningDepartment + category values ─────────────────────────
   const allTags = Array.from(
     new Set(
-      (processes ?? [])
-        .map((p) => p.owningDepartment)
-        .filter((d): d is string => Boolean(d)),
+      (processes ?? []).flatMap((p) => getProcessTags(p as ProcessDef)),
     ),
   )
 
@@ -233,7 +263,8 @@ export default function ProcessesPage() {
     const latest = [...versions].sort((a, b) => b.version - a.version)[0]
     const name = latest.name || key
     const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesTag = !activeTag || latest.owningDepartment === activeTag
+    const tags = getProcessTags(latest as ProcessDef)
+    const matchesTag = !activeTag || tags.includes(activeTag)
     return matchesSearch && matchesTag
   })
 
@@ -463,7 +494,6 @@ export default function ProcessesPage() {
                     sortedVersions={sortedVersions}
                     canEdit={canEditProcess(latest.owningDepartment)}
                     isDeleting={deletingId === latest.deploymentId}
-                    onDownload={() => handleDownload(latest.id, displayName)}
                     onDelete={() =>
                       setPendingConfirm({
                         title: t('deleteProcess'),
@@ -569,6 +599,8 @@ interface ProcessDef {
   deploymentId: string
   owningDepartment?: string
   category?: string
+  hasStartFormKey?: boolean
+  startFormKey?: string
 }
 
 function DeployedCard({
@@ -577,7 +609,6 @@ function DeployedCard({
   sortedVersions,
   canEdit,
   isDeleting,
-  onDownload,
   onDelete,
 }: {
   processKey: string
@@ -585,13 +616,17 @@ function DeployedCard({
   sortedVersions: ProcessDef[]
   canEdit: boolean
   isDeleting: boolean
-  onDownload: () => void
   onDelete: () => void
 }) {
   const displayName = latest.name || processKey
   const [hoverEdit, setHoverEdit] = useState(false)
-  const [hoverDl, setHoverDl] = useState(false)
   const [hoverDel, setHoverDel] = useState(false)
+  const [hoverConn, setHoverConn] = useState(false)
+  const [hoverForm, setHoverForm] = useState(false)
+
+  const tags = getProcessTags(latest)
+  const primaryColor = primaryColorForProcess(tags)
+  const hasForm = Boolean(latest.hasStartFormKey || latest.startFormKey)
 
   return (
     <div
@@ -602,39 +637,29 @@ function DeployedCard({
         padding: 20,
         display: 'flex',
         flexDirection: 'column',
-        gap: 14,
+        gap: 12,
       }}
     >
-      {/* Top row: icon + name + version badge */}
+      {/* Top row: icon + name + version badge + tags */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        {/* Icon square */}
         <div
           style={{
             width: 44,
             height: 44,
             borderRadius: 11,
-            background: ACCENT + '1d',
+            background: primaryColor + '20',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
           }}
         >
-          <GitBranch size={20} color={ACCENT} strokeWidth={1.8} />
+          <GitBranch size={20} color={primaryColor} strokeWidth={1.8} />
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span
-              style={{
-                fontSize: 14,
-                fontWeight: 600,
-                color: T.text,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <span style={{ fontSize: 14, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {displayName}
             </span>
             <span
@@ -642,9 +667,9 @@ function DeployedCard({
                 fontSize: 10,
                 padding: '1px 6px',
                 borderRadius: 99,
-                background: ACCENT + '14',
-                color: ACCENT,
-                border: '1px solid ' + ACCENT + '44',
+                background: primaryColor + '18',
+                color: primaryColor,
+                border: '1px solid ' + primaryColor + '40',
                 fontWeight: 600,
                 flexShrink: 0,
               }}
@@ -653,85 +678,127 @@ function DeployedCard({
             </span>
           </div>
 
-          {/* Department tag pills */}
-          {latest.owningDepartment && (
-            <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
-              <span style={{ ...tagPill(false), cursor: 'default' }}>
-                {latest.owningDepartment}
-              </span>
-              {latest.category && (
-                <span style={{ ...tagPill(false), cursor: 'default' }}>
-                  {latest.category}
+          {tags.length > 0 && (
+            <div style={{ display: 'flex', gap: 4, marginTop: 5, flexWrap: 'wrap' }}>
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  style={{
+                    fontSize: 10,
+                    padding: '2px 7px',
+                    borderRadius: 99,
+                    background: tagColor(tag) + '18',
+                    color: tagColor(tag),
+                    border: '1px solid ' + tagColor(tag) + '40',
+                    fontWeight: 500,
+                  }}
+                >
+                  {tag}
                 </span>
-              )}
+              ))}
             </div>
           )}
         </div>
       </div>
 
       {/* Stats row */}
-      <div style={{ display: 'flex', gap: 16 }}>
+      <div style={{ display: 'flex', gap: 20 }}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 700, color: T.text, lineHeight: 1.1 }}>0</div>
-          <div style={{ fontSize: 10, color: T.muted, marginTop: 2 }}>Instances</div>
+          <div style={{ fontSize: 10, color: T.muted, marginTop: 2 }}>Active instances</div>
         </div>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: T.text, lineHeight: 1.1 }}>
-            {sortedVersions.length}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: T.text, lineHeight: 1.1 }}>{sortedVersions.length}</div>
+            <div style={{ fontSize: 10, color: T.muted, marginTop: 2 }}>Versions deployed</div>
           </div>
-          <div style={{ fontSize: 10, color: T.muted, marginTop: 2 }}>
-            Version{sortedVersions.length !== 1 ? 's' : ''}
-          </div>
+          {sortedVersions.length > 1 && (
+            <span title={`Deployed versions: v${sortedVersions.map(v => v.version).join(', v')}`} style={{ display: 'flex', marginTop: 3 }}>
+              <History size={11} color={T.light} strokeWidth={2} />
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Start Workflow button */}
-      <Link
-        href={`/processes/start/${processKey}`}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 6,
-          background: ACCENT,
-          color: '#fff',
-          borderRadius: 7,
-          padding: '7px 14px',
-          fontSize: 12,
-          fontWeight: 600,
-          textDecoration: 'none',
-        }}
-      >
-        <Play size={12} strokeWidth={2.2} />
-        Start Workflow
-      </Link>
+      {/* Divider */}
+      <div style={{ height: 1, background: T.border }} />
 
-      {/* Icon action buttons */}
-      <div style={{ display: 'flex', gap: 6 }}>
-        {canEdit && (
+      {/* Action row: Start Workflow + icon buttons */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {/* Start Workflow */}
+        <Link
+          href={`/processes/start/${processKey}`}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            background: primaryColor,
+            color: '#fff',
+            borderRadius: 7,
+            padding: '6px 12px',
+            fontSize: 12,
+            fontWeight: 600,
+            textDecoration: 'none',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
+          }}
+        >
+          <Play size={11} strokeWidth={2.5} />
+          Start Workflow
+        </Link>
+
+        <div style={{ flex: 1 }} />
+
+        {/* Edit */}
+        {canEdit ? (
           <Link
             href={`/processes/edit/${latest.id}`}
-            style={{
-              ...iconBtn,
-              background: hoverEdit ? T.bg : '#fff',
-              textDecoration: 'none',
-            }}
+            style={{ ...iconBtn, background: hoverEdit ? T.bg : '#fff', textDecoration: 'none' }}
             title="Edit process"
             onMouseEnter={() => setHoverEdit(true)}
             onMouseLeave={() => setHoverEdit(false)}
           >
             <Pencil size={13} color={T.muted} strokeWidth={2} />
           </Link>
+        ) : (
+          <span style={{ ...iconBtn, opacity: 0.3, cursor: 'not-allowed' }} title="No edit permission">
+            <Pencil size={13} color={T.light} strokeWidth={2} />
+          </span>
         )}
-        <button
-          onClick={onDownload}
-          style={{ ...iconBtn, background: hoverDl ? T.bg : '#fff' }}
-          title="Download BPMN"
-          onMouseEnter={() => setHoverDl(true)}
-          onMouseLeave={() => setHoverDl(false)}
+
+        {/* Connector — links to /admin/connectors */}
+        <Link
+          href="/admin/connectors"
+          style={{
+            ...iconBtn,
+            background: hoverConn ? T.bg : '#fff',
+            textDecoration: 'none',
+          }}
+          title="View connectors"
+          onMouseEnter={() => setHoverConn(true)}
+          onMouseLeave={() => setHoverConn(false)}
         >
-          <Download size={13} color={T.muted} strokeWidth={2} />
-        </button>
+          <Link2 size={13} color={T.muted} strokeWidth={2} />
+        </Link>
+
+        {/* Form — enabled only if process has a start form */}
+        {hasForm ? (
+          <Link
+            href={`/processes/start/${processKey}`}
+            style={{ ...iconBtn, background: hoverForm ? T.bg : '#fff', textDecoration: 'none' }}
+            title="Open start form"
+            onMouseEnter={() => setHoverForm(true)}
+            onMouseLeave={() => setHoverForm(false)}
+          >
+            <FileText size={13} color={T.muted} strokeWidth={2} />
+          </Link>
+        ) : (
+          <span style={{ ...iconBtn, opacity: 0.3, cursor: 'not-allowed' }} title="No form configured">
+            <FileText size={13} color={T.light} strokeWidth={2} />
+          </span>
+        )}
+
+        {/* Delete */}
         {canEdit && (
           <button
             onClick={onDelete}

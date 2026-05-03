@@ -14,9 +14,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { RefreshCw, Plus } from 'lucide-react'
+import { RefreshCw, Plus, Pencil, FlaskConical } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { listConnectors } from '@/lib/api/connectors'
+import { listConnectors, type ConnectorResponse } from '@/lib/api/connectors'
 import { ConnectorForm } from '@/components/admin/ConnectorForm'
 
 const TENANT_CODE = process.env.NEXT_PUBLIC_TENANT_CODE ?? 'default'
@@ -25,7 +25,10 @@ export default function ConnectorsPage() {
   const t = useTranslations('admin.connectors')
   const { status } = useSession()
   const queryClient = useQueryClient()
-  const [dialogOpen, setDialogOpen] = useState(false)
+
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editingConnector, setEditingConnector] = useState<ConnectorResponse | null>(null)
+  const [editDefaultTab, setEditDefaultTab] = useState<'general' | 'auth' | 'contract' | 'test'>('general')
 
   const { data: connectors, isLoading, error, refetch } = useQuery({
     queryKey: ['connectors', TENANT_CODE],
@@ -35,7 +38,12 @@ export default function ConnectorsPage() {
   })
 
   const handleCreated = () => {
-    setDialogOpen(false)
+    setCreateOpen(false)
+    queryClient.invalidateQueries({ queryKey: ['connectors', TENANT_CODE] })
+  }
+
+  const handleUpdated = () => {
+    setEditingConnector(null)
     queryClient.invalidateQueries({ queryKey: ['connectors', TENANT_CODE] })
   }
 
@@ -57,7 +65,7 @@ export default function ConnectorsPage() {
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             {t('refresh')}
           </Button>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
@@ -69,7 +77,7 @@ export default function ConnectorsPage() {
                 <DialogTitle>{t('registerConnector')}</DialogTitle>
                 <DialogDescription>{t('registerDesc')}</DialogDescription>
               </DialogHeader>
-              <ConnectorForm tenantCode={TENANT_CODE} onCreated={handleCreated} />
+              <ConnectorForm tenantCode={TENANT_CODE} onSaved={handleCreated} />
             </DialogContent>
           </Dialog>
         </div>
@@ -105,7 +113,7 @@ export default function ConnectorsPage() {
         <Card>
           <CardContent className="pt-6 text-center py-12">
             <p className="text-muted-foreground">{t('noConnectors')}</p>
-            <Button variant="link" className="mt-2" onClick={() => setDialogOpen(true)}>
+            <Button variant="link" className="mt-2" onClick={() => setCreateOpen(true)}>
               Register the first connector
             </Button>
           </CardContent>
@@ -119,13 +127,24 @@ export default function ConnectorsPage() {
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-base leading-tight">{connector.displayName}</CardTitle>
-                  <div className="flex flex-wrap gap-1 shrink-0">
-                    <Badge variant={environmentVariant(connector.environment)}>
-                      {connector.environment}
-                    </Badge>
-                    <Badge variant={connector.active ? 'success' : 'secondary'}>
-                      {connector.active ? 'Active' : 'Inactive'}
-                    </Badge>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      title="Edit connector"
+                      onClick={() => { setEditDefaultTab('general'); setEditingConnector(connector) }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <div className="flex gap-1">
+                      <Badge variant={environmentVariant(connector.environment)}>
+                        {connector.environment}
+                      </Badge>
+                      <Badge variant={connector.active ? 'success' : 'secondary'}>
+                        {connector.active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
                 <CardDescription className="mt-1">
@@ -136,17 +155,50 @@ export default function ConnectorsPage() {
                 <div className="text-muted-foreground truncate" title={connector.baseUrl}>
                   {connector.baseUrl}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">{connector.authScheme}</Badge>
-                  {connector.sampleSchema !== null && (
-                    <Badge variant="secondary">Contract captured</Badge>
-                  )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{connector.authScheme}</Badge>
+                    {connector.sampleSchema !== null && (
+                      <Badge variant="secondary">Contract captured</Badge>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => { setEditDefaultTab('test'); setEditingConnector(connector) }}
+                  >
+                    <FlaskConical className="h-3 w-3" />
+                    Test
+                  </Button>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      {/* Edit / Test dialog */}
+      <Dialog open={!!editingConnector} onOpenChange={(open) => !open && setEditingConnector(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingConnector?.displayName}
+            </DialogTitle>
+            <DialogDescription>
+              <code className="text-xs">{editingConnector?.connectorKey}</code>
+            </DialogDescription>
+          </DialogHeader>
+          {editingConnector && (
+            <ConnectorForm
+              tenantCode={TENANT_CODE}
+              existingConnector={editingConnector}
+              defaultTab={editDefaultTab}
+              onSaved={handleUpdated}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
