@@ -119,13 +119,13 @@ public class ConnectorCallDelegate implements JavaDelegate {
 
         } catch (Exception e) {
             log.error("connectorCallDelegate error [{}]: {}", onErrorMode, e.getMessage());
-            switch (onErrorMode) {
-                case "CONTINUE" -> {
-                    execution.setVariable(responseVar + "Success", false);
-                    execution.setVariable(responseVar + "Error", e.getMessage());
-                }
-                case "THROW_BPMN_ERROR" -> throw new BpmnError("CONNECTOR_CALL_ERROR", e.getMessage());
-                default -> throw new RuntimeException("connectorCallDelegate failed: " + e.getMessage(), e);
+            if ("CONTINUE".equals(onErrorMode)) {
+                execution.setVariable(responseVar + "Success", false);
+                execution.setVariable(responseVar + "Error", e.getMessage());
+            } else if ("THROW_BPMN_ERROR".equals(onErrorMode)) {
+                throw new BpmnError("CONNECTOR_CALL_ERROR", e.getMessage());
+            } else {
+                throw new RuntimeException("connectorCallDelegate failed: " + e.getMessage(), e);
             }
         }
     }

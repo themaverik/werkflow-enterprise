@@ -96,10 +96,12 @@ public class ConnectorWebhookDelegate implements JavaDelegate {
 
         } catch (Exception e) {
             log.error("connectorWebhookDelegate error [{}]: {}", onErrorMode, e.getMessage());
-            switch (onErrorMode) {
-                case "CONTINUE" -> log.info("connectorWebhookDelegate: CONTINUE — process proceeds despite error");
-                case "THROW_BPMN_ERROR" -> throw new BpmnError("CONNECTOR_WEBHOOK_ERROR", e.getMessage());
-                default -> throw new RuntimeException("connectorWebhookDelegate failed: " + e.getMessage(), e);
+            if ("CONTINUE".equals(onErrorMode)) {
+                log.info("connectorWebhookDelegate: CONTINUE — process proceeds despite error");
+            } else if ("THROW_BPMN_ERROR".equals(onErrorMode)) {
+                throw new BpmnError("CONNECTOR_WEBHOOK_ERROR", e.getMessage());
+            } else {
+                throw new RuntimeException("connectorWebhookDelegate failed: " + e.getMessage(), e);
             }
         }
     }
