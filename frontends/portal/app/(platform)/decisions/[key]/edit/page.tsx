@@ -70,7 +70,7 @@ export default function EditDecisionPage({ params }: EditDecisionPageProps) {
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">{meta?.name}</h1>
+          <h1 className="text-lg font-semibold">{meta?.name}</h1>
           <p className="font-mono text-sm text-muted-foreground">
             {key} &mdash; v{meta?.version}
           </p>
