@@ -12,9 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { FilterPills } from '@/components/ui/filter-pills'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent } from '@/components/ui/card'
 import { getAllWorkflowInstances, type WorkflowInstance } from '@/lib/api/workflows'
@@ -23,22 +23,6 @@ import { useAuth } from '@/lib/auth/auth-context'
 import { Button } from '@/components/ui/button'
 
 type StatusFilter = 'all' | 'active' | 'completed' | 'suspended'
-
-function StatusBadge({ status }: { status: WorkflowInstance['status'] }) {
-  const t = useTranslations('requests')
-  switch (status) {
-    case 'active':
-      return <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100">{t('active')}</Badge>
-    case 'completed':
-      return <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">{t('completed')}</Badge>
-    case 'failed':
-      return <Badge className="bg-red-100 text-red-800 border-red-200 hover:bg-red-100">{t('failed')}</Badge>
-    case 'suspended':
-      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100">{t('suspended')}</Badge>
-    default:
-      return <Badge variant="outline">{status}</Badge>
-  }
-}
 
 function TableSkeleton() {
   return (
@@ -53,14 +37,15 @@ function TableSkeleton() {
 export default function RequestsPage() {
   const t = useTranslations('requests')
   const { user } = useAuth()
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [activeTab, setActiveTab] = useState<string>('all')
+  const statusFilter = activeTab as StatusFilter
   const [search, setSearch] = useState('')
 
   const queryStatus = statusFilter === 'all' ? undefined : statusFilter
   const currentUsername = user?.username || ''
 
   const { data: instances, isLoading } = useQuery({
-    queryKey: ['workflow-instances', statusFilter, currentUsername],
+    queryKey: ['workflow-instances', activeTab, currentUsername],
     queryFn: () => getAllWorkflowInstances(queryStatus, 100, currentUsername),
     enabled: !!currentUsername,
   })
@@ -74,7 +59,7 @@ export default function RequestsPage() {
   })
 
   return (
-    <div className="container py-6">
+    <div className="w-full py-2">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">{t('title')}</h1>
@@ -86,18 +71,16 @@ export default function RequestsPage() {
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
-        <Tabs
-          value={statusFilter}
-          onValueChange={(v) => setStatusFilter(v as StatusFilter)}
-        >
-          <TabsList>
-            {(['all', 'active', 'completed', 'suspended'] as StatusFilter[]).map((value) => (
-              <TabsTrigger key={value} value={value}>
-                {t(value as 'all' | 'active' | 'completed' | 'suspended')}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <FilterPills
+          options={[
+            { key: 'all',       label: 'All' },
+            { key: 'active',    label: 'Active' },
+            { key: 'completed', label: 'Completed' },
+            { key: 'suspended', label: 'Suspended' },
+          ]}
+          active={activeTab}
+          onChange={setActiveTab}
+        />
 
         <Input
           placeholder={t('searchPlaceholder')}
@@ -116,24 +99,24 @@ export default function RequestsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="rounded-md border">
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t('processName')}</TableHead>
-                <TableHead>{t('businessKey')}</TableHead>
-                <TableHead>{t('status')}</TableHead>
-                <TableHead>{t('started')}</TableHead>
-                <TableHead>{t('currentActivity')}</TableHead>
+                <TableHead className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('processName')}</TableHead>
+                <TableHead className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('businessKey')}</TableHead>
+                <TableHead className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('status')}</TableHead>
+                <TableHead className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('started')}</TableHead>
+                <TableHead className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('currentActivity')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map((instance) => (
                 <TableRow key={instance.id}>
-                  <TableCell className="font-medium">
+                  <TableCell className="px-4 py-4 font-medium">
                     {instance.processDefinitionName || instance.processDefinitionKey}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="px-4 py-4">
                     {instance.businessKey ? (
                       <Link
                         href={`/requests/${instance.id}`}
@@ -150,11 +133,11 @@ export default function RequestsPage() {
                       </Link>
                     )}
                   </TableCell>
-                  <TableCell><StatusBadge status={instance.status} /></TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="px-4 py-4"><StatusBadge status={instance.status} /></TableCell>
+                  <TableCell className="px-4 py-4 text-sm text-muted-foreground">
                     {formatDate(instance.startTime)}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="px-4 py-4 text-sm text-muted-foreground">
                     {instance.currentActivity ?? '-'}
                   </TableCell>
                 </TableRow>
