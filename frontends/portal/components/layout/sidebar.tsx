@@ -102,11 +102,11 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div
-        className="px-4 py-4 flex items-center"
+        className="px-3 py-3 flex items-center justify-center"
         style={{ borderBottom: '1px solid var(--sidebar-border)' }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/werkflow-logo.png" alt="Werkflow" style={{ height: 40, width: 'auto', objectFit: 'contain' }} />
+        <img src="/werkflow-logo.png" alt="Werkflow" style={{ width: '100%', height: 'auto', maxHeight: 56, objectFit: 'contain' }} />
       </div>
 
       {/* Navigation */}

@@ -1,6 +1,7 @@
 package com.werkflow.admin.service;
 
 import com.werkflow.admin.dto.connector.*;
+import com.werkflow.admin.dto.connector.ConnectorUpdateRequest;
 import com.werkflow.admin.entity.TenantApiCredential;
 import com.werkflow.admin.entity.TenantServiceEndpoint;
 import com.werkflow.admin.repository.TenantApiCredentialRepository;
@@ -92,6 +93,30 @@ public class ConnectorService {
         cred.setLabel(request.getDisplayName());
         cred.setAuthScheme(request.getAuthScheme());
         cred.setSecretRef(request.getSecretRef());
+        cred.setHeaderName(request.getHeaderName());
+        credentialRepo.save(cred);
+
+        return toResponse(ep, cred);
+    }
+
+    @Transactional
+    public ConnectorResponse update(String tenantCode, String connectorKey, ConnectorUpdateRequest request) {
+        TenantServiceEndpoint ep = endpointRepo.findByTenantCodeAndConnectorKey(tenantCode, connectorKey)
+                .stream().findFirst()
+                .orElseThrow(() -> new NoSuchElementException("Connector not found: " + connectorKey));
+        ep.setDisplayName(request.getDisplayName());
+        ep.setBaseUrl(request.getBaseUrl());
+        ep.setEnvironment(request.getEnvironment());
+        ep.setActive(request.isActive());
+        endpointRepo.save(ep);
+
+        TenantApiCredential cred = findCredential(tenantCode, connectorKey);
+        cred.setLabel(request.getDisplayName());
+        cred.setAuthScheme(request.getAuthScheme());
+        if (request.getSecretRef() != null && !request.getSecretRef().isBlank()) {
+            validateSecretRef(request.getSecretRef());
+            cred.setSecretRef(request.getSecretRef());
+        }
         cred.setHeaderName(request.getHeaderName());
         credentialRepo.save(cred);
 

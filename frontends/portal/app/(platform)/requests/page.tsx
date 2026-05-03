@@ -59,7 +59,7 @@ export default function RequestsPage() {
   })
 
   return (
-    <div className="container py-6">
+    <div className="w-full py-2">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">{t('title')}</h1>
@@ -113,10 +113,10 @@ export default function RequestsPage() {
             <TableBody>
               {filtered.map((instance) => (
                 <TableRow key={instance.id}>
-                  <TableCell className="font-medium">
+                  <TableCell className="px-4 py-4 font-medium">
                     {instance.processDefinitionName || instance.processDefinitionKey}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="px-4 py-4">
                     {instance.businessKey ? (
                       <Link
                         href={`/requests/${instance.id}`}
@@ -133,11 +133,11 @@ export default function RequestsPage() {
                       </Link>
                     )}
                   </TableCell>
-                  <TableCell><StatusBadge status={instance.status} /></TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="px-4 py-4"><StatusBadge status={instance.status} /></TableCell>
+                  <TableCell className="px-4 py-4 text-sm text-muted-foreground">
                     {formatDate(instance.startTime)}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="px-4 py-4 text-sm text-muted-foreground">
                     {instance.currentActivity ?? '-'}
                   </TableCell>
                 </TableRow>

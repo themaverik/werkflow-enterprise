@@ -111,6 +111,33 @@ export async function createConnector(request: ConnectorRequest): Promise<Connec
   }
 }
 
+export interface ConnectorUpdateRequest {
+  displayName: string
+  baseUrl: string
+  environment: string
+  active: boolean
+  authScheme: string
+  secretRef?: string
+  headerName?: string
+}
+
+export async function updateConnector(
+  tenantCode: string,
+  connectorKey: string,
+  request: ConnectorUpdateRequest
+): Promise<ConnectorResponse> {
+  try {
+    const response = await adminApiClient.put(
+      `/api/connectors/${connectorKey}`,
+      request,
+      { params: { tenantCode } }
+    )
+    return response.data
+  } catch (error: unknown) {
+    handleApiError(error, `update-connector-${connectorKey}`)
+  }
+}
+
 export async function updateConnectorSchema(
   tenantCode: string,
   connectorKey: string,
