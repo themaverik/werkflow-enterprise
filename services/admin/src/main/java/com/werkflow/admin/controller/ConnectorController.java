@@ -13,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/connectors")
@@ -91,5 +92,30 @@ public class ConnectorController {
             @Valid @RequestBody ConnectorTestRequest request) {
         ConnectorTestResponse response = connectorService.testCall(tenantCode, connectorKey, request);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{connectorKey}/call")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPER_ADMIN') or hasAuthority('ROLE_ENGINE_SERVICE')")
+    @Operation(summary = "Connector proxy call", description = "Outbound proxy — forwards call to external connector, returns { statusCode, body, headers, durationMs }. Used by portal proxy and engine delegate.")
+    public ResponseEntity<ConnectorTestResponse> call(
+            @RequestParam String tenantCode,
+            @PathVariable String connectorKey,
+            @RequestParam String path,
+            @RequestParam(defaultValue = "GET") String method,
+            @RequestBody(required = false) String requestBody) {
+        ConnectorTestResponse response = connectorService.callConnector(tenantCode, connectorKey, path, method, requestBody);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{connectorKey}/api-key")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @Operation(summary = "Register ERP API key", description = "Hashes rawKey, registers with ERP, stores encrypted for outbound calls. Shows raw key once — never retrievable after.")
+    public ResponseEntity<Map<String, String>> registerApiKey(
+            @RequestParam String tenantCode,
+            @PathVariable String connectorKey,
+            @Valid @RequestBody ConnectorApiKeyRequest request,
+            @RequestHeader("Authorization") String authorization) {
+        connectorService.registerApiKey(tenantCode, connectorKey, request, authorization);
+        return ResponseEntity.ok(Map.of("status", "registered"));
     }
 }
