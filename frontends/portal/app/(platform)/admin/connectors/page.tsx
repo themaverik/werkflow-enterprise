@@ -14,9 +14,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { RefreshCw, Plus, Pencil, FlaskConical } from 'lucide-react'
+import { RefreshCw, Plus, Pencil, FlaskConical, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { listConnectors, type ConnectorResponse } from '@/lib/api/connectors'
+import { listConnectors, deleteConnector, type ConnectorResponse } from '@/lib/api/connectors'
 import { ConnectorForm } from '@/components/admin/ConnectorForm'
 
 const TENANT_CODE = process.env.NEXT_PUBLIC_TENANT_CODE ?? 'default'
@@ -29,6 +29,8 @@ export default function ConnectorsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [editingConnector, setEditingConnector] = useState<ConnectorResponse | null>(null)
   const [editDefaultTab, setEditDefaultTab] = useState<'general' | 'auth' | 'contract' | 'test'>('general')
+  const [deletingConnector, setDeletingConnector] = useState<ConnectorResponse | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const { data: connectors, isLoading, error, refetch } = useQuery({
     queryKey: ['connectors', TENANT_CODE],
@@ -45,6 +47,18 @@ export default function ConnectorsPage() {
   const handleUpdated = () => {
     setEditingConnector(null)
     queryClient.invalidateQueries({ queryKey: ['connectors', TENANT_CODE] })
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingConnector) return
+    setDeleteLoading(true)
+    try {
+      await deleteConnector(TENANT_CODE, deletingConnector.connectorKey)
+      queryClient.invalidateQueries({ queryKey: ['connectors', TENANT_CODE] })
+    } finally {
+      setDeleteLoading(false)
+      setDeletingConnector(null)
+    }
   }
 
   const environmentVariant = (env: string): 'default' | 'warning' | 'secondary' => {
@@ -137,6 +151,15 @@ export default function ConnectorsPage() {
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      title="Delete connector"
+                      onClick={() => setDeletingConnector(connector)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                     <div className="flex gap-1">
                       <Badge variant={environmentVariant(connector.environment)}>
                         {connector.environment}
@@ -177,6 +200,31 @@ export default function ConnectorsPage() {
           ))}
         </div>
       )}
+
+      {/* Delete confirmation */}
+      <Dialog open={!!deletingConnector} onOpenChange={(open: boolean) => !open && setDeletingConnector(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete {deletingConnector?.displayName}?</DialogTitle>
+            <DialogDescription>
+              This permanently removes the connector and its stored credential.
+              Any BPMN processes referencing{' '}
+              <code className="font-mono text-xs">{deletingConnector?.connectorKey}</code> will fail at runtime.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setDeletingConnector(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit / Test dialog */}
       <Dialog open={!!editingConnector} onOpenChange={(open) => !open && setEditingConnector(null)}>
