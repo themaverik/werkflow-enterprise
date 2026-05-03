@@ -102,12 +102,12 @@ export default function EditEmailTemplatePage() {
   })
 
   if (templateLoading) {
-    return <div className="container mx-auto p-6 text-muted-foreground text-sm">Loading template...</div>
+    return <div className="space-y-6 text-muted-foreground text-sm">Loading template...</div>
   }
 
   if (!template) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="space-y-6">
         <p className="text-destructive">Template not found: {templateKey}</p>
         <Button variant="link" asChild className="mt-2 px-0">
           <Link href="/admin/email-templates">Back to templates</Link>
@@ -117,7 +117,7 @@ export default function EditEmailTemplatePage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-6 space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
           <Link href="/admin/email-templates">

@@ -78,7 +78,7 @@ export default function NewDecisionPage() {
             {t('editor.back')}
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold">{t('editor.newTitle')}</h1>
+        <h1 className="text-lg font-semibold">{t('editor.newTitle')}</h1>
       </div>
 
       <div className="flex items-end gap-4">

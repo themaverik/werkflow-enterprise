@@ -1,6 +1,7 @@
 package com.werkflow.admin.service;
 
 import com.werkflow.admin.dto.connector.*;
+import com.werkflow.admin.dto.connector.ConnectorUpdateRequest;
 import com.werkflow.admin.entity.TenantApiCredential;
 import com.werkflow.admin.entity.TenantServiceEndpoint;
 import com.werkflow.admin.repository.TenantApiCredentialRepository;
@@ -25,6 +26,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -56,7 +58,16 @@ public class ConnectorService {
     @Transactional(readOnly = true)
     public List<ConnectorResponse> listByTenant(String tenantCode) {
         return endpointRepo.findByTenantCodeAndActiveTrue(tenantCode).stream()
-            .map(ep -> toResponse(ep, findCredential(tenantCode, ep.getConnectorKey())))
+            .flatMap(ep -> {
+                Optional<TenantApiCredential> cred =
+                    credentialRepo.findByTenantCodeAndConnectorKey(tenantCode, ep.getConnectorKey());
+                if (cred.isEmpty()) {
+                    log.warn("No credential found for connector '{}' tenant '{}' — skipping",
+                             ep.getConnectorKey(), tenantCode);
+                    return Stream.<ConnectorResponse>empty();
+                }
+                return Stream.of(toResponse(ep, cred.get()));
+            })
             .toList();
     }
 
@@ -82,6 +93,30 @@ public class ConnectorService {
         cred.setLabel(request.getDisplayName());
         cred.setAuthScheme(request.getAuthScheme());
         cred.setSecretRef(request.getSecretRef());
+        cred.setHeaderName(request.getHeaderName());
+        credentialRepo.save(cred);
+
+        return toResponse(ep, cred);
+    }
+
+    @Transactional
+    public ConnectorResponse update(String tenantCode, String connectorKey, ConnectorUpdateRequest request) {
+        TenantServiceEndpoint ep = endpointRepo.findByTenantCodeAndConnectorKey(tenantCode, connectorKey)
+                .stream().findFirst()
+                .orElseThrow(() -> new NoSuchElementException("Connector not found: " + connectorKey));
+        ep.setDisplayName(request.getDisplayName());
+        ep.setBaseUrl(request.getBaseUrl());
+        ep.setEnvironment(request.getEnvironment());
+        ep.setActive(request.isActive());
+        endpointRepo.save(ep);
+
+        TenantApiCredential cred = findCredential(tenantCode, connectorKey);
+        cred.setLabel(request.getDisplayName());
+        cred.setAuthScheme(request.getAuthScheme());
+        if (request.getSecretRef() != null && !request.getSecretRef().isBlank()) {
+            validateSecretRef(request.getSecretRef());
+            cred.setSecretRef(request.getSecretRef());
+        }
         cred.setHeaderName(request.getHeaderName());
         credentialRepo.save(cred);
 
@@ -122,6 +157,7 @@ public class ConnectorService {
         String apiKey = secretsResolver.resolve(cred.getSecretRef());
         String authHeader = cred.getHeaderName() != null ? cred.getHeaderName() : "Authorization";
         String authValue = switch (cred.getAuthScheme()) {
+            case "NONE" -> null;
             case "BEARER" -> "Bearer " + apiKey;
             case "API_KEY" -> apiKey;
             case "BASIC" -> "Basic " + apiKey;
@@ -140,7 +176,11 @@ public class ConnectorService {
 
         var entity = restClient.method(HttpMethod.valueOf(request.getMethod()))
             .uri(fullUrl)
-            .header(authHeader, authValue)
+            .headers(headers -> {
+                if (authValue != null) {
+                    headers.set(authHeader, authValue);
+                }
+            })
             .retrieve()
             .onStatus(HttpStatusCode::is4xxClientError, (req, res) -> {})
             .onStatus(HttpStatusCode::is5xxServerError, (req, res) -> {})

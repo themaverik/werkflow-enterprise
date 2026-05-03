@@ -1,6 +1,7 @@
 package com.werkflow.admin.controller;
 
 import com.werkflow.admin.dto.connector.*;
+import com.werkflow.admin.dto.connector.ConnectorUpdateRequest;
 import com.werkflow.admin.service.ConnectorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,6 +35,17 @@ public class ConnectorController {
     public ResponseEntity<ConnectorResponse> create(@Valid @RequestBody ConnectorRequest request) {
         ConnectorResponse response = connectorService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PutMapping("/{connectorKey}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @Operation(summary = "Update connector", description = "Update connector configuration (ADMIN, SUPER_ADMIN)")
+    public ResponseEntity<ConnectorResponse> update(
+            @RequestParam String tenantCode,
+            @PathVariable String connectorKey,
+            @Valid @RequestBody ConnectorUpdateRequest request) {
+        ConnectorResponse response = connectorService.update(tenantCode, connectorKey, request);
+        return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/{connectorKey}/schema")

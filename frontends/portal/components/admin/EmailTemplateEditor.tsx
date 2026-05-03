@@ -76,6 +76,9 @@ export default function EmailTemplateEditor({ initialDesign, formFields = [], on
             sendTestEmail: false,
             textEditor: { tables: true },
           },
+          customCSS: [
+            '.blockbuilder-tabs .blockbuilder-tab.active { color: #149ba5 !important; border-bottom: 2px solid #149ba5 !important; }',
+          ],
         } as any}
         style={{ width: '100%', height: '640px' }}
       />
