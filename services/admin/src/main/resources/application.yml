@@ -87,6 +87,12 @@ app:
   version: ${APP_VERSION:1.0.0}
   environment: ${APP_ENVIRONMENT:development}
 
+  engine-service:
+    url: ${ENGINE_SERVICE_URL:http://werkflow-engine:8080}
+
+  erp-service:
+    url: ${ERP_SERVICE_URL:http://werkflow-business:8084}
+
   keycloak:
     enabled: ${KEYCLOAK_ENABLED:true}
     realm: ${KEYCLOAK_REALM:werkflow}
