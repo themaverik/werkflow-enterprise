@@ -1,12 +1,11 @@
 package com.werkflow.admin.service;
 
 import com.werkflow.admin.dto.connector.*;
-import com.werkflow.admin.dto.connector.ConnectorUpdateRequest;
 import com.werkflow.admin.entity.TenantApiCredential;
 import com.werkflow.admin.entity.TenantServiceEndpoint;
 import com.werkflow.admin.repository.TenantApiCredentialRepository;
 import com.werkflow.admin.repository.TenantServiceEndpointRepository;
-import com.werkflow.common.security.SecretsResolver;
+import com.werkflow.common.security.EncryptionService;
 import com.werkflow.common.security.SsrfGuard;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -42,7 +41,7 @@ public class ConnectorService {
 
     private final TenantApiCredentialRepository credentialRepo;
     private final TenantServiceEndpointRepository endpointRepo;
-    private final SecretsResolver secretsResolver;
+    private final EncryptionService encryptionService;
     private final SsrfGuard ssrfGuard;
 
     @PostConstruct
@@ -73,8 +72,6 @@ public class ConnectorService {
 
     @Transactional
     public ConnectorResponse create(ConnectorRequest request) {
-        validateSecretRef(request.getSecretRef());
-
         TenantServiceEndpoint ep = new TenantServiceEndpoint();
         ep.setTenantCode(request.getTenantCode());
         ep.setConnectorKey(request.getConnectorKey());
@@ -84,6 +81,7 @@ public class ConnectorService {
         ep.setEnvironment(request.getEnvironment());
         ep.setActive(request.isActive());
         ep.setSampleSchema(request.getSampleSchema());
+        ep.setConnectorType(request.getConnectorType() != null ? request.getConnectorType() : "API");
         endpointRepo.save(ep);
 
         TenantApiCredential cred = new TenantApiCredential();
@@ -92,8 +90,10 @@ public class ConnectorService {
         cred.setCredentialKey(request.getConnectorKey());
         cred.setLabel(request.getDisplayName());
         cred.setAuthScheme(request.getAuthScheme());
-        cred.setSecretRef(request.getSecretRef());
         cred.setHeaderName(request.getHeaderName());
+        if (request.getSecretValue() != null && !request.getSecretValue().isBlank()) {
+            cred.setSecretValue(encryptionService.encrypt(request.getSecretValue()));
+        }
         credentialRepo.save(cred);
 
         return toResponse(ep, cred);
@@ -108,16 +108,16 @@ public class ConnectorService {
         ep.setBaseUrl(request.getBaseUrl());
         ep.setEnvironment(request.getEnvironment());
         ep.setActive(request.isActive());
+        if (request.getConnectorType() != null) ep.setConnectorType(request.getConnectorType());
         endpointRepo.save(ep);
 
         TenantApiCredential cred = findCredential(tenantCode, connectorKey);
         cred.setLabel(request.getDisplayName());
         cred.setAuthScheme(request.getAuthScheme());
-        if (request.getSecretRef() != null && !request.getSecretRef().isBlank()) {
-            validateSecretRef(request.getSecretRef());
-            cred.setSecretRef(request.getSecretRef());
-        }
         cred.setHeaderName(request.getHeaderName());
+        if (request.getSecretValue() != null && !request.getSecretValue().isBlank()) {
+            cred.setSecretValue(encryptionService.encrypt(request.getSecretValue()));
+        }
         credentialRepo.save(cred);
 
         return toResponse(ep, cred);
@@ -140,8 +140,7 @@ public class ConnectorService {
     @Transactional(readOnly = true)
     public Optional<String> getSchema(String tenantCode, String connectorKey) {
         return endpointRepo.findByTenantCodeAndConnectorKey(tenantCode, connectorKey)
-            .stream()
-            .findFirst()
+            .stream().findFirst()
             .map(TenantServiceEndpoint::getSampleSchema);
     }
 
@@ -154,14 +153,17 @@ public class ConnectorService {
         String fullUrl = ep.getBaseUrl() + request.getPath();
         ssrfGuard.validateExternal(fullUrl);
 
-        String apiKey = secretsResolver.resolve(cred.getSecretRef());
+        String rawSecret = cred.getSecretValue() != null
+            ? encryptionService.decrypt(cred.getSecretValue())
+            : null;
+
         String authHeader = cred.getHeaderName() != null ? cred.getHeaderName() : "Authorization";
         String authValue = switch (cred.getAuthScheme()) {
             case "NONE" -> null;
-            case "BEARER" -> "Bearer " + apiKey;
-            case "API_KEY" -> apiKey;
-            case "BASIC" -> "Basic " + apiKey;
-            default -> apiKey;
+            case "BEARER" -> rawSecret != null ? "Bearer " + rawSecret : null;
+            case "API_KEY" -> rawSecret;
+            case "BASIC" -> rawSecret != null ? "Basic " + rawSecret : null;
+            default -> rawSecret;
         };
 
         RestClient restClient = RestClient.builder()
@@ -172,14 +174,11 @@ public class ConnectorService {
         long start = Instant.now().toEpochMilli();
         final int[] statusHolder = {0};
         final Map<String, String> responseHeaders = new LinkedHashMap<>();
-        final String[] bodyHolder = {""};
 
         var entity = restClient.method(HttpMethod.valueOf(request.getMethod()))
             .uri(fullUrl)
             .headers(headers -> {
-                if (authValue != null) {
-                    headers.set(authHeader, authValue);
-                }
+                if (authValue != null) headers.set(authHeader, authValue);
             })
             .retrieve()
             .onStatus(HttpStatusCode::is4xxClientError, (req, res) -> {})
@@ -195,7 +194,7 @@ public class ConnectorService {
         });
         byte[] raw = entity.getBody() != null ? entity.getBody() : new byte[0];
         boolean truncated = raw.length > MAX_RESPONSE_BYTES;
-        bodyHolder[0] = new String(truncated ? Arrays.copyOf(raw, MAX_RESPONSE_BYTES) : raw, StandardCharsets.UTF_8);
+        String body = new String(truncated ? Arrays.copyOf(raw, MAX_RESPONSE_BYTES) : raw, StandardCharsets.UTF_8);
 
         long durationMs = Instant.now().toEpochMilli() - start;
         log.info("connector.test.call tenantCode={} connectorKey={} path={} method={} status={} durationMs={} truncated={}",
@@ -205,7 +204,7 @@ public class ConnectorService {
         return ConnectorTestResponse.builder()
             .statusCode(statusHolder[0])
             .headers(responseHeaders)
-            .body(bodyHolder[0])
+            .body(body)
             .truncated(truncated)
             .durationMs(durationMs)
             .build();
@@ -226,22 +225,11 @@ public class ConnectorService {
                 .queryParam("tenantCode", tenantCode)
                 .queryParam("connectorKey", connectorKey)
                 .toUriString();
-            engineRestClient.post()
-                .uri(uri)
-                .retrieve()
-                .toBodilessEntity();
+            engineRestClient.post().uri(uri).retrieve().toBodilessEntity();
             log.debug("Notified engine to invalidate cache for {}/{}", tenantCode, connectorKey);
         } catch (Exception e) {
             log.warn("Failed to notify engine cache invalidation for {}/{}: {}",
                      tenantCode, connectorKey, e.getMessage());
-        }
-    }
-
-    private void validateSecretRef(String secretRef) {
-        if (!secretsResolver.isKeyAllowed(secretRef)) {
-            throw new IllegalArgumentException(
-                "secretRef '" + secretRef + "' is not in werkflow.secrets.allowed-keys. " +
-                "Add it to the service configuration before registering this connector.");
         }
     }
 
@@ -260,9 +248,11 @@ public class ConnectorService {
             .baseUrl(ep.getBaseUrl())
             .environment(ep.getEnvironment())
             .active(ep.isActive())
+            .connectorType(ep.getConnectorType())
             .authScheme(cred.getAuthScheme())
             .headerName(cred.getHeaderName())
             .sampleSchema(ep.getSampleSchema())
+            .hasSecret(cred.getSecretValue() != null && !cred.getSecretValue().isBlank())
             .createdAt(ep.getCreatedAt())
             .updatedAt(ep.getUpdatedAt())
             .build();
