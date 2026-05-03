@@ -1,39 +1,140 @@
 'use client'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { FileText, Plus, Trash2, Download, Eye, Edit, Activity, ExternalLink, LayoutGrid, SlidersHorizontal, CloudUpload, Link2, ChevronRight } from "lucide-react"
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { useSession } from "next-auth/react"
-import { getFormDefinitions, deleteFormDefinition } from "@/lib/api/flowable"
-import { useState } from "react"
-import { useTranslations } from "next-intl"
-import { ErrorDisplay, LoadingState } from "@/components/ui/error-display"
-import { useAuthorization } from "@/lib/auth/use-authorization"
-import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import Link from 'next/link'
+import { FileText, Plus, Trash2, Eye, Edit2, Search, CheckCircle, TrendingUp, Activity } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSession } from 'next-auth/react'
+import { getFormDefinitions, deleteFormDefinition } from '@/lib/api/flowable'
+import { useState, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
+import { ErrorDisplay, LoadingState } from '@/components/ui/error-display'
+import { useAuthorization } from '@/lib/auth/use-authorization'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { toast } from 'sonner'
 
-const MANAGER_ROLES = ['ADMIN', 'SUPER_ADMIN', 'WORKFLOW_ADMIN', 'WORKFLOW_DESIGNER', 'HR_ADMIN', 'FINANCE_ADMIN', 'PROCUREMENT_ADMIN', 'INVENTORY_ADMIN']
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const ACCENT = '#149ba5'
+const T = {
+  text: '#0f1e2a', muted: '#6b7e8c', light: '#94a3b8',
+  bg: '#f0f4f6', card: '#ffffff', border: '#e2eaee',
+  success: '#16a34a', successBg: '#f0fdf4', successBorder: '#bbf7d0',
+  warning: '#c27b00', warningBg: '#fffbeb', warningBorder: '#fde68a',
+  danger: '#dc2626',
+}
 
+// ─── Role constants ───────────────────────────────────────────────────────────
+const MANAGER_ROLES = [
+  'ADMIN', 'SUPER_ADMIN', 'WORKFLOW_ADMIN', 'WORKFLOW_DESIGNER',
+  'HR_ADMIN', 'FINANCE_ADMIN', 'PROCUREMENT_ADMIN', 'INVENTORY_ADMIN',
+]
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface FormDefinition {
+  key: string
+  name: string
+  formJson: string
+  owningDepartment?: string
+  status?: string
+  updatedAt?: string
+}
+
+// ─── Field types section data ─────────────────────────────────────────────────
+const FIELD_TYPES = [
+  { label: 'Short Text', icon: 'M4 6h16M4 12h16M4 18h7',                                                                   color: '#149ba5' },
+  { label: 'Long Text',  icon: 'M4 6h16M4 12h16M4 18h16',                                                                  color: '#7c3aed' },
+  { label: 'Number',     icon: 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',                              color: '#0891b2' },
+  { label: 'Date',       icon: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', color: '#f59e0b' },
+  { label: 'Dropdown',   icon: 'M6 9l6 6 6-6',                                                                             color: '#dc2626' },
+  { label: 'File Upload',icon: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',                        color: '#84cc16' },
+]
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+function StatusPill({ status }: { status: string }) {
+  const active = status === 'active'
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 600,
+      background: active ? T.successBg : T.warningBg,
+      color: active ? T.success : T.warning,
+      border: '1px solid ' + (active ? T.successBorder : T.warningBorder),
+    }}>
+      {active ? 'Active' : 'Draft'}
+    </span>
+  )
+}
+
+function IconBtn({ children, onClick, title, danger = false }: {
+  children: React.ReactNode
+  onClick?: () => void
+  title?: string
+  danger?: boolean
+}) {
+  return (
+    <button
+      title={title}
+      onClick={onClick}
+      style={{
+        width: 28, height: 28, borderRadius: 6, border: '1px solid ' + T.border,
+        background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer', color: danger ? T.danger : T.muted,
+        transition: 'border-color 0.15s, color 0.15s',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = danger ? T.danger : ACCENT
+        e.currentTarget.style.color = danger ? T.danger : ACCENT
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = T.border
+        e.currentTarget.style.color = danger ? T.danger : T.muted
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function getFieldCount(formJson: string): number {
+  try {
+    return JSON.parse(formJson).components?.length ?? 0
+  } catch {
+    return 0
+  }
+}
+
+function getFormStatus(form: FormDefinition): string {
+  return form.status ?? 'active'
+}
+
+function formatDate(dateStr?: string): string {
+  if (!dateStr) return '—'
+  return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function FormsPage() {
   const t = useTranslations('forms')
   const { status } = useSession()
-  const [deletingKey, setDeletingKey] = useState<string | null>(null)
-  const [pendingConfirm, setPendingConfirm] = useState<{ title: string; description: string; onConfirm: () => void } | null>(null)
+  const [activeTab, setActiveTab] = useState<'all' | 'active' | 'draft'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeTag, setActiveTag] = useState<string | null>(null)
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string; description: string; onConfirm: () => void
+  } | null>(null)
   const queryClient = useQueryClient()
   const { hasAnyRole, getDepartment } = useAuthorization()
 
   const isManagerOrAbove = hasAnyRole(MANAGER_ROLES)
   const userDepartment = getDepartment()
 
-  const canEditForm = (form: any) => {
+  const canEditForm = (form: FormDefinition) => {
     if (!isManagerOrAbove) return false
-    if (!form.owningDepartment) return isManagerOrAbove // unowned: any manager
+    if (!form.owningDepartment) return isManagerOrAbove
     return hasAnyRole(['ADMIN', 'SUPER_ADMIN']) || form.owningDepartment === userDepartment
   }
 
-  // Fetch form definitions
+  // ── Data fetching ────────────────────────────────────────────────────────
   const { data: forms, isLoading, error, refetch } = useQuery({
     queryKey: ['formDefinitions'],
     queryFn: getFormDefinitions,
@@ -42,21 +143,18 @@ export default function FormsPage() {
     retryDelay: 1000,
   })
 
-  // Delete form mutation
   const deleteMutation = useMutation({
     mutationFn: deleteFormDefinition,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['formDefinitions'] })
-      setDeletingKey(null)
-      alert('Form deleted successfully')
+      toast.success('Form deleted successfully')
     },
-    onError: (error: Error) => {
-      alert(`Failed to delete form: ${error.message}`)
-      setDeletingKey(null)
-    }
+    onError: (err: Error) => {
+      toast.error(`Failed to delete form: ${err.message}`)
+    },
   })
 
-  // Download form JSON
+  // ── Download ─────────────────────────────────────────────────────────────
   const handleDownload = (formKey: string, formJson: string) => {
     const blob = new Blob([formJson], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -69,27 +167,73 @@ export default function FormsPage() {
     URL.revokeObjectURL(url)
   }
 
+  // ── Derived stats ────────────────────────────────────────────────────────
+  const allForms: FormDefinition[] = forms ?? []
+  const activeForms = allForms.filter((f) => getFormStatus(f) === 'active')
+  const draftForms  = allForms.filter((f) => getFormStatus(f) === 'draft')
+
+  // ── Unique tags (departments) ────────────────────────────────────────────
+  const tags = useMemo(() => {
+    const set = new Set<string>()
+    allForms.forEach((f) => { if (f.owningDepartment) set.add(f.owningDepartment) })
+    return Array.from(set)
+  }, [allForms])
+
+  // ── Filtered rows ────────────────────────────────────────────────────────
+  const visibleForms = useMemo(() => {
+    let list = allForms
+    if (activeTab === 'active') list = activeForms
+    if (activeTab === 'draft')  list = draftForms
+    if (activeTag) list = list.filter((f) => f.owningDepartment === activeTag)
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase()
+      list = list.filter((f) => f.name.toLowerCase().includes(q))
+    }
+    return list
+  }, [allForms, activeTab, activeTag, searchQuery, activeForms, draftForms])
+
+  // ─── Styles ───────────────────────────────────────────────────────────────
+  const tabBase: React.CSSProperties = {
+    padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+    cursor: 'pointer', fontFamily: 'inherit',
+  }
+  const tabActive: React.CSSProperties = {
+    ...tabBase,
+    border: '1.5px solid ' + ACCENT,
+    background: ACCENT + '14',
+    color: ACCENT,
+  }
+  const tabInactive: React.CSSProperties = {
+    ...tabBase,
+    border: '1px solid ' + T.border,
+    background: '#fff',
+    color: T.muted,
+  }
+
+  const headerCell: React.CSSProperties = {
+    padding: '10px 20px',
+    background: T.bg,
+    borderBottom: '1px solid ' + T.border,
+    fontSize: 11, fontWeight: 600,
+    color: T.muted,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    textAlign: 'left',
+  }
+
+  const GRID = '2fr 1.4fr 80px 100px 110px 120px'
+
   return (
-    <div className="container py-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">{t('title')}</h1>
-          <p className="text-muted-foreground">{t('subtitle')}</p>
-        </div>
-        {isManagerOrAbove && (
-          <Button asChild size="lg">
-            <Link href="/forms/new">
-              <Plus className="h-4 w-4 mr-2" />
-              {t('createNewForm')}
-            </Link>
-          </Button>
-        )}
+    <div style={{ padding: 28, fontFamily: 'inherit' }}>
+
+      {/* ── Page header ───────────────────────────────────────────────────── */}
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: T.text, margin: 0 }}>{t('title')}</h1>
+        <p style={{ fontSize: 13, color: T.muted, marginTop: 4 }}>{t('subtitle')}</p>
       </div>
 
-      {/* Loading state */}
+      {/* ── Loading / error ────────────────────────────────────────────────── */}
       {isLoading && <LoadingState message={t('loading')} className="mb-6" />}
-
-      {/* Error state */}
       {error && !isLoading && (
         <ErrorDisplay
           error={error as Error}
@@ -99,154 +243,246 @@ export default function FormsPage() {
         />
       )}
 
-      {/* Deployed Forms */}
-      {!isLoading && forms && forms.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">{t('deployedForms')}</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {forms.map((form) => (
-              <Card key={form.key}>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    {form.name}
-                  </CardTitle>
-                  <CardDescription className="font-mono text-xs">
-                    Key: {form.key}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {form.owningDepartment && (
-                      <p className="text-xs text-muted-foreground">Dept: {form.owningDepartment}</p>
-                    )}
-                    {canEditForm(form) && (
-                      <div className="flex gap-2">
-                        <Button asChild variant="outline" size="sm" className="flex-1">
-                          <Link href={`/forms/edit/${form.key}`}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDownload(form.key, form.formJson)}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              style={{ backgroundColor: '#BA3920', color: 'white' }}
-                              className="hover:opacity-90"
-                              onClick={() => {
-                                setPendingConfirm({
-                                  title: t('deleteForm'),
-                                  description: `${t('deleteForm')}: "${form.name}"? This action cannot be undone.`,
-                                  onConfirm: () => {
-                                    setDeletingKey(form.key)
-                                    deleteMutation.mutate(form.key)
-                                  },
-                                })
-                              }}
-                              disabled={deletingKey === form.key}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Delete Form</TooltipContent>
-                        </Tooltip>
-                      </div>
-                    )}
-                    <Button asChild variant="secondary" size="sm" className="w-full">
-                      <Link href={`/forms/preview/${form.key}`}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        Preview
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+      {/* ── Stat cards ────────────────────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
+        {[
+          { label: 'Total Forms',       value: allForms.length,        color: ACCENT,      Icon: FileText      },
+          { label: 'Active Forms',      value: activeForms.length,     color: T.success,   Icon: CheckCircle   },
+          { label: 'Drafts',            value: draftForms.length,      color: T.warning,   Icon: Activity      },
+          { label: 'Submissions (30d)', value: 0,                      color: '#7c3aed',   Icon: TrendingUp    },
+        ].map(({ label, value, color, Icon }) => (
+          <div key={label} style={{
+            background: T.card, border: '1px solid ' + T.border, borderRadius: 12,
+            padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14,
+          }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 10, background: color + '18',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Icon size={20} strokeWidth={1.8} style={{ color }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: T.text, lineHeight: 1 }}>{value}</div>
+              <div style={{ fontSize: 12, color: T.muted, marginTop: 3 }}>{label}</div>
+            </div>
           </div>
+        ))}
+      </div>
+
+      {/* ── Tabs + New Form button ─────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {([
+            ['all',    'All Forms'],
+            ['active', `Active (${activeForms.length})`],
+            ['draft',  `Drafts (${draftForms.length})`],
+          ] as const).map(([key, label]) => (
+            <button key={key} style={activeTab === key ? tabActive : tabInactive} onClick={() => setActiveTab(key)}>
+              {label}
+            </button>
+          ))}
         </div>
-      )}
+        {isManagerOrAbove && (
+          <Link
+            href="/forms/new"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+              background: ACCENT, color: '#fff', textDecoration: 'none',
+              border: 'none', cursor: 'pointer',
+            }}
+          >
+            <Plus size={15} strokeWidth={2.2} />
+            {t('createNewForm')}
+          </Link>
+        )}
+      </div>
 
-      {/* Empty state */}
-      {!isLoading && (!forms || forms.length === 0) && (
-        <Card className="mb-6">
-          <CardContent className="py-12 text-center">
-            <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">{t('noFormsCreated')}</h3>
-            <p className="text-muted-foreground mb-4">{t('noFormsDesc')}</p>
-            {isManagerOrAbove && (
-              <Button asChild>
-                <Link href="/forms/new">
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t('createNewForm')}
-                </Link>
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      {/* ── Search + tag filter ────────────────────────────────────────────── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16,
+        background: T.card, border: '1px solid ' + T.border, borderRadius: 10, padding: '8px 14px',
+      }}>
+        <Search size={16} style={{ color: T.light, flexShrink: 0 }} />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search forms…"
+          style={{
+            flex: '0 0 220px', border: 'none', outline: 'none', fontSize: 13,
+            color: T.text, background: 'transparent', fontFamily: 'inherit',
+          }}
+        />
+        <div style={{
+          flex: 1, display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2,
+        }}>
+          <button
+            onClick={() => setActiveTag(null)}
+            style={{
+              flexShrink: 0, padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 500,
+              cursor: 'pointer', fontFamily: 'inherit',
+              background: activeTag === null ? ACCENT : T.bg,
+              color: activeTag === null ? '#fff' : T.muted,
+              border: '1px solid ' + (activeTag === null ? ACCENT : T.border),
+            }}
+          >
+            All
+          </button>
+          {tags.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+              style={{
+                flexShrink: 0, padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 500,
+                cursor: 'pointer', fontFamily: 'inherit',
+                background: activeTag === tag ? ACCENT : T.bg,
+                color: activeTag === tag ? '#fff' : T.muted,
+                border: '1px solid ' + (activeTag === tag ? ACCENT : T.border),
+              }}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      </div>
 
+      {/* ── Table ──────────────────────────────────────────────────────────── */}
+      <div style={{
+        background: T.card, border: '1px solid ' + T.border, borderRadius: 12, overflow: 'hidden',
+        marginBottom: 32,
+      }}>
+        {/* Header */}
+        <div style={{ display: 'grid', gridTemplateColumns: GRID }}>
+          {['Form', 'Process', 'Fields', 'Status', 'Updated', 'Actions'].map((col) => (
+            <div key={col} style={headerCell}>{col}</div>
+          ))}
+        </div>
 
-      {/* How to Create a Form Guide */}
-      <Card className="border-2">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            How to Create a Form
-          </CardTitle>
-          <CardDescription>
-            Six steps to build and link a custom form to your workflow
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {([
-              { Icon: Plus,              title: 'Click Create New Form',    desc: 'Hit "Create New Form" to open the form-js visual designer.',                              bg: 'bg-blue-100 dark:bg-blue-900',    text: 'text-blue-600 dark:text-blue-400',    border: 'border-blue-200 dark:border-blue-800'    },
-              { Icon: LayoutGrid,        title: 'Design Your Form',         desc: 'Drag-and-drop 20+ field types — text, dropdowns, dates, files, and more.',               bg: 'bg-purple-100 dark:bg-purple-900',text: 'text-purple-600 dark:text-purple-400',border: 'border-purple-200 dark:border-purple-800'},
-              { Icon: SlidersHorizontal, title: 'Configure Field Settings', desc: 'Set labels, placeholders, validation rules, and conditional visibility logic.',          bg: 'bg-green-100 dark:bg-green-900',  text: 'text-green-600 dark:text-green-400',  border: 'border-green-200 dark:border-green-800'  },
-              { Icon: Eye,               title: 'Preview and Test',         desc: 'Switch to preview mode, fill the form, and verify validations work as expected.',        bg: 'bg-orange-100 dark:bg-orange-900',text: 'text-orange-600 dark:text-orange-400',border: 'border-orange-200 dark:border-orange-800'},
-              { Icon: CloudUpload,       title: 'Save and Deploy',          desc: 'Enter a unique form key and save — the schema is deployed and immediately available.',   bg: 'bg-indigo-100 dark:bg-indigo-900',text: 'text-indigo-600 dark:text-indigo-400',border: 'border-indigo-200 dark:border-indigo-800'},
-              { Icon: Link2,             title: 'Link to Workflow',         desc: 'Set the form key on a BPMN task in the Process Designer to attach the form to a step.',  bg: 'bg-pink-100 dark:bg-pink-900',    text: 'text-pink-600 dark:text-pink-400',    border: 'border-pink-200 dark:border-pink-800'    },
-            ] as const).map((step, index, arr) => (
-              <div key={index} className="relative flex items-stretch">
-                <div className={`flex-1 rounded-xl border ${step.border} bg-card p-4 flex flex-col items-center text-center gap-3`}>
-                  <div className={`flex h-11 w-11 items-center justify-center rounded-full ${step.bg} ${step.text} font-bold text-lg`}>
-                    {index + 1}
-                  </div>
-                  <step.Icon className={`h-5 w-5 ${step.text}`} />
-                  <p className="text-sm font-semibold leading-snug">{step.title}</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{step.desc}</p>
+        {/* Rows */}
+        {visibleForms.map((form, idx) => {
+          const formStatus = getFormStatus(form)
+          const fieldCount = getFieldCount(form.formJson)
+          const editable   = canEditForm(form)
+          const isLast     = idx === visibleForms.length - 1
+
+          return (
+            <div
+              key={form.key}
+              style={{
+                display: 'grid', gridTemplateColumns: GRID,
+                alignItems: 'center',
+                borderBottom: isLast ? 'none' : '1px solid ' + T.border,
+                transition: 'background 0.1s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = T.bg }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+            >
+              {/* Form name + tag */}
+              <div style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                  background: ACCENT + '18',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <FileText size={18} strokeWidth={1.8} style={{ color: ACCENT }} />
                 </div>
-                {index < arr.length - 1 && index % 3 !== 2 && (
-                  <div className="hidden lg:flex items-center justify-center w-4 shrink-0 text-muted-foreground">
-                    <ChevronRight className="h-4 w-4" />
-                  </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{form.name}</div>
+                  {form.owningDepartment && (
+                    <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>{form.owningDepartment}</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Process key */}
+              <div style={{ padding: '12px 20px', fontSize: 12, color: T.muted, fontFamily: 'monospace' }}>
+                {form.key}
+              </div>
+
+              {/* Fields count */}
+              <div style={{ padding: '12px 20px', fontSize: 13, color: T.text, fontWeight: 500 }}>
+                {fieldCount}
+              </div>
+
+              {/* Status */}
+              <div style={{ padding: '12px 20px' }}>
+                <StatusPill status={formStatus} />
+              </div>
+
+              {/* Updated */}
+              <div style={{ padding: '12px 20px', fontSize: 12, color: T.muted }}>
+                {formatDate(form.updatedAt)}
+              </div>
+
+              {/* Actions */}
+              <div style={{ padding: '12px 20px', display: 'flex', gap: 6, alignItems: 'center' }}>
+                <Link href={`/forms/preview/${form.key}`} title="Preview">
+                  <IconBtn title="Preview">
+                    <Eye size={14} />
+                  </IconBtn>
+                </Link>
+                {editable && (
+                  <>
+                    <Link href={`/forms/edit/${form.key}`} title="Edit">
+                      <IconBtn title="Edit">
+                        <Edit2 size={14} />
+                      </IconBtn>
+                    </Link>
+                    <IconBtn
+                      title="Delete"
+                      danger
+                      onClick={() =>
+                        setPendingConfirm({
+                          title: t('deleteForm'),
+                          description: `Delete "${form.name}"? This cannot be undone.`,
+                          onConfirm: () => deleteMutation.mutate(form.key),
+                        })
+                      }
+                    >
+                      <Trash2 size={14} />
+                    </IconBtn>
+                  </>
                 )}
               </div>
-            ))}
-          </div>
-
-          {isManagerOrAbove && (
-            <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 rounded-lg border border-blue-200 dark:border-blue-800">
-              <p className="text-sm text-muted-foreground mb-3">Ready to create your first form?</p>
-              <Button asChild className="w-full sm:w-auto">
-                <Link href="/forms/new">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create New Form
-                </Link>
-              </Button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          )
+        })}
 
+        {/* Empty state */}
+        {!isLoading && visibleForms.length === 0 && (
+          <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 13, color: T.muted }}>
+            {t('noFormsCreated')}
+          </div>
+        )}
+      </div>
+
+      {/* ── Available Field Types ──────────────────────────────────────────── */}
+      <div style={{ marginBottom: 8 }}>
+        <h2 style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 12 }}>Available Field Types</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 10 }}>
+          {FIELD_TYPES.map(({ label, icon, color }) => (
+            <div key={label} style={{
+              background: T.card, border: '1px solid ' + T.border, borderRadius: 10,
+              padding: '14px 12px', display: 'flex', flexDirection: 'column',
+              alignItems: 'center', gap: 8,
+            }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 8, background: color + '18',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d={icon} />
+                </svg>
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 500, color: T.muted, textAlign: 'center' }}>{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Confirm dialog ────────────────────────────────────────────────── */}
       {pendingConfirm && (
         <ConfirmDialog
           open={true}

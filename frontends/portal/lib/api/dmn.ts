@@ -10,6 +10,7 @@ export interface DmnDecisionDto {
   deploymentId: string
   tenantId: string
   deployedAt: string
+  hitPolicy?: string
 }
 
 export interface DmnExecutionDto {

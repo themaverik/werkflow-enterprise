@@ -2,7 +2,7 @@
 
 **Repo scope**: Enterprise-only engine, admin-service, and portal features
 **Master Roadmap**: `~/Projects/werkflow-platform/docs/Roadmap.md` (authoritative for all future tasks)
-**Last Updated**: 2026-04-30 (session end)
+**Last Updated**: 2026-05-02 (session end)
 **Target**: Internal Enterprise Demo — June 2026
 
 > Future tasks in this file are synced from the master Roadmap. Do not add tasks here without adding them to master first.
@@ -15,9 +15,9 @@
 |------|--------|
 | E2E quality gate | 7/7 specs passing |
 | ADRs | ADR-001 through ADR-009 written |
-| Active milestone | M3 — Groups 2a/2b/2c complete; Groups 3b/3c next (3a/3d merged into M4) |
-| Next session | Groups 3b + 3c + M5 together |
-| Branch | feature/m3-adr-core (in progress) |
+| Active milestone | M4 COMPLETE (7aac042); M4 UI polish 2026-05-02 done |
+| Next session | M7 — CI/CD; merge feature/m4-ui-overhaul → main first |
+| Branch | feature/m4-ui-overhaul (ready to merge) |
 
 ---
 
@@ -111,7 +111,25 @@
 
 **Deps**: M3 Groups 3b/3c complete (ERP custody + department APIs wired)
 **Estimate**: 28–32 hours
-**Design handoff**: 2026-04-30
+**Status**: READY — all deps complete; plan mode required before coding
+
+### Design Reference
+
+All screens must be implemented against the approved Figma-export HTML designs:
+
+**Local path**: `/Users/lamteiwahlang/Projects/Werkflow Redesigned Final/`
+
+| File | Covers |
+|------|--------|
+| `Werkflow Redesigned.html` | Employee Portal — Dashboard, My Tasks, My Requests, Service Catalog, Processes, Forms, Decisions |
+| `Werkflow Employee Portal.html` | Full portal shell — sidebar, header, navigation structure |
+| `Werkflow Editor Theming.html` | BPMN / Form / DMN editor CSS theming targets |
+| `Werkflow Email Templates.html` | Email Templates screen (Design Studio section) |
+| `Werkflow Login.html` | Login page |
+| `Werkflow Landing Page.html` | Public landing page |
+| `uploads/` | Component screenshots — DMN Table, Form Editor, Process, Email Template |
+
+**Rule**: Open the relevant HTML file before implementing any screen. Derive all colours, spacing, typography, and component structure from the design files — do not guess or invent.
 
 ### Group 3a — Tenant Setup UI (ADR-006)
 

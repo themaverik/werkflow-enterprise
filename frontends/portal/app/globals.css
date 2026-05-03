@@ -4,64 +4,441 @@
 
 @layer base {
   :root {
-    --color-grass-light: #e0f7f7;
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 185 77% 36%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 185 30% 93%;
-    --secondary-foreground: 185 77% 25%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 185 77% 36%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 185 77% 36%;
-    --radius: 0.5rem;
-  }
+    /* Sidebar tokens */
+    --sidebar-bg: #111c27;
+    --sidebar-bg-hsl: 210 39% 11%;
+    --sidebar-border: rgba(255,255,255,0.07);
+    --sidebar-dim-text: rgba(255,255,255,0.35);
+    --sidebar-nav-text: rgba(255,255,255,0.6);
+    --sidebar-active-text: #ffffff;
+    --sidebar-active-bg: rgba(20,155,165,0.22);
+    --sidebar-hover-bg: rgba(255,255,255,0.05);
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    /* Surface */
+    --background: 210 20% 96%;
+    --card: 0 0% 100%;
+    --foreground: 211 60% 10%;
+    --card-foreground: 211 60% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 211 60% 10%;
+
+    /* Border / input */
+    --border: 207 26% 88%;
+    --input: 207 26% 88%;
+
+    /* Brand — teal primary */
+    --primary: 184 78% 36%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 211 60% 10%;
+
+    /* States */
+    --muted: 210 20% 96%;
+    --muted-foreground: 207 14% 47%;
+    --accent: 184 78% 36%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --ring: 184 78% 36%;
+    --radius: 0.5rem;
+
+    /* Semantic badge tokens */
+    --badge-success: #16a34a;
+    --badge-success-bg: #f0fdf4;
+    --badge-success-border: #bbf7d0;
+    --badge-warning: #c27b00;
+    --badge-warning-bg: #fffbeb;
+    --badge-warning-border: #fde68a;
+    --badge-danger: #dc2626;
+    --badge-danger-bg: #fef2f2;
+    --badge-danger-border: #fecaca;
+    --badge-blue: #1d4ed8;
+    --badge-blue-bg: #eff6ff;
+    --badge-blue-border: #bfdbfe;
+    --badge-teal: #149ba5;
+    --badge-teal-bg: #e6f7f8;
+    --badge-teal-border: #a8dde0;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
   body {
     @apply bg-background text-foreground;
-    font-family: Roboto, "sans-serif", "Montserrat", "Lato", "Helvetica Neue", Arial, Helvetica !important;
+    font-family: var(--font-dm-sans), sans-serif;
     font-size: 1rem;
   }
 }
 
-/* BPMN.js specific styles */
-.djs-container {
-  font-family: Arial, sans-serif;
+/* ── BPMN-JS THEME ──────────────────────────────────────── */
+
+/* Properties-panel CSS custom properties */
+:root {
+  --color-blue-base:     #149ba5;
+  --color-blue-light:    #dff4f5;
+  --color-blue-lighter:  #f0fafb;
+  --color-blue-dark:     #0e7a83;
+  --color-grey-lightest: #f0f4f6;
+  --color-grey-lighter:  #e2eaee;
+  --color-grey-light:    #a8b9c4;
 }
+
+/* Canvas background */
+.djs-container > svg,
+.djs-container {
+  background-color: hsl(var(--background));
+  font-family: var(--font-dm-sans), sans-serif;
+}
+
+/* Palette (tool sidebar) — dark to match Werkflow sidebar */
+.djs-palette {
+  background: var(--sidebar-bg);
+  border-color: var(--sidebar-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+}
+.djs-palette .entry {
+  color: var(--sidebar-nav-text);
+}
+.djs-palette .entry:hover,
+.djs-palette .entry.active {
+  background: rgba(20,155,165,0.2);
+  color: #fff;
+  border-radius: 6px;
+}
+
+/* Context pad (mini toolbar on element) */
+.djs-context-pad .entry {
+  background-color: #149ba5;
+  border-radius: 5px;
+}
+
+/* Element selection / hover highlight */
+.djs-element.selected .djs-outline {
+  stroke: #149ba5;
+}
+.djs-element.hover .djs-outline {
+  stroke: #149ba5;
+  stroke-opacity: 0.5;
+}
+
+/* Hit target — keep transparent */
+.djs-container .djs-element .djs-hit {
+  fill: transparent;
+}
+
+/* Properties panel chrome */
+.bio-properties-panel {
+  background: hsl(var(--card)) !important;
+  border-left: 1px solid var(--sidebar-border) !important;
+  font-family: var(--font-dm-sans), sans-serif;
+  font-size: 12px;
+}
+.bio-properties-panel-header {
+  background: var(--sidebar-bg) !important;
+  color: #fff !important;
+}
+.bio-properties-panel input,
+.bio-properties-panel select,
+.bio-properties-panel textarea {
+  background: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-radius: 6px;
+}
+.bio-properties-panel label {
+  color: hsl(var(--muted-foreground)) !important;
+  font-size: 12px;
+}
+.bio-properties-panel-input:focus {
+  border-color: #149ba5 !important;
+  box-shadow: 0 0 0 2px rgba(20,155,165,0.2) !important;
+}
+
+/* ── FORM-JS THEME ────────────────────────────────────────── */
+
+/* Root CSS variables consumed by form-js */
+.fjs-container,
+.fjs-editor-container {
+  --font-family: var(--font-dm-sans), sans-serif;
+  --color-accent: #149ba5;
+  --color-accent-light: #dff4f5;
+  --color-accent-dark: #0e7a83;
+  --color-borders: #e2eaee;
+  --color-background: hsl(var(--background));
+  --color-white: #ffffff;
+  --color-text: hsl(var(--foreground));
+  --color-text-light: hsl(var(--muted-foreground));
+  --color-selection: rgba(20,155,165,0.15);
+  font-family: var(--font-dm-sans), sans-serif;
+}
+
+/* ── Palette sidebar — dark to match Werkflow sidebar ── */
+.fjs-palette-container {
+  background: #111c27 !important;
+  border-color: rgba(255,255,255,0.07) !important;
+  color: rgba(255,255,255,0.6) !important;
+}
+
+/* Search input area */
+.fjs-palette-search-container {
+  padding: 8px 10px !important;
+  border-bottom: 1px solid rgba(255,255,255,0.07) !important;
+  background: #111c27 !important;
+}
+.fjs-palette-search {
+  width: 100% !important;
+  padding: 5px 8px !important;
+  background: rgba(255,255,255,0.08) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 5px !important;
+  font-size: 11px !important;
+  color: #ffffff !important;
+  outline: none !important;
+  font-family: inherit !important;
+}
+.fjs-palette-search::placeholder {
+  color: rgba(255,255,255,0.3) !important;
+}
+.fjs-palette-search:focus {
+  border-color: rgba(20,155,165,0.6) !important;
+  box-shadow: 0 0 0 2px rgba(20,155,165,0.15) !important;
+}
+.fjs-palette-search-icon {
+  color: rgba(255,255,255,0.3) !important;
+}
+
+/* Group headers */
+.fjs-palette-group-title {
+  background: rgba(255,255,255,0.05) !important;
+  color: rgba(255,255,255,0.35) !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.07em !important;
+  text-transform: uppercase !important;
+  padding: 6px 10px 3px !important;
+}
+
+/* Tile grid */
+.fjs-palette-fields {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 2px !important;
+  padding: 4px !important;
+}
+
+/* Individual tiles */
+.fjs-palette-field {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  padding: 6px 4px !important;
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  border-radius: 6px !important;
+  cursor: grab !important;
+  transition: background 120ms ease, border-color 120ms ease !important;
+  min-height: 56px !important;
+}
+
+/* Tile icon container */
+.fjs-palette-field-icon,
+.fjs-palette-field > svg {
+  color: rgba(255,255,255,0.7) !important;
+  width: 22px !important;
+  height: 18px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Tile label */
+.fjs-palette-field span,
+.fjs-palette-field-text {
+  font-size: 9px !important;
+  font-weight: 500 !important;
+  color: rgba(255,255,255,0.6) !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+  word-break: break-word !important;
+}
+
+/* Tile hover */
+.fjs-palette-field:hover {
+  background: rgba(255,255,255,0.06) !important;
+  border-color: rgba(20,155,165,0.5) !important;
+}
+.fjs-palette-field:hover span,
+.fjs-palette-field:hover .fjs-palette-field-text,
+.fjs-palette-field:hover .fjs-palette-field-icon,
+.fjs-palette-field:hover > svg {
+  color: rgba(255,255,255,0.9) !important;
+}
+
+/* Tile active / drag start */
+.fjs-palette-field:active {
+  cursor: grabbing !important;
+  background: rgba(20,155,165,0.15) !important;
+  border-color: #149ba5 !important;
+}
+
+/* Selected field highlight */
+.fjs-form-field.selected > .fjs-form-field-placeholder {
+  outline: 2px solid #149ba5;
+  border-radius: 6px;
+  background: rgba(20,155,165,0.06);
+}
+.fjs-form-field-placeholder input:focus,
+.fjs-form-field-placeholder textarea:focus {
+  border-color: #149ba5 !important;
+  box-shadow: 0 0 0 3px rgba(20,155,165,0.15) !important;
+}
+
+/* Form field inputs */
+.fjs-form-field input,
+.fjs-form-field select,
+.fjs-form-field textarea {
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 6px !important;
+  background: hsl(var(--card)) !important;
+}
+.fjs-form-field label {
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Properties panel */
+.fjs-properties-panel {
+  font-family: var(--font-dm-sans), sans-serif;
+  font-size: 12px;
+}
+.fjs-properties-panel-header {
+  background: var(--sidebar-bg) !important;
+  color: #fff !important;
+}
+.fjs-properties-panel-group-header-title {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+
+/* ── DMN-JS THEME ─────────────────────────────────────────── */
+
+/* Table container */
+.dmn-decision-table-container {
+  font-family: var(--font-dm-sans), sans-serif;
+  font-size: 13px;
+  border-color: hsl(var(--border));
+}
+
+/* Decision name header bar */
+.dmn-decision-table-container .decision-table-properties {
+  background: var(--sidebar-bg) !important;
+  color: #ffffff !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+/* Hit policy editor input — white text on dark header */
+.dmn-decision-table-container .hit-policy .dms-input {
+  color: #fff !important;
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(255,255,255,0.2) !important;
+  font-weight: 700;
+}
+.dmn-decision-table-container .hit-policy .dms-input:focus {
+  border-color: #149ba5 !important;
+  box-shadow: 0 0 0 2px rgba(20,155,165,0.2) !important;
+}
+
+/* Column headers */
+.dmn-decision-table-container thead .input-cell {
+  background: rgba(20,155,165,0.1) !important;
+  color: #149ba5 !important;
+  border-bottom: 2px solid #149ba5 !important;
+}
+.dmn-decision-table-container thead .output-cell {
+  background: rgba(20,155,165,0.06) !important;
+  color: #0e7a82 !important;
+  border-bottom: 2px solid #0e7a82 !important;
+}
+
+/* Generic th/td */
+.dmn-decision-table-container .tjs-table th {
+  background: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
+  font-weight: 600;
+  font-size: 12px;
+}
+.dmn-decision-table-container .tjs-table td {
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+/* Row hover */
+.dmn-decision-table-container tbody tr:hover td,
+.dmn-decision-table-container .tjs-table tr:hover td {
+  background-color: #f0fafb !important;
+}
+
+/* Cell focus */
+.dmn-decision-table-container td.focused,
+.dmn-decision-table-container td:focus-within {
+  outline: 2px solid #149ba5 !important;
+  outline-offset: -2px;
+}
+
+/* Hit policy dropdown options portal */
+.dms-select-options {
+  background-color: #111c27 !important;
+  border-color: rgba(255,255,255,0.1) !important;
+  color: rgba(255,255,255,0.85) !important;
+}
+.dms-select-options .option:hover,
+.dms-select-options .option:focus {
+  background-color: rgba(20,155,165,0.25) !important;
+}
+.dms-select-options .option.active {
+  color: #149ba5 !important;
+}
+
+/* Normalize all column header text — same 13px as Annotations */
+.dmn-decision-table-container thead th,
+.dmn-decision-table-container thead .input-cell,
+.dmn-decision-table-container thead .output-cell {
+  font-size: 13px !important;
+}
+.dmn-decision-table-container thead [contenteditable],
+.dmn-decision-table-container thead .clause,
+.dmn-decision-table-container thead .input-expression,
+.dmn-decision-table-container thead .output-expression,
+.dmn-decision-table-container thead .input-label,
+.dmn-decision-table-container thead .output-label,
+.dmn-decision-table-container .cell-value,
+.dmn-decision-table-container .no-content {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+/* "Click to set Input/Output" placeholder — muted, same size */
+.dmn-decision-table-container .cell-value:empty::before,
+.dmn-decision-table-container td .no-content-message,
+.dmn-decision-table-container .input-cell .cell-header,
+.dmn-decision-table-container .output-cell .cell-header {
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  opacity: 0.65;
+}
+
+/* Add column/row buttons */
+.dmn-decision-table-container .add-rule,
+.dmn-decision-table-container .add-input,
+.dmn-decision-table-container .add-output {
+  color: #149ba5;
+  border-color: #149ba5;
+  background-color: rgba(20,155,165,0.08);
+}
+.dmn-decision-table-container .add-rule:hover {
+  background-color: rgba(20,155,165,0.18);
+}
+
+/* Thin scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c5d2da; border-radius: 4px; }

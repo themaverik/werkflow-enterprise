@@ -87,7 +87,7 @@ export default function NewEmailTemplatePage() {
   const canSave = key.trim().length > 0 && !createMutation.isPending
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
           <Link href="/admin/email-templates">
