@@ -214,6 +214,14 @@ export async function getConnectorSchema(
   }
 }
 
+export async function deleteConnector(tenantCode: string, connectorKey: string): Promise<void> {
+  try {
+    await adminApiClient.delete(`/api/connectors/${connectorKey}`, { params: { tenantCode } })
+  } catch (error: unknown) {
+    handleApiError(error, `delete-connector-${connectorKey}`)
+  }
+}
+
 export interface ConnectorApiKeyRequest {
   rawKey: string
   keyHash: string

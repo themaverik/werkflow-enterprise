@@ -152,6 +152,15 @@ public class ConnectorService {
             .map(TenantServiceEndpoint::getSampleSchema);
     }
 
+    @Transactional
+    public void delete(String tenantCode, String connectorKey) {
+        endpointRepo.findByTenantCodeAndConnectorKey(tenantCode, connectorKey)
+            .forEach(endpointRepo::delete);
+        credentialRepo.findByTenantCodeAndConnectorKey(tenantCode, connectorKey)
+            .ifPresent(credentialRepo::delete);
+        log.info("connector.deleted tenantCode={} connectorKey={}", tenantCode, connectorKey);
+    }
+
     public ConnectorTestResponse testCall(String tenantCode, String connectorKey, ConnectorTestRequest request) {
         TenantServiceEndpoint ep = endpointRepo.findByTenantCodeAndConnectorKey(tenantCode, connectorKey)
             .stream().findFirst()
