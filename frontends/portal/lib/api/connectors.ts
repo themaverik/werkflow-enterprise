@@ -2,6 +2,8 @@ import { adminApiClient } from './client'
 
 // ==================== TYPE DEFINITIONS ====================
 
+export type ConnectorType = 'API' | 'WEBHOOK' | 'MCP' | 'OTHER'
+
 export interface ConnectorResponse {
   endpointId: number
   credentialId: number
@@ -11,9 +13,11 @@ export interface ConnectorResponse {
   baseUrl: string
   environment: string
   active: boolean
+  connectorType: ConnectorType
   authScheme: string
   headerName: string | null
   sampleSchema: string | null
+  hasSecret: boolean
   createdAt: string
   updatedAt: string
 }
@@ -25,8 +29,9 @@ export interface ConnectorRequest {
   baseUrl: string
   environment: string
   active: boolean
+  connectorType?: ConnectorType
   authScheme: string
-  secretRef: string
+  secretValue: string
   headerName?: string
   sampleSchema?: string
 }
@@ -116,8 +121,9 @@ export interface ConnectorUpdateRequest {
   baseUrl: string
   environment: string
   active: boolean
+  connectorType?: ConnectorType
   authScheme: string
-  secretRef?: string
+  secretValue?: string
   headerName?: string
 }
 
@@ -205,6 +211,28 @@ export async function getConnectorSchema(
     }))
   } catch {
     return []
+  }
+}
+
+export interface ConnectorApiKeyRequest {
+  rawKey: string
+  keyHash: string
+  keyName: string
+}
+
+export async function registerApiKey(
+  tenantCode: string,
+  connectorKey: string,
+  request: ConnectorApiKeyRequest
+): Promise<void> {
+  try {
+    await adminApiClient.post(
+      `/api/connectors/${connectorKey}/api-key`,
+      request,
+      { params: { tenantCode } }
+    )
+  } catch (error: unknown) {
+    handleApiError(error, `register-api-key-${connectorKey}`)
   }
 }
 
