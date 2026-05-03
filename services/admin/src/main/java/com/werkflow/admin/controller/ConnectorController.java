@@ -107,6 +107,16 @@ public class ConnectorController {
         return ResponseEntity.ok(response);
     }
 
+    @DeleteMapping("/{connectorKey}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @Operation(summary = "Delete connector", description = "Permanently removes connector endpoint and credential (ADMIN, SUPER_ADMIN)")
+    public ResponseEntity<Void> delete(
+            @RequestParam String tenantCode,
+            @PathVariable String connectorKey) {
+        connectorService.delete(tenantCode, connectorKey);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/{connectorKey}/api-key")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @Operation(summary = "Register ERP API key", description = "Hashes rawKey, registers with ERP, stores encrypted for outbound calls. Shows raw key once — never retrievable after.")
