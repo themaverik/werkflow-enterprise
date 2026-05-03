@@ -34,9 +34,13 @@ public class TenantApiCredential {
     @Column(nullable = false, length = 30)
     private String authScheme;
 
-    /** References SecretsResolver key — never the raw secret value */
-    @Column(nullable = false, length = 200)
+    /** Legacy pointer — nullable; prefer secretValue for new connectors */
+    @Column(length = 200)
     private String secretRef;
+
+    /** Encrypted raw credential value (AES-256-GCM via EncryptionService) */
+    @Column(columnDefinition = "TEXT")
+    private String secretValue;
 
     @Column(length = 100)
     private String headerName;

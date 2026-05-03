@@ -13,41 +13,43 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "tenant_service_endpoints")
+@Table(name = "tenant_connector_paths")
 @Getter @Setter @NoArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
-public class TenantServiceEndpoint {
+public class TenantConnectorPath {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 50)
-    private String tenantCode;
-
-    @Column(nullable = false, length = 100)
-    private String serviceKey;
-
     @Column(nullable = false, length = 100)
     private String connectorKey;
 
-    @Column(length = 200)
-    private String displayName;
+    @Column(nullable = false, length = 50)
+    private String tenantCode;
 
     @Column(nullable = false, length = 500)
-    private String baseUrl;
+    private String path;
 
-    @Column(nullable = false, length = 50)
-    private String environment = "development";
-
-    @Column(nullable = false)
-    private boolean active = true;
+    @Column(nullable = false, length = 10)
+    private String httpMethod;
 
     @Column(nullable = false, length = 20)
-    private String connectorType = "API";
+    private String interactionType;
+
+    @Column(length = 500)
+    private String description;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private String sampleSchema;
+    private String requestSchema;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private String responseSchema;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private String variableMappings;
 
     @CreatedDate @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
