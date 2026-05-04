@@ -23,7 +23,8 @@ export interface ConnectorResponse {
 }
 
 export interface ConnectorRequest {
-  tenantCode: string
+  /** Optional — backend resolves from JWT tenant_id claim when omitted */
+  tenantCode?: string
   connectorKey: string
   displayName: string
   baseUrl: string
@@ -40,6 +41,7 @@ export interface ConnectorTestRequest {
   path: string
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   requestBody?: string
+  environment?: string
 }
 
 export interface ConnectorTestResponse {
@@ -96,14 +98,12 @@ function handleApiError(error: unknown, context: string): never {
 
 // ==================== API FUNCTIONS ====================
 
-export async function listConnectors(tenantCode: string): Promise<ConnectorResponse[]> {
+export async function listConnectors(): Promise<ConnectorResponse[]> {
   try {
-    const response = await adminApiClient.get('/api/connectors', {
-      params: { tenantCode },
-    })
+    const response = await adminApiClient.get('/api/connectors')
     return Array.isArray(response.data) ? response.data : response.data.content || []
   } catch (error: unknown) {
-    handleApiError(error, `list-connectors-${tenantCode}`)
+    handleApiError(error, 'list-connectors')
   }
 }
 
@@ -128,15 +128,13 @@ export interface ConnectorUpdateRequest {
 }
 
 export async function updateConnector(
-  tenantCode: string,
   connectorKey: string,
   request: ConnectorUpdateRequest
 ): Promise<ConnectorResponse> {
   try {
     const response = await adminApiClient.put(
       `/api/connectors/${connectorKey}`,
-      request,
-      { params: { tenantCode } }
+      request
     )
     return response.data
   } catch (error: unknown) {
@@ -145,7 +143,6 @@ export async function updateConnector(
 }
 
 export async function updateConnectorSchema(
-  tenantCode: string,
   connectorKey: string,
   sampleSchema: string
 ): Promise<ConnectorResponse> {
@@ -153,10 +150,7 @@ export async function updateConnectorSchema(
     const response = await adminApiClient.patch(
       `/api/connectors/${connectorKey}/schema`,
       sampleSchema,
-      {
-        params: { tenantCode },
-        headers: { 'Content-Type': 'application/json' },
-      }
+      { headers: { 'Content-Type': 'application/json' } }
     )
     return response.data
   } catch (error: unknown) {
@@ -164,18 +158,31 @@ export async function updateConnectorSchema(
   }
 }
 
+export async function updateEndpointSchema(
+  connectorKey: string,
+  endpointId: number,
+  sampleSchema: string
+): Promise<ConnectorResponse> {
+  try {
+    const response = await adminApiClient.patch(
+      `/api/connectors/${connectorKey}/endpoints/${endpointId}/schema`,
+      sampleSchema,
+      { headers: { 'Content-Type': 'application/json' } }
+    )
+    return response.data
+  } catch (error: unknown) {
+    handleApiError(error, `update-endpoint-schema-${endpointId}`)
+  }
+}
+
 export async function testConnector(
-  tenantCode: string,
   connectorKey: string,
   request: ConnectorTestRequest
 ): Promise<ConnectorTestResponse> {
   try {
     const response = await adminApiClient.post(
       `/api/connectors/${connectorKey}/test`,
-      request,
-      {
-        params: { tenantCode },
-      }
+      request
     )
     return response.data
   } catch (error: unknown) {
@@ -193,13 +200,11 @@ export interface ConnectorSchemaField {
  * Returns empty array if connector has no schema or schema is not a JSON object.
  */
 export async function getConnectorSchema(
-  tenantCode: string,
   connectorKey: string
 ): Promise<ConnectorSchemaField[]> {
   try {
     const response = await adminApiClient.get(
-      `/api/connectors/${encodeURIComponent(connectorKey)}/schema`,
-      { params: { tenantCode } }
+      `/api/connectors/${encodeURIComponent(connectorKey)}/schema`
     )
     const raw = response.data
     if (!raw) return []
@@ -214,11 +219,46 @@ export async function getConnectorSchema(
   }
 }
 
-export async function deleteConnector(tenantCode: string, connectorKey: string): Promise<void> {
+export async function deleteConnector(connectorKey: string): Promise<void> {
   try {
-    await adminApiClient.delete(`/api/connectors/${connectorKey}`, { params: { tenantCode } })
+    await adminApiClient.delete(`/api/connectors/${connectorKey}`)
   } catch (error: unknown) {
     handleApiError(error, `delete-connector-${connectorKey}`)
+  }
+}
+
+export interface ConnectorEndpointRequest {
+  baseUrl: string
+  environment: string
+  connectorType?: ConnectorType
+  active?: boolean
+}
+
+export async function addConnectorEndpoint(
+  connectorKey: string,
+  request: ConnectorEndpointRequest
+): Promise<ConnectorResponse> {
+  try {
+    const response = await adminApiClient.post(
+      `/api/connectors/${connectorKey}/endpoints`,
+      request
+    )
+    return response.data
+  } catch (error: unknown) {
+    handleApiError(error, `add-endpoint-${connectorKey}`)
+  }
+}
+
+export async function deleteConnectorEndpoint(
+  connectorKey: string,
+  endpointId: number
+): Promise<void> {
+  try {
+    await adminApiClient.delete(
+      `/api/connectors/${connectorKey}/endpoints/${endpointId}`
+    )
+  } catch (error: unknown) {
+    handleApiError(error, `delete-endpoint-${connectorKey}-${endpointId}`)
   }
 }
 
@@ -229,15 +269,13 @@ export interface ConnectorApiKeyRequest {
 }
 
 export async function registerApiKey(
-  tenantCode: string,
   connectorKey: string,
   request: ConnectorApiKeyRequest
 ): Promise<void> {
   try {
     await adminApiClient.post(
       `/api/connectors/${connectorKey}/api-key`,
-      request,
-      { params: { tenantCode } }
+      request
     )
   } catch (error: unknown) {
     handleApiError(error, `register-api-key-${connectorKey}`)

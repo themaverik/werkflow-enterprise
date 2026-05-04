@@ -2,7 +2,6 @@ import { auth } from '@/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
 const ADMIN_BASE = process.env.NEXT_PUBLIC_ADMIN_SERVICE_URL ?? 'http://localhost:8083'
-const TENANT_CODE = process.env.NEXT_PUBLIC_TENANT_CODE ?? 'default'
 
 type RouteContext = { params: Promise<{ connectorKey: string; path: string[] }> }
 
@@ -19,8 +18,8 @@ async function proxy(req: NextRequest, ctx: RouteContext) {
   const body =
     req.method !== 'GET' && req.method !== 'HEAD' ? await req.text() : undefined
 
+  // tenantCode is intentionally omitted — admin service resolves tenant from the forwarded JWT
   const url = new URL(`${ADMIN_BASE}/api/connectors/${connectorKey}/call`)
-  url.searchParams.set('tenantCode', TENANT_CODE)
   url.searchParams.set('path', connectorPath)
   url.searchParams.set('method', req.method)
 

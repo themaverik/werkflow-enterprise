@@ -9,14 +9,20 @@ import Link from 'next/link'
 import { useAuthorization } from '@/lib/auth/use-authorization'
 import { listConnectors } from '@/lib/api/connectors'
 
-const TENANT_CODE = process.env.NEXT_PUBLIC_TENANT_CODE ?? 'default'
 const DEPARTMENTS_CONNECTOR_KEY = 'hr-service'
 
 interface Department {
-  id: string
-  deptCode: string
-  deptName: string
+  id: string | number
+  deptCode?: string
+  code?: string
+  name?: string
+  deptName?: string
+  leadUserId?: string
   managerId?: string
+  departmentType?: string
+  officeLocation?: string
+  departmentEmail?: string
+  isActive?: boolean
 }
 
 async function fetchDepartments(token: string): Promise<Department[]> {
@@ -34,8 +40,8 @@ export default function DepartmentsPage() {
   const token = (session?.accessToken as string) ?? ''
 
   const { data: connectors, isLoading: loadingConnectors } = useQuery({
-    queryKey: ['connectors', TENANT_CODE],
-    queryFn: () => listConnectors(TENANT_CODE),
+    queryKey: ['connectors'],
+    queryFn: () => listConnectors(),
     enabled: status === 'authenticated',
     staleTime: 60_000,
   })
@@ -96,22 +102,44 @@ export default function DepartmentsPage() {
               <tr className="border-b border-border">
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Code</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Manager ID</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Location</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Lead</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading && (
-                <tr><td colSpan={3} className="px-4 py-6 text-center text-muted-foreground text-sm">Loading...</td></tr>
+                <tr><td colSpan={7} className="px-4 py-6 text-center text-muted-foreground text-sm">Loading...</td></tr>
               )}
-              {(depts ?? []).map((d) => (
-                <tr key={d.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-3 font-mono text-xs font-semibold">{d.deptCode}</td>
-                  <td className="px-4 py-3">{d.deptName}</td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">{d.managerId ?? '—'}</td>
-                </tr>
-              ))}
+              {(depts ?? []).map((d) => {
+                const code = d.deptCode ?? d.code ?? '—'
+                const name = d.name ?? d.deptName ?? '—'
+                const lead = d.leadUserId ?? d.managerId ?? '—'
+                const location = d.officeLocation
+                  ? d.officeLocation.replace(/_/g, ' ').replace(/([A-Z]{2,})$/, (m) => m)
+                  : '—'
+                return (
+                  <tr key={d.id} className="hover:bg-muted/30">
+                    <td className="px-4 py-3 font-mono text-xs font-semibold">{code}</td>
+                    <td className="px-4 py-3 font-medium">{name}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{d.departmentType ?? '—'}</td>
+                    <td className="px-4 py-3 text-xs">{location}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{d.departmentEmail ?? '—'}</td>
+                    <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{lead}</td>
+                    <td className="px-4 py-3">
+                      {d.isActive === undefined ? '—' : (
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${d.isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}>
+                          {d.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
               {!isLoading && !error && !depts?.length && (
-                <tr><td colSpan={3} className="px-4 py-6 text-center text-muted-foreground text-sm">No departments found.</td></tr>
+                <tr><td colSpan={7} className="px-4 py-6 text-center text-muted-foreground text-sm">No departments found.</td></tr>
               )}
             </tbody>
           </table>
