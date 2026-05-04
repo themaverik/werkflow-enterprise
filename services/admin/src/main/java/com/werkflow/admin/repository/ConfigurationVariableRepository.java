@@ -10,6 +10,8 @@ public interface ConfigurationVariableRepository extends JpaRepository<Configura
 
     List<ConfigurationVariable> findByTenantCodeOrderByVarKey(String tenantCode);
 
+    List<ConfigurationVariable> findByTenantCodeAndVarTypeOrderByVarKey(String tenantCode, String varType);
+
     Optional<ConfigurationVariable> findByTenantCodeAndVarKey(String tenantCode, String varKey);
 
     boolean existsByTenantCodeAndVarKey(String tenantCode, String varKey);

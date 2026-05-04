@@ -8,7 +8,7 @@ import lombok.Data;
 @Data
 public class ConnectorRequest {
 
-    @NotBlank
+    /** Optional — if omitted, resolved from the caller's JWT tenant_id claim by the controller. */
     private String tenantCode;
 
     @NotBlank @Size(max = 100)

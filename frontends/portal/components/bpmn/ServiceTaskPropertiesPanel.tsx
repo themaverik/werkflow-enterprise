@@ -25,7 +25,6 @@ import {
 } from '@/lib/api/connectors'
 import { useTranslations } from 'next-intl'
 
-const TENANT_CODE = process.env.NEXT_PUBLIC_TENANT_CODE ?? 'default'
 
 interface ServiceTaskPropertiesPanelProps {
   element: any
@@ -154,7 +153,7 @@ export default function ServiceTaskPropertiesPanel({
 
   // ---- Fetch connectors on mount ----
   useEffect(() => {
-    listConnectors(TENANT_CODE)
+    listConnectors()
       .then(data => {
         setConnectors(data)
         setConnectorLoadError(null)
@@ -249,7 +248,7 @@ export default function ServiceTaskPropertiesPanel({
     // Fetch schema fields for body builder
     setSchemaLoading(true)
     try {
-      const fields = await getConnectorSchema(TENANT_CODE, key)
+      const fields = await getConnectorSchema(key)
       setSchemaFields(fields)
 
       // Auto-populate extract fields from schema if currently empty
@@ -292,7 +291,7 @@ export default function ServiceTaskPropertiesPanel({
     setContractTestError(null)
     setContractTestResult(null)
     try {
-      const result = await testConnector(TENANT_CODE, selectedConnectorKey, {
+      const result = await testConnector(selectedConnectorKey, {
         path: contractTestPath,
         method: contractTestMethod,
       })
