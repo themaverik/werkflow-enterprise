@@ -145,6 +145,20 @@ public class ConnectorService {
         return response;
     }
 
+    @Transactional
+    public ConnectorResponse updateEndpointSchema(String tenantCode, Long endpointId, String sampleSchema) {
+        TenantServiceEndpoint ep = endpointRepo.findById(endpointId)
+            .orElseThrow(() -> new NoSuchElementException("Endpoint not found: " + endpointId));
+        if (!ep.getTenantCode().equals(tenantCode)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Endpoint does not belong to tenant");
+        }
+        ep.setSampleSchema(sampleSchema);
+        endpointRepo.save(ep);
+        TenantApiCredential cred = findCredential(tenantCode, ep.getConnectorKey());
+        CompletableFuture.runAsync(() -> notifyEngineCache(tenantCode, ep.getConnectorKey()));
+        return toResponse(ep, cred);
+    }
+
     @Transactional(readOnly = true)
     public Optional<String> getSchema(String tenantCode, String connectorKey) {
         return endpointRepo.findByTenantCodeAndConnectorKey(tenantCode, connectorKey)
@@ -161,10 +175,51 @@ public class ConnectorService {
         log.info("connector.deleted tenantCode={} connectorKey={}", tenantCode, connectorKey);
     }
 
+    @Transactional
+    public ConnectorResponse addEndpoint(String tenantCode, String connectorKey, ConnectorEndpointRequest request) {
+        TenantApiCredential cred = findCredential(tenantCode, connectorKey);
+        if (endpointRepo.findByTenantCodeAndConnectorKeyAndEnvironment(tenantCode, connectorKey, request.getEnvironment()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Endpoint for environment '" + request.getEnvironment() + "' already exists");
+        }
+        TenantServiceEndpoint ep = new TenantServiceEndpoint();
+        ep.setTenantCode(tenantCode);
+        ep.setConnectorKey(connectorKey);
+        ep.setServiceKey(connectorKey);
+        ep.setDisplayName(cred.getLabel());
+        ep.setBaseUrl(request.getBaseUrl());
+        ep.setEnvironment(request.getEnvironment());
+        ep.setActive(request.isActive());
+        ep.setConnectorType(request.getConnectorType() != null ? request.getConnectorType() : "API");
+        endpointRepo.save(ep);
+        log.info("connector.endpoint.added tenantCode={} connectorKey={} environment={}", tenantCode, connectorKey, request.getEnvironment());
+        return toResponse(ep, cred);
+    }
+
+    @Transactional
+    public void deleteEndpoint(String tenantCode, Long endpointId) {
+        TenantServiceEndpoint ep = endpointRepo.findById(endpointId)
+            .orElseThrow(() -> new NoSuchElementException("Endpoint not found: " + endpointId));
+        if (!ep.getTenantCode().equals(tenantCode)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Endpoint does not belong to tenant");
+        }
+        List<TenantServiceEndpoint> all = endpointRepo.findByTenantCodeAndConnectorKey(tenantCode, ep.getConnectorKey());
+        if (all.size() <= 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Cannot delete the last endpoint — delete the connector instead");
+        }
+        endpointRepo.delete(ep);
+        log.info("connector.endpoint.deleted tenantCode={} endpointId={}", tenantCode, endpointId);
+    }
+
     public ConnectorTestResponse testCall(String tenantCode, String connectorKey, ConnectorTestRequest request) {
-        TenantServiceEndpoint ep = endpointRepo.findByTenantCodeAndConnectorKey(tenantCode, connectorKey)
-            .stream().findFirst()
-            .orElseThrow(() -> new NoSuchElementException("Connector not found: " + connectorKey));
+        TenantServiceEndpoint ep = request.getEnvironment() != null
+            ? endpointRepo.findByTenantCodeAndConnectorKeyAndEnvironment(tenantCode, connectorKey, request.getEnvironment())
+                .orElseThrow(() -> new NoSuchElementException("No " + request.getEnvironment() + " endpoint for: " + connectorKey))
+            : endpointRepo.findByTenantCodeAndConnectorKeyAndEnvironment(tenantCode, connectorKey, "production")
+                .orElseGet(() -> endpointRepo.findByTenantCodeAndConnectorKey(tenantCode, connectorKey)
+                    .stream().findFirst()
+                    .orElseThrow(() -> new NoSuchElementException("Connector not found: " + connectorKey)));
         TenantApiCredential cred = findCredential(tenantCode, connectorKey);
         ConnectorTestResponse result = executeProxy(ep, cred, request.getPath(), request.getMethod(), request.getRequestBody());
         log.info("connector.test.call tenantCode={} connectorKey={} path={} method={} status={} durationMs={} truncated={}",
@@ -204,7 +259,8 @@ public class ConnectorService {
 
         Map<String, String> erpPayload = Map.of(
             "keyHash", request.getKeyHash(),
-            "name", request.getKeyName()
+            "name", request.getKeyName(),
+            "tenantId", tenantCode
         );
         try {
             erpRestClient.post()
@@ -229,7 +285,9 @@ public class ConnectorService {
 
     private ConnectorTestResponse executeProxy(TenantServiceEndpoint ep, TenantApiCredential cred,
                                                String path, String method, String requestBody) {
-        String fullUrl = ep.getBaseUrl() + path;
+        String baseUrl = ep.getBaseUrl().endsWith("/") ? ep.getBaseUrl() : ep.getBaseUrl() + "/";
+        String normalizedPath = path.startsWith("/") ? path.substring(1) : path;
+        String fullUrl = baseUrl + normalizedPath;
         ssrfGuard.validateExternal(fullUrl);
 
         String rawSecret = cred.getSecretValue() != null

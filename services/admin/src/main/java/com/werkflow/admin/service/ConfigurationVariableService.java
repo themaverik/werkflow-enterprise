@@ -24,6 +24,12 @@ public class ConfigurationVariableService {
             .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<ConfigVarResponse> listByTenantAndType(String tenantCode, String varType) {
+        return repository.findByTenantCodeAndVarTypeOrderByVarKey(tenantCode, varType)
+            .stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
     /** Returns key→value map for FEEL context injection (used by DmnConfigVariableInjector). */
     @Transactional(readOnly = true)
     public Map<String, String> getVarMap(String tenantCode) {
