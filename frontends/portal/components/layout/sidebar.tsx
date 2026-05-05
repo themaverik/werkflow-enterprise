@@ -54,8 +54,8 @@ const sidebarSections: SidebarSection[] = [
   {
     titleKey: 'tenantSetup',
     items: [
+      { labelKey: 'roleMappings',       href: '/admin/tenant/role-mappings',      icon: Users,             requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'approvalAuthority', href: '/admin/tenant/approval-authority', icon: ShieldCheck,       requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
-      { labelKey: 'roleMappings',      href: '/admin/tenant/role-mappings',      icon: Users,             requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'departments',       href: '/admin/tenant/departments',        icon: Building2,         requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'custodyGroups',     href: '/admin/tenant/custody-groups',     icon: BriefcaseBusiness, requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
     ],

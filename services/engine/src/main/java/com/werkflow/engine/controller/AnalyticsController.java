@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Collection;
 
 @RestController
-@RequestMapping("/analytics")
+@RequestMapping("/api/v1/analytics")
 @RequiredArgsConstructor
 @Tag(name = "Analytics", description = "Process execution statistics and task metrics — M6 Group A")
 @SecurityRequirement(name = "bearer-jwt")
