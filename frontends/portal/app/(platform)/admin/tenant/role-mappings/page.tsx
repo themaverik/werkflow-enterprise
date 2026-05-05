@@ -35,7 +35,7 @@ async function fetchRealmRoles(token: string): Promise<string[]> {
   const res = await fetch('/api/proxy/admin/keycloak/realm-roles', {
     headers: { Authorization: `Bearer ${token}` },
   })
-  if (!res.ok) return []
+  if (!res.ok) throw new Error(`Failed to load realm roles (${res.status})`)
   const data = await res.json()
   return (data.roles ?? []) as string[]
 }
@@ -80,11 +80,12 @@ export default function RoleMappingsPage() {
     staleTime: 60_000,
   })
 
-  const { data: realmRoles = [] } = useQuery({
+  const { data: realmRoles = [], isLoading: loadingRoles, isError: rolesError } = useQuery({
     queryKey: ['realmRoles'],
     queryFn: () => fetchRealmRoles(token),
     enabled: status === 'authenticated',
     staleTime: 300_000,
+    retry: 1,
   })
 
   const addMutation = useMutation({
@@ -211,8 +212,14 @@ export default function RoleMappingsPage() {
                       {realmRoles.map((r) => (
                         <SelectItem key={r} value={r} className="font-mono text-xs">{r}</SelectItem>
                       ))}
-                      {realmRoles.length === 0 && (
+                      {loadingRoles && (
                         <div className="px-3 py-2 text-xs text-muted-foreground">Loading roles…</div>
+                      )}
+                      {rolesError && !loadingRoles && (
+                        <div className="px-3 py-2 text-xs text-destructive">Failed to load roles</div>
+                      )}
+                      {!loadingRoles && !rolesError && realmRoles.length === 0 && (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">No roles found</div>
                       )}
                     </SelectContent>
                   </Select>

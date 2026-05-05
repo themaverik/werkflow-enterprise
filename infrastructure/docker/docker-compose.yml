@@ -218,7 +218,7 @@ services:
       KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/werkflow/protocol/openid-connect/certs
       KEYCLOAK_REALM: werkflow
       KEYCLOAK_CLIENT_ID: werkflow-portal
-      KEYCLOAK_CLIENT_SECRET: 4uohM7y1sGkOcR2gTR1A
+      KEYCLOAK_CLIENT_SECRET: 4uohM7y1sGkOcR2gTR1APo4JDmkwRxSv
     ports:
       - "8083:8083"
     volumes:
