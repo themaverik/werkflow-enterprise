@@ -13,7 +13,7 @@ import { toast } from 'sonner'
 const MAX_LEVELS = 10
 
 interface ConfigVar {
-  id?: string
+  id?: number
   varKey: string
   varValue: string
   varType: string
@@ -32,7 +32,7 @@ async function fetchRealmRoles(token: string): Promise<string[]> {
   const res = await fetch('/api/proxy/admin/keycloak/realm-roles', {
     headers: { Authorization: `Bearer ${token}` },
   })
-  if (!res.ok) return []
+  if (!res.ok) throw new Error(`Failed to load realm roles (${res.status})`)
   const data = await res.json()
   return (data.roles ?? []) as string[]
 }
@@ -48,12 +48,15 @@ async function saveConfigVar(body: ConfigVar, token: string): Promise<ConfigVar>
   return res.json()
 }
 
-async function deleteConfigVar(id: string, token: string): Promise<void> {
+async function deleteConfigVar(id: number, token: string): Promise<void> {
   const res = await fetch(`/api/proxy/admin/config/vars/${id}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   })
-  if (!res.ok) throw new Error('Failed to delete')
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`Failed to delete (${res.status})${body ? ': ' + body : ''}`)
+  }
 }
 
 function levelNum(key: string) { return parseInt(key.slice(1), 10) }
@@ -86,11 +89,12 @@ export default function ApprovalAuthorityPage() {
     staleTime: 60_000,
   })
 
-  const { data: realmRoles = [] } = useQuery({
+  const { data: realmRoles = [], isLoading: loadingRealmRoles, isError: rolesError } = useQuery({
     queryKey: ['realmRoles'],
     queryFn: () => fetchRealmRoles(token),
     enabled: status === 'authenticated',
     staleTime: 300_000,
+    retry: 1,
   })
 
   const saveMutation = useMutation({
@@ -110,9 +114,11 @@ export default function ApprovalAuthorityPage() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteConfigVar(id, token),
+    mutationFn: (id: number) => deleteConfigVar(id, token),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['configVars'] })
+      // Invalidate realm roles so deleted role assignments re-appear in the dropdown
+      qc.invalidateQueries({ queryKey: ['realmRoles'] })
       toast.success('Deleted')
     },
     onError: () => toast.error('Failed to delete'),
@@ -195,7 +201,7 @@ export default function ApprovalAuthorityPage() {
                         aria-label={`Delete level ${v.varKey}`}
                         disabled={deleteMutation.isPending}
                         onClick={() => {
-                          if (v.id && window.confirm(`Delete level ${v.varKey}? This may affect role assignments.`)) {
+                          if (v.id != null && window.confirm(`Delete level ${v.varKey}? This may affect role assignments.`)) {
                             deleteMutation.mutate(v.id)
                           }
                         }}
@@ -303,7 +309,7 @@ export default function ApprovalAuthorityPage() {
                       aria-label={`Remove level assignment for ${v.varKey}`}
                       disabled={deleteMutation.isPending}
                       onClick={() => {
-                        if (v.id && window.confirm(`Remove level assignment for role "${v.varKey}"?`)) {
+                        if (v.id != null && window.confirm(`Remove level assignment for role "${v.varKey}"?`)) {
                           deleteMutation.mutate(v.id)
                         }
                       }}
@@ -331,7 +337,13 @@ export default function ApprovalAuthorityPage() {
                       {availableRoles.map((r) => (
                         <SelectItem key={r} value={r} className="font-mono text-xs">{r}</SelectItem>
                       ))}
-                      {availableRoles.length === 0 && (
+                      {loadingRealmRoles && (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">Loading roles…</div>
+                      )}
+                      {rolesError && !loadingRealmRoles && (
+                        <div className="px-3 py-2 text-xs text-destructive">Failed to load roles</div>
+                      )}
+                      {!loadingRealmRoles && !rolesError && availableRoles.length === 0 && (
                         <div className="px-3 py-2 text-xs text-muted-foreground">All roles assigned</div>
                       )}
                     </SelectContent>

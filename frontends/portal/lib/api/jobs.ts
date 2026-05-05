@@ -1,4 +1,4 @@
-import { adminApiClient } from './client'
+import { apiClient } from './client'
 
 export interface DeadLetterJob {
   jobId: string
@@ -15,14 +15,14 @@ export interface DeadLetterJob {
 
 export async function listDeadLetterJobs(tenantId?: string): Promise<DeadLetterJob[]> {
   const params = tenantId ? { tenantId } : {}
-  const response = await adminApiClient.get<DeadLetterJob[]>('/api/v1/admin/jobs/dead-letter', { params })
+  const response = await apiClient.get<DeadLetterJob[]>('/api/v1/admin/jobs/dead-letter', { params })
   return response.data
 }
 
 export async function retryDeadLetterJob(jobId: string, retries?: number): Promise<void> {
-  await adminApiClient.post(`/api/v1/admin/jobs/dead-letter/${jobId}/retry`, retries ? { retries } : {})
+  await apiClient.post(`/api/v1/admin/jobs/dead-letter/${jobId}/retry`, retries ? { retries } : {})
 }
 
 export async function deleteDeadLetterJob(jobId: string): Promise<void> {
-  await adminApiClient.delete(`/api/v1/admin/jobs/dead-letter/${jobId}`)
+  await apiClient.delete(`/api/v1/admin/jobs/dead-letter/${jobId}`)
 }
