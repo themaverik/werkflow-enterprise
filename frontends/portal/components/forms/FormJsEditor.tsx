@@ -48,24 +48,40 @@ export default function FormJsEditor({
     // Replace with a real token source (e.g. useSession) if auth is added to this component.
     const accessToken = '';
 
+    // StrictMode double-invoke guard — mirrors the pattern in BpmnDesigner.tsx.
+    // Without this, Effect 1's async tail overwrites editorRef.current back to a
+    // destroyed editor after Effect 2 has already mounted a fresh one, leaving the
+    // canvas in a corrupted state that crashes drag/drop.
+    let cancelled = false;
+
     const init = async () => {
       if (!containerRef.current) return;
+
+      // Clear any leftover DOM from a previous (StrictMode) run before creating
+      // a new editor instance in the same container element.
+      containerRef.current.innerHTML = '';
 
       // Fetch allowlist — fall back to safe defaults if unavailable
       const allowlistRes = await fetch('/api/proxy/admin/config/form-components', {
         headers: { Authorization: `Bearer ${accessToken}` },
       }).catch(() => null)
+      if (cancelled) return;
+
       const allowedTypes: string[] = allowlistRes?.ok
         ? (await allowlistRes.json().catch(() => null) as string[] | null) ?? ['textfield', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'button']
         : ['textfield', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'button']
+      if (cancelled) return;
 
       // Fetch tenant CSS theme vars — no-op if empty
       const cssRes = await fetch('/api/proxy/admin/config/vars?type=CSS_THEME', {
         headers: { Authorization: `Bearer ${accessToken}` },
       }).catch(() => null)
+      if (cancelled) return;
+
       const cssVars: Array<{ varKey: string; varValue: string }> = cssRes?.ok
         ? (await cssRes.json().catch(() => null) as Array<{ varKey: string; varValue: string }> | null) ?? []
         : []
+      if (cancelled) return;
 
       // Initialize form-js editor — no additionalModules.
       // The palette filter is injected via CSS after importSchema resolves
@@ -86,9 +102,12 @@ export default function FormJsEditor({
         schemaVersion: 9
       });
 
-      await editor.importSchema(initialSchema).catch((err) => {
+      const importErr = await editor.importSchema(initialSchema).then(() => null).catch((err: unknown) => {
         console.error('Failed to import form schema:', err);
+        return err;
       });
+      if (cancelled) return;
+      if (importErr) return;
 
       // Inject palette CSS filter now that the editor DOM is fully rendered.
       // Done here (not via additionalModules) to avoid any DI token issues
@@ -128,10 +147,13 @@ export default function FormJsEditor({
       console.error('Failed to initialise form editor:', err);
     });
 
-    // Cleanup
+    // Cleanup — set cancelled BEFORE destroy so the async tail of init()
+    // sees the flag immediately and does not overwrite editorRef.current.
     return () => {
+      cancelled = true;
       if (editorRef.current) {
         editorRef.current.destroy();
+        editorRef.current = null;
       }
     };
   }, []);
