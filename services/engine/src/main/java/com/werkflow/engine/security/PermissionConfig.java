@@ -50,10 +50,13 @@ public class PermissionConfig {
 
     /**
      * Returns the union of all permissions granted to the given roles, including inherited permissions.
+     *
+     * <p>Roles are normalized to UPPERCASE before lookup so that JWT claims emitted in lowercase
+     * (e.g. {@code super_admin}) correctly match YAML permission matrix keys (e.g. {@code SUPER_ADMIN}).
      */
     public Set<String> getPermissionsForRoles(List<String> roles) {
         return roles.stream()
-            .flatMap(role -> expandPermissions(role).stream())
+            .flatMap(role -> expandPermissions(role.toUpperCase()).stream())
             .collect(Collectors.toSet());
     }
 
