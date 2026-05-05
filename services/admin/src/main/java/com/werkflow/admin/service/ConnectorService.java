@@ -1,12 +1,11 @@
 package com.werkflow.admin.service;
 
 import com.werkflow.admin.dto.connector.*;
-import com.werkflow.admin.dto.connector.ConnectorUpdateRequest;
 import com.werkflow.admin.entity.TenantApiCredential;
 import com.werkflow.admin.entity.TenantServiceEndpoint;
 import com.werkflow.admin.repository.TenantApiCredentialRepository;
 import com.werkflow.admin.repository.TenantServiceEndpointRepository;
-import com.werkflow.common.security.SecretsResolver;
+import com.werkflow.common.security.EncryptionService;
 import com.werkflow.common.security.SsrfGuard;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -14,14 +13,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -35,24 +38,28 @@ public class ConnectorService {
 
     private static final int MAX_RESPONSE_BYTES = 100 * 1024;
 
-    @Value("${app.engine-service.url:http://localhost:8080}")
+    @Value("${app.engine-service.url}")
     private String engineServiceUrl;
 
+    @Value("${app.erp-service.url}")
+    private String erpServiceUrl;
+
     private RestClient engineRestClient;
+    private RestClient erpRestClient;
 
     private final TenantApiCredentialRepository credentialRepo;
     private final TenantServiceEndpointRepository endpointRepo;
-    private final SecretsResolver secretsResolver;
+    private final EncryptionService encryptionService;
     private final SsrfGuard ssrfGuard;
 
     @PostConstruct
-    private void initEngineRestClient() {
+    private void initRestClients() {
         HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(3))
             .build();
-        this.engineRestClient = RestClient.builder()
-            .requestFactory(new JdkClientHttpRequestFactory(httpClient))
-            .build();
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+        this.engineRestClient = RestClient.builder().requestFactory(factory).build();
+        this.erpRestClient = RestClient.builder().requestFactory(factory).build();
     }
 
     @Transactional(readOnly = true)
@@ -73,8 +80,6 @@ public class ConnectorService {
 
     @Transactional
     public ConnectorResponse create(ConnectorRequest request) {
-        validateSecretRef(request.getSecretRef());
-
         TenantServiceEndpoint ep = new TenantServiceEndpoint();
         ep.setTenantCode(request.getTenantCode());
         ep.setConnectorKey(request.getConnectorKey());
@@ -84,6 +89,7 @@ public class ConnectorService {
         ep.setEnvironment(request.getEnvironment());
         ep.setActive(request.isActive());
         ep.setSampleSchema(request.getSampleSchema());
+        ep.setConnectorType(request.getConnectorType() != null ? request.getConnectorType() : "API");
         endpointRepo.save(ep);
 
         TenantApiCredential cred = new TenantApiCredential();
@@ -92,8 +98,10 @@ public class ConnectorService {
         cred.setCredentialKey(request.getConnectorKey());
         cred.setLabel(request.getDisplayName());
         cred.setAuthScheme(request.getAuthScheme());
-        cred.setSecretRef(request.getSecretRef());
         cred.setHeaderName(request.getHeaderName());
+        if (request.getSecretValue() != null && !request.getSecretValue().isBlank()) {
+            cred.setSecretValue(encryptionService.encrypt(request.getSecretValue()));
+        }
         credentialRepo.save(cred);
 
         return toResponse(ep, cred);
@@ -108,16 +116,16 @@ public class ConnectorService {
         ep.setBaseUrl(request.getBaseUrl());
         ep.setEnvironment(request.getEnvironment());
         ep.setActive(request.isActive());
+        if (request.getConnectorType() != null) ep.setConnectorType(request.getConnectorType());
         endpointRepo.save(ep);
 
         TenantApiCredential cred = findCredential(tenantCode, connectorKey);
         cred.setLabel(request.getDisplayName());
         cred.setAuthScheme(request.getAuthScheme());
-        if (request.getSecretRef() != null && !request.getSecretRef().isBlank()) {
-            validateSecretRef(request.getSecretRef());
-            cred.setSecretRef(request.getSecretRef());
-        }
         cred.setHeaderName(request.getHeaderName());
+        if (request.getSecretValue() != null && !request.getSecretValue().isBlank()) {
+            cred.setSecretValue(encryptionService.encrypt(request.getSecretValue()));
+        }
         credentialRepo.save(cred);
 
         return toResponse(ep, cred);
@@ -137,34 +145,165 @@ public class ConnectorService {
         return response;
     }
 
+    @Transactional
+    public ConnectorResponse updateEndpointSchema(String tenantCode, Long endpointId, String sampleSchema) {
+        TenantServiceEndpoint ep = endpointRepo.findById(endpointId)
+            .orElseThrow(() -> new NoSuchElementException("Endpoint not found: " + endpointId));
+        if (!ep.getTenantCode().equals(tenantCode)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Endpoint does not belong to tenant");
+        }
+        ep.setSampleSchema(sampleSchema);
+        endpointRepo.save(ep);
+        TenantApiCredential cred = findCredential(tenantCode, ep.getConnectorKey());
+        CompletableFuture.runAsync(() -> notifyEngineCache(tenantCode, ep.getConnectorKey()));
+        return toResponse(ep, cred);
+    }
+
     @Transactional(readOnly = true)
     public Optional<String> getSchema(String tenantCode, String connectorKey) {
         return endpointRepo.findByTenantCodeAndConnectorKey(tenantCode, connectorKey)
-            .stream()
-            .findFirst()
+            .stream().findFirst()
             .map(TenantServiceEndpoint::getSampleSchema);
     }
 
+    @Transactional
+    public void delete(String tenantCode, String connectorKey) {
+        endpointRepo.findByTenantCodeAndConnectorKey(tenantCode, connectorKey)
+            .forEach(endpointRepo::delete);
+        credentialRepo.findByTenantCodeAndConnectorKey(tenantCode, connectorKey)
+            .ifPresent(credentialRepo::delete);
+        log.info("connector.deleted tenantCode={} connectorKey={}", tenantCode, connectorKey);
+    }
+
+    @Transactional
+    public ConnectorResponse addEndpoint(String tenantCode, String connectorKey, ConnectorEndpointRequest request) {
+        TenantApiCredential cred = findCredential(tenantCode, connectorKey);
+        if (endpointRepo.findByTenantCodeAndConnectorKeyAndEnvironment(tenantCode, connectorKey, request.getEnvironment()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Endpoint for environment '" + request.getEnvironment() + "' already exists");
+        }
+        TenantServiceEndpoint ep = new TenantServiceEndpoint();
+        ep.setTenantCode(tenantCode);
+        ep.setConnectorKey(connectorKey);
+        ep.setServiceKey(connectorKey);
+        ep.setDisplayName(cred.getLabel());
+        ep.setBaseUrl(request.getBaseUrl());
+        ep.setEnvironment(request.getEnvironment());
+        ep.setActive(request.isActive());
+        ep.setConnectorType(request.getConnectorType() != null ? request.getConnectorType() : "API");
+        endpointRepo.save(ep);
+        log.info("connector.endpoint.added tenantCode={} connectorKey={} environment={}", tenantCode, connectorKey, request.getEnvironment());
+        return toResponse(ep, cred);
+    }
+
+    @Transactional
+    public void deleteEndpoint(String tenantCode, Long endpointId) {
+        TenantServiceEndpoint ep = endpointRepo.findById(endpointId)
+            .orElseThrow(() -> new NoSuchElementException("Endpoint not found: " + endpointId));
+        if (!ep.getTenantCode().equals(tenantCode)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Endpoint does not belong to tenant");
+        }
+        List<TenantServiceEndpoint> all = endpointRepo.findByTenantCodeAndConnectorKey(tenantCode, ep.getConnectorKey());
+        if (all.size() <= 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Cannot delete the last endpoint — delete the connector instead");
+        }
+        endpointRepo.delete(ep);
+        log.info("connector.endpoint.deleted tenantCode={} endpointId={}", tenantCode, endpointId);
+    }
+
     public ConnectorTestResponse testCall(String tenantCode, String connectorKey, ConnectorTestRequest request) {
+        TenantServiceEndpoint ep = request.getEnvironment() != null
+            ? endpointRepo.findByTenantCodeAndConnectorKeyAndEnvironment(tenantCode, connectorKey, request.getEnvironment())
+                .orElseThrow(() -> new NoSuchElementException("No " + request.getEnvironment() + " endpoint for: " + connectorKey))
+            : endpointRepo.findByTenantCodeAndConnectorKeyAndEnvironment(tenantCode, connectorKey, "production")
+                .orElseGet(() -> endpointRepo.findByTenantCodeAndConnectorKey(tenantCode, connectorKey)
+                    .stream().findFirst()
+                    .orElseThrow(() -> new NoSuchElementException("Connector not found: " + connectorKey)));
+        TenantApiCredential cred = findCredential(tenantCode, connectorKey);
+        ConnectorTestResponse result = executeProxy(ep, cred, request.getPath(), request.getMethod(), request.getRequestBody());
+        log.info("connector.test.call tenantCode={} connectorKey={} path={} method={} status={} durationMs={} truncated={}",
+            tenantCode, connectorKey, request.getPath(), request.getMethod(),
+            result.getStatusCode(), result.getDurationMs(), result.isTruncated());
+        return result;
+    }
+
+    /**
+     * Outbound proxy used by the portal server-side route and engine ConnectorCallDelegate.
+     * Decrypts stored credential, enforces SSRF guard, and forwards the call to the external connector.
+     */
+    public ConnectorTestResponse callConnector(String tenantCode, String connectorKey,
+                                               String path, String method, String requestBody) {
         TenantServiceEndpoint ep = endpointRepo.findByTenantCodeAndConnectorKey(tenantCode, connectorKey)
             .stream().findFirst()
             .orElseThrow(() -> new NoSuchElementException("Connector not found: " + connectorKey));
         TenantApiCredential cred = findCredential(tenantCode, connectorKey);
+        ConnectorTestResponse result = executeProxy(ep, cred, path, method, requestBody);
+        log.info("connector.call tenantCode={} connectorKey={} path={} method={} status={} durationMs={}",
+            tenantCode, connectorKey, path, method, result.getStatusCode(), result.getDurationMs());
+        return result;
+    }
 
-        String fullUrl = ep.getBaseUrl() + request.getPath();
+    /**
+     * Registers a pre-hashed API key in ERP and stores the encrypted raw key for outbound calls.
+     * Validates that SHA-256(rawKey) == keyHash before calling ERP (defense in depth).
+     * The user's JWT is forwarded to ERP so tenantId is extracted from the token there.
+     */
+    @Transactional
+    public void registerApiKey(String tenantCode, String connectorKey,
+                               ConnectorApiKeyRequest request, String bearerToken) {
+        String expectedHash = sha256Hex(request.getRawKey());
+        if (!expectedHash.equalsIgnoreCase(request.getKeyHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "keyHash does not match SHA-256 of rawKey");
+        }
+
+        Map<String, String> erpPayload = Map.of(
+            "keyHash", request.getKeyHash(),
+            "name", request.getKeyName(),
+            "tenantId", tenantCode
+        );
+        try {
+            erpRestClient.post()
+                .uri(erpServiceUrl + "/api/v1/api-keys")
+                .header("Authorization", bearerToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(erpPayload)
+                .retrieve()
+                .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("Failed to register API key in ERP for connector '{}': {}", connectorKey, e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "ERP api-key registration failed: " + e.getMessage());
+        }
+
+        TenantApiCredential cred = findCredential(tenantCode, connectorKey);
+        cred.setSecretValue(encryptionService.encrypt(request.getRawKey()));
+        cred.setAuthScheme("API_KEY");
+        credentialRepo.save(cred);
+
+        log.info("connector.api-key.registered tenantCode={} connectorKey={}", tenantCode, connectorKey);
+    }
+
+    private ConnectorTestResponse executeProxy(TenantServiceEndpoint ep, TenantApiCredential cred,
+                                               String path, String method, String requestBody) {
+        String baseUrl = ep.getBaseUrl().endsWith("/") ? ep.getBaseUrl() : ep.getBaseUrl() + "/";
+        String normalizedPath = path.startsWith("/") ? path.substring(1) : path;
+        String fullUrl = baseUrl + normalizedPath;
         ssrfGuard.validateExternal(fullUrl);
 
-        String apiKey = secretsResolver.resolve(cred.getSecretRef());
+        String rawSecret = cred.getSecretValue() != null
+            ? encryptionService.decrypt(cred.getSecretValue())
+            : null;
+
         String authHeader = cred.getHeaderName() != null ? cred.getHeaderName() : "Authorization";
         String authValue = switch (cred.getAuthScheme()) {
             case "NONE" -> null;
-            case "BEARER" -> "Bearer " + apiKey;
-            case "API_KEY" -> apiKey;
-            case "BASIC" -> "Basic " + apiKey;
-            default -> apiKey;
+            case "BEARER" -> rawSecret != null ? "Bearer " + rawSecret : null;
+            case "API_KEY" -> rawSecret;
+            case "BASIC" -> rawSecret != null ? "Basic " + rawSecret : null;
+            default -> rawSecret;
         };
 
-        RestClient restClient = RestClient.builder()
+        RestClient proxyClient = RestClient.builder()
             .requestFactory(new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build()))
             .build();
@@ -172,16 +311,16 @@ public class ConnectorService {
         long start = Instant.now().toEpochMilli();
         final int[] statusHolder = {0};
         final Map<String, String> responseHeaders = new LinkedHashMap<>();
-        final String[] bodyHolder = {""};
 
-        var entity = restClient.method(HttpMethod.valueOf(request.getMethod()))
+        var spec = proxyClient.method(HttpMethod.valueOf(method))
             .uri(fullUrl)
             .headers(headers -> {
-                if (authValue != null) {
-                    headers.set(authHeader, authValue);
-                }
-            })
-            .retrieve()
+                if (authValue != null) headers.set(authHeader, authValue);
+            });
+        if (requestBody != null && !requestBody.isBlank()) {
+            spec = spec.contentType(MediaType.APPLICATION_JSON).body(requestBody);
+        }
+        var entity = spec.retrieve()
             .onStatus(HttpStatusCode::is4xxClientError, (req, res) -> {})
             .onStatus(HttpStatusCode::is5xxServerError, (req, res) -> {})
             .toEntity(byte[].class);
@@ -195,20 +334,27 @@ public class ConnectorService {
         });
         byte[] raw = entity.getBody() != null ? entity.getBody() : new byte[0];
         boolean truncated = raw.length > MAX_RESPONSE_BYTES;
-        bodyHolder[0] = new String(truncated ? Arrays.copyOf(raw, MAX_RESPONSE_BYTES) : raw, StandardCharsets.UTF_8);
-
-        long durationMs = Instant.now().toEpochMilli() - start;
-        log.info("connector.test.call tenantCode={} connectorKey={} path={} method={} status={} durationMs={} truncated={}",
-            tenantCode, connectorKey, request.getPath(), request.getMethod(),
-            statusHolder[0], durationMs, truncated);
+        String body = new String(truncated ? Arrays.copyOf(raw, MAX_RESPONSE_BYTES) : raw, StandardCharsets.UTF_8);
 
         return ConnectorTestResponse.builder()
             .statusCode(statusHolder[0])
             .headers(responseHeaders)
-            .body(bodyHolder[0])
+            .body(body)
             .truncated(truncated)
-            .durationMs(durationMs)
+            .durationMs(Instant.now().toEpochMilli() - start)
             .build();
+    }
+
+    private static String sha256Hex(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(64);
+            for (byte b : hash) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Exception e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -226,22 +372,11 @@ public class ConnectorService {
                 .queryParam("tenantCode", tenantCode)
                 .queryParam("connectorKey", connectorKey)
                 .toUriString();
-            engineRestClient.post()
-                .uri(uri)
-                .retrieve()
-                .toBodilessEntity();
+            engineRestClient.post().uri(uri).retrieve().toBodilessEntity();
             log.debug("Notified engine to invalidate cache for {}/{}", tenantCode, connectorKey);
         } catch (Exception e) {
             log.warn("Failed to notify engine cache invalidation for {}/{}: {}",
                      tenantCode, connectorKey, e.getMessage());
-        }
-    }
-
-    private void validateSecretRef(String secretRef) {
-        if (!secretsResolver.isKeyAllowed(secretRef)) {
-            throw new IllegalArgumentException(
-                "secretRef '" + secretRef + "' is not in werkflow.secrets.allowed-keys. " +
-                "Add it to the service configuration before registering this connector.");
         }
     }
 
@@ -260,9 +395,11 @@ public class ConnectorService {
             .baseUrl(ep.getBaseUrl())
             .environment(ep.getEnvironment())
             .active(ep.isActive())
+            .connectorType(ep.getConnectorType())
             .authScheme(cred.getAuthScheme())
             .headerName(cred.getHeaderName())
             .sampleSchema(ep.getSampleSchema())
+            .hasSecret(cred.getSecretValue() != null && !cred.getSecretValue().isBlank())
             .createdAt(ep.getCreatedAt())
             .updatedAt(ep.getUpdatedAt())
             .build();
