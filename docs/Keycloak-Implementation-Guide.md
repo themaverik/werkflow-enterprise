@@ -707,12 +707,61 @@ Set on user's Attributes tab:
 - `doa_level`: Delegation of Authority level (1-4)
 - `is_poc`: Point of Contact flag
 
+### Service Account — Admin API Access
+
+The admin service calls the Keycloak Admin API to list realm roles for tenant setup dropdowns (`GET /api/v1/keycloak/realm-roles`). It authenticates using the `werkflow-portal` client's service account via client credentials (not a user token).
+
+**How it works:**
+
+1. Admin service calls `POST /realms/werkflow/protocol/openid-connect/token` with `grant_type=client_credentials` using the `werkflow-portal` client ID and secret.
+2. It uses that token to call `GET /admin/realms/werkflow/roles` — the Keycloak Admin API.
+3. The response is filtered (removes `offline_access`, `uma_authorization`, `default-roles-*`) and returned as `{ "roles": [...] }`.
+
+**Required setup:** The `werkflow-portal` service account must be granted two roles from the `realm-management` client:
+
+| Role | Purpose |
+|------|---------|
+| `view-realm` | Read realm configuration — roles, clients, identity providers |
+| `query-users` | List and search users (needed for future user-lookup features) |
+
+These are already declared in `infrastructure/keycloak/realms/werkflow-realm.json`. However, **Keycloak only applies the realm JSON on first boot** — if the Keycloak postgres volume already exists from a previous start, the running instance will not pick up changes to the JSON automatically.
+
+**To grant manually on a running instance:**
+
+1. Open Keycloak Admin Console (`http://localhost:8090`)
+2. Select the **werkflow** realm
+3. Go to **Clients** → `werkflow-portal` → **Service Account Roles** tab
+4. Click **Assign role** → filter by client: `realm-management`
+5. Select `view-realm` and `query-users` → **Assign**
+
+No restart required — changes take effect immediately.
+
+**Environment variables (admin service):**
+
+| Variable | Value | Notes |
+|----------|-------|-------|
+| `KEYCLOAK_ADMIN_URL` | `http://keycloak:8080` | Internal Docker URL for Admin API calls |
+| `KEYCLOAK_URL` | `http://localhost:8090` | External URL for token issuer validation |
+| `KEYCLOAK_CLIENT_ID` | `werkflow-portal` | Client used for service account credentials |
+| `KEYCLOAK_CLIENT_SECRET` | (32-char secret) | Must match `secret` in `werkflow-realm.json` exactly |
+
+**Diagnosing failures:**
+
+| Admin service log | Meaning | Fix |
+|-------------------|---------|-----|
+| `401 Unauthorized` | Wrong client secret | Check `KEYCLOAK_CLIENT_SECRET` matches realm.json (full 32 chars); rebuild admin service |
+| `403 Forbidden: unknown_error` | Token valid but service account lacks permissions | Assign `view-realm` + `query-users` via Keycloak Admin Console |
+| `Connection refused` | Wrong `KEYCLOAK_ADMIN_URL` | Must be internal Docker hostname (`http://keycloak:8080`), not `localhost` |
+
+The UI symptom in all three cases is the same — realm roles dropdown shows empty — because `KeycloakUserService.listRealmRoles()` catches all exceptions and returns an empty list to avoid breaking the endpoint.
+
 ### Common Troubleshooting
 
 - **401 after login**: Check user has required roles assigned
 - **Token issuer mismatch**: Verify `KEYCLOAK_ISSUER` env var matches realm URL
 - **Redirect loop**: Check Valid Redirect URIs includes `http://localhost:4000/*`
 - **Client not found**: Verify `werkflow-portal` client exists in realm
+- **Realm roles dropdown empty**: See Service Account — Admin API Access section above
 
 ---
 
