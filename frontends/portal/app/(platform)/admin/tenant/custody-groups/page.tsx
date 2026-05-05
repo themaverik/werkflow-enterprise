@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { useAuthorization } from '@/lib/auth/use-authorization'
+import { Info } from 'lucide-react'
 
 interface CustodyMapping {
   id: string
@@ -47,6 +48,22 @@ export default function CustodyGroupsPage() {
         <h1 className="text-2xl font-bold text-foreground">Custody Groups</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Custody owner to candidate group mappings from ERP.</p>
       </div>
+
+      <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3.5 text-sm">
+        <Info size={15} className="mt-0.5 shrink-0 text-muted-foreground" strokeWidth={1.8} />
+        <div className="space-y-1.5 text-muted-foreground text-xs leading-relaxed">
+          <p>
+            <span className="font-semibold text-foreground">Candidate Groups</span> — Flowable task assignment pools.
+            Determine who can <em>claim and complete</em> a task. Configured via Role Mappings (Tier 1 &amp; Tier 2).
+          </p>
+          <p>
+            <span className="font-semibold text-foreground">Custody Groups</span> — Accountability ownership.
+            The named steward responsible for a process instance (e.g. Finance Director). A custodian maps to the
+            groups that act on their behalf in DOA workflows. Stored in ERP.
+          </p>
+        </div>
+      </div>
+
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <table className="w-full text-sm" aria-label="Custody group mappings">
           <thead>
