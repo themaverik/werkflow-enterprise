@@ -122,6 +122,17 @@
         "workflow-designer",
         "doa_approver_level2"
       ]
+    },
+    {
+      "username": "service-account-werkflow-portal",
+      "enabled": true,
+      "serviceAccountClientId": "werkflow-portal",
+      "clientRoles": {
+        "realm-management": [
+          "view-realm",
+          "query-users"
+        ]
+      }
     }
   ]
 }
