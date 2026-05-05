@@ -2,12 +2,15 @@ package com.werkflow.admin.controller;
 
 import com.werkflow.admin.dto.RoleGroupMappingRequest;
 import com.werkflow.admin.dto.RoleGroupMappingResponse;
+import com.werkflow.admin.security.JwtClaimsExtractor;
 import com.werkflow.admin.service.RoleGroupMappingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,11 +22,18 @@ import java.util.Map;
 public class RoleGroupMappingController {
 
     private final RoleGroupMappingService service;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
+
+    private String resolveTenant(String tenantCode, Jwt jwt) {
+        return (tenantCode != null && !tenantCode.isBlank()) ? tenantCode : jwtClaimsExtractor.getTenantId(jwt);
+    }
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<RoleGroupMappingResponse>> list(@RequestParam String tenantCode) {
-        return ResponseEntity.ok(service.listByTenant(tenantCode));
+    public ResponseEntity<List<RoleGroupMappingResponse>> list(
+            @RequestParam(required = false) String tenantCode,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(service.listByTenant(resolveTenant(tenantCode, jwt)));
     }
 
     /**
@@ -31,8 +41,10 @@ public class RoleGroupMappingController {
      */
     @GetMapping("/by-role")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Map<String, List<String>>> byRole(@RequestParam String tenantCode) {
-        return ResponseEntity.ok(service.getGroupsByRole(tenantCode));
+    public ResponseEntity<Map<String, List<String>>> byRole(
+            @RequestParam(required = false) String tenantCode,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(service.getGroupsByRole(resolveTenant(tenantCode, jwt)));
     }
 
     @PostMapping

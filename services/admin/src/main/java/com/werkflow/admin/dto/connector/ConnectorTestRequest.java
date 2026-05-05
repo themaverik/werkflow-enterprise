@@ -17,4 +17,8 @@ public class ConnectorTestRequest {
 
     @Size(max = 10240) // 10KB request body limit
     private String requestBody;
+
+    /** Optional — target a specific environment endpoint. Falls back to production → first. */
+    @Pattern(regexp = "development|staging|production")
+    private String environment;
 }

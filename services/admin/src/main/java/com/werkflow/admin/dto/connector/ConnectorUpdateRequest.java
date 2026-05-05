@@ -8,27 +8,26 @@ import lombok.Data;
 @Data
 public class ConnectorUpdateRequest {
 
-    @NotBlank
-    @Size(max = 200)
+    @NotBlank @Size(max = 200)
     private String displayName;
 
-    @NotBlank
-    @Size(max = 500)
+    @NotBlank @Size(max = 500)
     private String baseUrl;
 
-    @NotBlank
-    @Pattern(regexp = "development|staging|production")
+    @NotBlank @Pattern(regexp = "development|staging|production")
     private String environment;
 
     private boolean active = true;
 
-    @NotBlank
-    @Pattern(regexp = "API_KEY|BEARER|BASIC|OAUTH2_CLIENT_CREDENTIALS|NONE")
+    @Pattern(regexp = "API|WEBHOOK|MCP|OTHER")
+    private String connectorType;
+
+    @NotBlank @Pattern(regexp = "API_KEY|BEARER|BASIC|OAUTH2_CLIENT_CREDENTIALS|NONE")
     private String authScheme;
 
-    /** If blank, the existing secretRef is preserved. */
-    @Size(max = 200)
-    private String secretRef;
+    /** If blank, the existing secretValue is preserved. */
+    @Size(max = 500)
+    private String secretValue;
 
     @Size(max = 100)
     private String headerName;

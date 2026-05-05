@@ -2,6 +2,7 @@ package com.werkflow.admin.controller;
 
 import com.werkflow.admin.dto.ConfigVarRequest;
 import com.werkflow.admin.dto.ConfigVarResponse;
+import com.werkflow.admin.security.JwtClaimsExtractor;
 import com.werkflow.admin.service.ConfigurationVariableService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,14 +23,24 @@ import java.util.Map;
 public class ConfigurationVariableController {
 
     private final ConfigurationVariableService service;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
+
+    private String resolveTenant(String tenantCode, Jwt jwt) {
+        return (tenantCode != null && !tenantCode.isBlank()) ? tenantCode : jwtClaimsExtractor.getTenantId(jwt);
+    }
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<ConfigVarResponse>> list(
-            @RequestParam String tenantCode,
+            @RequestParam(required = false, defaultValue = "") String tenantCode,
+            @RequestParam(required = false) String type,
             @AuthenticationPrincipal Jwt jwt) {
-        enforceTenantOwnership(jwt, tenantCode);
-        return ResponseEntity.ok(service.listByTenant(tenantCode));
+        String resolved = resolveTenant(tenantCode, jwt);
+        enforceTenantOwnership(jwt, resolved);
+        List<ConfigVarResponse> result = (type != null && !type.isBlank())
+            ? service.listByTenantAndType(resolved, type)
+            : service.listByTenant(resolved);
+        return ResponseEntity.ok(result);
     }
 
     /** Returns key→value map for FEEL context injection (internal use by engine).
@@ -38,24 +49,30 @@ public class ConfigurationVariableController {
     @GetMapping("/map")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, String>> varMap(
-            @RequestParam String tenantCode,
+            @RequestParam(required = false, defaultValue = "") String tenantCode,
             @AuthenticationPrincipal Jwt jwt) {
-        enforceTenantOwnership(jwt, tenantCode);
-        return ResponseEntity.ok(service.getVarMap(tenantCode));
+        String resolved = resolveTenant(tenantCode, jwt);
+        enforceTenantOwnership(jwt, resolved);
+        return ResponseEntity.ok(service.getVarMap(resolved));
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<ConfigVarResponse> create(@Valid @RequestBody ConfigVarRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
+    public ResponseEntity<ConfigVarResponse> create(
+            @Valid @RequestBody ConfigVarRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        ConfigVarRequest resolved = resolveRequestTenant(request, jwt);
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(resolved));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<ConfigVarResponse> update(
             @PathVariable Long id,
-            @Valid @RequestBody ConfigVarRequest request) {
-        return ResponseEntity.ok(service.update(id, request));
+            @Valid @RequestBody ConfigVarRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        ConfigVarRequest resolved = resolveRequestTenant(request, jwt);
+        return ResponseEntity.ok(service.update(id, resolved));
     }
 
     @DeleteMapping("/{id}")
@@ -63,6 +80,13 @@ public class ConfigurationVariableController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private ConfigVarRequest resolveRequestTenant(ConfigVarRequest request, Jwt jwt) {
+        if (request.tenantCode() != null && !request.tenantCode().isBlank()) return request;
+        return new ConfigVarRequest(
+            jwtClaimsExtractor.getTenantId(jwt),
+            request.varKey(), request.varValue(), request.varType(), request.description());
     }
 
     /**
@@ -79,7 +103,7 @@ public class ConfigurationVariableController {
                 return; // SUPER_ADMIN bypass
             }
         }
-        String callerTenant = jwt.getClaimAsString("tenant_code");
+        String callerTenant = jwt.getClaimAsString("tenant_id");
         if (callerTenant == null || callerTenant.isBlank()) {
             callerTenant = "default";
         }
