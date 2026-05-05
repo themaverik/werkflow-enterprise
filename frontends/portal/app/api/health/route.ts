@@ -24,16 +24,14 @@ async function checkService(name: string, url: string): Promise<ServiceHealth> {
 export async function GET() {
   const engineUrl = process.env.NEXT_PUBLIC_ENGINE_API_URL ?? 'http://localhost:8081'
   const adminUrl  = process.env.NEXT_PUBLIC_ADMIN_SERVICE_URL ?? 'http://localhost:8083'
-  const erpUrl    = process.env.NEXT_PUBLIC_ERP_API_URL ?? 'http://localhost:8084'
 
-  const [engine, admin, erp] = await Promise.all([
+  const [engine, admin] = await Promise.all([
     checkService('engine', engineUrl),
     checkService('admin', adminUrl),
-    checkService('erp', erpUrl),
   ])
 
   const portal: ServiceHealth = { name: 'portal', status: 'UP', url: 'self' }
-  const services = [portal, engine, admin, erp]
+  const services = [portal, engine, admin]
   const overallUp = services.every((s) => s.status === 'UP')
 
   return NextResponse.json(

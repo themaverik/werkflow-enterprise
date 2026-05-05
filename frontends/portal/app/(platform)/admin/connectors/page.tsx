@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,12 +14,39 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { RefreshCw, Plus, Pencil, FlaskConical } from 'lucide-react'
+import { RefreshCw, Plus, Pencil, FlaskConical, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { listConnectors, type ConnectorResponse } from '@/lib/api/connectors'
+import { listConnectors, deleteConnector, type ConnectorResponse } from '@/lib/api/connectors'
 import { ConnectorForm } from '@/components/admin/ConnectorForm'
 
-const TENANT_CODE = process.env.NEXT_PUBLIC_TENANT_CODE ?? 'default'
+interface ConnectorGroup {
+  connectorKey: string
+  displayName: string
+  endpoints: ConnectorResponse[]
+  primary: ConnectorResponse
+}
+
+function groupConnectors(flat: ConnectorResponse[]): ConnectorGroup[] {
+  const map = new Map<string, ConnectorResponse[]>()
+  for (const c of flat) {
+    const list = map.get(c.connectorKey) ?? []
+    list.push(c)
+    map.set(c.connectorKey, list)
+  }
+  return Array.from(map.entries()).map(([key, endpoints]) => {
+    const primary =
+      endpoints.find(e => e.environment === 'production') ??
+      endpoints.find(e => e.environment === 'staging') ??
+      endpoints[0]
+    return { connectorKey: key, displayName: primary.displayName, endpoints, primary }
+  })
+}
+
+const envVariant = (env: string): 'default' | 'warning' | 'secondary' => {
+  if (env === 'production') return 'default'
+  if (env === 'staging') return 'warning'
+  return 'secondary'
+}
 
 export default function ConnectorsPage() {
   const t = useTranslations('admin.connectors')
@@ -27,30 +54,35 @@ export default function ConnectorsPage() {
   const queryClient = useQueryClient()
 
   const [createOpen, setCreateOpen] = useState(false)
-  const [editingConnector, setEditingConnector] = useState<ConnectorResponse | null>(null)
+  const [editingGroup, setEditingGroup] = useState<ConnectorGroup | null>(null)
   const [editDefaultTab, setEditDefaultTab] = useState<'general' | 'auth' | 'contract' | 'test'>('general')
+  const [deletingGroup, setDeletingGroup] = useState<ConnectorGroup | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const { data: connectors, isLoading, error, refetch } = useQuery({
-    queryKey: ['connectors', TENANT_CODE],
-    queryFn: () => listConnectors(TENANT_CODE),
+    queryKey: ['connectors'],
+    queryFn: () => listConnectors(),
     enabled: status === 'authenticated',
     retry: 2,
   })
 
-  const handleCreated = () => {
-    setCreateOpen(false)
-    queryClient.invalidateQueries({ queryKey: ['connectors', TENANT_CODE] })
-  }
+  const groups = useMemo(() => groupConnectors(connectors ?? []), [connectors])
 
-  const handleUpdated = () => {
-    setEditingConnector(null)
-    queryClient.invalidateQueries({ queryKey: ['connectors', TENANT_CODE] })
-  }
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['connectors'] })
 
-  const environmentVariant = (env: string): 'default' | 'warning' | 'secondary' => {
-    if (env === 'production') return 'default'
-    if (env === 'staging') return 'warning'
-    return 'secondary'
+  const handleCreated = () => { setCreateOpen(false); invalidate() }
+  const handleUpdated = () => { invalidate() }
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingGroup) return
+    setDeleteLoading(true)
+    try {
+      await deleteConnector(deletingGroup.connectorKey)
+      invalidate()
+    } finally {
+      setDeleteLoading(false)
+      setDeletingGroup(null)
+    }
   }
 
   return (
@@ -77,7 +109,7 @@ export default function ConnectorsPage() {
                 <DialogTitle>{t('registerConnector')}</DialogTitle>
                 <DialogDescription>{t('registerDesc')}</DialogDescription>
               </DialogHeader>
-              <ConnectorForm tenantCode={TENANT_CODE} onSaved={handleCreated} />
+              <ConnectorForm onSaved={handleCreated} />
             </DialogContent>
           </Dialog>
         </div>
@@ -109,7 +141,7 @@ export default function ConnectorsPage() {
         </Card>
       )}
 
-      {!isLoading && !error && connectors?.length === 0 && (
+      {!isLoading && !error && groups.length === 0 && (
         <Card>
           <CardContent className="pt-6 text-center py-12">
             <p className="text-muted-foreground">{t('noConnectors')}</p>
@@ -120,53 +152,70 @@ export default function ConnectorsPage() {
         </Card>
       )}
 
-      {!isLoading && !error && connectors && connectors.length > 0 && (
+      {!isLoading && !error && groups.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {connectors.map((connector) => (
-            <Card key={connector.endpointId} className="flex flex-col">
+          {groups.map((group) => (
+            <Card key={group.connectorKey} className="flex flex-col">
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-base leading-tight">{connector.displayName}</CardTitle>
+                  <CardTitle className="text-base leading-tight">{group.displayName}</CardTitle>
                   <div className="flex items-center gap-1 shrink-0">
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7"
                       title="Edit connector"
-                      onClick={() => { setEditDefaultTab('general'); setEditingConnector(connector) }}
+                      onClick={() => { setEditDefaultTab('general'); setEditingGroup(group) }}
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    <div className="flex gap-1">
-                      <Badge variant={environmentVariant(connector.environment)}>
-                        {connector.environment}
-                      </Badge>
-                      <Badge variant={connector.active ? 'success' : 'secondary'}>
-                        {connector.active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      title="Delete connector"
+                      onClick={() => setDeletingGroup(group)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
                 <CardDescription className="mt-1">
-                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{connector.connectorKey}</code>
+                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{group.connectorKey}</code>
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex-1 space-y-2 text-sm">
-                <div className="text-muted-foreground truncate" title={connector.baseUrl}>
-                  {connector.baseUrl}
+
+              <CardContent className="flex-1 space-y-3 text-sm">
+                {/* Endpoint list */}
+                <div className="space-y-1.5">
+                  {group.endpoints.map((ep) => (
+                    <div key={ep.endpointId} className="flex items-center gap-2">
+                      <Badge variant={envVariant(ep.environment)} className="w-24 justify-center shrink-0">
+                        {ep.environment}
+                      </Badge>
+                      <span
+                        className="text-xs text-muted-foreground truncate flex-1 font-mono"
+                        title={ep.baseUrl}
+                      >
+                        {ep.baseUrl}
+                      </span>
+                      {!ep.active && <Badge variant="secondary">Off</Badge>}
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center justify-between">
+
+                <div className="flex items-center justify-between pt-1">
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline">{connector.authScheme}</Badge>
-                    {connector.sampleSchema !== null && (
-                      <Badge variant="secondary">Contract captured</Badge>
+                    <Badge variant="outline">{group.primary.authScheme}</Badge>
+                    {group.primary.sampleSchema !== null && (
+                      <Badge variant="secondary">Contract</Badge>
                     )}
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
                     className="h-7 text-xs gap-1"
-                    onClick={() => { setEditDefaultTab('test'); setEditingConnector(connector) }}
+                    onClick={() => { setEditDefaultTab('test'); setEditingGroup(group) }}
                   >
                     <FlaskConical className="h-3 w-3" />
                     Test
@@ -178,21 +227,40 @@ export default function ConnectorsPage() {
         </div>
       )}
 
-      {/* Edit / Test dialog */}
-      <Dialog open={!!editingConnector} onOpenChange={(open) => !open && setEditingConnector(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      {/* Delete confirmation */}
+      <Dialog open={!!deletingGroup} onOpenChange={(open) => !open && setDeletingGroup(null)}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {editingConnector?.displayName}
-            </DialogTitle>
+            <DialogTitle>Delete {deletingGroup?.displayName}?</DialogTitle>
             <DialogDescription>
-              <code className="text-xs">{editingConnector?.connectorKey}</code>
+              This permanently removes all endpoints and the stored credential for{' '}
+              <code className="font-mono text-xs">{deletingGroup?.connectorKey}</code>.
+              Any BPMN processes referencing this connector will fail at runtime.
             </DialogDescription>
           </DialogHeader>
-          {editingConnector && (
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setDeletingGroup(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={deleteLoading}>
+              {deleteLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit / Test dialog */}
+      <Dialog open={!!editingGroup} onOpenChange={(open) => !open && setEditingGroup(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingGroup?.displayName}</DialogTitle>
+            <DialogDescription>
+              <code className="text-xs">{editingGroup?.connectorKey}</code>
+            </DialogDescription>
+          </DialogHeader>
+          {editingGroup && (
             <ConnectorForm
-              tenantCode={TENANT_CODE}
-              existingConnector={editingConnector}
+              existingConnector={editingGroup.primary}
+              allEndpoints={editingGroup.endpoints}
               defaultTab={editDefaultTab}
               onSaved={handleUpdated}
             />

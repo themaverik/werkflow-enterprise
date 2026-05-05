@@ -24,7 +24,10 @@ async function fetchConfigVars(type: string, token: string): Promise<ConfigVar[]
 }
 
 async function upsertConfigVar(body: ConfigVar, token: string): Promise<ConfigVar> {
-  const res = await fetch('/api/proxy/admin/config/vars', {
+  const url = body.id
+    ? `/api/proxy/admin/config/vars/${body.id}`
+    : '/api/proxy/admin/config/vars'
+  const res = await fetch(url, {
     method: body.id ? 'PUT' : 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(body),

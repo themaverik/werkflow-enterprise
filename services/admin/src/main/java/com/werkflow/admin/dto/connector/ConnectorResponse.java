@@ -15,8 +15,10 @@ public class ConnectorResponse {
     private String baseUrl;
     private String environment;
     private boolean active;
+    private String connectorType;
     private String authScheme;
     private String headerName;
+    private boolean hasSecret;
     private String sampleSchema;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

@@ -22,8 +22,6 @@ export default function EditFormPage() {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [showDataSources, setShowDataSources] = useState(false)
   const [pendingConfirm, setPendingConfirm] = useState<{ title: string; description: string; onConfirm: () => void } | null>(null)
-  const TENANT_CODE = process.env.NEXT_PUBLIC_TENANT_CODE ?? 'default'
-
   const { data: formDef, isLoading, error } = useQuery({
     queryKey: ['form', formKey],
     queryFn: () => getFormDefinition(formKey),
@@ -37,8 +35,8 @@ export default function EditFormPage() {
   })
 
   const { data: connectors = [] } = useQuery<ConnectorResponse[]>({
-    queryKey: ['connectors', TENANT_CODE],
-    queryFn: () => listConnectors(TENANT_CODE),
+    queryKey: ['connectors'],
+    queryFn: () => listConnectors(),
     enabled: status === 'authenticated',
   })
 

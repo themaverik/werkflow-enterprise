@@ -71,6 +71,7 @@ public class RoleGroupMappingService {
             mapping.getTenantCode(),
             mapping.getRoleName(),
             mapping.getGroupName(),
+            2,                        // tier=2: DB-stored custom group mappings
             mapping.getCreatedAt()
         );
     }

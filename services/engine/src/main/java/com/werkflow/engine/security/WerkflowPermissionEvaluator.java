@@ -3,6 +3,7 @@ package com.werkflow.engine.security;
 import com.werkflow.engine.client.AdminServiceClient;
 import com.werkflow.engine.security.guard.DomainGuard;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.PermissionEvaluator;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -16,6 +17,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Component
+@Slf4j
 public class WerkflowPermissionEvaluator implements PermissionEvaluator {
 
     private final PermissionConfig permissionConfig;
@@ -54,10 +56,17 @@ public class WerkflowPermissionEvaluator implements PermissionEvaluator {
         Set<String> yamlPerms = permissionConfig.getPermissionsForRoles(roles);
         if (yamlPerms.contains(permission.toString())) return true;
         // Fall back to tenant-specific DB permissions
-        String tenantCode = jwt.getClaimAsString("tenant_code");
+        // JWT uses "tenant_id" claim (not "tenant_code") per Keycloak mapper config
+        String tenantCode = jwt.getClaimAsString("tenant_id");
         if (tenantCode == null || tenantCode.isBlank()) tenantCode = "default";
-        Set<String> tenantPerms = adminServiceClient.getTenantRolePermissions(tenantCode, roles);
-        return tenantPerms.contains(permission.toString());
+        try {
+            Set<String> tenantPerms = adminServiceClient.getTenantRolePermissions(tenantCode, roles);
+            return tenantPerms.contains(permission.toString());
+        } catch (Exception e) {
+            log.warn("Failed to fetch tenant permissions from admin service for tenant '{}': {}",
+                tenantCode, e.getMessage());
+            return false;
+        }
     }
 
     /**

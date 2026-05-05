@@ -175,6 +175,17 @@ public class JwtClaimsExtractor {
     }
 
     /**
+     * Get tenant ID from JWT token.
+     * Reads the "tenant_id" claim emitted by the Keycloak hardcoded-claim mapper.
+     * Falls back to "default" if the claim is absent (defensive — should not happen
+     * once the realm mapper is deployed, but prevents a hard failure on in-flight tokens).
+     */
+    public String getTenantId(Jwt jwt) {
+        String tenantId = jwt.getClaimAsString("tenant_id");
+        return (tenantId != null && !tenantId.isBlank()) ? tenantId : "default";
+    }
+
+    /**
      * Get all roles from JWT token
      */
     @SuppressWarnings("unchecked")
