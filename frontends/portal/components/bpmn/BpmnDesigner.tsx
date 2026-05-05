@@ -148,8 +148,10 @@ function validateActionBlocks(modeler: any): string[] {
       }
 
       if (actionType === 'EXTERNAL_API_CALL') {
-        if (!bo.get('ab:url')) {
-          errors.push(`${label}: External API task is missing a URL.`)
+        const hasUrl = !!bo.get('ab:url')
+        const hasConnector = !!bo.get('ab:connector')
+        if (!hasUrl && !hasConnector) {
+          errors.push(`${label}: External API task requires either a connector or a URL.`)
         }
       }
 
