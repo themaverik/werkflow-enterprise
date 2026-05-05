@@ -2,7 +2,7 @@
 
 **Repo scope**: Enterprise-only engine, admin-service, and portal features
 **Master Roadmap**: `~/Projects/werkflow-platform/docs/Roadmap.md` (authoritative for all future tasks)
-**Last Updated**: 2026-05-02 (session end)
+**Last Updated**: 2026-05-05 (session end)
 **Target**: Internal Enterprise Demo — June 2026
 
 > Future tasks in this file are synced from the master Roadmap. Do not add tasks here without adding them to master first.
@@ -15,9 +15,9 @@
 |------|--------|
 | E2E quality gate | 7/7 specs passing |
 | ADRs | ADR-001 through ADR-009 written |
-| Active milestone | M4 COMPLETE (7aac042); M4 UI polish 2026-05-02 done |
-| Next session | M7 — CI/CD; merge feature/m4-ui-overhaul → main first |
-| Branch | feature/m4-ui-overhaul (ready to merge) |
+| Active milestone | M4 Group 3a — Tenant Setup UI (role-mappings + approval-authority done 2026-05-05) |
+| Next session | Departments ERP redirect; Tenant Setup checklist widget; M7 CI/CD |
+| Branch | feature/tenant-config-ui (in progress) |
 
 ---
 
@@ -133,12 +133,15 @@ All screens must be implemented against the approved Figma-export HTML designs:
 
 ### Group 3a — Tenant Setup UI (ADR-006)
 
-- [ ] `Tenant Setup` sidebar section (ADMIN/SUPER_ADMIN guard)
-- [ ] `/admin/tenant/approval-authority` — two-layer configVars UI: L1–L4 threshold amounts + role→level mapping (ADR-002)
-- [ ] `/admin/tenant/role-mappings` — Tier 1 read-only + Tier 2 editable rows (ADR-003)
-- [ ] `/admin/tenant/departments` — reads from ERP; redirect from `/admin/departments` (ADR-005)
-- [ ] `/admin/tenant/custody-groups` — reads from ERP; redirect from `/admin/custody` (ADR-004)
+- [x] `Tenant Setup` sidebar section (ADMIN/SUPER_ADMIN guard) — reordered: Role Mappings → Approval Authority → Departments → Custody Groups *(commit: 9d1d88a)*
+- [x] `/admin/tenant/role-mappings` — Tier 1 read-only from engine YAML endpoint; Tier 2 with Keycloak realm-roles dropdown (ADR-003) *(commit: 54678f4)*
+- [x] `/admin/tenant/approval-authority` — dynamic L1–L10 levels; 1:1 role→level with KC + level dropdowns; delete per row (ADR-002) *(commit: 54678f4)*
+- [x] `/admin/tenant/custody-groups` — reads from ERP; info tip (Candidate Groups vs Custody Groups) *(commit: 9d1d88a)*
+- [~] `/admin/tenant/departments` — reads from ERP; redirect from `/admin/departments` (ADR-005) — page exists, redirect pending
 - [ ] Tenant Setup checklist widget on `/admin/dashboard`
+- [x] Engine: `GET /api/v1/config/flowable-role-mappings` — returns YAML Tier-1 mappings as JSON *(commit: cbe28db)*
+- [x] Admin: `GET /api/v1/keycloak/realm-roles` — lists KC realm roles via client-credentials Admin API *(commit: cbe28db)*
+- [x] Portal: engine proxy route `/api/proxy/engine/[...path]` *(commit: cbe28db)*
 
 ### Group 3d — Form Editor Improvements (ADR-007)
 
