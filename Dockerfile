@@ -16,22 +16,26 @@ WORKDIR /build
 COPY shared/common/pom.xml shared/common/pom.xml
 COPY shared/common/src shared/common/src
 
-RUN cd shared/common && mvn clean install -DskipTests -B
+RUN --mount=type=cache,target=/root/.m2 \
+    cd shared/common && mvn clean install -DskipTests -B
 
 # Copy and build werkflow-delegates (required by other services)
 COPY shared/delegates/pom.xml shared/delegates/pom.xml
 COPY shared/delegates/src shared/delegates/src
 
 # Build and install werkflow-delegates to local maven repo
-RUN cd shared/delegates && mvn clean install -DskipTests -B
+RUN --mount=type=cache,target=/root/.m2 \
+    cd shared/delegates && mvn clean install -DskipTests -B
 
 # Now copy service poms
 COPY services/engine/pom.xml services/engine/pom.xml
 COPY services/admin/pom.xml services/admin/pom.xml
 
 # Download dependencies for all services (werkflow-common and werkflow-delegates now available locally)
-RUN cd services/engine && mvn dependency:go-offline -B
-RUN cd services/admin && mvn dependency:go-offline -B
+RUN --mount=type=cache,target=/root/.m2 \
+    cd services/engine && mvn dependency:go-offline -B
+RUN --mount=type=cache,target=/root/.m2 \
+    cd services/admin && mvn dependency:go-offline -B
 
 # ================================================================
 # STAGE 2: Engine Service Build
@@ -44,7 +48,8 @@ WORKDIR /build/services/engine
 COPY services/engine/src ./src
 
 # Build the application
-RUN mvn clean package -DskipTests -B
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn clean package -DskipTests -B
 
 # ================================================================
 # STAGE 3: Admin Service Build
@@ -57,7 +62,8 @@ WORKDIR /build/services/admin
 COPY services/admin/src ./src
 
 # Build the application
-RUN mvn clean package -DskipTests -B
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn clean package -DskipTests -B
 
 # ================================================================
 # STAGE 5: Frontend Base - Node.js dependencies
