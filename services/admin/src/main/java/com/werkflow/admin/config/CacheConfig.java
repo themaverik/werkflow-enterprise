@@ -24,6 +24,7 @@ public class CacheConfig {
     public static final String PSS_VISIBILITY_POLICY = "pss.visibilityPolicy";
     public static final String PSS_DEPARTMENTS     = "pss.departments";
     public static final String PSS_TAGS            = "pss.tags";
+    public static final String PSS_LOCALE          = "pss.locale";
 
     @Bean
     public CacheManager cacheManager() {
@@ -34,7 +35,8 @@ public class CacheConfig {
                 PSS_CATEGORIES,
                 PSS_VISIBILITY_POLICY,
                 PSS_DEPARTMENTS,
-                PSS_TAGS
+                PSS_TAGS,
+                PSS_LOCALE
         );
         manager.setCaffeine(Caffeine.newBuilder()
                 .expireAfterWrite(5, TimeUnit.MINUTES)

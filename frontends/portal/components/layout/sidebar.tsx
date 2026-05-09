@@ -9,7 +9,7 @@ import {
   LayoutDashboard, CheckSquare, FileText, BookOpen,
   Workflow, FormInput, GitBranch, Mail,
   Link2, ShieldCheck, Building2, Users, TrendingUp, Activity,
-  BriefcaseBusiness, AlertCircle, Tag, Eye,
+  BriefcaseBusiness, AlertCircle, Tag, Eye, Globe,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -57,9 +57,10 @@ const sidebarSections: SidebarSection[] = [
       { labelKey: 'roleMappings',       href: '/admin/tenant/role-mappings',      icon: Users,             requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'approvalAuthority', href: '/admin/tenant/approval-authority', icon: ShieldCheck,       requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'departments',       href: '/admin/tenant/departments',        icon: Building2,         requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
-      { labelKey: 'custodyGroups',     href: '/admin/tenant/custody-groups',     icon: BriefcaseBusiness, requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'custodyMappings',    href: '/admin/tenant/custody-mappings',   icon: BriefcaseBusiness, requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'categories',        href: '/admin/tenant/categories',         icon: Tag,               requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'visibilityPolicy',  href: '/admin/tenant/visibility-policy',  icon: Eye,               requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'locale',            href: '/admin/tenant/locale',             icon: Globe,             requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
     ],
   },
   {

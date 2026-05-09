@@ -1,6 +1,7 @@
 package com.werkflow.admin.designtime.platform.controller;
 
 import com.werkflow.admin.designtime.platform.dto.*;
+import com.werkflow.admin.designtime.platform.dto.LocaleEntry;
 import com.werkflow.admin.designtime.platform.service.*;
 import com.werkflow.admin.security.JwtClaimsExtractor;
 import jakarta.validation.Valid;
@@ -33,6 +34,7 @@ public class PlatformSemanticsController {
     private final VisibilityPolicyProjector visibilityPolicyProjector;
     private final DepartmentProjector departmentProjector;
     private final ProcessVariableCatalog processVariableCatalog;
+    private final LocaleProjector localeProjector;
     private final JwtClaimsExtractor jwtClaimsExtractor;
 
     /** Full capability discovery — all three designers read this on load. */
@@ -111,6 +113,12 @@ public class PlatformSemanticsController {
     public ResponseEntity<ProcessVariableCatalogDto> processVariables(@AuthenticationPrincipal Jwt jwt) {
         // tenant param unused for static catalog, but JWT is required for auth auditing
         return ResponseEntity.ok(processVariableCatalog.getCatalog());
+    }
+
+    /** Tenant locale configuration — currency, number format, timezone, and date format. */
+    @GetMapping("/locale")
+    public ResponseEntity<LocaleEntry> locale(@AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(localeProjector.project(tenant(jwt)));
     }
 
     private String tenant(Jwt jwt) {

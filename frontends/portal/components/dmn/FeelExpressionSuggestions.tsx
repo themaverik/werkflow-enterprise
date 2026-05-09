@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useFeelExpressions, usePlatformCapabilities } from '@/lib/platform/usePlatformCapabilities'
+import { useFeelExpressions, useLocale, usePlatformCapabilities } from '@/lib/platform/usePlatformCapabilities'
+import { formatCurrency } from '@/lib/locale/currency'
 import { Badge } from '@/components/ui/badge'
 
 /**
@@ -14,6 +15,7 @@ import { Badge } from '@/components/ui/badge'
 export function FeelExpressionSuggestions() {
   const { data: catalog, isError } = useFeelExpressions()
   const { data: capabilities } = usePlatformCapabilities()
+  const { data: locale } = useLocale()
   const [copied, setCopied] = useState<string | null>(null)
 
   const copy = (expr: string) => {
@@ -49,7 +51,7 @@ export function FeelExpressionSuggestions() {
           {catalog!.configVars.monetary.map((entry) => (
             <div key={entry.key} className="space-y-0.5">
               <p className="text-muted-foreground font-medium">
-                {entry.label} ({entry.currency} {entry.value})
+                {entry.label} ({formatCurrency(Number(entry.value), locale)})
               </p>
               {entry.feelExpressions.map((expr) => (
                 <button
