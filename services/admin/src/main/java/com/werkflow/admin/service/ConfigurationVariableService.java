@@ -40,12 +40,10 @@ public class ConfigurationVariableService {
 
     @Transactional
     public ConfigVarResponse create(ConfigVarRequest request) {
-        if (repository.existsByTenantCodeAndVarKey(request.tenantCode(), request.varKey())) {
-            throw new IllegalArgumentException(
-                "Config var already exists: " + request.varKey() + " for tenant " + request.tenantCode()
-                + " — use PUT to update");
-        }
-        return toResponse(repository.save(fromRequest(new ConfigurationVariable(), request)));
+        ConfigurationVariable target = repository
+                .findByTenantCodeAndVarKey(request.tenantCode(), request.varKey())
+                .orElse(new ConfigurationVariable());
+        return toResponse(repository.save(fromRequest(target, request)));
     }
 
     @Transactional

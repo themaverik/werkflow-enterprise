@@ -30,6 +30,21 @@ public class EngineClient {
             new ParameterizedTypeReference<>() {};
 
     /**
+     * Fetches the raw DMN XML for a deployed decision by its key and tenant.
+     * Returns null on failure so callers can degrade gracefully.
+     */
+    public String getDmnDefinitionXml(String tenantId, String dmnKey) {
+        try {
+            String url = engineBaseUrl + "/api/v1/dmn/decisions/{key}/xml?tenantId={tenantId}";
+            return restTemplate.getForObject(url, String.class, dmnKey, tenantId);
+        } catch (Exception e) {
+            log.warn("EngineClient: could not fetch DMN XML for key='{}' tenant='{}' — {}",
+                    dmnKey, tenantId, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Returns Tier 1 YAML role→groups map from the engine config endpoint.
      * Returns an empty map on failure so PSS degrades to Tier 2 only.
      */

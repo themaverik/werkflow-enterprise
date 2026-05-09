@@ -163,6 +163,91 @@ export async function listProcessVariablesAt(
   }
 }
 
+// ==================== FORM FACADE ====================
+
+export interface FormFieldOption {
+  fieldPath: string
+  fieldName: string
+  type: string
+  format: string
+  required: boolean
+}
+
+export async function getFormBindingTargets(
+  processDefId: string,
+  taskId: string
+): Promise<ProcessVariable[]> {
+  try {
+    const res = await adminApiClient.get<{ variables: ProcessVariable[] }>(
+      '/api/v1/design/form/binding-targets',
+      { params: { processDefId, taskId } }
+    )
+    return res.data.variables ?? []
+  } catch (error: unknown) {
+    handleDtdsError(error, `form-binding-targets-${processDefId}-${taskId}`)
+    return []
+  }
+}
+
+export async function getConnectorFormOptions(
+  connectorKey: string,
+  operationId: string
+): Promise<FormFieldOption[]> {
+  try {
+    const res = await adminApiClient.get<FormFieldOption[]>(
+      `/api/v1/design/form/connector-options/${encodeURIComponent(connectorKey)}/${encodeURIComponent(operationId)}`
+    )
+    return res.data ?? []
+  } catch (error: unknown) {
+    handleDtdsError(error, `form-connector-options-${connectorKey}-${operationId}`)
+    return []
+  }
+}
+
+// ==================== DMN FACADE ====================
+
+export interface DmnInputColumn {
+  id: string
+  label: string
+  feelType: string
+}
+
+export interface DmnBindingCandidate {
+  inputId: string
+  inputLabel: string
+  feelType: string
+  candidates: Array<{ name: string; type: string; setByActivity: string; compatible: boolean }>
+}
+
+export async function getDmnDecisionInputs(dmnId: string): Promise<DmnInputColumn[]> {
+  try {
+    const res = await adminApiClient.get<DmnInputColumn[]>(
+      `/api/v1/design/dmn/decisions/${encodeURIComponent(dmnId)}/inputs`
+    )
+    return res.data ?? []
+  } catch (error: unknown) {
+    handleDtdsError(error, `dmn-inputs-${dmnId}`)
+    return []
+  }
+}
+
+export async function getDmnBindingCandidates(
+  processDefId: string,
+  activityId: string,
+  dmnId: string
+): Promise<DmnBindingCandidate[]> {
+  try {
+    const res = await adminApiClient.get<DmnBindingCandidate[]>(
+      '/api/v1/design/dmn/binding-candidates',
+      { params: { processDefId, activityId, dmnId } }
+    )
+    return res.data ?? []
+  } catch (error: unknown) {
+    handleDtdsError(error, `dmn-candidates-${processDefId}-${dmnId}`)
+    return []
+  }
+}
+
 export async function importConnectorFromOpenApi(
   urlOrYaml: string
 ): Promise<ConnectorDefinition> {
