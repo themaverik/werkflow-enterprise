@@ -3,7 +3,6 @@ package com.werkflow.engine.controller;
 import com.werkflow.engine.workflow.FlowableGroupProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,7 +23,6 @@ public class ConfigController {
      * These are deployment-gated; changes require redeployment.
      */
     @GetMapping("/flowable-role-mappings")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> getFlowableRoleMappings() {
         List<Map<String, Object>> mappings = flowableGroupProperties.getRoleMappings()
                 .entrySet().stream()
