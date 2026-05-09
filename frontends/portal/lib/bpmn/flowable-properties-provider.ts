@@ -98,6 +98,16 @@ export function getDmnDecisionOptions(): Array<{ key: string; name: string }> {
 }
 
 /**
+ * Module-level variable for webhook connector options (for Message Event connector picker).
+ * Set from BpmnDesigner.tsx after fetching from DTDS connector list.
+ */
+let connectorOptions: Array<{ key: string; name: string }> = []
+
+export function setConnectorOptions(options: Array<{ key: string; name: string }>) {
+  connectorOptions = options
+}
+
+/**
  * Flowable properties provider for user tasks, start events, and service tasks.
  * Uses built-in SelectEntry / TextFieldEntry Preact components from @bpmn-io/properties-panel
  * so entries render correctly in the properties panel.
@@ -281,6 +291,55 @@ class FlowablePropertiesProvider {
               setValue: (value: string) =>
                 modeling.updateProperties(element, {
                   'flowable:correlationKey': value || undefined,
+                }),
+            },
+          ],
+        })
+      }
+
+      // --- Message Events (Webhook correlation config) ---
+      if (hasMessageDefinition(element)) {
+        groups.splice(generalIdx + 1, 0, {
+          id: 'flowable-message',
+          label: 'Message (Webhook)',
+          entries: [
+            {
+              id: 'webhookConnector',
+              element,
+              component: SelectEntry,
+              isEdited: isSelectEntryEdited,
+              label: translate('Connector'),
+              description: translate('Webhook connector that publishes this message'),
+              getValue: () => element.businessObject.get('flowable:webhookConnector') || '',
+              setValue: (value: string) =>
+                modeling.updateProperties(element, {
+                  'flowable:webhookConnector': value || undefined,
+                }),
+              getOptions: () => {
+                const options: Array<{ value: string; label: string }> = [
+                  { value: '', label: translate('(none)') },
+                ]
+                for (const c of connectorOptions) {
+                  options.push({ value: c.key, label: c.name || c.key })
+                }
+                return options
+              },
+            },
+            {
+              id: 'correlationExpression',
+              element,
+              component: TextFieldEntry,
+              isEdited: isTextFieldEntryEdited,
+              debounce,
+              label: translate('Correlation Expression'),
+              description: translate(
+                'FEEL expression evaluated against payload — value used to match the running process instance'
+              ),
+              getValue: () =>
+                element.businessObject.get('flowable:correlationExpression') || '',
+              setValue: (value: string) =>
+                modeling.updateProperties(element, {
+                  'flowable:correlationExpression': value || undefined,
                 }),
             },
           ],
@@ -473,6 +532,11 @@ function isFormCapableElement(element: any): boolean {
 function hasSignalDefinition(element: any): boolean {
   const defs: any[] = element.businessObject.eventDefinitions || []
   return defs.some((d: any) => d.$type === 'bpmn:SignalEventDefinition')
+}
+
+function hasMessageDefinition(element: any): boolean {
+  const defs: any[] = element.businessObject.eventDefinitions || []
+  return defs.some((d: any) => d.$type === 'bpmn:MessageEventDefinition')
 }
 
 /**

@@ -190,6 +190,22 @@ public class DesignTimeDataController {
     }
 
     // -------------------------------------------------------------------------
+    // Internal — service-to-service (engine webhook receiver)
+    // -------------------------------------------------------------------------
+
+    @GetMapping("/internal/connectors/{tenantId}/{key}")
+    @PreAuthorize("hasAnyRole('ENGINE_SERVICE','ADMIN','SUPER_ADMIN')")
+    @Operation(summary = "Internal: get connector definition by tenant + key",
+               description = "Called by the engine webhook receiver to resolve a ConnectorDefinition without a user JWT. " +
+                             "Requires ENGINE_SERVICE role (client-credentials token).")
+    public ResponseEntity<String> getConnectorInternal(
+            @PathVariable String tenantId,
+            @PathVariable String key) {
+        String definition = catalogService.getDefinitionJson(tenantId, key);
+        return ResponseEntity.ok(definition);
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 

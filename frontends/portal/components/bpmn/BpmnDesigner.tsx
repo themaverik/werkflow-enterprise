@@ -37,9 +37,10 @@ import {
 
 import FlowablePropertiesProviderModule from '@/lib/bpmn/flowable-properties-module'
 import flowableModdleDescriptor from '@/lib/bpmn/flowable-moddle.json'
-import { setFormSchemaOptions, setNotificationTemplateOptions, setGroupOptions, setProcessDefinitionOptions, setDmnDecisionOptions, setDelegateOptions, setCurrentUserRoles } from '@/lib/bpmn/flowable-properties-provider'
+import { setFormSchemaOptions, setNotificationTemplateOptions, setGroupOptions, setProcessDefinitionOptions, setDmnDecisionOptions, setDelegateOptions, setCurrentUserRoles, setConnectorOptions } from '@/lib/bpmn/flowable-properties-provider'
 import { getFormDefinitions, getFormDefinition, getNotificationTemplates, getGroups, getProcessDefinitions, getDelegates } from '@/lib/api/flowable'
 import { listDecisions, getDecisionXml } from '@/lib/api/dmn'
+import { listDtdsConnectors } from '@/lib/api/dtds'
 
 // Variables set by Flowable engine infrastructure — present in every process instance
 const STANDARD_EXPRESSION_VARIABLES = [
@@ -513,6 +514,19 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
         })
     }
 
+    const fetchConnectors = () => {
+      listDtdsConnectors()
+        .then((connectors) => {
+          if (!cancelled) {
+            setConnectorOptions(connectors.map((c) => ({ key: c.key, name: c.displayName || c.key })))
+            refreshPropertiesPanel()
+          }
+        })
+        .catch((err: any) => {
+          if (!cancelled) console.error('Failed to load connectors for Message Event panel:', err)
+        })
+    }
+
     fetchForms()
     fetchTemplates()
     fetchGroups()
@@ -521,6 +535,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
     fetchDoaLevels_()
     fetchCustodyMappings_()
     fetchDelegates()
+    fetchConnectors()
     return () => { cancelled = true }
   }, [])
 
