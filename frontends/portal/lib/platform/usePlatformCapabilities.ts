@@ -8,6 +8,7 @@ import type {
   CategoryEntry,
   DepartmentEntry,
   FeelExpressionCatalog,
+  LocaleEntry,
   PlatformCapabilityResponse,
 } from './types'
 
@@ -81,6 +82,21 @@ export function useDepartments() {
   return useQuery<DepartmentEntry[], Error>({
     queryKey: ['pss', 'departments'],
     queryFn: () => platformApi.departments(token),
+    enabled: status === 'authenticated',
+    staleTime: FIVE_MINUTES,
+    gcTime: FIVE_MINUTES,
+    retry: 1,
+  })
+}
+
+/** Hook for tenant locale configuration (currency, timezone, date format). */
+export function useLocale() {
+  const { data: session, status } = useSession()
+  const token = (session?.accessToken as string) ?? ''
+
+  return useQuery<LocaleEntry, Error>({
+    queryKey: ['pss', 'locale'],
+    queryFn: () => platformApi.locale(token),
     enabled: status === 'authenticated',
     staleTime: FIVE_MINUTES,
     gcTime: FIVE_MINUTES,

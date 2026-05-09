@@ -720,6 +720,21 @@ function DeployedCard({
         </div>
       </div>
 
+      {/* Process Custody */}
+      {(latest.owningDepartment || latest.category) && (
+        <div style={{ borderTop: '1px solid ' + T.border, paddingTop: 10 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+            Process Custody
+          </div>
+          <dl style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 8, rowGap: 3 }}>
+            <dt style={{ fontSize: 10, color: T.light }}>Department</dt>
+            <dd style={{ fontSize: 10, color: T.muted, fontFamily: 'monospace' }}>{latest.owningDepartment ?? '—'}</dd>
+            <dt style={{ fontSize: 10, color: T.light }}>Category</dt>
+            <dd style={{ fontSize: 10, color: T.muted, fontFamily: 'monospace' }}>{latest.category ?? '—'}</dd>
+          </dl>
+        </div>
+      )}
+
       {/* Divider */}
       <div style={{ height: 1, background: T.border }} />
 
@@ -826,6 +841,9 @@ interface DraftSummary {
   processKey: string
   name: string
   updatedAt?: string
+  departmentCode?: string
+  categoryCode?: string
+  tags?: string[]
 }
 
 function DraftCard({
@@ -952,6 +970,25 @@ function DraftCard({
         <Play size={12} strokeWidth={2.2} />
         Test Workflow
       </Link>
+
+      {/* Process Custody */}
+      {(draft.departmentCode || draft.categoryCode || (draft.tags && draft.tags.length > 0)) && (
+        <div style={{ borderTop: '1px solid ' + T.border, paddingTop: 10 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+            Process Custody
+          </div>
+          <dl style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 8, rowGap: 3 }}>
+            <dt style={{ fontSize: 10, color: T.light }}>Department</dt>
+            <dd style={{ fontSize: 10, color: T.muted, fontFamily: 'monospace' }}>{draft.departmentCode ?? '—'}</dd>
+            <dt style={{ fontSize: 10, color: T.light }}>Category</dt>
+            <dd style={{ fontSize: 10, color: T.muted, fontFamily: 'monospace' }}>{draft.categoryCode ?? '—'}</dd>
+            <dt style={{ fontSize: 10, color: T.light }}>Tags</dt>
+            <dd style={{ fontSize: 10, color: T.muted }}>
+              {draft.tags && draft.tags.length > 0 ? draft.tags.join(', ') : '—'}
+            </dd>
+          </dl>
+        </div>
+      )}
 
       {/* Icon action buttons */}
       <div style={{ display: 'flex', gap: 6 }}>

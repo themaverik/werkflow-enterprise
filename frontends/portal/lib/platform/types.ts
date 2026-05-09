@@ -95,3 +95,11 @@ export interface CategoryRequest {
   color?: string
   displayOrder?: number
 }
+
+export interface LocaleEntry {
+  currencyCode: string
+  locale: string
+  numberFormat: string
+  dateFormat: string
+  timezone: string
+}

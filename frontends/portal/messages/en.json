@@ -28,6 +28,7 @@
     "custodyGroups": "Custody Groups",
     "categories": "Categories",
     "visibilityPolicy": "Visibility Policy",
+    "locale": "Locale & Currency",
     "deadLetterJobs": "Failed Jobs",
     "processHealth": "Process Health"
   },

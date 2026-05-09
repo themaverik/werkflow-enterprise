@@ -5,6 +5,7 @@ import type {
   CategoryRequest,
   DepartmentEntry,
   FeelExpressionCatalog,
+  LocaleEntry,
   PlatformCapabilityResponse,
   TagEntry,
   VisibilityPolicyEntry,
@@ -67,4 +68,7 @@ export const platformApi = {
 
   visibilityPolicy: (token: string) =>
     pssGet<VisibilityPolicyEntry>('/visibility-policy', token),
+
+  locale: (token: string) =>
+    pssGet<LocaleEntry>('/locale', token),
 }
