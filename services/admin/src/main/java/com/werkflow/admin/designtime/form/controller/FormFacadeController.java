@@ -50,7 +50,7 @@ public class FormFacadeController {
             @RequestParam String taskId,
             @AuthenticationPrincipal Jwt jwt) {
         String tenantId = jwtClaimsExtractor.getTenantId(jwt);
-        VariableAtActivityResponse response = variableScopeService.getVariablesAt(
+        VariableAtActivityResponse response = variableScopeService.variablesAt(
                 tenantId, processDefId, taskId);
         return ResponseEntity.ok(response);
     }
