@@ -452,9 +452,15 @@ export default function CustodyMappingsPage() {
             </dd>
           </div>
           <div>
-            <dt className="font-semibold text-foreground">Process Custody (set in the process designer)</dt>
+            <dt className="font-semibold text-foreground">Approval Group</dt>
             <dd className="mt-0.5 leading-relaxed">
-              Definition governance. Records which department owns a process, its category, and searchable tags. Set once per process definition.
+              The Flowable candidate group assigned to a BPMN user task. Maps to a set of Keycloak roles. Configured per task in the process designer.
+            </dd>
+          </div>
+          <div>
+            <dt className="font-semibold text-foreground">Custody Owner</dt>
+            <dd className="mt-0.5 leading-relaxed">
+              The department or entity that owns a process (e.g. DEPT:FINANCE). Used to look up which approval groups handle tasks in that process at runtime.
             </dd>
           </div>
         </dl>
