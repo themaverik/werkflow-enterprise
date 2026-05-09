@@ -74,6 +74,8 @@ public class SecurityConfig {
                         .requestMatchers(new AntPathRequestMatcher("/swagger-ui.html")).authenticated();
                 }
                 auth
+                    // Webhook endpoints are secured by HMAC signature, not JWT
+                    .requestMatchers(new AntPathRequestMatcher("/api/v1/webhooks/**")).permitAll()
                     .requestMatchers(new AntPathRequestMatcher("/process-definitions/**")).authenticated()
                     .requestMatchers(new AntPathRequestMatcher("/api/process-definitions/**")).authenticated()
                     .requestMatchers(new AntPathRequestMatcher("/api/process-instances/**")).authenticated()

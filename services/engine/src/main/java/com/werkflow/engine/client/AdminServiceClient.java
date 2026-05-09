@@ -68,6 +68,14 @@ public class AdminServiceClient {
         }
     }
 
+    /** Fetches the full ConnectorDefinition JSON for a connector key + tenant.
+     *  Cached with a 5-minute TTL via the "connectorDefs" Caffeine cache. */
+    @Cacheable(value = "connectorDefs", key = "#tenantCode + ':' + #connectorKey")
+    public String getConnectorDefinitionJson(String tenantCode, String connectorKey) {
+        String url = adminServiceUrl + "/api/v1/design/internal/connectors/{tenantCode}/{connectorKey}";
+        return restTemplate.getForObject(url, String.class, tenantCode, connectorKey);
+    }
+
     // M-9: sort roleNames before building the cache key so ["ADMIN","USER"] and ["USER","ADMIN"]
     // map to the same cache entry and avoid duplicate HTTP calls.
     @Cacheable(value = "tenantConfig",
