@@ -1,6 +1,7 @@
 package com.werkflow.admin.controller;
 
 import com.werkflow.admin.designtime.platform.service.LocaleProjector;
+import com.werkflow.admin.designtime.platform.service.VisibilityPolicyProjector;
 import com.werkflow.admin.dto.ConfigVarRequest;
 import com.werkflow.admin.dto.ConfigVarResponse;
 import com.werkflow.admin.security.JwtClaimsExtractor;
@@ -26,6 +27,7 @@ public class ConfigurationVariableController {
     private final ConfigurationVariableService service;
     private final JwtClaimsExtractor jwtClaimsExtractor;
     private final LocaleProjector localeProjector;
+    private final VisibilityPolicyProjector visibilityPolicyProjector;
 
     private String resolveTenant(String tenantCode, Jwt jwt) {
         return (tenantCode != null && !tenantCode.isBlank()) ? tenantCode : jwtClaimsExtractor.getTenantId(jwt);
@@ -65,9 +67,7 @@ public class ConfigurationVariableController {
             @AuthenticationPrincipal Jwt jwt) {
         ConfigVarRequest resolved = resolveRequestTenant(request, jwt);
         ConfigVarResponse result = service.create(resolved);
-        if ("LOCALE".equals(resolved.varType())) {
-            localeProjector.evict(resolved.tenantCode());
-        }
+        evictPssCache(resolved);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
@@ -79,9 +79,7 @@ public class ConfigurationVariableController {
             @AuthenticationPrincipal Jwt jwt) {
         ConfigVarRequest resolved = resolveRequestTenant(request, jwt);
         ConfigVarResponse result = service.update(id, resolved);
-        if ("LOCALE".equals(resolved.varType())) {
-            localeProjector.evict(resolved.tenantCode());
-        }
+        evictPssCache(resolved);
         return ResponseEntity.ok(result);
     }
 
@@ -90,6 +88,15 @@ public class ConfigurationVariableController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private void evictPssCache(ConfigVarRequest request) {
+        String tenant = request.tenantCode();
+        if ("LOCALE".equals(request.varType())) {
+            localeProjector.evict(tenant);
+        } else if ("POLICY".equals(request.varType())) {
+            visibilityPolicyProjector.evict(tenant);
+        }
     }
 
     private ConfigVarRequest resolveRequestTenant(ConfigVarRequest request, Jwt jwt) {
