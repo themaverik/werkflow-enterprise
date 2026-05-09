@@ -1,0 +1,274 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://werkflow.io/schemas/connector/v1/connector-definition.schema.json",
+  "title": "Werkflow ConnectorDefinition",
+  "description": "Universal, transport-agnostic envelope for all Werkflow connectors. The `spec.transport.type` discriminator selects the adapter (rest, database, graphql, webhook, mcp, messaging, ...). Each adapter provides its own subschema for `spec.transport.config` and `spec.operations[].transportSpecific`. This envelope is stable across transports — it is what the BPMN designer reads to build operation pickers, schema-driven dropdowns, and validation.",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "const": "werkflow.io/connector/v1",
+      "description": "Schema version. Bumped on breaking changes to this envelope."
+    },
+    "kind": {
+      "type": "string",
+      "const": "ConnectorDefinition"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["key", "displayName", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,62}[a-z0-9]$",
+          "description": "Stable, unique identifier referenced from BPMN. Lowercase kebab-case. Cannot be changed once published."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Human-readable name shown in the connector picker."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(-[A-Za-z0-9.-]+)?$",
+          "description": "SemVer. Connector definitions are versioned independently of the platform; multiple versions may coexist for in-flight processes."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["data-source", "notification", "ai", "storage", "messaging", "identity", "custom"],
+          "description": "Drives grouping in the connector picker."
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "maxItems": 20
+        },
+        "icon": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL or data URI for the picker icon."
+        },
+        "documentationUrl": { "type": "string", "format": "uri" },
+        "vendor": { "type": "string" },
+        "license": { "type": "string", "description": "SPDX expression. Required for community-marketplace connectors." }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": ["transport", "operations"],
+      "additionalProperties": false,
+      "properties": {
+        "transport": {
+          "type": "object",
+          "required": ["type"],
+          "description": "Transport selector. The `type` field is a discriminator; `config` is validated against the adapter-specific schema for that type.",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["rest", "database", "graphql", "webhook", "mcp", "messaging", "grpc", "file", "mock"],
+              "description": "Transport adapter selector."
+            },
+            "config": {
+              "description": "Transport-specific configuration. Validated by the adapter subschema for the selected `type`. See rest-transport.schema.json, database-transport.schema.json, etc."
+            }
+          },
+          "required": ["type", "config"]
+        },
+        "auth": {
+          "type": "object",
+          "description": "Auth profiles. A connector can declare multiple profiles; the deployment selects one. Profiles are resolved at runtime via SecretsResolver — never embedded in the connector definition.",
+          "properties": {
+            "profiles": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 10,
+              "items": { "$ref": "#/$defs/AuthProfile" }
+            }
+          }
+        },
+        "operations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "items": { "$ref": "#/$defs/Operation" },
+          "description": "The set of named operations this connector exposes. Each operation is what a BPMN designer drags onto the canvas."
+        },
+        "components": {
+          "type": "object",
+          "description": "Shared schema definitions referenced by operations via $ref. JSON Schema 2020-12 throughout. Aligned with OpenAPI 3.1's components.schemas.",
+          "properties": {
+            "schemas": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "constraints": {
+          "type": "object",
+          "description": "Cross-cutting limits applied by the engine regardless of transport.",
+          "properties": {
+            "maxResponseBytes": { "type": "integer", "minimum": 1024, "maximum": 10485760, "default": 102400, "description": "Hard cap on response body / result set serialized into a process variable. Default 100KB." },
+            "defaultTimeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 300, "default": 30 },
+            "rateLimit": {
+              "type": "object",
+              "properties": {
+                "requestsPerSecond": { "type": "number", "minimum": 0.1 },
+                "burst": { "type": "integer", "minimum": 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "AuthProfile": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "displayName": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["none", "secret-ref", "bearer", "basic", "api-key", "oauth2-client-credentials", "mtls"]
+        },
+        "secretKey": {
+          "type": "string",
+          "description": "Reference to a key in SecretsResolver. The actual credential value is never stored in the connector definition.",
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "config": {
+          "type": "object",
+          "description": "Auth-type-specific config. For api-key: header/queryParam name. For oauth2-client-credentials: tokenUrl, scopes. For mtls: trustStoreRef.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "Operation": {
+      "type": "object",
+      "required": ["id", "displayName", "transportSpecific"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-zA-Z0-9]*$",
+          "description": "Stable identifier referenced from BPMN. camelCase. Unique within the connector."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Shown in the operation picker."
+        },
+        "description": { "type": "string", "maxLength": 2000 },
+        "category": {
+          "type": "string",
+          "enum": ["read", "write", "list", "search", "subscribe", "publish", "action"],
+          "description": "Drives icon and grouping in the designer. `list` and `search` operations are paginatable; `subscribe` is for inbound."
+        },
+        "deprecated": { "type": "boolean", "default": false },
+        "input": {
+          "description": "JSON Schema 2020-12 describing the operation's input. Drives the designer's input form. Process variables are mapped against this schema.",
+          "type": "object",
+          "additionalProperties": true
+        },
+        "output": {
+          "description": "JSON Schema 2020-12 describing the operation's output. Drives the designer's output dropdowns and JSONPath suggestions.",
+          "type": "object",
+          "additionalProperties": true
+        },
+        "pagination": {
+          "$ref": "#/$defs/PaginationSpec",
+          "description": "Optional. Required for `list`/`search` category operations. Adapter-specific pagination behavior is in `transportSpecific`."
+        },
+        "errors": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ErrorMapping" },
+          "description": "Maps adapter-specific error states (HTTP status, SQL error codes, exceptions) to BPMN-level error semantics (retry, BPMN error code, soft-fail)."
+        },
+        "examples": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Example" },
+          "maxItems": 5,
+          "description": "Sample input/output pairs. Powers the designer's preview and feeds the BPMN test runner."
+        },
+        "transportSpecific": {
+          "description": "Operation-level config that is meaningful only to the selected transport. Validated by the adapter's operation subschema. Examples: REST = method/path/body template; DB = named query reference; GraphQL = operation document.",
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "PaginationSpec": {
+      "type": "object",
+      "required": ["strategy"],
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": ["none", "cursor", "page-token", "offset", "link-header", "keyset"],
+          "description": "Pagination strategy. The adapter implements the mechanics; this enum selects which mechanic. `keyset` is for DB; `link-header` is for REST; `cursor`/`page-token` are typical SaaS REST; `offset` is the legacy choice (avoid)."
+        },
+        "defaults": {
+          "type": "object",
+          "properties": {
+            "pageSize": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 50 },
+            "maxPages": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 100, "description": "Hard cap on auto-paginated fetch loops. Prevents runaway fetches." }
+          }
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["fetch-all", "page-by-page", "first-page-only"],
+          "default": "first-page-only",
+          "description": "How the BPMN designer wants pagination handled. `fetch-all` loops internally and returns the merged list. `page-by-page` exposes each page to a multi-instance subprocess. `first-page-only` is the safe default."
+        }
+      }
+    },
+    "ErrorMapping": {
+      "type": "object",
+      "required": ["code"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Werkflow error code, surfaced as BPMN error event code when onError=THROW_BPMN_ERROR. e.g., NOT_FOUND, RATE_LIMITED, AUTH_FAILED, TIMEOUT."
+        },
+        "match": {
+          "type": "object",
+          "description": "Adapter-specific match condition. e.g., REST: { httpStatus: 404 }; DB: { sqlState: '23505' }.",
+          "additionalProperties": true
+        },
+        "retry": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "maxAttempts": { "type": "integer", "minimum": 1, "maximum": 10, "default": 3 },
+            "backoff": {
+              "type": "string",
+              "enum": ["constant", "linear", "exponential"],
+              "default": "exponential"
+            },
+            "initialDelaySeconds": { "type": "number", "minimum": 0.1, "default": 1.0 }
+          }
+        },
+        "description": { "type": "string" }
+      }
+    },
+    "Example": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "input": { "description": "Sample input matching the operation's input schema." },
+        "output": { "description": "Sample output matching the operation's output schema." }
+      }
+    }
+  }
+}
