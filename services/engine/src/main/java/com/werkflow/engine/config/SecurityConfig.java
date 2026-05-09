@@ -76,6 +76,8 @@ public class SecurityConfig {
                 auth
                     // Webhook endpoints are secured by HMAC signature, not JWT
                     .requestMatchers(new AntPathRequestMatcher("/api/v1/webhooks/**")).permitAll()
+                    // Internal service-to-service: read-only YAML config, no tenant data
+                    .requestMatchers(new AntPathRequestMatcher("/api/v1/config/flowable-role-mappings")).permitAll()
                     .requestMatchers(new AntPathRequestMatcher("/process-definitions/**")).authenticated()
                     .requestMatchers(new AntPathRequestMatcher("/api/process-definitions/**")).authenticated()
                     .requestMatchers(new AntPathRequestMatcher("/api/process-instances/**")).authenticated()
