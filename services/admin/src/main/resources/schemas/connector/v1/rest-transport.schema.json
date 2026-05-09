@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://werkflow.io/schemas/connector/v1/rest-transport.schema.json",
+  "title": "Werkflow REST Transport Adapter",
+  "description": "Subschema for `spec.transport.config` and `spec.operations[].transportSpecific` when transport.type=rest. Aligned with OpenAPI 3.1: a connector definition can be authored manually or generated from an existing OpenAPI document. Werkflow-specific extensions are namespaced as `x-werkflow-*` so a generated definition round-trips through OpenAPI tooling.",
+  "type": "object",
+  "$defs": {
+    "TransportConfig": {
+      "type": "object",
+      "required": ["baseUrl"],
+      "additionalProperties": false,
+      "properties": {
+        "baseUrl": {
+          "type": "string",
+          "description": "Base URL for the API. Resolved per-tenant via TenantEndpointResolver if a connector key is registered there; otherwise this default is used. May contain `${tenantCode}` for templating.",
+          "format": "uri"
+        },
+        "openApiSource": {
+          "type": "string",
+          "format": "uri",
+          "description": "Optional. URL or path to the source OpenAPI 3.1 document. When present, the platform validates that operations defined here are consistent with the source spec and can re-import on changes."
+        },
+        "defaultHeaders": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Static headers applied to every request from this connector. Use `${var}` for process variable interpolation. Auth headers are NOT defined here — they come from the auth profile."
+        },
+        "tlsConfig": {
+          "type": "object",
+          "properties": {
+            "verifyHostname": { "type": "boolean", "default": true },
+            "trustStoreRef": { "type": "string", "description": "Secret key for a custom trust store. For mTLS or self-signed enterprise CAs." }
+          }
+        },
+        "ssrf": {
+          "type": "object",
+          "description": "Per-connector SSRF policy. Cannot loosen the global SsrfGuard — only further restrict.",
+          "properties": {
+            "allowedHosts": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "If set, only these hosts are reachable from this connector. Hostname or CIDR."
+            }
+          }
+        },
+        "redirectPolicy": {
+          "type": "string",
+          "enum": ["never", "same-origin", "follow"],
+          "default": "never",
+          "description": "Default `never` matches the engine's current behavior. `same-origin` is safer than `follow` if redirects are needed."
+        }
+      }
+    },
+    "OperationTransportSpecific": {
+      "type": "object",
+      "required": ["method", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"],
+          "description": "HTTP method."
+        },
+        "path": {
+          "type": "string",
+          "description": "Path template appended to baseUrl. OpenAPI-style path parameters: `/orders/{orderId}/items`. Path parameters are sourced from the operation's input schema by name.",
+          "pattern": "^/.*"
+        },
+        "queryParameters": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Parameter" },
+          "description": "Query string parameters. Mapped from input schema fields. Supports `${var}` interpolation."
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Operation-specific headers. Merged on top of transportConfig.defaultHeaders. Supports `${var}` interpolation."
+        },
+        "body": {
+          "type": "object",
+          "description": "Request body specification. Only meaningful for POST/PUT/PATCH.",
+          "properties": {
+            "contentType": {
+              "type": "string",
+              "enum": ["application/json", "application/x-www-form-urlencoded", "multipart/form-data", "text/plain", "application/xml"],
+              "default": "application/json"
+            },
+            "template": {
+              "type": "string",
+              "description": "Body template. For JSON, a JSON string with `${var}` interpolation (numeric/boolean variables are emitted unquoted, strings are JSON-escaped). For form bodies, key=value template. For multipart, a structured spec — see multipartParts."
+            },
+            "schemaRef": {
+              "type": "string",
+              "description": "Optional reference to a schema in `spec.components.schemas`. Used to validate the resolved body before sending."
+            }
+          }
+        },
+        "response": {
+          "type": "object",
+          "properties": {
+            "successStatusCodes": {
+              "type": "array",
+              "items": { "type": "integer", "minimum": 100, "maximum": 599 },
+              "default": [200, 201, 202, 204],
+              "description": "Status codes treated as success. Anything else falls through to errors[]."
+            },
+            "extractRoot": {
+              "type": "string",
+              "description": "JSONPath into the response body to use as the operation's logical output. Useful when an API wraps results in `{ data: ..., metadata: ... }` — set extractRoot=`$.data` and the operation's output schema describes the unwrapped shape."
+            },
+            "contentType": {
+              "type": "string",
+              "description": "Expected response content type. Default: inferred from response Content-Type header.",
+              "enum": ["application/json", "text/plain", "application/xml", "application/octet-stream"]
+            }
+          }
+        },
+        "x-werkflow-pagination": {
+          "$ref": "#/$defs/RestPagination",
+          "description": "REST-specific pagination implementation. Only meaningful when the operation's top-level `pagination.strategy` is set."
+        },
+        "x-werkflow-idempotency": {
+          "type": "object",
+          "description": "Idempotency configuration for retries. The engine sends the configured header on every attempt of the same execution.",
+          "properties": {
+            "headerName": { "type": "string", "default": "X-Idempotency-Key" },
+            "keyExpression": {
+              "type": "string",
+              "description": "Expression producing the idempotency key. Default: `${execution.id}`. For workflow-instance-level idempotency, use `${execution.processInstanceId}:${operation.id}`."
+            }
+          }
+        },
+        "x-werkflow-rateLimit": {
+          "type": "object",
+          "description": "Operation-level rate limit override. Tighter than connector-level rateLimit if both are set.",
+          "properties": {
+            "requestsPerSecond": { "type": "number" }
+          }
+        }
+      }
+    },
+    "Parameter": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "valueExpression": {
+          "type": "string",
+          "description": "Expression for the parameter's value. Defaults to a same-named field in the operation's input. Use `${var}` to reference process variables explicitly."
+        },
+        "required": { "type": "boolean", "default": false },
+        "explode": {
+          "type": "boolean",
+          "default": false,
+          "description": "OpenAPI explode behavior for arrays. true: ?tag=a&tag=b. false: ?tag=a,b."
+        }
+      }
+    },
+    "RestPagination": {
+      "type": "object",
+      "description": "Concrete pagination wiring for a REST operation. The top-level `pagination.strategy` selects which sub-shape applies.",
+      "oneOf": [
+        {
+          "title": "Cursor pagination (most modern SaaS APIs)",
+          "type": "object",
+          "required": ["type", "cursorParameter", "cursorPath"],
+          "properties": {
+            "type": { "const": "cursor" },
+            "cursorParameter": {
+              "type": "string",
+              "description": "Query parameter or header name that carries the cursor on subsequent requests. e.g., 'pageToken', 'cursor', 'after'."
+            },
+            "cursorLocation": {
+              "type": "string",
+              "enum": ["query", "header"],
+              "default": "query"
+            },
+            "cursorPath": {
+              "type": "string",
+              "description": "JSONPath into the response that yields the next cursor value. e.g., '$.nextPageToken', '$.meta.cursor.next'. When the path resolves to null/empty, pagination terminates."
+            },
+            "itemsPath": {
+              "type": "string",
+              "description": "JSONPath to the array of items in the response. e.g., '$.items', '$.data'.",
+              "default": "$"
+            },
+            "pageSizeParameter": {
+              "type": "string",
+              "description": "Optional query parameter name for page size. e.g., 'limit', 'pageSize'."
+            }
+          }
+        },
+        {
+          "title": "Page number pagination",
+          "type": "object",
+          "required": ["type", "pageParameter"],
+          "properties": {
+            "type": { "const": "page-token" },
+            "pageParameter": { "type": "string", "description": "Query parameter for the page number. e.g., 'page'." },
+            "pageSizeParameter": { "type": "string" },
+            "totalPagesPath": { "type": "string", "description": "JSONPath to total pages count. Used to terminate the loop." },
+            "itemsPath": { "type": "string", "default": "$" },
+            "startPage": { "type": "integer", "default": 1 }
+          }
+        },
+        {
+          "title": "Offset pagination (legacy — avoid for large datasets)",
+          "type": "object",
+          "required": ["type", "offsetParameter", "limitParameter"],
+          "properties": {
+            "type": { "const": "offset" },
+            "offsetParameter": { "type": "string" },
+            "limitParameter": { "type": "string" },
+            "totalCountPath": { "type": "string", "description": "JSONPath to total record count. Used to terminate the loop." },
+            "itemsPath": { "type": "string", "default": "$" }
+          }
+        },
+        {
+          "title": "RFC 5988 Link header pagination (GitHub-style)",
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "link-header" },
+            "itemsPath": { "type": "string", "default": "$" }
+          }
+        }
+      ]
+    }
+  }
+}
