@@ -51,9 +51,13 @@ public class RoleGroupMappingController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<RoleGroupMappingResponse> create(@Valid @RequestBody RoleGroupMappingRequest request) {
-        RoleGroupMappingResponse result = service.create(request);
-        candidateGroupsAggregator.evict(request.tenantCode());
+    public ResponseEntity<RoleGroupMappingResponse> create(
+            @Valid @RequestBody RoleGroupMappingRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        String tenant = resolveTenant(request.tenantCode(), jwt);
+        RoleGroupMappingRequest resolved = new RoleGroupMappingRequest(tenant, request.roleName(), request.groupName());
+        RoleGroupMappingResponse result = service.create(resolved);
+        candidateGroupsAggregator.evict(tenant);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
