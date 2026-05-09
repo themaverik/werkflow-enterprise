@@ -4,7 +4,7 @@ import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
-import { ArrowLeft, Rocket, FlaskConical } from 'lucide-react'
+import { ArrowLeft, Rocket, FlaskConical, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast'
 import { getDecisionXml, getDecision, redeployDecision } from '@/lib/api/dmn'
 import type { DmnEditorHandle } from '@/components/dmn/DmnEditor'
 import DmnTestPanel from '@/components/dmn/DmnTestPanel'
+import { FeelExpressionSuggestions } from '@/components/dmn/FeelExpressionSuggestions'
 
 const DmnEditor = dynamic(() => import('@/components/dmn/DmnEditor'), { ssr: false })
 
@@ -28,6 +29,7 @@ export default function EditDecisionPage({ params }: EditDecisionPageProps) {
   const { toast } = useToast()
   const editorRef = useRef<DmnEditorHandle | null>(null)
   const [showTestPanel, setShowTestPanel] = useState(false)
+  const [showFeelPanel, setShowFeelPanel] = useState(false)
 
   const { data: meta, isLoading: metaLoading, error: metaError } = useQuery({
     queryKey: ['dmnDecision', key],
@@ -78,6 +80,10 @@ export default function EditDecisionPage({ params }: EditDecisionPageProps) {
       </div>
 
       <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={() => setShowFeelPanel((p) => !p)}>
+          <Sparkles className="mr-2 h-4 w-4" />
+          FEEL Hints
+        </Button>
         <Button variant="outline" onClick={() => setShowTestPanel((p) => !p)}>
           <FlaskConical className="mr-2 h-4 w-4" />
           {t('editor.test')}
@@ -91,7 +97,16 @@ export default function EditDecisionPage({ params }: EditDecisionPageProps) {
         </Button>
       </div>
 
-      <DmnEditor onInit={(handle) => { editorRef.current = handle }} xml={xml} />
+      <div className={showFeelPanel ? 'flex gap-4' : undefined}>
+        <div className="flex-1 min-w-0">
+          <DmnEditor onInit={(handle) => { editorRef.current = handle }} xml={xml} />
+        </div>
+        {showFeelPanel && (
+          <div className="w-72 shrink-0">
+            <FeelExpressionSuggestions />
+          </div>
+        )}
+      </div>
 
       {showTestPanel && <DmnTestPanel decisionKey={key} />}
     </div>
