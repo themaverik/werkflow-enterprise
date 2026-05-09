@@ -53,7 +53,7 @@ public class ProcessVariableScopeService {
 
     private final RestTemplate restTemplate;
 
-    @Value("${app.engine-service.url:http://werkflow-engine:8080}")
+    @Value("${app.engine-service.url:http://werkflow-engine:8081}")
     private String engineBaseUrl;
 
     /**
