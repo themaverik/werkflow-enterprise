@@ -65,6 +65,14 @@ public class RoleGroupMappingService {
         repository.deleteById(id);
     }
 
+    @Transactional
+    public RoleGroupMappingResponse setManagerTier(Long id, boolean isManagerTier) {
+        RoleGroupMapping mapping = repository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Role group mapping not found: " + id));
+        mapping.setManagerTier(isManagerTier);
+        return toResponse(repository.save(mapping));
+    }
+
     private RoleGroupMappingResponse toResponse(RoleGroupMapping mapping) {
         return new RoleGroupMappingResponse(
             mapping.getId(),
@@ -72,7 +80,8 @@ public class RoleGroupMappingService {
             mapping.getRoleName(),
             mapping.getGroupName(),
             2,                        // tier=2: DB-stored custom group mappings
-            mapping.getCreatedAt()
+            mapping.getCreatedAt(),
+            mapping.isManagerTier()
         );
     }
 }

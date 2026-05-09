@@ -27,6 +27,10 @@ public class RoleGroupMapping {
     @Column(nullable = false, length = 200)
     private String groupName;
 
+    /** ADR-010: true when this group counts for cross-department manager visibility. */
+    @Column(nullable = false)
+    private boolean isManagerTier = false;
+
     @CreatedDate @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 }

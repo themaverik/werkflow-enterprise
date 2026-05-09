@@ -7,7 +7,7 @@ import ExpressionBuilder from './ExpressionBuilder'
 import ServiceTaskPropertiesPanel from './ServiceTaskPropertiesPanel'
 import { Card } from '@/components/ui/card'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { deployBpmn, saveDraft } from '@/lib/api/flowable'
+import { deployBpmn, saveDraft, type SaveDraftOptions } from '@/lib/api/flowable'
 import { generateBlankBpmn, downloadBpmn, extractProcessName } from '@/lib/bpmn/utils'
 import { Save, Download, Upload, ZoomIn, ZoomOut, Maximize2, Settings, CheckCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -16,6 +16,10 @@ import { useToast } from '@/hooks/use-toast'
 import { fetchDoaLevels, DoaLevel } from '@/lib/api/doa'
 import { listCustodyMappings, CustodyMappingResponse } from '@/lib/api/custody'
 import { useAuth } from '@/lib/auth/auth-context'
+import { platformApi } from '@/lib/platform/api'
+import { usePlatformCapabilities } from '@/lib/platform/usePlatformCapabilities'
+import type { CandidateGroupEntry, ArtifactMetadata } from '@/lib/platform/types'
+import { ArtifactMetadataPanel } from '@/components/design/ArtifactMetadataPanel'
 
 // Import BPMN.js CSS
 import 'bpmn-js/dist/assets/diagram-js.css'
@@ -117,6 +121,8 @@ function extractDmnVariables(dmnXml: string): string[] {
 interface BpmnDesignerProps {
   initialXml?: string
   processId?: string
+  /** Pre-populated artifact metadata when opening a saved draft (optional). */
+  initialMetadata?: ArtifactMetadata
 }
 
 /** Read a <flowable:field> string or expression value from a business object */
@@ -180,10 +186,13 @@ function validateActionBlocks(modeler: any): string[] {
   return errors
 }
 
-export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProps) {
+const DEFAULT_METADATA: ArtifactMetadata = { tags: [] }
+
+export default function BpmnDesigner({ initialXml, processId, initialMetadata }: BpmnDesignerProps) {
   const t = useTranslations('bpmn')
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, token } = useAuth()
+  const { data: capabilities } = usePlatformCapabilities()
   const containerRef = useRef<HTMLDivElement>(null)
   const propertiesPanelRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -211,6 +220,9 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
 
   const [draftSuccess, setDraftSuccess] = useState(false)
   const [draftError, setDraftError] = useState<string | null>(null)
+  const [artifactMetadata, setArtifactMetadata] = useState<ArtifactMetadata>(
+    initialMetadata ?? DEFAULT_METADATA
+  )
 
 
   const saveDraftMutation = useMutation({
@@ -222,7 +234,12 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
       // through to processName which may be empty during a failed-deploy → save-draft flow.
       const key = processId ? processId.split(':')[0] : (processName.trim() || 'draft')
       const name = processName.trim() || key
-      return saveDraft(key, name, xml)
+      const metadata: SaveDraftOptions = {
+        departmentCode: artifactMetadata.departmentCode,
+        categoryCode: artifactMetadata.categoryCode,
+        tags: artifactMetadata.tags,
+      }
+      return saveDraft(key, name, xml, metadata)
     },
     onSuccess: () => {
       setHasChanges(false)
@@ -396,18 +413,29 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
     }
 
     const fetchGroups = (attempt = 0) => {
-      getGroups()
-        .then((groups) => {
+      if (!token) {
+        if (attempt < 3) { setTimeout(() => fetchGroups(attempt + 1), 1500); return }
+        return
+      }
+      // Use PSS candidate-groups — ADR-010 compliant (no _APPROVER department groups)
+      platformApi.candidateGroups(token)
+        .then((groups: CandidateGroupEntry[]) => {
           if (!cancelled) {
-            setGroupOptions(groups.map((g) => ({ id: g.id, name: g.name })))
+            setGroupOptions(groups.map((g) => ({ id: g.key, name: g.label })))
             refreshPropertiesPanel()
           }
         })
-        .catch((err: any) => {
-          if (!cancelled && err?.response?.status === 401 && attempt < 3) {
-            setTimeout(() => fetchGroups(attempt + 1), 1500)
-          } else if (!cancelled) {
-            console.error('Failed to load groups for properties panel:', err)
+        .catch((err: unknown) => {
+          if (!cancelled) {
+            // Fall back to legacy getGroups on PSS failure
+            getGroups()
+              .then((groups) => {
+                if (!cancelled) {
+                  setGroupOptions(groups.map((g) => ({ id: g.id, name: g.name })))
+                  refreshPropertiesPanel()
+                }
+              })
+              .catch(() => {})
           }
         })
     }
@@ -633,8 +661,15 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
     canvas.zoom('fit-viewport')
   }
 
+  const capabilitiesUnavailable = !capabilities
+
   return (
     <div className="flex flex-col h-screen">
+      {capabilitiesUnavailable && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-sm text-amber-800">
+          Designer capabilities unavailable — some options may be limited
+        </div>
+      )}
       {/* Toolbar */}
       <Card className="border-b rounded-none">
         <div className="flex items-center justify-between p-4">
@@ -797,6 +832,15 @@ export default function BpmnDesigner({ initialXml, processId }: BpmnDesignerProp
                 <ServiceTaskPropertiesPanel element={selectedElement} modeler={modeler} />
               </div>
             )}
+
+            {/* Artifact metadata — always shown at bottom of properties panel */}
+            <div className="border-t">
+              <ArtifactMetadataPanel
+                artifactType="process"
+                value={artifactMetadata}
+                onChange={(v) => { setArtifactMetadata(v); setHasChanges(true) }}
+              />
+            </div>
           </div>
         )}
       </div>

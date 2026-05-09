@@ -17,5 +17,6 @@ public record RoleGroupMappingResponse(
     String roleName,
     String groupName,
     Integer tier,
-    LocalDateTime createdAt
+    LocalDateTime createdAt,
+    Boolean isManagerTier
 ) {}

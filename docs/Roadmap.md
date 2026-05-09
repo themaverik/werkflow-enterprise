@@ -2,7 +2,7 @@
 
 **Repo scope**: Enterprise-only engine, admin-service, and portal features
 **Master Roadmap**: `~/Projects/werkflow-platform/docs/Roadmap.md` (authoritative for all future tasks)
-**Last Updated**: 2026-05-05 (session end)
+**Last Updated**: 2026-05-09
 **Target**: Internal Enterprise Demo — June 2026
 
 > Future tasks in this file are synced from the master Roadmap. Do not add tasks here without adding them to master first.
@@ -14,10 +14,10 @@
 | Item | Status |
 |------|--------|
 | E2E quality gate | 7/7 specs passing |
-| ADRs | ADR-001 through ADR-009 written |
-| Active milestone | M4 Group 3a — Tenant Setup UI (role-mappings + approval-authority done 2026-05-05) |
-| Next session | Departments ERP redirect; Tenant Setup checklist widget; M7 CI/CD |
-| Branch | feature/tenant-config-ui (in progress) |
+| ADRs | ADR-001 through ADR-010 written |
+| Active milestone | M4.4 ✅ COMPLETE — next: M4.4a/M4.4b (parallel) → M4.5 |
+| Next session | M4.4a Process Custody UI Cleanup + M4.4b Currency Standardization (parallel) |
+| Branch | feature/m4-4-platform-semantics — ready to merge |
 
 ---
 
@@ -92,26 +92,30 @@
 - [x] Signal throw event: signal name dropdown (reads `bpmn:Signal` elements from diagram)
 - [x] `SlackNotificationChannel` + `WhatsAppNotificationChannel` stubs (`UnsupportedOperationException`)
 
-### Group 3b — Custody Move to ERP (ADR-004)
+### Group 3b — Custody Move to ERP (ADR-004) ✅ COMPLETE
 
-- [ ] Remove custody DB table from admin-service
-- [ ] Update portal `/admin/tenant/custody-groups` to call ERP `GET/POST/PUT/DELETE /api/v1/custody-mappings`
-- [ ] Add `custodyVars` context builder in `DmnConfigVariableInjector` (5-min cache per tenant)
+**Committed**: 2026-04-30 — commit 3cb362a
 
-### Group 3c — Department Simplification (ADR-005)
+- [x] Remove custody DB table from admin-service (V5 migration + delete entity/repo/service/controller)
+- [x] Update portal `/admin/custody` to call ERP `GET/POST/PUT/DELETE /api/v1/custody-mappings`; add `erpApiClient`; update BpmnDesigner custody dropdown
+- [x] Add `ErpServiceClient` + `DmnConfigVariableInjector` (configVars + custodyVars enrichment); update `DmnRouteDelegate`
 
-- [ ] `SetOwningDepartmentDelegate` — resolves submitter ERP dept → `owningDepartment` variable; fallback to form value
-- [ ] `FlowableGroupResolver` Step 4: fetch user ERP dept → emit `${deptCode}_APPROVER`
-- [ ] Remove `departments` table from admin-service
-- [ ] Department-scoped query filter in `TaskService` and `ProcessMonitoringService` (ERP-enabled guard)
+### Group 3c — Department Simplification (ADR-005) ✅ COMPLETE
+
+**Committed**: 2026-04-30 — commit de0f6c9
+
+- [x] `SetOwningDepartmentDelegate` — resolves submitter ERP dept → `owningDepartment` variable; fallback to form value
+- [x] `FlowableGroupResolver` Step 4: fetch user ERP dept → emit `${deptCode}_APPROVER` (NOTE: will be REMOVED in M4.4 per ADR-010)
+- [x] Remove `departments` table from admin-service (V6 migration)
+- [x] Department-scoped query filter in `WorkflowTaskService` and `ProcessMonitoringService` (ERP-enabled guard)
 
 ---
 
-## M4 — UI Full Visual Overhaul + Tenant Setup + Form Editor
+## M4 — UI Full Visual Overhaul + Tenant Setup + Form Editor + Analytics UI ✅ COMPLETE
 
-**Deps**: M3 Groups 3b/3c complete (ERP custody + department APIs wired)
-**Estimate**: 28–32 hours
-**Status**: READY — all deps complete; plan mode required before coding
+**Deps**: M3 complete (Groups 3b/3c), M5 complete, M6 Group A complete
+**Estimate**: 32–36 hours (includes M6 Group B)
+**Status**: COMPLETE — 2026-05-01 — branch feature/m4-ui-overhaul — final commit 7aac042
 
 ### Design Reference
 
@@ -143,101 +147,69 @@ All screens must be implemented against the approved Figma-export HTML designs:
 - [x] Admin: `GET /api/v1/keycloak/realm-roles` — lists KC realm roles via client-credentials Admin API *(commit: cbe28db)*
 - [x] Portal: engine proxy route `/api/proxy/engine/[...path]` *(commit: cbe28db)*
 
-### Group 3d — Form Editor Improvements (ADR-007)
+### Group 3d — Form Editor Improvements (ADR-007) ✅ COMPLETE
 
-- [ ] `FormJsEditor.tsx` — fetch tenant component allowlist; pass `createPaletteFilterModule(allowedTypes)` to `FormEditor`
-- [ ] `FormJsEditor.tsx` — fetch `CSS_THEME` config vars; apply as inline style on `.fjs-container`
-- [ ] `lib/forms/createPaletteFilterModule.ts` — deregisters non-allowed types on `form.init`
-- [ ] `GET /api/v1/config/form-components` — hardcoded default allowlist; no admin UI (deferred post-demo)
+- [x] `FormJsEditor.tsx` — fetch tenant component allowlist; pass `createPaletteFilterModule(allowedTypes)` to `FormEditor` *(commit: c5fc003)*
+- [x] `FormJsEditor.tsx` — fetch `CSS_THEME` config vars; apply as inline style on `.fjs-container`
+- [x] `lib/forms/createPaletteFilterModule.ts` — deregisters non-allowed types on `form.init`
+- [x] `GET /api/v1/config/form-components` — hardcoded default allowlist; no admin UI (deferred post-demo)
 
-### Design System Foundation
+### Design System Foundation ✅ COMPLETE
 
-- [ ] Tailwind config: primary purple palette, dark sidebar tokens, badge colour map
-- [ ] CSS custom properties: `--sidebar-bg`, `--primary`, `--primary-foreground`, `--badge-*`
-- [ ] Shared components: `StatCard`, `FilterPills`, `StatusBadge`, `PriorityBadge`, `AvatarCell`
+- [x] Tailwind config: primary purple palette, dark sidebar tokens, badge colour map
+- [x] CSS custom properties: `--sidebar-bg`, `--primary`, `--primary-foreground`, `--badge-*`
+- [x] Shared components: `StatCard`, `FilterPills`, `StatusBadge`, `PriorityBadge`, `AvatarCell`
 
-### Navigation Overhaul
+### Navigation Overhaul ✅ COMPLETE
 
-Full sidebar structure (role-gated):
+- [x] Dark sidebar: five sections with icon + label nav items; role-gated visibility per section *(commit: sidebar rewrite)*
+- [x] Move Email Templates nav item from Admin → Design Studio section
+- [x] User profile card at sidebar bottom (avatar, name, role)
+- [x] Notification bell + user avatar in top-right header
 
-```
-GENERAL          (all roles)
-  Dashboard
-  My Tasks
-  My Requests
-  Service Catalog          ← new
+### Screen Overhaul ✅ COMPLETE
 
-DESIGN STUDIO    (WORKFLOW_ADMIN, ADMIN, SUPER_ADMIN)
-  Processes
-  Forms
-  Decisions
-  Email Templates          ← move from Admin; already built (S28.9)
+- [x] **Service Catalog** *(commit: 8f62118)* — card grid, category filter pills, step tags, Submit Request CTA
+- [x] **My Tasks** — stat cards row, All/Mine/Overdue/Unassigned tabs, task table *(commit: task 5)*
+- [x] **My Requests** — request list with status tracking *(commit: task 6)*
+- [x] **Forms** — stat cards, tabs, search, category pills, table + inline actions *(commit: task 7)*
+- [x] **Processes** — stat cards, Deployed/Drafts tabs, card grid *(commit: 8f62118)*
+- [x] **Decisions** — aligned to Forms list pattern *(commit: 8f62118)*
+- [x] **Email Templates** — moved to Design Studio section; existing UI unchanged
+- [x] **Dashboard** — overview cards, recent activity, quick actions *(commit: task 4)*
+- [x] **Connectors** — aligned to new table pattern
+- [x] **Tenant Setup sub-pages** — Approval Authority, Role Mappings, Departments, Custody Groups *(commit: 06866d5)*
 
-ADMIN            (ADMIN, SUPER_ADMIN)
-  Connectors               ← existing
+### Editor CSS Theming ✅ COMPLETE
 
-TENANT SETUP     (ADMIN, SUPER_ADMIN)
-  Approval Authority       ← ADR-002
-  Role Mappings            ← ADR-003
-  Departments              ← ADR-005
-  Custody Groups           ← ADR-004
-MONITORING       (ADMIN, SUPER_ADMIN — M6)
-  Analytics Dashboard
-  Process Health
-```
-
-- [ ] Dark sidebar: five sections with icon + label nav items; role-gated visibility per section
-- [ ] Move Email Templates nav item from Admin → Design Studio section
-- [ ] User profile card at sidebar bottom (avatar, name, role)
-- [ ] Notification bell + user avatar in top-right header
-
-### Screen Overhaul
-
-- [ ] **Service Catalog** (new) — card grid of available processes; category filter pills; step tags; working days estimate; Submit Request CTA
-- [ ] **My Tasks** — stat cards row; All/Mine/Overdue/Unassigned tabs; task table with assignee avatar, priority badge, status badge, due date, View/Claim actions
-- [ ] **My Requests** — request list with status tracking
-- [ ] **Forms** — stat cards; tabs; search; category pills; table with Form/Process/Fields/Submissions/Status/Updated; inline actions
-- [ ] **Processes** — stat cards; Deployed/Drafts tabs; card grid; active instances + versions; Start Workflow + action icons
-- [ ] **Decisions** — aligned to Forms list pattern
-- [ ] **Email Templates** — move to Design Studio section; existing list + editor UI unchanged
-- [ ] **Dashboard** — overview cards, recent activity, quick actions, Tenant Setup checklist widget
-- [ ] **Connectors** — aligned to new table pattern
-- [ ] **Tenant Setup sub-pages** — Approval Authority, Role Mappings, Departments, Custody Groups (see Group 3a above)
-
-### Editor CSS Theming
-
-- [ ] **bpmn-js** — canvas bg, toolbar buttons, properties panel bg/text (~3h)
-- [ ] **form-js** — container bg, field labels/inputs, buttons, palette panel (~2h)
-- [ ] **dmn-js** — table header bg, cell borders, toolbar, hit policy badges (~1h)
-- [ ] All three: inject primary color + font via CSS custom properties; no JS internals
+- [x] **bpmn-js** — canvas bg, toolbar buttons, properties panel bg/text *(commit: 05843e8)*
+- [x] **form-js** — container bg, field labels/inputs, buttons, palette panel *(commit: 05843e8)*
+- [x] **dmn-js** — table header bg, cell borders, toolbar, hit policy badges *(commit: 05843e8)*
+- [x] All three: inject primary color + font via CSS custom properties; no JS internals
 
 ---
 
-## M5 — ADR Signal Events
+## M5 — ADR Signal Events ✅ COMPLETE
 
-**Deps**: M3 complete
-**Estimate**: 6–8 hours
+**Committed**: 2026-04-30 — commit 00e04aa
 
-- [ ] Procurement process: `IntermediateThrowEvent(Signal)` after final approval — uses `TenantAwareSignalService`
-- [ ] Asset request process: `IntermediateCatchEvent(Signal)` for `procurementApproved`
-- [ ] All approval UserTasks: non-interrupting Timer boundary (PT48H → reminder)
-- [ ] All approval UserTasks: interrupting Timer boundary (PT72H → escalate)
-- [ ] All external-call service tasks: Error boundary event with fallback flow
+- [x] Procurement process: `IntermediateThrowEvent(Signal)` after final approval — uses `TenantAwareSignalService`
+- [x] Asset request process: `IntermediateCatchEvent(Signal)` for `procurementApproved`
+- [x] All approval UserTasks: non-interrupting Timer boundary (PT48H → reminder)
+- [x] All approval UserTasks: interrupting Timer boundary (PT72H → escalate)
+- [x] All external-call service tasks: Error boundary event with fallback flow
 
 ---
 
-## M6 — Analytics + Basic Monitoring
+## M6 — Analytics + Basic Monitoring ✅ COMPLETE (Group A + B)
 
-**Deps**: M3 (Flowable history + config tables)
-**Parallel-safe**: alongside M4/M5
-**Estimate**: 12–14 hours
+**Committed**: Group A commit b1c9f15 · Group B commit 7aac042
 
-- [ ] Backend: process execution stats, task metrics, user/group workload (all < 1s for 100k+ instances)
-- [ ] Frontend Analytics Dashboard (`/admin/analytics`): overview stat cards, line chart (executions over time), bar chart (by status), task bottleneck table, SLA dashboard, CSV/PDF export
-- [ ] Frontend Process Health (`/admin/monitoring`): active instance count, SLA at-risk list (dead-letter UI now in M2)
-- [ ] Add Monitoring sidebar section (ADMIN/SUPER_ADMIN): Analytics Dashboard + Process Health links
-- [ ] Health check endpoints on all services (`/actuator/health`)
-- [ ] Troubleshooting runbook
+- [x] Backend: process execution stats, task metrics (avg cycle time, bottleneck step, SLA %) — all < 1s for 100k+ instances
+- [x] Frontend Analytics Dashboard: overview stat cards, line chart (executions over time), bar chart (task bottlenecks), SLA dashboard, CSV export
+- [x] Monitoring sidebar section (ADMIN/SUPER_ADMIN): Analytics Dashboard + Process Health links
+- [x] Health check endpoints on all services (`/actuator/health`) via portal proxy
+- [ ] Basic alerting runbook doc — deferred post-demo
 
 ---
 
@@ -261,9 +233,14 @@ MONITORING       (ADMIN, SUPER_ADMIN — M6)
 | Feature | Status |
 |---------|--------|
 | Governed Case Management (S28.7) | Post-June |
-| AI Gateway (S30) | Post-June |
+| AI Gateway (S30) | Post-June — will implement `transport: mcp` adapter on M4.5 ConnectorDefinition envelope |
 | Vertical Workflow Templates (advanced) | Post-June |
-| OSS release tasks | Parked — see werkflow-public/docs/Roadmap.md |
+| Message Broker Connectors (Kafka/RabbitMQ/SQS) | Customer-driven — `transport: messaging` slot reserved in ConnectorDefinition envelope |
+| gRPC Connectors | Post-launch — internal-microservice-only initially |
+| M4.4c — Priority + SLA + Process Categories | Post-demo polish — see Other-Semantics-To-Standardize.md |
+| M4.4d — Reason Codes + Business Calendar | Post-demo polish — see Other-Semantics-To-Standardize.md |
+| Tenant Setup checklist widget | Post-demo on `/admin/dashboard` |
+| Basic alerting runbook | Post-demo |
 
 ---
 
@@ -282,5 +259,179 @@ MONITORING       (ADMIN, SUPER_ADMIN — M6)
 | S28.9+ | Post-fixes: toast system, Script Task panel, Expression Builder security |
 | S28.10 | BPMN smart dropdowns — delegate expression select, candidate groups tag-select |
 | E2E Gate | 7/7 specs pass; mike.it 4th test user added |
-| ADR Session | ADR-002 through ADR-009 written (2026-04-28) |
+| ADR Session | ADR-002 through ADR-009 written (2026-04-28); ADR-010 written (2026-05-09) |
 | M2 | Engine QW (ADR-009) + Form types (ADR-007) + Signal scoping (ADR-008) + async history + DB indexes + dead-letter UI |
+
+---
+
+## M4.4 — Platform Semantics Service + Categorization (ADR-010)
+
+**Phase**: Pre-Internal-Demo
+**Estimate**: 16–18 hours
+**Reference**: Master Roadmap M4.4 / [`docs/M4.4-Platform-Semantics-Service-FINAL.md`](~/Projects/werkflow-platform/docs/M4.4-Platform-Semantics-Service-FINAL.md)
+**ADR**: ADR-010 (Department Simplification + Categorization)
+
+### Engine Refactor (ADR-010)
+
+- [x] Remove Step 4 from `FlowableGroupResolver` (lines 76–78: `${deptCode}_APPROVER` emission, ADR-005 remnant)
+- [x] Update sample BPMN files: replace `${deptCode}_APPROVER` with role-mapped groups via DMN routing
+- [x] Update `FlowableGroupResolver` javadoc (document three-step model)
+
+### Backend PSS (services/admin)
+
+- [x] `PlatformSemanticsController` — nine endpoints under `/api/v1/design/platform/` (JWT-only tenant; no user-supplied tenantCode)
+  - `/capabilities`, `/candidate-groups`, `/feel-expressions`, `/process-variables`
+  - `/categories`, `/tags`, `/departments`, `/visibility-policy`
+- [x] `CapabilityAggregator`, `CandidateGroupsAggregator`, `FeelExpressionGenerator`
+- [x] `CategoryProjector`, `TagProjector`, `VisibilityPolicyProjector`, `DepartmentProjector`
+- [x] Caffeine cache (5-min TTL, invalidation on admin writes)
+
+### Schema Migrations
+
+- [x] `category` table (Flyway V16 — applied)
+- [x] Add `department_code`, `category_id`, `tags[]` to `process_draft`, `form_schemas` (engine V5)
+- [x] Add `is_manager_tier` boolean to `role_group_mapping` (Flyway V17 — applied)
+- [x] Seed default categories on tenant creation
+
+### Frontend (frontends/portal)
+
+- [x] BPMN designer: candidate-groups picker from PSS (no department section)
+- [x] DMN designer: type-aware autocomplete from PSS feel-expressions
+- [x] Artifact metadata panel (shared): department + category + tags pickers
+- [x] Tenant Setup → Categories admin page (CRUD + server-side role gate)
+- [x] Tenant Setup → Visibility Policy admin page (server-side role gate)
+- [x] Capability-aware degradation in all three designers
+
+### Security fixes (post-review)
+
+- [x] C-1: Removed `?tenantCode=` query param — tenant derived exclusively from JWT
+- [x] C-2: Parameterized SQL LIKE clause in `TagProjector` (no string concatenation)
+- [x] H-1: Added `@AuthenticationPrincipal Jwt jwt` to `/process-variables` for audit trail
+- [x] H-2: `app/(platform)/admin/tenant/layout.tsx` — server-side `auth()` role gate
+
+---
+
+## M4.4a — Process Custody UI Cleanup
+
+**Phase**: Pre-Internal-Demo (alongside M4.4)
+**Estimate**: 4 hours
+
+- [ ] Rename admin route `/admin/tenant/custody-groups` → `/admin/tenant/custody-mappings` (ADR-004 custodyVars CRUD)
+- [ ] Move process governance to per-process tab on Processes page (not tenant-wide screen)
+- [ ] Add glossary entry disambiguating "custody mappings" (routing) vs. "process custody" (governance)
+
+---
+
+## M4.4b — Currency Standardization
+
+**Phase**: Pre-Internal-Demo (alongside M4.4)
+**Estimate**: 3 hours
+
+- [ ] `ConfigurationVariable` type=LOCALE (single entry per tenant: currency, locale, timezone, numberFormat, dateFormat)
+- [ ] PSS endpoint: `GET /api/v1/design/platform/locale`
+- [ ] DMN cell display formatting driven by tenant locale (INR: ₹10,00,000; USD: $10,000)
+
+---
+
+## M4.5 — Connector Spec Formalisation + DTDS Shared Core
+
+**Phase**: Pre-Internal-Demo
+**Estimate**: 18–22 hours
+**Reference**: Master Roadmap M4.5
+
+### Spec Adoption (services/admin)
+
+- [ ] Copy connector schemas to `services/admin/src/main/resources/schemas/connector/v1/`
+- [ ] `ConnectorDefinitionValidator` — JSON Schema validation at registration
+- [ ] Flyway: `connector_definition_v2` table (key, version, tenant_id, definition_json)
+- [ ] Migration: convert existing connector rows to ConnectorDefinition envelope format
+- [ ] OpenAPI ingestion: `POST /api/v1/connectors/import-openapi`
+
+### DTDS Shared Core (services/admin/designtime/)
+
+- [ ] `DesignTimeDataController` — routes under `/api/v1/design/`
+- [ ] `ConnectorCatalogService` — tenant-scoped connector list + definition retrieval
+- [ ] `SchemaResolverService` + `SchemaFlattenerService`
+- [ ] Caffeine cache keyed `{tenantCode}:{connectorKey}:{version}:{operationId}:{direction}` (30-min TTL)
+- [ ] All DTDS endpoints (`GET /connectors`, `GET /connectors/{key}`, `GET /connectors/{key}/operations`, etc.)
+
+### BPMN Facade (services/admin/designtime/bpmn/)
+
+- [ ] `BpmnFacadeController` — `GET /api/v1/design/bpmn/processes/{processDefId}/variables-at/{activityId}`
+- [ ] `ProcessVariableScopeService` — BPMN XML traversal, accumulated variables with provenance
+
+### Portal Integration
+
+- [ ] Replace BPMN connector dropdown with DTDS-driven version
+- [ ] Add operation picker (by category icon) + output field tree + input field form
+- [ ] Connector list reads from DTDS; OpenAPI import wizard
+
+---
+
+## M4.6 — Webhook Inbound + DTDS Form/DMN Facades
+
+**Phase**: Pre-Internal-Demo (after M4.5)
+**Estimate**: 16–20 hours
+**Reference**: Master Roadmap M4.6
+
+### Webhook Receiver (services/engine/webhook/)
+
+- [ ] `WebhookController` — `POST /api/v1/webhooks/{tenantCode}/{connectorKey}`
+- [ ] `HmacVerifier` (pluggable: Stripe-style, GitHub-style, raw SHA-256)
+- [ ] `WebhookCorrelator` — Flowable message correlation (start or signal in-flight)
+- [ ] `ReplayProtectionService` — idempotency key cache per connector
+- [ ] Dead-letter queue: `webhook_undelivered` table + Monitoring screen integration
+
+### DTDS Form Facade (services/admin/designtime/form/)
+
+- [ ] `FormFacadeController` — `GET /api/v1/design/form/binding-targets`, `/connector-options/{key}/{opId}`
+
+### DTDS DMN Facade (services/admin/designtime/dmn/)
+
+- [ ] `DmnFacadeController` — `GET /api/v1/design/dmn/decisions/{dmnId}/inputs`, `/binding-candidates`
+- [ ] FEEL type converter (JSON Schema → FEEL)
+
+### Portal (Form + DMN designer integration)
+
+- [ ] Form-js: select-field data source picker from DTDS Form facade
+- [ ] DMN editor: ranked variable candidates from DTDS DMN facade
+
+---
+
+## M4.7 — Database Connector + Connector Generators
+
+**Phase**: Pre-Internal-Demo (after M4.5)
+**Estimate**: 14–18 hours
+**Reference**: Master Roadmap M4.7
+
+### Refactor ExternalApiCallDelegate
+
+- [ ] Extract `ConnectorDelegateBase` — shared: audit, masking, error mode dispatch, transient/local variables
+- [ ] Rename `ExternalApiCallDelegate` → `RestConnectorDelegate extends ConnectorDelegateBase`
+
+### Database Adapter (services/engine/action/)
+
+- [ ] `DatabaseConnectorDelegate extends ConnectorDelegateBase`
+- [ ] `NamedQueryExecutor` (JdbcTemplate, setMaxRows, setQueryTimeout, setReadOnly)
+- [ ] `KeysetPaginator` — pagination loop via cursorParameters
+- [ ] `DatasourceRegistry` — per-tenant JDBC datasource (analogous to TenantEndpointResolver)
+- [ ] Resilience4j circuit breaker keyed per `{tenantCode}:{connectorKey}`
+- [ ] DML rejection at registration (readOnly flag enforcement)
+
+### Admin Screen + Demo
+
+- [ ] `/admin/tenant/datasources` — CRUD for tenant datasources; "Test connection" button
+- [ ] Seed `legacy-hris-readonly` demo DB connector
+
+---
+
+## M4.8 — Marketplace Foundation
+
+**Phase**: Demo onward (community-driven)
+**Estimate**: 6–8 hours core team
+**Reference**: Master Roadmap M4.8
+
+- [ ] `marketplace/` directory structure + CI validation workflow
+- [ ] `marketplace/CONTRIBUTING.md` — submission guidelines
+- [ ] Seed: `werkflow/werkflow-erp`, `community/slack`, `community/github`, `community/postgres-readonly`, `community/openai-chat`
+- [ ] Portal page `/admin/marketplace` — browseable catalog + Install action

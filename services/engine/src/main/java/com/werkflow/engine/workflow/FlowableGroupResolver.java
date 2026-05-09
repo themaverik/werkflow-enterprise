@@ -16,9 +16,14 @@ import java.util.Set;
 /**
  * Resolves Flowable candidateGroup identifiers for a user — three-step pipeline.
  *
- * ADR-003: DoA cumulative loop and cross-dept compound groups removed.
- * Role→group mapping is now DB-backed per tenant (role_group_mappings table),
+ * Step 1: fetch user profile from admin-service (for department attribution only).
+ * Step 2: emit groups from YAML role-mappings merged with DB role-group mappings.
+ * Step 3: emit department visibility group (DEPT:{code}) for query-layer scoping.
+ *
+ * ADR-003: role→group mapping is DB-backed per tenant (role_group_mappings table),
  * merged with YAML fallback entries (admin, super_admin, workflow_designer).
+ * ADR-010: department-derived approval routing groups ({deptCode}_APPROVER) removed.
+ * Routing is handled entirely by DMN with role-mapped groups.
  */
 @Service
 @RequiredArgsConstructor
@@ -68,13 +73,10 @@ public class FlowableGroupResolver implements UserGroupLookupProxy {
             return new ArrayList<>(resolved);
         }
 
-        // Step 3: emit department visibility group (scoping, not approval routing)
+        // Step 3: emit department visibility group (scoping only, not approval routing — ADR-010)
         String deptCode = profile.getDepartmentCode();
         if (deptCode != null && !deptCode.isBlank()) {
             resolved.add("DEPT:" + deptCode);
-
-            // Step 4 (ERP tier): emit department approval-routing group — ADR-005
-            resolved.add(deptCode + "_APPROVER");
         }
 
         log.debug("Resolved groups for user {}: {}", userId, resolved);
