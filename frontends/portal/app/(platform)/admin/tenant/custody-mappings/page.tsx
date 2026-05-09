@@ -144,6 +144,24 @@ function ChipRow({ groups, onAddGroup, onRemoveGroup, groupsError, availableGrou
             )}
           </select>
         )}
+        {availableGroups.length === 0 && (
+          <input
+            type="text"
+            placeholder="group name + Enter"
+            className="h-7 rounded-md border border-input bg-background px-2 text-xs font-mono text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            aria-label="Add candidate group by name"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const val = e.currentTarget.value.trim()
+                if (val && !groups.includes(val)) {
+                  onAddGroup(val)
+                  e.currentTarget.value = ''
+                }
+                e.preventDefault()
+              }
+            }}
+          />
+        )}
       </div>
       {groupsError && <p className="text-destructive text-xs mt-1">{groupsError}</p>}
     </div>

@@ -1,5 +1,6 @@
 package com.werkflow.admin.controller;
 
+import com.werkflow.admin.designtime.platform.service.LocaleProjector;
 import com.werkflow.admin.dto.ConfigVarRequest;
 import com.werkflow.admin.dto.ConfigVarResponse;
 import com.werkflow.admin.security.JwtClaimsExtractor;
@@ -24,6 +25,7 @@ public class ConfigurationVariableController {
 
     private final ConfigurationVariableService service;
     private final JwtClaimsExtractor jwtClaimsExtractor;
+    private final LocaleProjector localeProjector;
 
     private String resolveTenant(String tenantCode, Jwt jwt) {
         return (tenantCode != null && !tenantCode.isBlank()) ? tenantCode : jwtClaimsExtractor.getTenantId(jwt);
@@ -62,7 +64,11 @@ public class ConfigurationVariableController {
             @Valid @RequestBody ConfigVarRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         ConfigVarRequest resolved = resolveRequestTenant(request, jwt);
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(resolved));
+        ConfigVarResponse result = service.create(resolved);
+        if ("LOCALE".equals(resolved.varType())) {
+            localeProjector.evict(resolved.tenantCode());
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     @PutMapping("/{id}")
@@ -72,7 +78,11 @@ public class ConfigurationVariableController {
             @Valid @RequestBody ConfigVarRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         ConfigVarRequest resolved = resolveRequestTenant(request, jwt);
-        return ResponseEntity.ok(service.update(id, resolved));
+        ConfigVarResponse result = service.update(id, resolved);
+        if ("LOCALE".equals(resolved.varType())) {
+            localeProjector.evict(resolved.tenantCode());
+        }
+        return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/{id}")
