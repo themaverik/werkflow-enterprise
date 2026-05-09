@@ -1,4 +1,4 @@
-import { apiClient } from './client'
+import { adminApiClient } from './client'
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -86,7 +86,7 @@ function handleDtdsError(error: unknown, context: string): never {
 
 export async function listDtdsConnectors(): Promise<ConnectorSummary[]> {
   try {
-    const res = await apiClient.get<{ connectors: ConnectorSummary[] }>(
+    const res = await adminApiClient.get<{ connectors: ConnectorSummary[] }>(
       '/api/v1/design/connectors'
     )
     return res.data.connectors
@@ -97,7 +97,7 @@ export async function listDtdsConnectors(): Promise<ConnectorSummary[]> {
 
 export async function getDtdsConnector(key: string): Promise<ConnectorDefinition> {
   try {
-    const res = await apiClient.get<ConnectorDefinition>(
+    const res = await adminApiClient.get<ConnectorDefinition>(
       `/api/v1/design/connectors/${encodeURIComponent(key)}`
     )
     return res.data
@@ -108,7 +108,7 @@ export async function getDtdsConnector(key: string): Promise<ConnectorDefinition
 
 export async function listDtdsOperations(connectorKey: string): Promise<OperationSummary[]> {
   try {
-    const res = await apiClient.get<{ operations: OperationSummary[] }>(
+    const res = await adminApiClient.get<{ operations: OperationSummary[] }>(
       `/api/v1/design/connectors/${encodeURIComponent(connectorKey)}/operations`
     )
     return res.data.operations
@@ -123,7 +123,7 @@ export async function getDtdsOperationSchema(
   direction: FieldDirection
 ): Promise<JsonSchema> {
   try {
-    const res = await apiClient.get<JsonSchema>(
+    const res = await adminApiClient.get<JsonSchema>(
       `/api/v1/design/connectors/${encodeURIComponent(connectorKey)}/operations/${encodeURIComponent(operationId)}/schema`,
       { params: { direction } }
     )
@@ -139,7 +139,7 @@ export async function listDtdsFields(
   direction: FieldDirection
 ): Promise<FieldEntry[]> {
   try {
-    const res = await apiClient.get<{ fields: FieldEntry[] }>(
+    const res = await adminApiClient.get<{ fields: FieldEntry[] }>(
       `/api/v1/design/connectors/${encodeURIComponent(connectorKey)}/operations/${encodeURIComponent(operationId)}/fields`,
       { params: { direction } }
     )
@@ -154,7 +154,7 @@ export async function listProcessVariablesAt(
   activityId: string
 ): Promise<ProcessVariable[]> {
   try {
-    const res = await apiClient.get<{ variables: ProcessVariable[] }>(
+    const res = await adminApiClient.get<{ variables: ProcessVariable[] }>(
       `/api/v1/design/bpmn/processes/${encodeURIComponent(processDefId)}/variables-at/${encodeURIComponent(activityId)}`
     )
     return res.data.variables
@@ -167,9 +167,10 @@ export async function importConnectorFromOpenApi(
   urlOrYaml: string
 ): Promise<ConnectorDefinition> {
   try {
-    const res = await apiClient.post<ConnectorDefinition>(
+    const isUrl = /^https?:\/\//i.test(urlOrYaml.trim())
+    const res = await adminApiClient.post<ConnectorDefinition>(
       '/api/v1/connectors/import-openapi',
-      { source: urlOrYaml }
+      isUrl ? { url: urlOrYaml.trim() } : { content: urlOrYaml }
     )
     return res.data
   } catch (error: unknown) {
