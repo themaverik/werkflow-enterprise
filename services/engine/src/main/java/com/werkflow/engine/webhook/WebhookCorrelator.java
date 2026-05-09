@@ -3,7 +3,7 @@ package com.werkflow.engine.webhook;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.RuntimeService;
-import org.flowable.engine.runtime.MessageCorrelationResult;
+import org.flowable.eventsubscription.api.EventSubscription;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,13 +14,18 @@ import java.util.Map;
  *
  * <p>Strategy (in order):
  * <ol>
- *   <li>Try to correlate to a running Intermediate Message Catch Event using
- *       {@code processVariableValueEquals(correlationVariable, correlationValue)}.</li>
- *   <li>If no running instance matched, try to start a new process via a
- *       Message Start Event with the same message name.</li>
- *   <li>If both fail, throw {@link WebhookCorrelationException} so the caller
- *       can persist the payload to the dead-letter store.</li>
+ *   <li>Find active message event subscriptions for the given message name + tenant,
+ *       then filter to those whose process instance has the matching correlation variable.
+ *       Deliver via {@code RuntimeService.messageEventReceived()}.</li>
+ *   <li>If no running instance matched, start a new process via a Message Start Event
+ *       with the same message name.</li>
+ *   <li>If both fail, throw {@link WebhookCorrelationException} so the caller can persist
+ *       the payload to the dead-letter store.</li>
  * </ol>
+ *
+ * <p>Note: {@code MessageCorrelationBuilder} is a Camunda API and does not exist in
+ * Flowable 7.x. The correct Flowable pattern uses {@code createEventSubscriptionQuery()}
+ * combined with {@code messageEventReceived()}.</p>
  */
 @Slf4j
 @Service
@@ -41,16 +46,26 @@ public class WebhookCorrelator {
                           Map<String, Object> payloadVariables) {
         // Attempt 1 — correlate to a running Intermediate Message Catch Event
         try {
-            List<MessageCorrelationResult> results = runtimeService
-                    .createMessageCorrelationBuilder(messageName)
+            List<EventSubscription> subscriptions = runtimeService.createEventSubscriptionQuery()
+                    .eventType("message")
+                    .eventName(messageName)
                     .tenantId(tenantCode)
-                    .processVariableValueEquals(correlationVariable, correlationValue)
-                    .setVariables(payloadVariables)
-                    .correlateAllWithResult();
-            if (!results.isEmpty()) {
+                    .list();
+
+            List<EventSubscription> matched = subscriptions.stream()
+                    .filter(sub -> runtimeService.createProcessInstanceQuery()
+                            .processInstanceId(sub.getProcessInstanceId())
+                            .variableValueEquals(correlationVariable, correlationValue)
+                            .count() > 0)
+                    .toList();
+
+            if (!matched.isEmpty()) {
+                for (EventSubscription sub : matched) {
+                    runtimeService.messageEventReceived(messageName, sub.getExecutionId(), payloadVariables);
+                }
                 log.info("WebhookCorrelator: correlated message='{}' to {} running instance(s) " +
                          "[tenant={}, {}={}]",
-                        messageName, results.size(), tenantCode, correlationVariable, correlationValue);
+                        messageName, matched.size(), tenantCode, correlationVariable, correlationValue);
                 return;
             }
         } catch (Exception e) {
@@ -60,13 +75,8 @@ public class WebhookCorrelator {
 
         // Attempt 2 — start a new process via Message Start Event
         try {
-            runtimeService.createMessageCorrelationBuilder(messageName)
-                    .tenantId(tenantCode)
-                    .setVariable(correlationVariable, correlationValue)
-                    .setVariables(payloadVariables)
-                    .correlateStartMessage();
-            log.info("WebhookCorrelator: started new process via message='{}' " +
-                     "[tenant={}, {}={}]",
+            runtimeService.startProcessInstanceByMessageAndTenantId(messageName, payloadVariables, tenantCode);
+            log.info("WebhookCorrelator: started new process via message='{}' [tenant={}, {}={}]",
                     messageName, tenantCode, correlationVariable, correlationValue);
             return;
         } catch (Exception e) {

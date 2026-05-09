@@ -85,7 +85,7 @@ public class DmnFacadeController {
             @AuthenticationPrincipal Jwt jwt) {
         String tenantId = jwtClaimsExtractor.getTenantId(jwt);
 
-        VariableAtActivityResponse scope = variableScopeService.getVariablesAt(
+        VariableAtActivityResponse scope = variableScopeService.variablesAt(
                 tenantId, processDefId, activityId);
 
         String dmnXml = engineClient.getDmnDefinitionXml(tenantId, dmnId);
