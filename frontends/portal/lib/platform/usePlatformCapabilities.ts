@@ -41,6 +41,7 @@ export function useCandidateGroups() {
     staleTime: FIVE_MINUTES,
     gcTime: FIVE_MINUTES,
     retry: 1,
+    refetchOnMount: 'always',
   })
 }
 
