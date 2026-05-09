@@ -181,8 +181,9 @@ public class DesignTimeDataController {
     public ResponseEntity<ConnectorDefinitionV2> importOpenApi(
             @Valid @RequestBody OpenApiImportRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        String tenantId = resolveTenantId(request.tenantCode(), jwt);
+        String tenantId = tenant(jwt);
         ConnectorDefinitionV2 result = openApiImportService.importOpenApi(tenantId, request);
+        result.setDefinitionJson(catalogService.redactDefinitionJson(result.getDefinitionJson()));
         auditService.record(tenantId, principal(jwt),
                 "/api/v1/design/connectors/import-openapi", result.getKey(), null, null);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
@@ -199,12 +200,6 @@ public class DesignTimeDataController {
     private String principal(Jwt jwt) {
         String username = jwtClaimsExtractor.getUsername(jwt);
         return username != null ? username : jwtClaimsExtractor.getUserId(jwt);
-    }
-
-    private String resolveTenantId(String requestTenantCode, Jwt jwt) {
-        return (requestTenantCode != null && !requestTenantCode.isBlank())
-                ? requestTenantCode
-                : tenant(jwt);
     }
 
     private static void validateDirection(String direction) {

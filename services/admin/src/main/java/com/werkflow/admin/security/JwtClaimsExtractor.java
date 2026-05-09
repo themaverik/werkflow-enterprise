@@ -182,7 +182,12 @@ public class JwtClaimsExtractor {
      */
     public String getTenantId(Jwt jwt) {
         String tenantId = jwt.getClaimAsString("tenant_id");
-        return (tenantId != null && !tenantId.isBlank()) ? tenantId : "default";
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN,
+                    "JWT is missing required tenant_id claim");
+        }
+        return tenantId;
     }
 
     /**

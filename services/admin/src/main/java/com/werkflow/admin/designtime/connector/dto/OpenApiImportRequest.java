@@ -29,10 +29,5 @@ public record OpenApiImportRequest(
         String connectorKey,
 
         /** Override display name. Defaults to OpenAPI info.title. */
-        String displayName,
-
-        /**
-         * Tenant code. Optional — if blank, resolved from the caller's JWT tenant_id claim.
-         */
-        String tenantCode
+        String displayName
 ) {}

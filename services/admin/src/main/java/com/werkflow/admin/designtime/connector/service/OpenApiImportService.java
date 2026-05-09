@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.werkflow.admin.designtime.connector.dto.OpenApiImportRequest;
 import com.werkflow.admin.designtime.connector.entity.ConnectorDefinitionV2;
+import com.werkflow.common.security.SsrfGuard;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
@@ -36,6 +37,7 @@ import java.util.Map;
 public class OpenApiImportService {
 
     private final ConnectorCatalogService catalogService;
+    private final SsrfGuard ssrfGuard;
     private final ObjectMapper objectMapper;
 
     /**
@@ -75,10 +77,13 @@ public class OpenApiImportService {
         ParseOptions opts = new ParseOptions();
         opts.setResolve(true);
 
+        opts.setResolveFully(false);
+
         SwaggerParseResult result;
         if (request.content() != null && !request.content().isBlank()) {
             result = parser.readContents(request.content(), null, opts);
         } else if (request.url() != null && !request.url().isBlank()) {
+            ssrfGuard.validate(request.url());
             result = parser.readLocation(request.url(), null, opts);
         } else {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
