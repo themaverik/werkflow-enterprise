@@ -91,7 +91,7 @@ export default function LocalePage() {
 
   const saveMutation = useMutation({
     mutationFn: async (entry: LocaleEntry) => {
-      const res = await fetch('/api/proxy/admin/config/variables', {
+      const res = await fetch('/api/proxy/admin/config/vars', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -103,14 +103,14 @@ export default function LocalePage() {
       })
       if (res.status === 409) {
         // var already exists — update by fetching the id first then PUT
-        const listRes = await fetch('/api/proxy/admin/config/variables?type=LOCALE', {
+        const listRes = await fetch('/api/proxy/admin/config/vars?type=LOCALE', {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (!listRes.ok) throw new Error('Failed to load existing locale config')
         const vars = await listRes.json() as Array<{ id: number; varKey: string }>
         const existing = vars.find((v) => v.varKey === 'tenantLocale')
         if (!existing) throw new Error('Locale var not found after conflict')
-        const putRes = await fetch(`/api/proxy/admin/config/variables/${existing.id}`, {
+        const putRes = await fetch(`/api/proxy/admin/config/vars/${existing.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
