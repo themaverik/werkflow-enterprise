@@ -110,6 +110,8 @@ app:
 
   cache:
     pss-ttl-minutes: 5
+    dtds-ttl-minutes: 30
+    dtds-max-size: 1000
 
   routes:
     "studio": finance_head,finance_manager,hr_head,hr_manager,hub_manager,hub_request_approver,inventory_manager,it_head,it_manager,leave_request_approver,logistics_manager,procurement_approver,procurement_head,procurement_manager,super_admin

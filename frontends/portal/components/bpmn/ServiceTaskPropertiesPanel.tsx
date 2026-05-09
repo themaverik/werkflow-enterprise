@@ -24,6 +24,13 @@ import {
   testConnector,
 } from '@/lib/api/connectors'
 import { useTranslations } from 'next-intl'
+import { useDtdsConnectors } from '@/hooks/useDtdsConnectors'
+import { useDtdsOperations } from '@/hooks/useDtdsOperations'
+import { useDtdsFields } from '@/hooks/useDtdsFields'
+import { DtdsOperationPicker } from './DtdsOperationPicker'
+import { DtdsFieldTree } from './DtdsFieldTree'
+import { DtdsInputFieldForm } from './DtdsInputFieldForm'
+import type { FieldEntry } from '@/lib/api/dtds'
 
 
 interface ServiceTaskPropertiesPanelProps {
@@ -122,6 +129,15 @@ export default function ServiceTaskPropertiesPanel({
   const [selectedConnectorKey, setSelectedConnectorKey] = useState('')
   const [connectorLoadError, setConnectorLoadError] = useState<string | null>(null)
 
+  // ---- DTDS state ----
+  const [selectedOperationId, setSelectedOperationId] = useState('')
+  const [inputMappings, setInputMappings] = useState<Array<{ path: string; processVariable: string }>>([])
+
+  const dtdsConnectors = useDtdsConnectors()
+  const dtdsOperations = useDtdsOperations(connectorKey || null)
+  const dtdsOutputFields = useDtdsFields(connectorKey || null, selectedOperationId || null, 'output')
+  const dtdsInputFields = useDtdsFields(connectorKey || null, selectedOperationId || null, 'input')
+
   // ---- Contract tab state ----
   const [contractMode, setContractMode] = useState<'import' | 'test'>('import')
   const [contractJson, setContractJson] = useState('')
@@ -149,6 +165,24 @@ export default function ServiceTaskPropertiesPanel({
     setSelectedConnectorKey(savedConnectorKey)
     setConnectorPath(bo.get('ab:path') || '')
     setBodyTemplate(bo.get('ab:body') || '')
+    setSelectedOperationId(bo.get('ab:operationId') || '')
+
+    // Input mappings: stored as "path:${var}\npath2:${var2}"
+    const rawMappings: string = bo.get('ab:inputMappings') || ''
+    if (rawMappings.trim()) {
+      const parsed = rawMappings
+        .split('\n')
+        .map((line: string) => line.trim())
+        .filter(Boolean)
+        .map((line: string) => {
+          const idx = line.indexOf(':')
+          if (idx === -1) return { path: line, processVariable: '' }
+          return { path: line.slice(0, idx), processVariable: line.slice(idx + 1) }
+        })
+      setInputMappings(parsed)
+    } else {
+      setInputMappings([])
+    }
   }, [element, modeler])
 
   // ---- Fetch connectors on mount ----
@@ -270,6 +304,42 @@ export default function ServiceTaskPropertiesPanel({
     }
   }
 
+  // ---- DTDS operation selection ----
+
+  const handleOperationSelect = (operationId: string) => {
+    setSelectedOperationId(operationId)
+    modeler
+      .get('modeling')
+      .updateProperties(element, { 'ab:operationId': operationId || undefined })
+    setInputMappings([])
+    modeler
+      .get('modeling')
+      .updateProperties(element, { 'ab:inputMappings': undefined })
+  }
+
+  const handleInputMappingChange = (path: string, processVariable: string) => {
+    const updated = inputMappings.some(m => m.path === path)
+      ? inputMappings.map(m => (m.path === path ? { path, processVariable } : m))
+      : [...inputMappings, { path, processVariable }]
+    setInputMappings(updated)
+    const serialized = updated
+      .filter(m => m.processVariable.trim())
+      .map(m => `${m.path}:${m.processVariable}`)
+      .join('\n')
+    modeler
+      .get('modeling')
+      .updateProperties(element, { 'ab:inputMappings': serialized || undefined })
+  }
+
+  const handleOutputFieldClick = (field: FieldEntry) => {
+    const varName = field.path
+      .split('.')
+      .pop()
+      ?.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()) ?? field.path
+    const token = `\${${varName}}`
+    handleBodyTemplateChange(bodyTemplate + token)
+  }
+
   // ---- Contract tab: apply parsed JSON to extractFields ----
 
   const handleApplyContract = (jsonSource: string) => {
@@ -314,40 +384,57 @@ export default function ServiceTaskPropertiesPanel({
 
   return (
     <div className="space-y-3 p-3">
-      {/* Connector selector */}
+      {/* Connector selector — prefers DTDS list, falls back to legacy connector list */}
       <Card>
         <CardHeader className="pb-2 pt-3 px-3">
           <CardTitle className="text-xs font-semibold">{t('connector')}</CardTitle>
           <CardDescription className="text-xs">{t('connectorDesc')}</CardDescription>
         </CardHeader>
-        <CardContent className="px-3 pb-3">
-          <Select value={selectedConnectorKey} onValueChange={handleConnectorSelect}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder="(none)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">
-                (none)
-              </SelectItem>
-              {connectors.map(c => (
-                <SelectItem key={c.connectorKey} value={c.connectorKey}>
-                  {c.displayName} ({c.connectorKey})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {connectorLoadError && (
-            <p className="text-xs text-destructive mt-1">{connectorLoadError}</p>
+        <CardContent className="px-3 pb-3 space-y-2">
+          {dtdsConnectors.isLoading && (
+            <p className="text-xs text-muted-foreground">Loading connectors…</p>
+          )}
+          {!dtdsConnectors.isLoading && (
+            <Select value={selectedConnectorKey} onValueChange={handleConnectorSelect}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="(none)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">(none)</SelectItem>
+                {dtdsConnectors.connectors.length > 0
+                  ? dtdsConnectors.connectors.map(c => (
+                      <SelectItem key={c.key} value={c.key}>
+                        {c.displayName} ({c.key})
+                      </SelectItem>
+                    ))
+                  : connectors.map(c => (
+                      <SelectItem key={c.connectorKey} value={c.connectorKey}>
+                        {c.displayName} ({c.connectorKey})
+                      </SelectItem>
+                    ))}
+              </SelectContent>
+            </Select>
+          )}
+          {(dtdsConnectors.error || connectorLoadError) && (
+            <p className="text-xs text-destructive mt-1">
+              {dtdsConnectors.error?.message ?? connectorLoadError}
+            </p>
           )}
         </CardContent>
       </Card>
 
       {/* Tabbed panel */}
       <Tabs defaultValue="request">
-        <TabsList className="w-full grid grid-cols-3 h-8 text-xs">
+        <TabsList className={`w-full grid h-8 text-xs ${connectorKey ? 'grid-cols-5' : 'grid-cols-3'}`}>
           <TabsTrigger value="request" className="text-xs">{t('requestTab')}</TabsTrigger>
           <TabsTrigger value="contract" className="text-xs">{t('contractTab')}</TabsTrigger>
           <TabsTrigger value="extract" className="text-xs">{t('extractFieldsTab')}</TabsTrigger>
+          {connectorKey && (
+            <TabsTrigger value="inputs" className="text-xs">Inputs</TabsTrigger>
+          )}
+          {connectorKey && (
+            <TabsTrigger value="outputs" className="text-xs">Outputs</TabsTrigger>
+          )}
         </TabsList>
 
         {/* ------------------------------------------------------------------ */}
@@ -357,9 +444,20 @@ export default function ServiceTaskPropertiesPanel({
           <Card>
             <CardContent className="space-y-3 px-3 pb-3 pt-3">
 
-              {/* Connector mode: path + body builder */}
+              {/* Connector mode: operation picker + path + body builder */}
               {connectorKey && (
                 <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Operation</Label>
+                    <DtdsOperationPicker
+                      operations={dtdsOperations.operations}
+                      value={selectedOperationId}
+                      isLoading={dtdsOperations.isLoading}
+                      error={dtdsOperations.error}
+                      onChange={handleOperationSelect}
+                    />
+                  </div>
+
                   <div className="space-y-1">
                     <Label className="text-xs">{t('path')}</Label>
                     <Input
@@ -381,7 +479,25 @@ export default function ServiceTaskPropertiesPanel({
                       className="text-xs font-mono min-h-[100px] resize-y"
                       placeholder={'{\n  "requestId": "${requestId}",\n  "amount": ${amount}\n}'}
                     />
-                    {schemaFields.length > 0 && (
+                    {dtdsOutputFields.fields.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        <span className="text-xs text-muted-foreground">{t('schemaFields')}</span>
+                        {dtdsOutputFields.fields
+                          .filter(f => f.depth === 0)
+                          .map(f => (
+                            <Badge
+                              key={f.path}
+                              variant="outline"
+                              className="text-xs cursor-pointer hover:bg-accent"
+                              onClick={() => handleOutputFieldClick(f)}
+                            >
+                              {f.path}
+                              <span className="ml-1 text-muted-foreground">{f.type}</span>
+                            </Badge>
+                          ))}
+                      </div>
+                    )}
+                    {!dtdsOutputFields.fields.length && schemaFields.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         <span className="text-xs text-muted-foreground">{t('schemaFields')}</span>
                         {schemaFields.map(f => (
@@ -393,8 +509,7 @@ export default function ServiceTaskPropertiesPanel({
                               const token = f.type === 'string'
                                 ? `"\${${f.key}}"`
                                 : `\${${f.key}}`
-                              const newBody = bodyTemplate + token
-                              handleBodyTemplateChange(newBody)
+                              handleBodyTemplateChange(bodyTemplate + token)
                             }}
                           >
                             {f.key}
@@ -403,7 +518,7 @@ export default function ServiceTaskPropertiesPanel({
                         ))}
                       </div>
                     )}
-                    {schemaLoading && (
+                    {(schemaLoading || dtdsOutputFields.isLoading) && (
                       <p className="text-xs text-muted-foreground">{t('loadingSchema')}</p>
                     )}
                   </div>
@@ -644,6 +759,62 @@ export default function ServiceTaskPropertiesPanel({
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ------------------------------------------------------------------ */}
+        {/* INPUTS TAB (DTDS)                                                    */}
+        {/* ------------------------------------------------------------------ */}
+        {connectorKey && (
+          <TabsContent value="inputs">
+            <Card>
+              <CardContent className="space-y-3 px-3 pb-3 pt-3">
+                {!selectedOperationId && (
+                  <p className="text-xs text-muted-foreground">
+                    Select an operation in the Request tab to map input fields.
+                  </p>
+                )}
+                {selectedOperationId && (
+                  <DtdsInputFieldForm
+                    fields={dtdsInputFields.fields}
+                    isLoading={dtdsInputFields.isLoading}
+                    error={dtdsInputFields.error}
+                    mappings={inputMappings}
+                    onMappingChange={handleInputMappingChange}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* ------------------------------------------------------------------ */}
+        {/* OUTPUTS TAB (DTDS)                                                   */}
+        {/* ------------------------------------------------------------------ */}
+        {connectorKey && (
+          <TabsContent value="outputs">
+            <Card>
+              <CardContent className="space-y-3 px-3 pb-3 pt-3">
+                {!selectedOperationId && (
+                  <p className="text-xs text-muted-foreground">
+                    Select an operation in the Request tab to see output fields.
+                  </p>
+                )}
+                {selectedOperationId && (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      Click a field to insert it into the request body template.
+                    </p>
+                    <DtdsFieldTree
+                      fields={dtdsOutputFields.fields}
+                      isLoading={dtdsOutputFields.isLoading}
+                      error={dtdsOutputFields.error}
+                      onFieldClick={handleOutputFieldClick}
+                    />
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )

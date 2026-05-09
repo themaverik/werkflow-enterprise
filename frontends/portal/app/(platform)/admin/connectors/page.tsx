@@ -14,10 +14,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { RefreshCw, Plus, Pencil, FlaskConical, Trash2 } from 'lucide-react'
+import { RefreshCw, Plus, Pencil, FlaskConical, Trash2, Upload } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { listConnectors, deleteConnector, type ConnectorResponse } from '@/lib/api/connectors'
 import { ConnectorForm } from '@/components/admin/ConnectorForm'
+import { DtdsConnectorCard } from '@/components/admin/DtdsConnectorCard'
+import { ImportOpenApiModal } from '@/components/admin/ImportOpenApiModal'
+import { useDtdsConnectors } from '@/hooks/useDtdsConnectors'
+import type { ConnectorDefinition } from '@/lib/api/dtds'
 
 interface ConnectorGroup {
   connectorKey: string
@@ -58,6 +62,9 @@ export default function ConnectorsPage() {
   const [editDefaultTab, setEditDefaultTab] = useState<'general' | 'auth' | 'contract' | 'test'>('general')
   const [deletingGroup, setDeletingGroup] = useState<ConnectorGroup | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [importOpenApiOpen, setImportOpenApiOpen] = useState(false)
+
+  const dtdsConnectors = useDtdsConnectors()
 
   const { data: connectors, isLoading, error, refetch } = useQuery({
     queryKey: ['connectors'],
@@ -72,6 +79,11 @@ export default function ConnectorsPage() {
 
   const handleCreated = () => { setCreateOpen(false); invalidate() }
   const handleUpdated = () => { invalidate() }
+
+  const handleOpenApiImported = (_connector: ConnectorDefinition) => {
+    dtdsConnectors.refetch()
+    invalidate()
+  }
 
   const handleDeleteConfirm = async () => {
     if (!deletingGroup) return
@@ -96,6 +108,10 @@ export default function ConnectorsPage() {
           <Button onClick={() => refetch()} variant="outline" disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             {t('refresh')}
+          </Button>
+          <Button variant="outline" onClick={() => setImportOpenApiOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Import from OpenAPI
           </Button>
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
@@ -267,6 +283,65 @@ export default function ConnectorsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* DTDS Connector Catalog */}
+      {(dtdsConnectors.connectors.length > 0 || dtdsConnectors.isLoading) && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Connector Catalog</h2>
+              <p className="text-sm text-muted-foreground">
+                Design-time connector definitions available for process design.
+              </p>
+            </div>
+            {dtdsConnectors.isLoading && (
+              <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
+
+          {dtdsConnectors.error && (
+            <Card className="border-destructive/40 bg-destructive/5">
+              <CardContent className="pt-4 pb-4">
+                <p className="text-sm text-destructive">
+                  Failed to load connector catalog: {dtdsConnectors.error.message}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {!dtdsConnectors.isLoading && dtdsConnectors.connectors.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {dtdsConnectors.connectors.map(connector => (
+                <DtdsConnectorCard key={connector.key} connector={connector} />
+              ))}
+            </div>
+          )}
+
+          {dtdsConnectors.isLoading && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3].map(i => (
+                <Card key={i}>
+                  <CardHeader className="pb-2">
+                    <div className="h-5 w-40 bg-muted animate-pulse rounded" />
+                    <div className="h-3 w-24 bg-muted animate-pulse rounded mt-1" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-3 w-full bg-muted animate-pulse rounded mb-2" />
+                    <div className="h-3 w-3/4 bg-muted animate-pulse rounded" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Import OpenAPI Modal */}
+      <ImportOpenApiModal
+        open={importOpenApiOpen}
+        onOpenChange={setImportOpenApiOpen}
+        onImported={handleOpenApiImported}
+      />
     </div>
   )
 }

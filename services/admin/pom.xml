@@ -138,6 +138,20 @@
             <artifactId>caffeine</artifactId>
         </dependency>
 
+        <!-- JSON Schema Validation (networknt) -->
+        <dependency>
+            <groupId>com.networknt</groupId>
+            <artifactId>json-schema-validator</artifactId>
+            <version>1.4.0</version>
+        </dependency>
+
+        <!-- Swagger / OpenAPI Parser for import-openapi endpoint -->
+        <dependency>
+            <groupId>io.swagger.parser.v3</groupId>
+            <artifactId>swagger-parser</artifactId>
+            <version>2.1.22</version>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
