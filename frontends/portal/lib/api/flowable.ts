@@ -65,6 +65,9 @@ export interface ProcessDraftResponse {
   processKey: string
   name: string
   bpmnXml: string
+  departmentCode?: string
+  categoryCode?: string
+  tags: string[]
   createdBy: string
   updatedBy: string
   createdAt: string
@@ -141,8 +144,26 @@ export async function deleteFormDefinition(formKey: string): Promise<void> {
 }
 
 // Process draft API
-export async function saveDraft(processKey: string, name: string, bpmnXml: string): Promise<ProcessDraftResponse> {
-  const response = await apiClient.post('/api/process-drafts', { processKey, name, bpmnXml })
+export interface SaveDraftOptions {
+  departmentCode?: string
+  categoryCode?: string
+  tags?: string[]
+}
+
+export async function saveDraft(
+  processKey: string,
+  name: string,
+  bpmnXml: string,
+  metadata?: SaveDraftOptions,
+): Promise<ProcessDraftResponse> {
+  const response = await apiClient.post('/api/process-drafts', {
+    processKey,
+    name,
+    bpmnXml,
+    departmentCode: metadata?.departmentCode,
+    categoryCode: metadata?.categoryCode,
+    tags: metadata?.tags ?? [],
+  })
   return response.data
 }
 

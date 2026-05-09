@@ -53,6 +53,19 @@ public class RoleGroupMappingController {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
     }
 
+    /** Updates the manager-tier flag on a role-group mapping (ADR-010 visibility policy). */
+    @PutMapping("/{id}/manager-tier")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    public ResponseEntity<RoleGroupMappingResponse> setManagerTier(
+            @PathVariable Long id,
+            @RequestBody Map<String, Boolean> body) {
+        Boolean flag = body.get("isManagerTier");
+        if (flag == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(service.setManagerTier(id, flag));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {

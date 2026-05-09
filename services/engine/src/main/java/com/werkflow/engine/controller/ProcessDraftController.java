@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Collections;
 
 @RestController
 @RequestMapping("/api/process-drafts")
@@ -29,6 +30,12 @@ public class ProcessDraftController {
         private String processKey;
         private String name;
         private String bpmnXml;
+        /** Optional: department code for visibility scoping (ADR-010). */
+        private String departmentCode;
+        /** Optional: category code from admin-service catalog. */
+        private String categoryCode;
+        /** Optional: free-form tags for search/filter. */
+        private List<String> tags;
     }
 
     @PreAuthorize("hasPermission(null, 'WORKFLOW:DESIGN')")
@@ -43,7 +50,10 @@ public class ProcessDraftController {
             Authentication authentication) {
         String userId = extractUserId(authentication);
         ProcessDraft draft = processDraftService.saveDraft(
-                request.getProcessKey(), request.getName(), request.getBpmnXml(), userId);
+                request.getProcessKey(), request.getName(), request.getBpmnXml(),
+                request.getDepartmentCode(), request.getCategoryCode(),
+                request.getTags() != null ? request.getTags() : Collections.emptyList(),
+                userId);
         return ResponseEntity.ok(draft);
     }
 
