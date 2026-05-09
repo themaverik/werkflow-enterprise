@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useRef, KeyboardEvent } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import { useAuthorization } from '@/lib/auth/use-authorization'
+import { useCandidateGroups } from '@/lib/platform/usePlatformCapabilities'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Plus, Pencil, Trash2, X, Check } from 'lucide-react'
 import { toast } from 'sonner'
+import type { CandidateGroupEntry } from '@/lib/platform/types'
 
 interface CustodyMapping {
   id: number
@@ -21,7 +23,6 @@ interface CustodyMapping {
 interface EditState {
   custodyOwner: string
   candidateGroups: string[]
-  groupInput: string
   ownerError: string
   groupsError: string
 }
@@ -66,7 +67,7 @@ async function deleteMapping(id: number, token: string) {
 }
 
 function blankEditState(): EditState {
-  return { custodyOwner: '', candidateGroups: [], groupInput: '', ownerError: '', groupsError: '' }
+  return { custodyOwner: '', candidateGroups: [], ownerError: '', groupsError: '' }
 }
 
 function validate(state: EditState): EditState {
@@ -79,63 +80,70 @@ function validate(state: EditState): EditState {
 
 interface ChipRowProps {
   groups: string[]
-  groupInput: string
-  onGroupInputChange: (v: string) => void
-  onAddGroup: () => void
+  onAddGroup: (key: string) => void
   onRemoveGroup: (g: string) => void
   groupsError: string
-  groupInputRef: React.RefObject<HTMLInputElement>
+  availableGroups: CandidateGroupEntry[]
 }
 
-function ChipRow({ groups, groupInput, onGroupInputChange, onAddGroup, onRemoveGroup, groupsError, groupInputRef }: ChipRowProps) {
-  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      onAddGroup()
-    }
-  }
+function ChipRow({ groups, onAddGroup, onRemoveGroup, groupsError, availableGroups }: ChipRowProps) {
+  const unselected = availableGroups.filter((g) => !groups.includes(g.key))
+  const tier1 = unselected.filter((g) => g.tier === 1)
+  const tier2 = unselected.filter((g) => g.tier === 2)
 
   return (
     <div>
       <div className="flex flex-wrap items-center gap-1.5 min-h-[2rem]">
-        {groups.map((g) => (
-          <span
-            key={g}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-muted border border-border text-foreground"
-          >
-            {g}
-            <button
-              type="button"
-              aria-label={`Remove ${g}`}
-              className="text-muted-foreground hover:text-destructive transition-colors"
-              onClick={() => onRemoveGroup(g)}
+        {groups.map((g) => {
+          const entry = availableGroups.find((a) => a.key === g)
+          return (
+            <span
+              key={g}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-muted border border-border text-foreground"
+              title={entry ? entry.label : undefined}
             >
-              <X size={11} strokeWidth={2} />
-            </button>
-          </span>
-        ))}
-        <div className="flex items-center gap-1">
-          <Input
-            ref={groupInputRef}
-            value={groupInput}
-            onChange={(e) => onGroupInputChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Add group…"
-            className="h-7 w-36 text-xs font-mono"
-            aria-label="New candidate group"
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2"
-            aria-label="Add group"
-            disabled={!groupInput.trim()}
-            onClick={onAddGroup}
+              {g}
+              <button
+                type="button"
+                aria-label={`Remove ${g}`}
+                className="text-muted-foreground hover:text-destructive transition-colors"
+                onClick={() => onRemoveGroup(g)}
+              >
+                <X size={11} strokeWidth={2} />
+              </button>
+            </span>
+          )
+        })}
+
+        {unselected.length > 0 && (
+          <select
+            className="h-7 rounded-md border border-input bg-background px-2 text-xs font-mono text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            value=""
+            aria-label="Add candidate group"
+            onChange={(e) => {
+              if (e.target.value) {
+                onAddGroup(e.target.value)
+                e.target.value = ''
+              }
+            }}
           >
-            <Plus size={13} strokeWidth={2} />
-          </Button>
-        </div>
+            <option value="">Add group…</option>
+            {tier1.length > 0 && (
+              <optgroup label="System (Tier 1)">
+                {tier1.map((g) => (
+                  <option key={g.key} value={g.key}>{g.label}</option>
+                ))}
+              </optgroup>
+            )}
+            {tier2.length > 0 && (
+              <optgroup label="Business (Tier 2)">
+                {tier2.map((g) => (
+                  <option key={g.key} value={g.key}>{g.label}</option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+        )}
       </div>
       {groupsError && <p className="text-destructive text-xs mt-1">{groupsError}</p>}
     </div>
@@ -153,8 +161,7 @@ export default function CustodyMappingsPage() {
   const [addingNew, setAddingNew] = useState(false)
   const [newState, setNewState] = useState<EditState>(blankEditState())
 
-  const editGroupInputRef = useRef<HTMLInputElement>(null)
-  const newGroupInputRef = useRef<HTMLInputElement>(null)
+  const { data: availableGroups = [] } = useCandidateGroups()
 
   const { data: mappings = [], isLoading } = useQuery({
     queryKey: ['custodyMappings'],
@@ -202,7 +209,7 @@ export default function CustodyMappingsPage() {
   function startEdit(m: CustodyMapping) {
     setAddingNew(false)
     setEditingId(m.id)
-    setEditState({ custodyOwner: m.custodyOwner, candidateGroups: [...m.candidateGroups], groupInput: '', ownerError: '', groupsError: '' })
+    setEditState({ custodyOwner: m.custodyOwner, candidateGroups: [...m.candidateGroups], ownerError: '', groupsError: '' })
   }
 
   function cancelEdit() {
@@ -215,16 +222,6 @@ export default function CustodyMappingsPage() {
     setEditState(validated)
     if (validated.ownerError || validated.groupsError) return
     updateMutation.mutate({ id, body: { custodyOwner: validated.custodyOwner.trim(), candidateGroups: validated.candidateGroups } })
-  }
-
-  function addEditChip() {
-    const v = editState.groupInput.trim()
-    if (!v || editState.candidateGroups.includes(v)) { setEditState((s) => ({ ...s, groupInput: '' })); return }
-    setEditState((s) => ({ ...s, candidateGroups: [...s.candidateGroups, v], groupInput: '', groupsError: '' }))
-  }
-
-  function removeEditChip(g: string) {
-    setEditState((s) => ({ ...s, candidateGroups: s.candidateGroups.filter((x) => x !== g) }))
   }
 
   function startAdd() {
@@ -243,16 +240,6 @@ export default function CustodyMappingsPage() {
     setNewState(validated)
     if (validated.ownerError || validated.groupsError) return
     createMutation.mutate({ custodyOwner: validated.custodyOwner.trim(), candidateGroups: validated.candidateGroups })
-  }
-
-  function addNewChip() {
-    const v = newState.groupInput.trim()
-    if (!v || newState.candidateGroups.includes(v)) { setNewState((s) => ({ ...s, groupInput: '' })); return }
-    setNewState((s) => ({ ...s, candidateGroups: [...s.candidateGroups, v], groupInput: '', groupsError: '' }))
-  }
-
-  function removeNewChip(g: string) {
-    setNewState((s) => ({ ...s, candidateGroups: s.candidateGroups.filter((x) => x !== g) }))
   }
 
   const isSaving = updateMutation.isPending || createMutation.isPending
@@ -297,12 +284,10 @@ export default function CustodyMappingsPage() {
                   <td className="px-4 py-3 align-top">
                     <ChipRow
                       groups={editState.candidateGroups}
-                      groupInput={editState.groupInput}
-                      onGroupInputChange={(v) => setEditState((s) => ({ ...s, groupInput: v }))}
-                      onAddGroup={addEditChip}
-                      onRemoveGroup={removeEditChip}
+                      onAddGroup={(key) => setEditState((s) => ({ ...s, candidateGroups: [...s.candidateGroups, key], groupsError: '' }))}
+                      onRemoveGroup={(g) => setEditState((s) => ({ ...s, candidateGroups: s.candidateGroups.filter((x) => x !== g) }))}
                       groupsError={editState.groupsError}
-                      groupInputRef={editGroupInputRef}
+                      availableGroups={availableGroups}
                     />
                   </td>
                   <td className="px-4 py-3 align-top">
@@ -397,12 +382,10 @@ export default function CustodyMappingsPage() {
                 <td className="px-4 py-3 align-top">
                   <ChipRow
                     groups={newState.candidateGroups}
-                    groupInput={newState.groupInput}
-                    onGroupInputChange={(v) => setNewState((s) => ({ ...s, groupInput: v }))}
-                    onAddGroup={addNewChip}
-                    onRemoveGroup={removeNewChip}
+                    onAddGroup={(key) => setNewState((s) => ({ ...s, candidateGroups: [...s.candidateGroups, key], groupsError: '' }))}
+                    onRemoveGroup={(g) => setNewState((s) => ({ ...s, candidateGroups: s.candidateGroups.filter((x) => x !== g) }))}
                     groupsError={newState.groupsError}
-                    groupInputRef={newGroupInputRef}
+                    availableGroups={availableGroups}
                   />
                 </td>
                 <td className="px-4 py-3 align-top">
