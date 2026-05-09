@@ -26,6 +26,8 @@
     "approvalAuthority": "Approval Authority",
     "roleMappings": "Role Mappings",
     "custodyGroups": "Custody Groups",
+    "categories": "Categories",
+    "visibilityPolicy": "Visibility Policy",
     "deadLetterJobs": "Failed Jobs",
     "processHealth": "Process Health"
   },
