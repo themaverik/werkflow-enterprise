@@ -15,8 +15,8 @@
 |------|--------|
 | E2E quality gate | 7/7 specs passing |
 | ADRs | ADR-001 through ADR-010 written |
-| Active milestone | M4.4 ✅ COMPLETE — next: M4.4a/M4.4b (parallel) → M4.5 |
-| Next session | M4.4a Process Custody UI Cleanup + M4.4b Currency Standardization (parallel) |
+| Active milestone | M4.4a ✅ M4.4b ✅ COMPLETE — next: M4.5 Connector Spec + DTDS |
+| Next session | M4.5 — ConnectorDefinition envelope, DTDS shared core, connector registry migration |
 | Branch | feature/m4-4-platform-semantics — ready to merge |
 
 ---
@@ -311,25 +311,24 @@ All screens must be implemented against the approved Figma-export HTML designs:
 
 ---
 
-## M4.4a — Process Custody UI Cleanup
+## M4.4a — Process Custody UI Cleanup ✅ COMPLETE (7accb93)
 
 **Phase**: Pre-Internal-Demo (alongside M4.4)
-**Estimate**: 4 hours
 
-- [ ] Rename admin route `/admin/tenant/custody-groups` → `/admin/tenant/custody-mappings` (ADR-004 custodyVars CRUD)
-- [ ] Move process governance to per-process tab on Processes page (not tenant-wide screen)
-- [ ] Add glossary entry disambiguating "custody mappings" (routing) vs. "process custody" (governance)
+- [x] Rename admin route `/admin/tenant/custody-groups` → `/admin/tenant/custody-mappings`; redirect from old URL *(commit: 7accb93)*
+- [x] Process list cards surface department/category/tags as read-only custody metadata *(commit: 7accb93)*
+- [x] Glossary / Terminology section on Custody Mappings page disambiguating runtime routing vs. definition governance *(commit: 7accb93)*
 
 ---
 
-## M4.4b — Currency Standardization
+## M4.4b — Currency Standardization ✅ COMPLETE (7accb93)
 
 **Phase**: Pre-Internal-Demo (alongside M4.4)
-**Estimate**: 3 hours
 
-- [ ] `ConfigurationVariable` type=LOCALE (single entry per tenant: currency, locale, timezone, numberFormat, dateFormat)
-- [ ] PSS endpoint: `GET /api/v1/design/platform/locale`
-- [ ] DMN cell display formatting driven by tenant locale (INR: ₹10,00,000; USD: $10,000)
+- [x] `ConfigurationVariable` type=LOCALE (currency, locale, timezone, numberFormat, dateFormat per tenant) *(commit: 7accb93)*
+- [x] PSS endpoint: `GET /api/v1/design/platform/locale`; `LocaleProjector` with safe USD default *(commit: 7accb93)*
+- [x] `formatCurrency` / `formatDmnThreshold` utilities; DMN FEEL panel shows locale-formatted thresholds *(commit: 7accb93)*
+- [x] Tenant Setup → Locale admin page (currency + timezone + date format + live preview) *(commit: 7accb93)*
 
 ---
 
