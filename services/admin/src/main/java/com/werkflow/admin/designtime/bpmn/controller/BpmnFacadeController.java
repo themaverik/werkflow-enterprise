@@ -2,6 +2,7 @@ package com.werkflow.admin.designtime.bpmn.controller;
 
 import com.werkflow.admin.designtime.bpmn.dto.VariableAtActivityResponse;
 import com.werkflow.admin.designtime.bpmn.service.ProcessVariableScopeService;
+import com.werkflow.admin.security.JwtClaimsExtractor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -10,6 +11,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -26,6 +29,7 @@ import org.springframework.web.bind.annotation.*;
 public class BpmnFacadeController {
 
     private final ProcessVariableScopeService variableScopeService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     /**
      * Returns the accumulated process variables reachable at the given activity,
@@ -46,7 +50,9 @@ public class BpmnFacadeController {
             @Parameter(description = "Flowable process definition ID including version suffix")
             @PathVariable String processDefId,
             @Parameter(description = "BPMN element ID of the target activity")
-            @PathVariable String activityId) {
-        return ResponseEntity.ok(variableScopeService.variablesAt(processDefId, activityId));
+            @PathVariable String activityId,
+            @AuthenticationPrincipal Jwt jwt) {
+        String tenantId = jwtClaimsExtractor.getTenantId(jwt);
+        return ResponseEntity.ok(variableScopeService.variablesAt(tenantId, processDefId, activityId));
     }
 }

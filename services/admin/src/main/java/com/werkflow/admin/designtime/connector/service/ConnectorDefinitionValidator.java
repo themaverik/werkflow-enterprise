@@ -2,10 +2,14 @@ package com.werkflow.admin.designtime.connector.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.networknt.schema.AbsoluteIri;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.SchemaValidatorsConfig;
 import com.networknt.schema.SpecVersion;
 import com.networknt.schema.ValidationMessage;
+import com.networknt.schema.resource.InputStreamSource;
+import com.networknt.schema.resource.SchemaLoader;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,9 +41,23 @@ public class ConnectorDefinitionValidator {
 
     @PostConstruct
     public void init() throws IOException {
-        JsonSchemaFactory factory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012);
+        SchemaLoader blockingLoader = (AbsoluteIri iri) -> {
+            String scheme = iri.getScheme();
+            if ("https".equals(scheme) || "http".equals(scheme) || "file".equals(scheme)) {
+                return (InputStreamSource) () -> {
+                    throw new IOException("External $ref resolution is disabled: " + iri);
+                };
+            }
+            return null;
+        };
+        JsonSchemaFactory factory = JsonSchemaFactory.builder(
+                        JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012))
+                .schemaLoaders(b -> b.add(blockingLoader))
+                .build();
+        SchemaValidatorsConfig config = new SchemaValidatorsConfig();
+        config.setHandleNullableField(false);
         try (InputStream is = new ClassPathResource(SCHEMA_PATH).getInputStream()) {
-            compiledSchema = factory.getSchema(is);
+            compiledSchema = factory.getSchema(is, config);
         }
         log.info("ConnectorDefinitionValidator initialised from classpath:{}", SCHEMA_PATH);
     }

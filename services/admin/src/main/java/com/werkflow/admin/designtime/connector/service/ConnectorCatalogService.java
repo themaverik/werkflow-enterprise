@@ -279,6 +279,14 @@ public class ConnectorCatalogService {
     }
 
     /**
+     * Public alias used by callers that receive a raw entity from a write operation
+     * (register/update) and need to redact before returning the entity to the client.
+     */
+    public String redactDefinitionJson(String json) {
+        return redactSecrets(json);
+    }
+
+    /**
      * Deep-copies the definition JSON and replaces auth secret values with {@code "***"}.
      * The {@code secretKey} reference field is preserved; only a hypothetical plain-text
      * value field would be redacted.  Per the spec, secrets must not be in the definition,
