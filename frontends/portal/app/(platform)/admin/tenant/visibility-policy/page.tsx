@@ -25,7 +25,7 @@ export default function VisibilityPolicyPage() {
 
   const updateScopeMutation = useMutation({
     mutationFn: async (newScope: 'OWN_DEPT' | 'ALL_DEPTS') => {
-      const res = await fetch('/api/proxy/admin/config/variables', {
+      const res = await fetch('/api/proxy/admin/config/vars', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ varKey: 'managerScope', varValue: newScope, varType: 'POLICY' }),
