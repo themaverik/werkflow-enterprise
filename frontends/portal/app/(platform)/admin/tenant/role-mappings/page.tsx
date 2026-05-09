@@ -3,7 +3,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import { useAuthorization } from '@/lib/auth/use-authorization'
-import { useCandidateGroups } from '@/lib/platform/usePlatformCapabilities'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -80,8 +79,6 @@ export default function RoleMappingsPage() {
     enabled: status === 'authenticated',
     staleTime: 60_000,
   })
-
-  const { data: candidateGroups = [], isLoading: loadingGroups } = useCandidateGroups()
 
   const { data: realmRoles = [], isLoading: loadingRoles, isError: rolesError } = useQuery({
     queryKey: ['realmRoles'],
@@ -228,27 +225,13 @@ export default function RoleMappingsPage() {
                   </Select>
                 </td>
                 <td className="px-4 py-3">
-                  {candidateGroups.length > 0 ? (
-                    <Select value={newGroup} onValueChange={setNewGroup}>
-                      <SelectTrigger className="h-8 text-xs font-mono" aria-label="Select candidate group">
-                        <SelectValue placeholder="Select group…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {candidateGroups.map((g) => (
-                          <SelectItem key={g.key} value={g.key} className="font-mono text-xs">{g.key}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input
-                      value={newGroup}
-                      onChange={(e) => setNewGroup(e.target.value)}
-                      placeholder={loadingGroups ? 'Loading groups…' : 'candidate_group_name'}
-                      className="h-8 text-xs font-mono"
-                      aria-label="Candidate group name"
-                      disabled={loadingGroups}
-                    />
-                  )}
+                  <Input
+                    value={newGroup}
+                    onChange={(e) => setNewGroup(e.target.value)}
+                    placeholder="candidate_group_name"
+                    className="h-8 text-xs font-mono"
+                    aria-label="Candidate group name"
+                  />
                 </td>
                 <td className="px-4 py-3 text-right">
                   <Button
