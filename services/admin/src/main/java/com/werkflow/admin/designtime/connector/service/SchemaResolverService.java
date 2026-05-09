@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -27,6 +29,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SchemaResolverService {
 
+    private static final int MAX_RESOLVED_NODES = 5_000;
+
     private final ObjectMapper objectMapper;
 
     /**
@@ -41,7 +45,8 @@ public class SchemaResolverService {
     public JsonNode resolve(JsonNode schemaNode, String definitionJson) {
         Map<String, JsonNode> definitions = extractDefinitions(definitionJson);
         JsonNode copy = schemaNode.deepCopy();
-        return resolveNode(copy, definitions, 0);
+        int[] nodeCount = {0};
+        return resolveNode(copy, definitions, 0, nodeCount);
     }
 
     // -------------------------------------------------------------------------
@@ -71,7 +76,11 @@ public class SchemaResolverService {
      * Recursively resolves {@code $ref}s in the node tree.
      * Cycles are guarded by a depth limit; deeply nested schemas are unusual in practice.
      */
-    private JsonNode resolveNode(JsonNode node, Map<String, JsonNode> defs, int depth) {
+    private JsonNode resolveNode(JsonNode node, Map<String, JsonNode> defs, int depth, int[] nodeCount) {
+        if (++nodeCount[0] > MAX_RESOLVED_NODES) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Schema exceeds maximum resolved size (" + MAX_RESOLVED_NODES + " nodes) — possible circular or exponential $ref");
+        }
         if (depth > 20) {
             log.warn("SchemaResolverService: max recursion depth reached — possible cycle");
             return node;
@@ -86,7 +95,6 @@ public class SchemaResolverService {
             String ref = refNode.asText();
             JsonNode resolved = defs.get(ref);
             if (resolved != null) {
-                // Replace this node's content with the resolved schema
                 ObjectNode replacement = (ObjectNode) resolved.deepCopy();
                 obj.remove("$ref");
                 Iterator<Map.Entry<String, JsonNode>> fields = replacement.fields();
@@ -94,7 +102,7 @@ public class SchemaResolverService {
                     Map.Entry<String, JsonNode> f = fields.next();
                     obj.set(f.getKey(), f.getValue());
                 }
-                return resolveNode(obj, defs, depth + 1);
+                return resolveNode(obj, defs, depth + 1, nodeCount);
             } else {
                 log.debug("SchemaResolverService: unresolvable $ref '{}' — left as-is", ref);
                 return obj;
@@ -103,9 +111,9 @@ public class SchemaResolverService {
 
         // Recurse into all child fields
         obj.fields().forEachRemaining(entry -> {
-            JsonNode resolved = resolveNode(entry.getValue(), defs, depth + 1);
-            if (resolved != entry.getValue()) {
-                obj.set(entry.getKey(), resolved);
+            JsonNode r = resolveNode(entry.getValue(), defs, depth + 1, nodeCount);
+            if (r != entry.getValue()) {
+                obj.set(entry.getKey(), r);
             }
         });
         return obj;

@@ -64,8 +64,8 @@ public class ProcessVariableScopeService {
      * @param activityId   BPMN element ID of the target activity
      * @return response with accumulated variables and their provenance
      */
-    public VariableAtActivityResponse variablesAt(String processDefId, String activityId) {
-        String bpmnXml = fetchBpmnXml(processDefId);
+    public VariableAtActivityResponse variablesAt(String tenantId, String processDefId, String activityId) {
+        String bpmnXml = fetchBpmnXml(tenantId, processDefId);
         Document doc = parseBpmnXml(bpmnXml);
         List<ProcessVariableEntry> variables = traverse(doc, activityId);
         return new VariableAtActivityResponse(variables);
@@ -75,8 +75,9 @@ public class ProcessVariableScopeService {
     // XML fetch
     // -------------------------------------------------------------------------
 
-    private String fetchBpmnXml(String processDefId) {
-        String url = engineBaseUrl + "/api/v1/processes/" + processDefId + "/bpmn";
+    private String fetchBpmnXml(String tenantId, String processDefId) {
+        String url = engineBaseUrl + "/api/v1/processes/" + processDefId + "/bpmn"
+                + "?tenantId=" + tenantId;
         try {
             String xml = restTemplate.exchange(url, HttpMethod.GET, null, String.class).getBody();
             if (xml == null || xml.isBlank()) {
@@ -103,6 +104,10 @@ public class ProcessVariableScopeService {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             factory.setNamespaceAware(true);
             factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            factory.setXIncludeAware(false);
+            factory.setExpandEntityReferences(false);
             DocumentBuilder builder = factory.newDocumentBuilder();
             return builder.parse(new InputSource(new StringReader(xml)));
         } catch (Exception e) {
