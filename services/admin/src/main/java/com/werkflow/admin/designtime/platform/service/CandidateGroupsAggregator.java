@@ -29,7 +29,7 @@ public class CandidateGroupsAggregator {
     /**
      * Returns deduplicated candidate groups for the tenant, grouped by kind (SYSTEM vs BUSINESS).
      */
-    @Cacheable(value = CacheConfig.PSS_CANDIDATE_GROUPS, key = "#tenantCode")
+    @Cacheable(value = CacheConfig.PSS_CANDIDATE_GROUPS, key = "#tenantCode", unless = "#result.isEmpty()")
     @Transactional(readOnly = true)
     public List<CandidateGroupEntry> aggregate(String tenantCode) {
         Map<String, List<String>> tier1 = engineClient.getTier1RoleMappings();
