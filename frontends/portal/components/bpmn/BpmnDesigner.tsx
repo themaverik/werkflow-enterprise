@@ -7,7 +7,7 @@ import ExpressionBuilder from './ExpressionBuilder'
 import ServiceTaskPropertiesPanel from './ServiceTaskPropertiesPanel'
 import { Card } from '@/components/ui/card'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { deployBpmn, saveDraft, type SaveDraftOptions } from '@/lib/api/flowable'
+import { deployBpmn, saveDraft, deleteDraft, type SaveDraftOptions } from '@/lib/api/flowable'
 import { generateBlankBpmn, downloadBpmn, extractProcessName } from '@/lib/bpmn/utils'
 import { Save, Download, Upload, ZoomIn, ZoomOut, Maximize2, Settings, CheckCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -600,6 +600,10 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
     onSuccess: () => {
       setHasChanges(false)
       queryClient.invalidateQueries({ queryKey: ['processDefinitions'] })
+      // Clean up draft so it doesn't resurface as "unsaved draft" after deploy
+      if (processId) {
+        deleteDraft(processId.split(':')[0]).catch(() => {})
+      }
       router.push('/processes')
     },
     onError: (error: any) => {
