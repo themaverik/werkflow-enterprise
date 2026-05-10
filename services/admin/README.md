@@ -14,10 +14,13 @@ locale, visibility policy, candidate groups, categories, and FEEL expression cat
 - Role-to-group mappings (Tier 1 YAML read-through, Tier 2 DB-backed)
 - Custody mappings (process custody owner to candidate group routing)
 - Connector registry (connector definitions, tenant endpoints, credentials)
+- Tenant datasource registry (JDBC datasource CRUD, connection test, engine-internal resolver)
+- Connector generators (OpenAPI 3.1 import, JSON Schema import)
 - Keycloak realm role proxy (for Admin UI role dropdowns)
 - PSS endpoints: candidate groups, departments, locale, visibility policy, FEEL expressions
 - BPMN process variable scope analysis (design-time)
 - DMN decision variable facade (design-time)
+- DTDS connector catalog with schema resolution, field flattening, and 30-min Caffeine cache
 
 ## Technology Stack
 
@@ -39,9 +42,13 @@ locale, visibility policy, candidate groups, categories, and FEEL expression cat
 | GET | `/api/v1/design/platform/capabilities` | Full PSS capability bundle |
 | GET/POST/PUT/DELETE | `/api/v1/config/vars` | Tenant configuration variables |
 | GET/POST/DELETE | `/api/v1/config/role-mappings` | Tier 2 role-to-group mappings |
+| GET/POST/PUT/DELETE | `/api/v1/config/datasources` | Tenant JDBC datasource registry |
+| POST | `/api/v1/config/datasources/{ref}/test` | Live connection test |
 | GET | `/api/v1/design/bpmn/variable-scope` | Process variable scope at activity |
 | GET | `/api/v1/design/dmn/variables` | DMN input/output variables |
 | GET | `/api/v1/connectors` | Connector definitions |
+| POST | `/api/v1/connectors/generators/openapi` | Generate connector from OpenAPI 3.1 spec |
+| POST | `/api/v1/connectors/generators/json-schema` | Generate connector stub from JSON Schema |
 
 ## Configuration
 
