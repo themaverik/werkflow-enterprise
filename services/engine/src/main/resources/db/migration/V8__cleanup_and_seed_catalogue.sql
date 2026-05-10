@@ -27,21 +27,25 @@ DELETE FROM act_re_procdef
 WHERE key_ IN (
     'asset-transfer-approval-process',
     'document-review',
-    'sla-escalation-process',
+    'sla-escalation',           -- actual deployed key (not sla-escalation-process)
+    'sla-escalation-process',   -- guard: in case older deploy used this key
     'doa-routing-process',
-    'parallel-committee-approval'
+    'parallel-committee-approval',
+    'capex-approval-process-v2' -- old v2 suffix deploy; replaced by capex-approval-process
 );
 
 DELETE FROM act_re_deployment
-WHERE name IN (
+WHERE id NOT IN (
+    SELECT DISTINCT deployment_id_ FROM act_re_procdef
+)
+AND name IN (
     'asset-transfer-approval-process',
     'document-review',
+    'sla-escalation',
     'sla-escalation-process',
     'doa-routing-process',
-    'parallel-committee-approval'
-)
-AND id NOT IN (
-    SELECT DISTINCT deployment_id_ FROM act_re_procdef
+    'parallel-committee-approval',
+    'capex-approval-process-v2'
 );
 
 -- ============================================================
@@ -52,9 +56,11 @@ DELETE FROM process_draft
 WHERE process_key IN (
     'asset-transfer-approval-process',
     'document-review',
+    'sla-escalation',
     'sla-escalation-process',
     'doa-routing-process',
-    'parallel-committee-approval'
+    'parallel-committee-approval',
+    'capex-approval-process-v2'
 );
 
 -- ============================================================
