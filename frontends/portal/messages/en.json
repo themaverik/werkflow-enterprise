@@ -29,9 +29,10 @@
     "categories": "Categories",
     "visibilityPolicy": "Visibility Policy",
     "locale": "Locale & Currency",
+    "connectorsData": "Connectors & Data Sources",
     "deadLetterJobs": "Failed Jobs",
     "processHealth": "Process Health",
-    "datasources": "Datasources"
+    "datasources": "Data Sources"
   },
   "dashboard": {
     "title": "Dashboard",

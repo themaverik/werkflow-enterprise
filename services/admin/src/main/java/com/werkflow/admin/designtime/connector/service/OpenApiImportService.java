@@ -75,8 +75,8 @@ public class OpenApiImportService {
     private OpenAPI parse(OpenApiImportRequest request) {
         OpenAPIV3Parser parser = new OpenAPIV3Parser();
         ParseOptions opts = new ParseOptions();
-        opts.setResolve(true);
-
+        // H-6: disable $ref resolution to prevent SSRF via embedded http:// refs
+        opts.setResolve(false);
         opts.setResolveFully(false);
 
         SwaggerParseResult result;

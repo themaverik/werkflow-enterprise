@@ -133,20 +133,17 @@ public class ConnectorDefinitionValidator {
      * {@code writeOperation=true} flag on the individual query.</p>
      */
     private void validateDatabaseTransport(JsonNode config) throws IOException {
-        // Schema validation for transport.config
-        Set<ValidationMessage> transportErrors = dbTransportSchema
-            .validate(config.path("TransportConfig").isMissingNode() ? config : config);
-        // Note: the schema's root is the whole file; we validate against the TransportConfig $def
-        // by passing the config node to a sub-schema validator. networknt resolves $defs by key.
-        // For simplicity we validate the whole config node as-is against the top-level schema.
-        // (The top-level schema wraps $defs, so we create a minimal wrapper.)
-        String configJson = objectMapper.writeValueAsString(config);
-        JsonNode wrappedConfig = objectMapper.readTree("{\"TransportConfig\":" + configJson + "}");
-        // The schema's $defs.TransportConfig is the right sub-schema — validate the config node directly
-        // against the TransportConfig definition by referencing it.
-        // Since networknt cannot resolve internal $defs directly, we fall back to structural checks.
+        // M-2: validate transport config against the database-transport schema and propagate errors
+        Set<ValidationMessage> transportErrors = dbTransportSchema.validate(config);
+        if (!transportErrors.isEmpty()) {
+            String detail = transportErrors.stream()
+                .map(ValidationMessage::getMessage)
+                .collect(Collectors.joining("; "));
+            throw new ConnectorValidationException("Database transport config invalid: " + detail);
+        }
 
         // DML scan — performed for read-only connectors (default: true)
+        // H-1: strip SQL comments before scanning to prevent bypass via /* INSERT */ or -- INSERT
         boolean readOnly = config.path("readOnly").asBoolean(true);
         if (readOnly) {
             JsonNode queries = config.path("queries");
@@ -155,7 +152,8 @@ public class ConnectorDefinitionValidator {
                     String sql = query.path("sql").asText(null);
                     String queryId = query.path("id").asText("unknown");
                     if (sql != null) {
-                        Matcher m = DML_PATTERN.matcher(sql);
+                        String stripped = stripSqlComments(sql);
+                        Matcher m = DML_PATTERN.matcher(stripped);
                         if (m.find()) {
                             throw new ConnectorValidationException(
                                 "Query '" + queryId + "' contains DML keyword '" + m.group().toUpperCase() +
@@ -168,6 +166,22 @@ public class ConnectorDefinitionValidator {
         }
 
         log.debug("ConnectorDefinitionValidator: database transport config passed DML scan readOnly={}", readOnly);
+    }
+
+    /**
+     * Strips SQL block comments and line comments before DML keyword scanning
+     * so that comment-embedded keywords cannot bypass the guard.
+     *
+     * @param sql raw SQL string
+     * @return SQL with all comments replaced by spaces
+     */
+    private static String stripSqlComments(String sql) {
+        if (sql == null) return null;
+        // Strip block comments /* ... */
+        String stripped = sql.replaceAll("(?s)/\\*.*?\\*/", " ");
+        // Strip line comments -- ...
+        stripped = stripped.replaceAll("--[^\n\r]*", " ");
+        return stripped;
     }
 
     // -------------------------------------------------------------------------
