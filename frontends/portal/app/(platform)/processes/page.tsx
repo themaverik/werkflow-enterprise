@@ -18,6 +18,7 @@ import { useAuthorization } from '@/lib/auth/use-authorization'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useToast } from '@/hooks/use-toast'
 import { toast } from 'sonner'
+import { Skeleton } from '@/components/ui/skeleton'
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const ACCENT = '#149ba5'
@@ -25,9 +26,9 @@ const T = {
   text: '#0f1e2a',
   muted: '#6b7e8c',
   light: '#94a3b8',
-  bg: '#f0f4f6',
-  card: '#ffffff',
-  border: '#e2eaee',
+  bg: 'var(--muted)',
+  card: 'var(--card)',
+  border: 'var(--border)',
   warning: '#c27b00',
   warningBg: '#fffbeb',
   danger: '#dc2626',
@@ -420,15 +421,21 @@ export default function ProcessesPage() {
 
       {/* ── Loading state ────────────────────────────────────────────────────── */}
       {(isLoading || (activeView === 'drafts' && draftsLoading)) && (
-        <div
-          style={{
-            textAlign: 'center',
-            padding: '48px 0',
-            color: T.muted,
-            fontSize: 13,
-          }}
-        >
-          Loading…
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+              <div className="flex gap-2 pt-1">
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </div>
+              <div className="flex justify-between pt-2">
+                <Skeleton className="h-7 w-20 rounded-md" />
+                <Skeleton className="h-7 w-16 rounded-md" />
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
