@@ -327,13 +327,14 @@ export default function ApprovalAuthorityPage() {
               <tr className="bg-muted/20 border-t border-border">
                 <td className="px-4 py-3">
                   <Select
-                    value={newRoleMapping.role}
-                    onValueChange={(v) => setNewRoleMapping((prev) => ({ ...prev, role: v }))}
+                    value={newRoleMapping.role || '__none__'}
+                    onValueChange={(v) => setNewRoleMapping((prev) => ({ ...prev, role: v === '__none__' ? '' : v }))}
                   >
                     <SelectTrigger className="h-8 text-xs font-mono" aria-label="Select role">
                       <SelectValue placeholder="Select role…" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__none__" className="text-xs text-muted-foreground">Select role…</SelectItem>
                       {availableRoles.map((r) => (
                         <SelectItem key={r} value={r} className="font-mono text-xs">{r}</SelectItem>
                       ))}
@@ -351,13 +352,14 @@ export default function ApprovalAuthorityPage() {
                 </td>
                 <td className="px-4 py-3">
                   <Select
-                    value={newRoleMapping.level}
-                    onValueChange={(v) => setNewRoleMapping((prev) => ({ ...prev, level: v }))}
+                    value={newRoleMapping.level || '__none__'}
+                    onValueChange={(v) => setNewRoleMapping((prev) => ({ ...prev, level: v === '__none__' ? '' : v }))}
                   >
                     <SelectTrigger className="h-8 text-xs w-28" aria-label="Select level">
                       <SelectValue placeholder="Level…" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__none__" className="text-xs text-muted-foreground">Level…</SelectItem>
                       {definedLevels.map((l) => (
                         <SelectItem key={l.varKey} value={l.varKey}>{l.varKey}</SelectItem>
                       ))}

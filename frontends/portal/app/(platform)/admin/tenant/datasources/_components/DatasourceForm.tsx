@@ -193,13 +193,14 @@ export function DatasourceForm({ existing }: Props) {
       <div className="space-y-1.5">
         <Label htmlFor="driverClassName">Driver Class</Label>
         <Select
-          value={form.driverClassName}
-          onValueChange={(v) => setField('driverClassName', v)}
+          value={form.driverClassName || '__none__'}
+          onValueChange={(v) => setField('driverClassName', v === '__none__' ? '' : v)}
         >
           <SelectTrigger id="driverClassName" className="font-mono text-sm">
             <SelectValue placeholder="Select driver…" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="__none__" className="text-xs text-muted-foreground">Select driver…</SelectItem>
             {DRIVER_OPTIONS.map((d) => (
               <SelectItem key={d.value} value={d.value} className="font-mono text-xs">
                 {d.label} — <span className="text-muted-foreground">{d.value}</span>
@@ -212,11 +213,15 @@ export function DatasourceForm({ existing }: Props) {
       {/* Dialect */}
       <div className="space-y-1.5">
         <Label htmlFor="dialect">Dialect (optional)</Label>
-        <Select value={form.dialect} onValueChange={(v) => setField('dialect', v)}>
+        <Select
+          value={form.dialect || '__none__'}
+          onValueChange={(v) => setField('dialect', v === '__none__' ? '' : v)}
+        >
           <SelectTrigger id="dialect">
             <SelectValue placeholder="Select dialect…" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="__none__" className="text-xs text-muted-foreground">Select dialect…</SelectItem>
             {DIALECT_OPTIONS.map((d) => (
               <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
             ))}
