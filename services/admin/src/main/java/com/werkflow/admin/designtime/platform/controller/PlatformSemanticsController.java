@@ -132,6 +132,7 @@ public class PlatformSemanticsController {
      * client-side visibility filtering with server-authoritative results.
      */
     @GetMapping("/visible-processes")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<VisibleProcessEntry>> visibleProcesses(@AuthenticationPrincipal Jwt jwt) {
         VisibilityFilterService.VisibilitySpec spec = visibilityFilterService.buildSpec(jwt, tenant(jwt));
         return ResponseEntity.ok(processVisibilityProjector.listVisible(spec));
