@@ -37,7 +37,7 @@ export default function EditProcessPage() {
       } catch (err) {
         console.warn('Failed to check for draft, proceeding with deployed version', err)
       }
-      if (draft) {
+      if (draft?.bpmnXml?.trim()) {
         setDraftXml(draft.bpmnXml)
         setShowDraftBanner(true)
       }
