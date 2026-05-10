@@ -9,17 +9,19 @@
              expressionLanguage="http://www.w3.org/1999/XPath"
              targetNamespace="http://werkflow.com/bpmn/capex">
 
-  <process id="capex-approval-process-v2" name="CapEx Approval Process" isExecutable="true">
+  <process id="capex-approval-process" name="Capital Expenditure Approval" isExecutable="true"
+           flowable:versionTag="1">
 
-    <documentation>Capital Expenditure approval workflow — V2 retrofitted with Action Blocks. Replaces Groovy script tasks with declarative action block service tasks.
+    <extensionElements>
+      <flowable:properties>
+        <flowable:property name="category" value="examples"/>
+      </flowable:properties>
+    </extensionElements>
 
-NOTE: Amount thresholds in this process (e.g. requestAmount &gt; 100000) are intentional
-demo values showing inline BPMN condition expressions. For production use, replace hardcoded
-thresholds with a Business Rule Task backed by a DMN decision table — see
-doa-routing-process.bpmn20.xml and doa-routing.dmn for the recommended pattern.</documentation>
+    <documentation>Capital Expenditure approval workflow — V2 retrofitted with Action Blocks. Replaces Groovy script tasks with declarative action block service tasks.</documentation>
 
     <!-- Start Event -->
-    <startEvent id="startEvent" name="CapEx Request Submitted" flowable:formKey="capex-request">
+    <startEvent id="startEvent" name="CapEx Request Submitted" flowable:formKey="capex-request-form">
       <documentation>Employee submits a capital expenditure request</documentation>
     </startEvent>
 
@@ -57,7 +59,7 @@ doa-routing-process.bpmn20.xml and doa-routing.dmn for the recommended pattern.<
     <userTask id="managerApproval" name="Manager Review"
               flowable:actionType="HUMAN_APPROVAL"
               flowable:candidateGroups="DEPT:FIN::DOA:L2,SUPER_ADMIN"
-              flowable:formKey="capex-approval">
+              flowable:formKey="capex-request-form">
       <documentation>Finance manager reviews and approves/rejects CapEx request</documentation>
       <extensionElements>
         <flowable:field name="outcomeVariable"><flowable:string>managerDecision</flowable:string></flowable:field>
@@ -70,7 +72,7 @@ doa-routing-process.bpmn20.xml and doa-routing.dmn for the recommended pattern.<
     <userTask id="vpApproval" name="VP Review"
               flowable:actionType="HUMAN_APPROVAL"
               flowable:candidateGroups="DEPT:FIN::DOA:L3,SUPER_ADMIN"
-              flowable:formKey="capex-approval">
+              flowable:formKey="capex-request-form">
       <documentation>Finance VP reviews high-value CapEx requests over $50,000</documentation>
       <extensionElements>
         <flowable:field name="outcomeVariable"><flowable:string>vpDecision</flowable:string></flowable:field>
@@ -83,7 +85,7 @@ doa-routing-process.bpmn20.xml and doa-routing.dmn for the recommended pattern.<
     <userTask id="cfoApproval" name="CFO Review"
               flowable:actionType="HUMAN_APPROVAL"
               flowable:candidateGroups="DEPT:FIN::DOA:L4,SUPER_ADMIN"
-              flowable:formKey="capex-approval">
+              flowable:formKey="capex-request-form">
       <documentation>CFO reviews very high-value CapEx requests over $250,000</documentation>
       <extensionElements>
         <flowable:field name="outcomeVariable"><flowable:string>cfoDecision</flowable:string></flowable:field>
@@ -184,8 +186,8 @@ doa-routing-process.bpmn20.xml and doa-routing.dmn for the recommended pattern.<
 
   </process>
 
-  <bpmndi:BPMNDiagram id="BPMNDiagram_capex-approval-v2">
-    <bpmndi:BPMNPlane id="BPMNPlane_capex-approval-v2" bpmnElement="capex-approval-process-v2">
+  <bpmndi:BPMNDiagram id="BPMNDiagram_capex-approval-process">
+    <bpmndi:BPMNPlane id="BPMNPlane_capex-approval-process" bpmnElement="capex-approval-process">
       <bpmndi:BPMNShape id="startEvent_di" bpmnElement="startEvent">
         <omgdc:Bounds x="152" y="262" width="36" height="36" />
         <bpmndi:BPMNLabel><omgdc:Bounds x="128" y="305" width="84" height="27" /></bpmndi:BPMNLabel>

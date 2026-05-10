@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://werkflow.com/bpmn/examples">
+
+  <process id="leave-request" name="Leave Request" isExecutable="true"
+           flowable:versionTag="1">
+
+    <extensionElements>
+      <flowable:properties>
+        <flowable:property name="category" value="examples"/>
+      </flowable:properties>
+    </extensionElements>
+
+    <documentation>Employee leave request workflow. The employee submits a leave request form; their manager reviews and either approves or rejects it. Engine-internal — no external API calls.</documentation>
+
+    <!-- Start Event -->
+    <startEvent id="startEvent" name="Leave Request Submitted"
+                flowable:formKey="leave-request-form"
+                flowable:initiator="initiator">
+      <documentation>Employee submits a leave request</documentation>
+    </startEvent>
+
+    <!-- Manager Review Task -->
+    <userTask id="managerReview" name="Manager Review"
+              flowable:candidateGroups="MANAGER,SUPER_ADMIN"
+              flowable:formKey="leave-request-form">
+      <documentation>Manager reviews the leave request and sets decision = approve or reject</documentation>
+      <extensionElements>
+        <flowable:field name="outcomeVariable"><flowable:string>decision</flowable:string></flowable:field>
+      </extensionElements>
+    </userTask>
+
+    <!-- Decision Gateway -->
+    <exclusiveGateway id="approvalGateway" name="Approved?"/>
+
+    <!-- End Events -->
+    <endEvent id="endApproved" name="Leave Approved"/>
+    <endEvent id="endRejected" name="Leave Rejected"/>
+
+    <!-- Sequence Flows -->
+    <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="managerReview"/>
+    <sequenceFlow id="flow2" sourceRef="managerReview" targetRef="approvalGateway"/>
+
+    <sequenceFlow id="flow3" sourceRef="approvalGateway" targetRef="endApproved">
+      <conditionExpression xsi:type="tFormalExpression">${decision == 'approve'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow4" sourceRef="approvalGateway" targetRef="endRejected">
+      <conditionExpression xsi:type="tFormalExpression">${decision == 'reject'}</conditionExpression>
+    </sequenceFlow>
+
+  </process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_leave-request">
+    <bpmndi:BPMNPlane id="BPMNPlane_leave-request" bpmnElement="leave-request">
+
+      <bpmndi:BPMNShape id="startEvent_di" bpmnElement="startEvent">
+        <omgdc:Bounds x="152" y="262" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="125" y="305" width="90" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="managerReview_di" bpmnElement="managerReview">
+        <omgdc:Bounds x="240" y="240" width="120" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="approvalGateway_di" bpmnElement="approvalGateway" isMarkerVisible="true">
+        <omgdc:Bounds x="420" y="255" width="50" height="50"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="410" y="312" width="70" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="endApproved_di" bpmnElement="endApproved">
+        <omgdc:Bounds x="542" y="172" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="516" y="215" width="82" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="endRejected_di" bpmnElement="endRejected">
+        <omgdc:Bounds x="542" y="352" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="516" y="395" width="82" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="flow1_di" bpmnElement="flow1">
+        <omgdi:waypoint x="188" y="280"/><omgdi:waypoint x="240" y="280"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow2_di" bpmnElement="flow2">
+        <omgdi:waypoint x="360" y="280"/><omgdi:waypoint x="420" y="280"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow3_di" bpmnElement="flow3">
+        <omgdi:waypoint x="445" y="255"/><omgdi:waypoint x="445" y="190"/><omgdi:waypoint x="542" y="190"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow4_di" bpmnElement="flow4">
+        <omgdi:waypoint x="445" y="305"/><omgdi:waypoint x="445" y="370"/><omgdi:waypoint x="542" y="370"/>
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</definitions>

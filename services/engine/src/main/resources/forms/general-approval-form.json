@@ -1,0 +1,72 @@
+{
+  "id": "general-approval-form",
+  "name": "General Approval Form",
+  "versionTag": "1",
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "text": "<h3>General Approval Request</h3><p>Submit a request for approval. Provide a clear title, description, and justification to help approvers make an informed decision.</p>"
+    },
+    {
+      "type": "textfield",
+      "key": "title",
+      "label": "Request Title",
+      "placeholder": "Enter a concise title for your request",
+      "validate": {
+        "required": true,
+        "minLength": 5,
+        "maxLength": 100
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "description",
+      "label": "Description",
+      "placeholder": "Describe what you are requesting and the context",
+      "validate": {
+        "required": true,
+        "minLength": 10,
+        "maxLength": 2000
+      }
+    },
+    {
+      "type": "select",
+      "key": "requestType",
+      "label": "Request Type",
+      "values": [
+        { "label": "Leave", "value": "leave" },
+        { "label": "Expense", "value": "expense" },
+        { "label": "Access", "value": "access" },
+        { "label": "Other", "value": "other" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "justification",
+      "label": "Justification",
+      "placeholder": "Explain why this request should be approved",
+      "validate": {
+        "required": true,
+        "minLength": 10,
+        "maxLength": 1000
+      }
+    },
+    {
+      "type": "select",
+      "key": "priority",
+      "label": "Priority",
+      "values": [
+        { "label": "Low", "value": "low" },
+        { "label": "Medium", "value": "medium" },
+        { "label": "High", "value": "high" }
+      ],
+      "validate": {
+        "required": true
+      }
+    }
+  ]
+}

@@ -12,7 +12,14 @@
   <!-- ADR-008: catches signal thrown by procurement-approval-process -->
   <signal id="procurementApprovedSignal" name="procurementApproved" flowable:scope="global"/>
 
-  <process id="asset-request-process" name="Asset Request" isExecutable="true">
+  <process id="asset-request-process" name="Asset Request" isExecutable="true"
+           flowable:versionTag="1">
+
+    <extensionElements>
+      <flowable:properties>
+        <flowable:property name="category" value="examples"/>
+      </flowable:properties>
+    </extensionElements>
 
     <documentation>Asset request workflow with custodian review, stock check, and procurement escalation</documentation>
 
