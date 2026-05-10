@@ -5,8 +5,8 @@ Flowable BPM orchestration engine for Werkflow Enterprise.
 ## Overview
 
 Hosts the Flowable 7.2.0 BPMN/DMN/CMMN engine. Manages process deployment, execution, task assignment,
-event correlation (message and signal), and webhook inbound correlation. Exposes design-time APIs
-consumed by the Admin Service and Portal.
+event correlation (message and signal), webhook inbound correlation, and database connector execution.
+Exposes design-time APIs consumed by the Admin Service and Portal.
 
 ## Responsibilities
 
@@ -19,6 +19,7 @@ consumed by the Admin Service and Portal.
 - Process and task history
 - BPMN variable scope analysis (design-time endpoint)
 - Tier 1 YAML role-to-group mapping read-through
+- Database connector execution (named queries, keyset pagination, per-tenant HikariCP pools, circuit breaker)
 
 ## Technology Stack
 
@@ -42,6 +43,16 @@ consumed by the Admin Service and Portal.
 | POST | `/api/v1/processes/{id}/start` | JWT | Start process instance |
 | GET | `/api/v1/tasks` | JWT | List user tasks |
 | POST | `/api/v1/tasks/{id}/complete` | JWT | Complete a task |
+
+## Connector Delegates
+
+| Delegate | Bean name | Transport |
+|----------|-----------|-----------|
+| `RestConnectorDelegate` | `externalApiCallDelegate`, `restConnectorDelegate` | HTTP/REST |
+| `DatabaseConnectorDelegate` | `databaseConnectorDelegate` | JDBC (named queries) |
+| `ConnectorWebhookDelegate` | `connectorWebhookDelegate` | Inbound webhook |
+
+`DatabaseConnectorDelegate` uses per-tenant HikariCP pools managed by `DatasourceRegistry` and wraps each execution in a Resilience4j circuit breaker keyed `{tenantCode}:{connectorKey}`.
 
 ## Configuration
 
