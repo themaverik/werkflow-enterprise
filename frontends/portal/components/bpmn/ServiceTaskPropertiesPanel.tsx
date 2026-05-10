@@ -148,6 +148,9 @@ export default function ServiceTaskPropertiesPanel({
   // Errors are suppressed until isDirty=true to avoid noise on initial render.
   const [connectorFieldDirty, setConnectorFieldDirty] = useState(false)
 
+  // ---- Connector health state ----
+  const [connectorHealthy, setConnectorHealthy] = useState<boolean | null>(null)
+
   // ---- DTDS state ----
   const [selectedOperationId, setSelectedOperationId] = useState('')
   const [inputMappings, setInputMappings] = useState<Array<{ path: string; processVariable: string }>>([])
@@ -284,6 +287,7 @@ export default function ServiceTaskPropertiesPanel({
     setConnectorFieldDirty(true)
     setSelectedConnectorKey(key)
     setConnectorKey(key)
+    setConnectorHealthy(null)
     modeler.get('modeling').updateProperties(element, { 'ab:connector': key || undefined })
 
     if (!key) {
@@ -291,6 +295,11 @@ export default function ServiceTaskPropertiesPanel({
       setContractJson('')
       return
     }
+
+    // Quick health check for selected connector
+    fetch(`/api/proxy/admin/connectors/${encodeURIComponent(key)}/health`)
+      .then(res => setConnectorHealthy(res.ok))
+      .catch(() => setConnectorHealthy(false))
 
     // Clear legacy url when connector mode is active
     setUrl('')
@@ -406,40 +415,54 @@ export default function ServiceTaskPropertiesPanel({
   }
 
   return (
-    <div className="space-y-3 p-3">
+    <div className="space-y-4 p-3">
       {/* Connector selector — prefers DTDS list, falls back to legacy connector list */}
       <Card>
         <CardHeader className="pb-2 pt-3 px-3">
           <CardTitle className="text-xs font-semibold">{t('connector')}</CardTitle>
           <CardDescription className="text-xs">{t('connectorDesc')}</CardDescription>
         </CardHeader>
-        <CardContent className="px-3 pb-3 space-y-2">
+        <CardContent className="px-3 pb-3 space-y-3">
           {dtdsConnectors.isLoading && (
             <p className="text-xs text-muted-foreground">Loading connectors…</p>
           )}
           {!dtdsConnectors.isLoading && (
-            <Select
-              value={selectedConnectorKey || '__none__'}
-              onValueChange={v => handleConnectorSelect(v === '__none__' ? '' : v)}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="(none)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">(none)</SelectItem>
-                {dtdsConnectors.connectors.length > 0
-                  ? dtdsConnectors.connectors.map(c => (
-                      <SelectItem key={c.key} value={c.key}>
-                        {c.displayName} ({c.key})
-                      </SelectItem>
-                    ))
-                  : connectors.map(c => (
-                      <SelectItem key={c.connectorKey} value={c.connectorKey}>
-                        {c.displayName} ({c.connectorKey})
-                      </SelectItem>
-                    ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Select
+                value={selectedConnectorKey || '__none__'}
+                onValueChange={v => handleConnectorSelect(v === '__none__' ? '' : v)}
+              >
+                <SelectTrigger className="h-8 text-xs flex-1">
+                  <SelectValue placeholder="(none)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">(none)</SelectItem>
+                  {dtdsConnectors.connectors.length > 0
+                    ? dtdsConnectors.connectors.map(c => (
+                        <SelectItem key={c.key} value={c.key}>
+                          {c.displayName} ({c.key})
+                        </SelectItem>
+                      ))
+                    : connectors.map(c => (
+                        <SelectItem key={c.connectorKey} value={c.connectorKey}>
+                          {c.displayName} ({c.connectorKey})
+                        </SelectItem>
+                      ))}
+                </SelectContent>
+              </Select>
+              {connectorHealthy === true && (
+                <span className="flex items-center gap-1 text-xs shrink-0" style={{ color: '#149ba5' }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#149ba5', display: 'inline-block' }} />
+                  Connected
+                </span>
+              )}
+              {connectorHealthy === false && (
+                <span className="flex items-center gap-1 text-xs shrink-0" style={{ color: 'var(--destructive)' }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--destructive)', display: 'inline-block' }} />
+                  Unavailable
+                </span>
+              )}
+            </div>
           )}
           {/* Show a neutral helper when no connector is selected and the field has not been touched */}
           {!selectedConnectorKey && !connectorFieldDirty && (
@@ -459,9 +482,9 @@ export default function ServiceTaskPropertiesPanel({
       {/* Tabbed panel */}
       <Tabs defaultValue="request">
         <TabsList className={`w-full grid h-8 text-xs ${connectorKey ? 'grid-cols-5' : 'grid-cols-3'}`}>
-          <TabsTrigger value="request" className="text-xs">{t('requestTab')}</TabsTrigger>
-          <TabsTrigger value="contract" className="text-xs">{t('contractTab')}</TabsTrigger>
-          <TabsTrigger value="extract" className="text-xs">{t('extractFieldsTab')}</TabsTrigger>
+          <TabsTrigger value="request" className="text-xs">Setup</TabsTrigger>
+          <TabsTrigger value="contract" className="text-xs">Contract</TabsTrigger>
+          <TabsTrigger value="extract" className="text-xs">Extract</TabsTrigger>
           {connectorKey && (
             <TabsTrigger value="inputs" className="text-xs">Inputs</TabsTrigger>
           )}

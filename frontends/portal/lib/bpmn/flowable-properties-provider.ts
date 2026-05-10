@@ -662,6 +662,7 @@ const ACTION_TYPES = [
   { value: 'SEND_NOTIFICATION', label: 'Send Notification' },
   { value: 'EXTERNAL_API_CALL', label: 'External API Call' },
   { value: 'CALL_SUBPROCESS',   label: 'Call Subprocess' },
+  { value: 'DMN_ROUTE',         label: 'DMN Route' },
   { value: 'GROOVY_SCRIPT',     label: 'Groovy Script (Admin)' },
   { value: 'MANUAL_STEP',       label: 'Manual Step' },
 ]
@@ -671,6 +672,7 @@ const ACTION_COLOURS: Record<string, { fill: string; stroke: string }> = {
   SEND_NOTIFICATION: { fill: '#fff3e0', stroke: '#e65100' },
   EXTERNAL_API_CALL: { fill: '#f3e5f5', stroke: '#6a1b9a' },
   CALL_SUBPROCESS:   { fill: '#e8f5e9', stroke: '#2e7d32' },
+  DMN_ROUTE:         { fill: '#e8eaf6', stroke: '#283593' },
   GROOVY_SCRIPT:     { fill: '#fce4ec', stroke: '#c62828' },
   MANUAL_STEP:       { fill: '#f3e5f5', stroke: '#4a148c' },
 }
@@ -744,11 +746,42 @@ function buildActionBlockEntries(
 
   if (actionType === 'HUMAN_APPROVAL') {
     entries.push(
-      textField(element, modeling, translate, debounce, 'ab-assignee',
-        translate('Assignee Expression'), 'flowable:assignee',
-        translate('User ID or expression, e.g. ${initiator}')),
+      {
+        id: 'ab-assignee',
+        element,
+        component: TextFieldEntry,
+        isEdited: isTextFieldEntryEdited,
+        debounce,
+        label: translate('Assignee Expression'),
+        description: translate('Use `${initiator}` for submitter or `${custodyVars.IT}` for group expression'),
+        getValue: () => element.businessObject.get('flowable:assignee') || '',
+        setValue: (value: string) =>
+          modeling.updateProperties(element, { 'flowable:assignee': value || undefined }),
+      },
       candidateGroupsEntry(element, modeling, translate, debounce),
-      formKeyEntry(element, modeling, translate),
+      {
+        id: 'ab-formKey',
+        element,
+        component: SelectEntry,
+        isEdited: isSelectEntryEdited,
+        label: translate('Form Key'),
+        description: translate('Select a form definition to link'),
+        getValue: () =>
+          element.businessObject.formKey ||
+          element.businessObject.$attrs?.['flowable:formKey'] ||
+          '',
+        setValue: (value: string) =>
+          modeling.updateProperties(element, { formKey: value || undefined }),
+        getOptions: () => {
+          const options: Array<{ value: string; label: string }> = [
+            { value: '', label: translate('(none)') },
+          ]
+          for (const schema of formSchemaOptions) {
+            options.push({ value: schema.key, label: schema.name || schema.key })
+          }
+          return options
+        },
+      },
       // outcomeVariable must be a <flowable:field> extension element (spec 3.2)
       flowableFieldEntry(element, modeling, translate, debounce, 'ab-outcomeVariable',
         translate('Outcome Variable'), 'outcomeVariable'),
@@ -758,8 +791,17 @@ function buildActionBlockEntries(
   if (actionType === 'SEND_NOTIFICATION') {
     entries.push(
       channelSelectEntry(element, modeling, translate),
-      flowableFieldEntry(element, modeling, translate, debounce, 'notif-recipient',
-        translate('Recipient Expression'), 'recipient'),
+      {
+        id: 'notif-recipient',
+        element,
+        component: TextFieldEntry,
+        isEdited: isTextFieldEntryEdited,
+        debounce,
+        label: translate('Recipient Expression'),
+        description: translate('Process variable expression e.g. `${initiator}` or email address'),
+        getValue: () => readFlowableField(element, 'recipient'),
+        setValue: (value: string) => writeFlowableField(element, modeling, 'recipient', value),
+      },
       templateKeySelectEntry(element, modeling, translate),
       flowableFieldEntry(element, modeling, translate, debounce, 'notif-condition',
         translate('Condition (optional)'), 'condition'),
@@ -788,12 +830,53 @@ function buildActionBlockEntries(
 
   if (actionType === 'CALL_SUBPROCESS') {
     entries.push(
-      flowableFieldEntry(element, modeling, translate, debounce, 'sub-processKey',
-        translate('Process Key'), 'processKey'),
+      {
+        id: 'sub-processKey',
+        element,
+        component: SelectEntry,
+        isEdited: isSelectEntryEdited,
+        label: translate('Process Key'),
+        description: translate('Select the subprocess definition to invoke'),
+        getValue: () => readFlowableField(element, 'processKey'),
+        setValue: (value: string) => writeFlowableField(element, modeling, 'processKey', value),
+        getOptions: () => {
+          const options: Array<{ value: string; label: string }> = [
+            { value: '', label: translate('(select process)') },
+          ]
+          for (const def of processDefinitionOptions) {
+            options.push({ value: def.key, label: def.name || def.key })
+          }
+          return options
+        },
+      },
       flowableFieldEntry(element, modeling, translate, debounce, 'sub-inVariables',
         translate('In Variables (comma-separated)'), 'inVariables'),
       flowableFieldEntry(element, modeling, translate, debounce, 'sub-outVariables',
         translate('Out Variables (comma-separated)'), 'outVariables'),
+    )
+  }
+
+  if (actionType === 'DMN_ROUTE') {
+    entries.push(
+      {
+        id: 'dmn-decisionRef',
+        element,
+        component: SelectEntry,
+        isEdited: isSelectEntryEdited,
+        label: translate('Decision Reference'),
+        description: translate('DMN decision key to evaluate for routing'),
+        getValue: () => readFlowableField(element, 'decisionRef'),
+        setValue: (value: string) => writeFlowableField(element, modeling, 'decisionRef', value),
+        getOptions: () => {
+          const options: Array<{ value: string; label: string }> = [
+            { value: '', label: translate('(select decision)') },
+          ]
+          for (const d of dmnDecisionOptions) {
+            options.push({ value: d.key, label: d.name || d.key })
+          }
+          return options
+        },
+      },
     )
   }
 

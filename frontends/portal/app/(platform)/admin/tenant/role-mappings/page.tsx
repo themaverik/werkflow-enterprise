@@ -11,7 +11,7 @@ import { Info, Lock, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Tier1Mapping { role: string; groups: string[] }
-interface Tier2Mapping { id: string; roleName: string; groupName: string; tier: 2 }
+interface Tier2Mapping { id: string; roleName: string; groupName: string; tier: 2; isManagerTier?: boolean }
 
 async function fetchTier1(token: string): Promise<Tier1Mapping[]> {
   const res = await fetch('/api/proxy/engine/config/flowable-role-mappings', {
@@ -29,6 +29,16 @@ async function fetchTier2(token: string): Promise<Tier2Mapping[]> {
   if (!res.ok) throw new Error('Failed to fetch role mappings')
   const data = await res.json()
   return (Array.isArray(data) ? data : []).filter((m: Tier2Mapping) => m.tier === 2)
+}
+
+async function fetchCandidateGroups(
+  token: string
+): Promise<Array<{ groupName: string; tier: number; isManagerTier?: boolean }>> {
+  const res = await fetch('/api/proxy/admin/platform/candidate-groups', {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Failed to load candidate groups')
+  return res.json()
 }
 
 async function fetchRealmRoles(token: string): Promise<string[]> {
@@ -78,6 +88,17 @@ export default function RoleMappingsPage() {
     queryFn: () => fetchTier2(token),
     enabled: status === 'authenticated',
     staleTime: 60_000,
+  })
+
+  const {
+    data: candidateGroups = [],
+    isLoading: loadingGroups,
+    isError: groupsError,
+  } = useQuery({
+    queryKey: ['pss', 'candidateGroups'],
+    queryFn: () => fetchCandidateGroups(token),
+    enabled: status === 'authenticated',
+    staleTime: 300_000,
   })
 
   const { data: realmRoles = [], isLoading: loadingRoles, isError: rolesError } = useQuery({
@@ -168,23 +189,31 @@ export default function RoleMappingsPage() {
       <section>
         <h2 className="text-base font-semibold mb-3">Tier 2 — Business Role Mappings</h2>
         <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <table className="w-full text-sm" aria-label="Tier 2 role mappings">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-56">Keycloak Role</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Candidate Group</th>
-                <th className="px-4 py-3 w-16" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {loadingTier2 && (
-                <tr><td colSpan={3} className="px-4 py-6 text-center text-muted-foreground text-sm">Loading…</td></tr>
-              )}
+          {loadingTier2 && (
+            <p className="px-4 py-6 text-center text-muted-foreground text-sm">Loading…</p>
+          )}
+          {!loadingTier2 && tier2.length === 0 && (
+            <p className="px-4 py-6 text-center text-muted-foreground text-sm">No business role mappings yet.</p>
+          )}
+          {!loadingTier2 && tier2.length > 0 && (
+            <div className="p-3 space-y-2">
               {tier2.map((m) => (
-                <tr key={m.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-3 font-mono text-xs">{m.roleName}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{m.groupName}</td>
-                  <td className="px-4 py-3 text-right">
+                <div
+                  key={m.id}
+                  className="flex items-center gap-2 p-2 rounded-lg border border-border bg-card"
+                >
+                  <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{m.roleName}</span>
+                  <span className="text-muted-foreground text-xs">→</span>
+                  <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{m.groupName}</span>
+                  {m.isManagerTier && (
+                    <span
+                      className="text-xs px-1.5 py-0.5 rounded"
+                      style={{ background: '#eeedfe', color: '#3c3489', border: '1px solid #d9d6f5' }}
+                    >
+                      manager-tier
+                    </span>
+                  )}
+                  <div className="ml-auto">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -199,61 +228,86 @@ export default function RoleMappingsPage() {
                     >
                       <Trash2 size={14} strokeWidth={1.8} />
                     </Button>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-              {!loadingTier2 && tier2.length === 0 && (
-                <tr><td colSpan={3} className="px-4 py-6 text-center text-muted-foreground text-sm">No business role mappings yet.</td></tr>
+            </div>
+          )}
+        </div>
+
+        {/* Add row */}
+        <div className="mt-3 flex items-center gap-2">
+          <Select
+            value={newRole || '__none__'}
+            onValueChange={(v) => setNewRole(v === '__none__' ? '' : v)}
+          >
+            <SelectTrigger className="h-8 text-xs font-mono flex-1" aria-label="Select Keycloak role">
+              <SelectValue placeholder="Select role…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__" className="text-xs text-muted-foreground">Select role…</SelectItem>
+              {realmRoles.map((r) => (
+                <SelectItem key={r} value={r} className="font-mono text-xs">{r}</SelectItem>
+              ))}
+              {loadingRoles && (
+                <div className="px-3 py-2 text-xs text-muted-foreground">Loading roles…</div>
               )}
-              {/* Add row */}
-              <tr className="bg-muted/20 border-t border-border">
-                <td className="px-4 py-3">
-                  <Select
-                    value={newRole || '__none__'}
-                    onValueChange={(v) => setNewRole(v === '__none__' ? '' : v)}
-                  >
-                    <SelectTrigger className="h-8 text-xs font-mono" aria-label="Select Keycloak role">
-                      <SelectValue placeholder="Select role…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__" className="text-xs text-muted-foreground">Select role…</SelectItem>
-                      {realmRoles.map((r) => (
-                        <SelectItem key={r} value={r} className="font-mono text-xs">{r}</SelectItem>
-                      ))}
-                      {loadingRoles && (
-                        <div className="px-3 py-2 text-xs text-muted-foreground">Loading roles…</div>
-                      )}
-                      {rolesError && !loadingRoles && (
-                        <div className="px-3 py-2 text-xs text-destructive">Failed to load roles</div>
-                      )}
-                      {!loadingRoles && !rolesError && realmRoles.length === 0 && (
-                        <div className="px-3 py-2 text-xs text-muted-foreground">No roles found</div>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </td>
-                <td className="px-4 py-3">
-                  <Input
-                    value={newGroup}
-                    onChange={(e) => setNewGroup(e.target.value)}
-                    placeholder="candidate_group_name"
-                    className="h-8 text-xs font-mono"
-                    aria-label="Candidate group name"
-                  />
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <Button
-                    size="sm"
-                    aria-label="Add mapping"
-                    disabled={!newRole || !newGroup.trim() || addMutation.isPending}
-                    onClick={() => addMutation.mutate({ roleName: newRole, groupName: newGroup.trim() })}
-                  >
-                    <Plus size={14} strokeWidth={1.8} />
-                  </Button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+              {rolesError && !loadingRoles && (
+                <div className="px-3 py-2 text-xs text-destructive">Failed to load roles</div>
+              )}
+              {!loadingRoles && !rolesError && realmRoles.length === 0 && (
+                <div className="px-3 py-2 text-xs text-muted-foreground">No roles found</div>
+              )}
+            </SelectContent>
+          </Select>
+
+          {groupsError ? (
+            <div className="flex-1 space-y-1">
+              <Input
+                value={newGroup}
+                onChange={(e) => setNewGroup(e.target.value)}
+                placeholder="candidate_group_name"
+                className="h-8 text-xs font-mono w-full"
+                aria-label="Candidate group name"
+              />
+              <p className="text-xs text-destructive">Could not load groups — enter manually.</p>
+            </div>
+          ) : (
+            <Select
+              value={newGroup || '__none__'}
+              onValueChange={(v) => setNewGroup(v === '__none__' ? '' : v)}
+            >
+              <SelectTrigger className="h-8 text-xs font-mono flex-1" aria-label="Select candidate group">
+                <SelectValue placeholder="Select group…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__" className="text-xs text-muted-foreground">Select group…</SelectItem>
+                {loadingGroups && (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">Loading groups…</div>
+                )}
+                {!loadingGroups && candidateGroups
+                  .filter((g) => g.tier === 2)
+                  .sort((a, b) => a.groupName.localeCompare(b.groupName))
+                  .map((g) => (
+                    <SelectItem key={g.groupName} value={g.groupName} className="font-mono text-xs">
+                      {g.groupName}
+                    </SelectItem>
+                  ))}
+                {!loadingGroups && candidateGroups.filter((g) => g.tier === 2).length === 0 && (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">No Tier 2 groups found</div>
+                )}
+              </SelectContent>
+            </Select>
+          )}
+
+          <Button
+            size="sm"
+            aria-label="Add mapping"
+            disabled={!newRole || !newGroup.trim() || addMutation.isPending}
+            onClick={() => addMutation.mutate({ roleName: newRole, groupName: newGroup.trim() })}
+          >
+            <Plus size={14} strokeWidth={1.8} />
+          </Button>
         </div>
       </section>
     </div>
