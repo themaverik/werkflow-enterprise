@@ -87,7 +87,7 @@ app:
   environment: ${APP_ENVIRONMENT:development}
 
   engine-service:
-    url: ${ENGINE_SERVICE_URL:http://localhost:8081}
+    url: ${ENGINE_SERVICE_URL:http://werkflow-engine:8081}
 
   erp-service:
     url: ${ERP_SERVICE_URL:http://werkflow-business:8084}

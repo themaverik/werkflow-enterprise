@@ -8,6 +8,31 @@ Format: `[Unreleased]` for in-progress work. Releases follow [Semantic Versionin
 
 ## [Unreleased]
 
+### M4.6 Post-Merge Bugfixes (2026-05-10)
+
+#### Fixed
+- Engine service compile errors: `WebhookCorrelator` rewritten for Flowable 7.2.0 API (removed non-existent `MessageCorrelationResult`; uses `EventSubscriptionQuery` + `messageEventReceived`)
+- Admin service compile errors: `getVariablesAt()` renamed to `variablesAt()` in `FormFacadeController` and `DmnFacadeController`
+- Docker build failure: bumped `groovy-all` from `4.0.21` to `4.0.22`; added BuildKit cache mounts to Dockerfile Maven steps
+- `ENGINE_SERVICE_URL` default corrected from `localhost:8081` to `werkflow-engine:8081` in `application.yml` (overrode `@Value` defaults in `EngineClient` and `ProcessVariableScopeService`)
+- Engine `SecurityConfig`: `/api/v1/config/flowable-role-mappings` now `permitAll` for internal service-to-service calls
+- `CandidateGroupsAggregator`: added `unless = "#result.isEmpty()"` to prevent startup race condition from caching empty candidate groups
+- `LocaleProjector` and `VisibilityPolicyProjector`: added `evict()` methods; `ConfigurationVariableController` now calls them after LOCALE and POLICY config var mutations
+- `RoleGroupMappingController`: evicts `pss.candidateGroups` cache after Tier 2 mapping create/delete
+- `RoleGroupMappingController.create()`: resolves `tenantCode` from JWT when not provided in request body (fixes 400 on POST)
+- `RoleGroupMappingService.delete()`: returns `tenantCode` of deleted entity for cache eviction
+
+#### Changed
+- Custody Mappings page: candidate group input is now a grouped `<select>` dropdown (Tier 1 + Tier 2) with free-text fallback only when no groups are configured
+- Role Mappings page: Tier 2 candidate group field is always free text (groups are being defined here, not selected)
+- `useCandidateGroups` hook: added `refetchOnMount: 'always'` to pick up backend changes after service restart
+- `ChipRow` component: shows disabled "Loading groups…" select during fetch instead of text fallback
+- Role Mappings and Custody Mappings mutations now invalidate `['pss', 'candidateGroups']` React Query cache on success
+- Custody Mappings terminology section updated: "Process Custody" renamed to "Approval Group"; "Custody Owner" term added
+- Admin service and engine service READMEs rewritten to reflect current implementation
+
+---
+
 ### S21 — Code Cleanup & IP Preparation
 - Added Apache 2.0 LICENSE, NOTICE, and LICENSES/ directory
 - Added SECURITY.md, .github/ issue templates, and PR template

@@ -57,12 +57,14 @@ public class RoleGroupMappingService {
         return toResponse(repository.save(mapping));
     }
 
+    /** Deletes the mapping and returns its tenantCode so callers can evict caches. */
     @Transactional
-    public void delete(Long id) {
-        if (!repository.existsById(id)) {
-            throw new RuntimeException("Role group mapping not found: " + id);
-        }
-        repository.deleteById(id);
+    public String delete(Long id) {
+        RoleGroupMapping mapping = repository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Role group mapping not found: " + id));
+        String tenantCode = mapping.getTenantCode();
+        repository.delete(mapping);
+        return tenantCode;
     }
 
     @Transactional

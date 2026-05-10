@@ -9,7 +9,7 @@ import {
   LayoutDashboard, CheckSquare, FileText, BookOpen,
   Workflow, FormInput, GitBranch, Mail,
   Link2, ShieldCheck, Building2, Users, TrendingUp, Activity,
-  BriefcaseBusiness, AlertCircle, Tag, Eye, Globe,
+  BriefcaseBusiness, AlertCircle, Tag, Eye, Globe, Database,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -61,6 +61,7 @@ const sidebarSections: SidebarSection[] = [
       { labelKey: 'categories',        href: '/admin/tenant/categories',         icon: Tag,               requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'visibilityPolicy',  href: '/admin/tenant/visibility-policy',  icon: Eye,               requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'locale',            href: '/admin/tenant/locale',             icon: Globe,             requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'datasources',       href: '/admin/tenant/datasources',        icon: Database,          requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
     ],
   },
   {

@@ -22,7 +22,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ExternalApiCallDelegateTest {
+class RestConnectorDelegateTest {
 
     @Mock private SsrfGuard ssrfGuard;
     @Mock private ResponseMasker responseMasker;
@@ -36,14 +36,14 @@ class ExternalApiCallDelegateTest {
                              extractFieldsExpr, maskFieldsExpr, onErrorExpr,
                              connectorExpr, pathExpr, bodyExpr;
 
-    private ExternalApiCallDelegate delegate;
+    private RestConnectorDelegate delegate;
 
     @BeforeEach
     void setUp() {
         when(restClientBuilder.requestFactory(any())).thenReturn(restClientBuilder);
         when(restClientBuilder.build()).thenReturn(restClient);
 
-        delegate = new ExternalApiCallDelegate(
+        delegate = new RestConnectorDelegate(
             ssrfGuard, responseMasker, secretsResolver, auditLogRepository, restClientBuilder, endpointResolver);
 
         delegate.setUrl(urlExpr);
@@ -107,9 +107,9 @@ class ExternalApiCallDelegateTest {
 
     @Test
     void parseExtractFields_parsesValidEntries() {
-        ExternalApiCallDelegate d = new ExternalApiCallDelegate(
+        RestConnectorDelegate d = new RestConnectorDelegate(
             ssrfGuard, responseMasker, secretsResolver, auditLogRepository, restClientBuilder, endpointResolver);
-        Map<String, String> parsed = d.parseExtractFieldsForTest("count:$.stock.count,available:$.stock.available");
+        Map<String, String> parsed = d.parseExtractFields("count:$.stock.count,available:$.stock.available");
         assertThat(parsed).containsEntry("count", "$.stock.count")
                           .containsEntry("available", "$.stock.available");
     }
@@ -153,7 +153,7 @@ class ExternalApiCallDelegateTest {
 
     @Test
     void resolveBodyTemplate_substitutesVariables() {
-        ExternalApiCallDelegate d = new ExternalApiCallDelegate(
+        RestConnectorDelegate d = new RestConnectorDelegate(
             ssrfGuard, responseMasker, secretsResolver, auditLogRepository, restClientBuilder, endpointResolver);
 
         when(execution.getVariable("requestId")).thenReturn("REQ-001");
@@ -166,7 +166,7 @@ class ExternalApiCallDelegateTest {
 
     @Test
     void resolveBodyTemplate_jsonEscapesStringValues() {
-        ExternalApiCallDelegate d = new ExternalApiCallDelegate(
+        RestConnectorDelegate d = new RestConnectorDelegate(
             ssrfGuard, responseMasker, secretsResolver, auditLogRepository, restClientBuilder, endpointResolver);
 
         when(execution.getVariable("description")).thenReturn("Laptop, 16\" screen");
@@ -178,7 +178,7 @@ class ExternalApiCallDelegateTest {
 
     @Test
     void resolveBodyTemplate_handlesNullVariable() {
-        ExternalApiCallDelegate d = new ExternalApiCallDelegate(
+        RestConnectorDelegate d = new RestConnectorDelegate(
             ssrfGuard, responseMasker, secretsResolver, auditLogRepository, restClientBuilder, endpointResolver);
 
         when(execution.getVariable("missingVar")).thenReturn(null);
@@ -218,7 +218,7 @@ class ExternalApiCallDelegateTest {
 
     @Test
     void resolveBodyTemplate_escapesControlCharacters() {
-        ExternalApiCallDelegate d = new ExternalApiCallDelegate(
+        RestConnectorDelegate d = new RestConnectorDelegate(
             ssrfGuard, responseMasker, secretsResolver, auditLogRepository, restClientBuilder, endpointResolver);
 
         when(execution.getVariable("data")).thenReturn("line1\nline2\ttabbed");
