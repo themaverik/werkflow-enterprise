@@ -14,8 +14,8 @@ locale, visibility policy, candidate groups, categories, and FEEL expression cat
 - Role-to-group mappings (Tier 1 YAML read-through, Tier 2 DB-backed)
 - Custody mappings (process custody owner to candidate group routing)
 - Connector registry (connector definitions, tenant endpoints, credentials)
-- Tenant datasource registry (JDBC datasource CRUD, connection test, engine-internal resolver)
-- Connector generators (OpenAPI 3.1 import, JSON Schema import)
+- Tenant datasource registry (JDBC datasource CRUD, connection test with rate limiting, engine-internal resolver)
+- Connector generators (OpenAPI 3.1 import — $ref SSRF-safe, JSON Schema import)
 - Keycloak realm role proxy (for Admin UI role dropdowns)
 - PSS endpoints: candidate groups, departments, locale, visibility policy, FEEL expressions
 - BPMN process variable scope analysis (design-time)
@@ -43,12 +43,25 @@ locale, visibility policy, candidate groups, categories, and FEEL expression cat
 | GET/POST/PUT/DELETE | `/api/v1/config/vars` | Tenant configuration variables |
 | GET/POST/DELETE | `/api/v1/config/role-mappings` | Tier 2 role-to-group mappings |
 | GET/POST/PUT/DELETE | `/api/v1/config/datasources` | Tenant JDBC datasource registry |
-| POST | `/api/v1/config/datasources/{ref}/test` | Live connection test |
+| POST | `/api/v1/config/datasources/{ref}/test` | Live connection test (rate-limited: 5/min) |
 | GET | `/api/v1/design/bpmn/variable-scope` | Process variable scope at activity |
 | GET | `/api/v1/design/dmn/variables` | DMN input/output variables |
 | GET | `/api/v1/connectors` | Connector definitions |
 | POST | `/api/v1/connectors/generators/openapi` | Generate connector from OpenAPI 3.1 spec |
 | POST | `/api/v1/connectors/generators/json-schema` | Generate connector stub from JSON Schema |
+
+## Security Properties
+
+| Property | Enforced at |
+|----------|-------------|
+| JDBC URL scheme allowlist (7 schemes) | Datasource create/update |
+| JDBC host private-range block (RFC-1918 + loopback) | Datasource create/update |
+| Driver class allowlist (5 drivers) | Datasource create/update |
+| `passwordSecretRef` write-only — never returned in read responses | `TenantDatasourceResponse` |
+| Test-connection rate limit: 5 req/min per instance | Resilience4j `datasource-test` |
+| Pool `maxSize` capped at 50, connection timeout at 30 s | DTO `@Max` validation |
+| OpenAPI `$ref` resolution disabled — no server-side SSRF via content | `OpenApiImportService` |
+| SQL comments stripped before DML keyword scan | `ConnectorDefinitionValidator` |
 
 ## Configuration
 
