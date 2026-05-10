@@ -81,14 +81,14 @@ export function ArtifactMetadataPanel({ value, onChange }: Props) {
             <span className="text-muted-foreground ml-1">(visibility scope)</span>
           </Label>
           <Select
-            value={value.departmentCode ?? ''}
-            onValueChange={(v) => onChange({ ...value, departmentCode: v || undefined })}
+            value={value.departmentCode || '__none__'}
+            onValueChange={(v) => onChange({ ...value, departmentCode: v === '__none__' ? undefined : v })}
           >
             <SelectTrigger className="h-8 text-xs">
               <SelectValue placeholder="All departments (visible to all)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All departments</SelectItem>
+              <SelectItem value="__none__">All departments</SelectItem>
               {departments.map((d) => (
                 <SelectItem key={d.code} value={d.code}>
                   {d.displayName}
@@ -105,14 +105,14 @@ export function ArtifactMetadataPanel({ value, onChange }: Props) {
       <div className="space-y-1">
         <Label className="text-xs">Category</Label>
         <Select
-          value={value.categoryCode ?? ''}
-          onValueChange={(v) => onChange({ ...value, categoryCode: v || undefined })}
+          value={value.categoryCode || '__none__'}
+          onValueChange={(v) => onChange({ ...value, categoryCode: v === '__none__' ? undefined : v })}
         >
           <SelectTrigger className="h-8 text-xs">
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Uncategorized</SelectItem>
+            <SelectItem value="__none__">Uncategorized</SelectItem>
             {categories.map((c) => (
               <SelectItem key={c.id} value={c.code}>
                 {c.displayName}
