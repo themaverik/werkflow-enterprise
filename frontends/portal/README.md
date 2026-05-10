@@ -1,281 +1,71 @@
-# Werkflow Frontend
+# Werkflow Portal
 
-Next.js 14 React application with visual BPMN workflow designer and dynamic form builder.
+Next.js 15 portal for process design, form authoring, task management, and tenant administration.
 
-## 🚀 Technology Stack
+## Technology Stack
 
-- **Next.js 14** - React framework with App Router
-- **React 18** - UI library
-- **TypeScript 5** - Type safety
-- **Tailwind CSS** - Utility-first CSS framework
-- **shadcn/ui** - Re-usable components built with Radix UI
-- **bpmn-js** - BPMN 2.0 rendering and editing
-- **Form.io** - Dynamic form builder
-- **React Query** - Server state management
-- **Axios** - HTTP client
-- **NextAuth v5** - Authentication (Keycloak integration)
+- Next.js 15 (App Router)
+- React 18, TypeScript 5
+- Tailwind CSS + shadcn/ui
+- bpmn-js (BPMN designer), dmn-js (DMN editor), Form.js (form builder)
+- React Query (server state)
+- NextAuth v5 (Keycloak PKCE-disabled, confidential client)
 
-## 📋 Prerequisites
+## Port
 
-- **Node.js 20+**
-- **npm or pnpm** or yarn
-- **Backend API** running on http://localhost:8080/api
-- **Keycloak** running on http://localhost:8090
+- **3000** — development server
 
-## 🏃 Getting Started
-
-### 1. Install Dependencies
+## Getting Started
 
 ```bash
-cd frontend
+cd frontends/portal
 npm install
-```
-
-### 2. Configure Environment Variables
-
-Copy the example env file:
-
-```bash
 cp .env.local.example .env.local
-```
-
-Edit `.env.local` with your configuration:
-
-```env
-# Backend API
-NEXT_PUBLIC_API_URL=http://localhost:8080/api
-
-# NextAuth
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret-here
-
-# Keycloak
-KEYCLOAK_CLIENT_ID=werkflow-frontend
-KEYCLOAK_CLIENT_SECRET=your-client-secret
-KEYCLOAK_ISSUER=http://localhost:8090/realms/werkflow
-```
-
-### 3. Run Development Server
-
-```bash
+# edit .env.local (see below)
 npm run dev
 ```
 
-Open http://localhost:3000 in your browser.
+## Key Environment Variables
 
-### 4. Build for Production
+| Variable | Description |
+|----------|-------------|
+| `NEXTAUTH_URL` | Public URL of this app (e.g. `http://localhost:3000`) |
+| `AUTH_SECRET` | NextAuth session secret (32+ chars) |
+| `KEYCLOAK_CLIENT_ID` | Keycloak client ID (`werkflow-portal`) |
+| `KEYCLOAK_CLIENT_SECRET` | Must match realm.json exactly (32 chars — truncation causes silent 401) |
+| `KEYCLOAK_ISSUER` | `http://localhost:8090/realms/werkflow` |
+| `ADMIN_SERVICE_URL` | Internal admin service URL (e.g. `http://localhost:8083`) |
+| `ENGINE_SERVICE_URL` | Internal engine URL (e.g. `http://localhost:8081`) |
+| `ERP_SERVICE_URL` | Internal ERP URL (e.g. `http://localhost:8084`) |
 
-```bash
-npm run build
-npm start
-```
+## Key Routes
 
-## 📁 Project Structure
+| Route | Description |
+|-------|-------------|
+| `/processes` | BPMN process list (ADR-010 visibility-filtered) |
+| `/processes/[key]/design` | BPMN designer with properties panel, expression builder, custody panel |
+| `/forms` | Form schema list |
+| `/forms/[key]/design` | Form.js editor |
+| `/decisions` | DMN decision list |
+| `/services` | Service catalog (PSS category + dept + visibility filter) |
+| `/tasks`, `/requests` | Task inbox and submitted requests |
+| `/admin/tenant/*` | Tenant setup: approval authority, role mappings, datasources, custody groups |
+| `/admin/connectors` | Connector registry |
 
-```
-frontend/
-├── app/                        # Next.js App Router
-│   ├── (auth)/                 # Authentication pages (future)
-│   ├── (studio)/               # Process & Form Designer (future)
-│   ├── (portal)/               # Task Management (future)
-│   ├── layout.tsx              # Root layout
-│   ├── page.tsx                # Home page
-│   ├── providers.tsx           # React Query provider
-│   └── globals.css             # Global styles
-├── components/
-│   ├── ui/                     # shadcn/ui components
-│   │   ├── button.tsx
-│   │   └── card.tsx
-│   ├── bpmn/                   # BPMN designer (future)
-│   ├── forms/                  # Form builder (future)
-│   └── tasks/                  # Task management (future)
-├── lib/
-│   ├── api/                    # API client functions
-│   │   ├── client.ts           # Axios instance
-│   │   ├── workflows.ts        # Workflow APIs
-│   │   └── flowable.ts         # Flowable deployment APIs
-│   ├── hooks/                  # Custom React hooks (future)
-│   └── utils.ts                # Utilities
-├── public/                     # Static assets
-├── .env.local.example          # Environment variables example
-├── next.config.mjs             # Next.js configuration
-├── tailwind.config.ts          # Tailwind CSS configuration
-├── tsconfig.json               # TypeScript configuration
-└── package.json                # Dependencies
-```
-
-## 🎨 Available Pages
-
-### Current (Phase 1)
-- **/** - Landing page with navigation to main sections
-
-### Coming Soon (Phase 2-4)
-- **/studio/processes** - BPMN process designer
-- **/studio/processes/new** - Create new BPMN process
-- **/studio/processes/[id]** - Edit existing process
-- **/studio/forms** - Form builder
-- **/studio/forms/new** - Create new form
-- **/studio/forms/[id]** - Edit existing form
-- **/portal/tasks** - My tasks list
-- **/portal/tasks/[id]** - Task detail and completion
-- **/portal/processes** - Process instances
-
-## 🔌 API Integration
-
-The frontend integrates with the Spring Boot backend via REST APIs:
-
-### Workflow APIs (`lib/api/workflows.ts`)
-- `startProcess()` - Start a new workflow process
-- `getProcessInstance()` - Get process details
-- `getTasksByAssignee()` - Get user's tasks
-- `completeTask()` - Complete a task
-- And more...
-
-### Flowable Deployment APIs (`lib/api/flowable.ts`)
-- `deployBpmn()` - Deploy BPMN process definition
-- `getProcessDefinitions()` - List all process definitions
-- `deployForm()` - Deploy form definition
-- `getFormDefinition()` - Get form by key
-
-All API calls use React Query for caching and state management.
-
-## 🧪 Testing
+## Build
 
 ```bash
-# Type check
-npm run type-check
-
-# Lint
-npm run lint
-
-# Unit tests (coming soon)
-npm test
-
-# E2E tests (coming soon)
-npm run test:e2e
+npm run build   # TypeScript gate — catches type errors without a running server
+npm start       # production server
 ```
 
-## 🚀 Deployment
+## Troubleshooting
 
-### Vercel (Recommended)
-
+**Port 3000 in use:**
 ```bash
-npm install -g vercel
-vercel deploy --prod
-```
-
-### Docker
-
-```dockerfile
-# Build
-docker build -t werkflow-frontend .
-
-# Run
-docker run -p 3000:3000 werkflow-frontend
-```
-
-### Environment Variables for Production
-
-Set these in your deployment platform:
-
-- `NEXT_PUBLIC_API_URL` - Backend API URL
-- `NEXTAUTH_URL` - Frontend URL
-- `NEXTAUTH_SECRET` - Secret for NextAuth
-- `KEYCLOAK_CLIENT_ID` - Keycloak client ID
-- `KEYCLOAK_CLIENT_SECRET` - Keycloak client secret
-- `KEYCLOAK_ISSUER` - Keycloak issuer URL
-
-## 📚 Development Guidelines
-
-### Component Structure
-- Use **Server Components** by default
-- Use **Client Components** only when needed (add `'use client'`)
-- Keep components small and focused
-
-### API Calls
-Always use React Query:
-
-```typescript
-const { data, isLoading, error } = useQuery({
-  queryKey: ['resource', id],
-  queryFn: () => fetchResource(id)
-})
-```
-
-### Styling
-- Use Tailwind CSS utility classes
-- Use shadcn/ui components when possible
-- Keep custom CSS minimal
-
-### Type Safety
-- Use TypeScript for all files
-- Define interfaces for API responses
-- Use type inference where possible
-
-## 🛣️ Roadmap
-
-See [ROADMAP.md](../ROADMAP.md) for detailed implementation plan.
-
-### Phase 1: Foundation ✅ (Current)
-- [x] Next.js 14 setup with TypeScript
-- [x] Tailwind CSS + shadcn/ui
-- [x] React Query configuration
-- [x] API client with Axios
-- [x] Basic layout and routing
-
-### Phase 2: BPMN Designer (Weeks 3-4)
-- [ ] Integrate bpmn-js
-- [ ] Process designer UI
-- [ ] Process deployment
-- [ ] Properties panel
-
-### Phase 3: Form Builder (Weeks 5-6)
-- [ ] Integrate Form.io
-- [ ] Form builder UI
-- [ ] Form renderer
-- [ ] Form deployment
-
-### Phase 4: Runtime Portal (Weeks 7-8)
-- [ ] Task list page
-- [ ] Task completion
-- [ ] Process timeline
-- [ ] Search and filters
-
-## 🔧 Troubleshooting
-
-**Port 3000 already in use:**
-```bash
-# Kill process on port 3000
 lsof -ti:3000 | xargs kill -9
-
-# Or run on different port
-PORT=3001 npm run dev
 ```
 
-**API connection errors:**
-- Verify backend is running on http://localhost:8080
-- Check CORS settings in backend
-- Verify `NEXT_PUBLIC_API_URL` in `.env.local`
+**NextAuth 401 with empty roles:** Check `KEYCLOAK_CLIENT_SECRET` matches `realm.json` exactly (32 chars).
 
-**Build errors:**
-```bash
-# Clear Next.js cache
-rm -rf .next
-
-# Reinstall dependencies
-rm -rf node_modules package-lock.json
-npm install
-```
-
-## 📖 Learn More
-
-- [Next.js Documentation](https://nextjs.org/docs)
-- [React Query Documentation](https://tanstack.com/query/latest)
-- [bpmn-js Documentation](https://bpmn.io/toolkit/bpmn-js/)
-- [Form.io Documentation](https://help.form.io/)
-- [shadcn/ui](https://ui.shadcn.com/)
-- [Tailwind CSS](https://tailwindcss.com/docs)
-
-## 📄 License
-
-Proprietary - All rights reserved
+**bpmn-js properties panel styles not applying:** Properties panel uses Preact internally — Tailwind classes are not injected. Use inline styles for any component rendered inside the panel.
