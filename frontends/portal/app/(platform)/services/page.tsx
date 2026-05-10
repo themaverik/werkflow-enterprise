@@ -216,7 +216,7 @@ export default function ServiceCatalogPage() {
             <div
               key={i}
               style={{
-                background: 'var(--wf-bg, #fff)',
+                background: '#ffffff',
                 border: '1px solid #e2eaee',
                 borderRadius: '12px',
                 height: '180px',
@@ -293,7 +293,7 @@ export default function ServiceCatalogPage() {
                       <div
                         key={process.id}
                         style={{
-                          background: 'var(--wf-bg, #fff)',
+                          background: '#ffffff',
                           border: '1px solid #e2eaee',
                           borderRadius: '12px',
                           padding: '18px',
