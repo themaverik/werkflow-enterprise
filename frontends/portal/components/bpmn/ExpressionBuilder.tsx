@@ -91,6 +91,34 @@ function parseExpression(expr: string): ExpressionCondition[] {
   return result
 }
 
+const STANDARD_VARIABLE_NAMES = [
+  'initiator', 'processInstanceId', 'decision', 'approvalRequired',
+  'approvedBy', 'approvedAt', 'approvalComments', 'rejectionReason',
+]
+
+type VariableGroup = { label: string; variables: string[] }
+
+function groupVariables(variables: string[]): VariableGroup[] {
+  const doaVars: string[] = []
+  const custodyVars: string[] = []
+  const standardVars: string[] = []
+  const formVars: string[] = []
+
+  for (const v of variables) {
+    if (v.startsWith('configVars.')) doaVars.push(v)
+    else if (v.startsWith('custodyVars.')) custodyVars.push(v)
+    else if (STANDARD_VARIABLE_NAMES.includes(v)) standardVars.push(v)
+    else formVars.push(v)
+  }
+
+  const groups: VariableGroup[] = []
+  if (standardVars.length > 0) groups.push({ label: 'Standard', variables: standardVars })
+  if (formVars.length > 0) groups.push({ label: 'Form Fields', variables: formVars })
+  if (doaVars.length > 0) groups.push({ label: 'DOA Levels', variables: doaVars })
+  if (custodyVars.length > 0) groups.push({ label: 'Custody Groups', variables: custodyVars })
+  return groups
+}
+
 export default function ExpressionBuilder({
   value,
   onChange,
@@ -104,6 +132,7 @@ export default function ExpressionBuilder({
   const [copied, setCopied] = useState(false)
   const [applied, setApplied] = useState(false)
   const [mode, setMode] = useState<'visual' | 'manual'>('visual')
+  const [variableSearch, setVariableSearch] = useState('')
 
   // Sync both states when the selected BPMN element changes (value prop changes)
   useEffect(() => {
@@ -240,8 +269,28 @@ export default function ExpressionBuilder({
       <CardContent className="space-y-4">
         {mode === 'visual' ? (
           <>
+            {/* Variable search — shown when there are variables to filter */}
+            {availableVariables.length > 0 && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Search variables</Label>
+                <Input
+                  value={variableSearch}
+                  onChange={(e) => setVariableSearch(e.target.value)}
+                  placeholder="Filter variables…"
+                  className="h-7 text-xs mt-1"
+                />
+              </div>
+            )}
+
             {/* Conditions */}
-            {conditions.map((condition, index) => (
+            {conditions.map((condition, index) => {
+              const filteredGroups = groupVariables(
+                availableVariables.filter((v) =>
+                  !variableSearch.trim() || v.toLowerCase().includes(variableSearch.toLowerCase())
+                )
+              )
+
+              return (
               <Card key={index} className="p-3">
                 <div className="space-y-2">
                   {index > 0 && (
@@ -276,11 +325,25 @@ export default function ExpressionBuilder({
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="__none__">Select variable…</SelectItem>
-                            {availableVariables.map((variable) => (
-                              <SelectItem key={variable} value={variable}>
-                                {variable}
-                              </SelectItem>
-                            ))}
+                            {filteredGroups.length > 0
+                              ? filteredGroups.map((group) => (
+                                  <div key={group.label}>
+                                    <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50">
+                                      {group.label}
+                                    </div>
+                                    {group.variables.map((variable) => (
+                                      <SelectItem key={variable} value={variable} className="text-xs">
+                                        {variable}
+                                      </SelectItem>
+                                    ))}
+                                  </div>
+                                ))
+                              : availableVariables.map((variable) => (
+                                  <SelectItem key={variable} value={variable}>
+                                    {variable}
+                                  </SelectItem>
+                                ))
+                            }
                           </SelectContent>
                         </Select>
                       ) : (
@@ -353,7 +416,8 @@ export default function ExpressionBuilder({
                   </div>
                 </div>
               </Card>
-            ))}
+              )
+            })}
 
             <Button
               variant="outline"

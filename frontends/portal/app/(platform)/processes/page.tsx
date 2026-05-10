@@ -440,17 +440,19 @@ export default function ProcessesPage() {
           {filteredGroups.length === 0 ? (
             <div
               style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '64px 0',
                 textAlign: 'center',
-                padding: '56px 0',
-                color: T.muted,
-                fontSize: 14,
               }}
             >
-              <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
-              <div style={{ fontWeight: 600, color: T.text, marginBottom: 6 }}>
+              <FileText size={40} color={T.light} strokeWidth={1.5} style={{ marginBottom: 12 }} />
+              <div style={{ fontWeight: 600, fontSize: 14, color: T.text, marginBottom: 4 }}>
                 {t('noProcessesDeployed')}
               </div>
-              <div style={{ fontSize: 13, marginBottom: 20 }}>{t('noProcessesDesc')}</div>
+              <div style={{ fontSize: 12, color: T.muted, marginBottom: 20 }}>{t('noProcessesDesc')}</div>
               {isManagerOrAbove && (
                 <Link
                   href="/processes/new"
@@ -458,16 +460,17 @@ export default function ProcessesPage() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
-                    background: ACCENT,
-                    color: '#fff',
+                    background: 'transparent',
+                    color: ACCENT,
                     borderRadius: 8,
-                    padding: '8px 16px',
+                    padding: '6px 14px',
                     fontSize: 13,
                     fontWeight: 600,
                     textDecoration: 'none',
+                    border: '1px solid ' + ACCENT,
                   }}
                 >
-                  <Plus size={14} strokeWidth={2} />
+                  <Plus size={13} strokeWidth={2} />
                   {t('createNewProcess')}
                 </Link>
               )}
@@ -520,15 +523,36 @@ export default function ProcessesPage() {
           {filteredDrafts.length === 0 ? (
             <div
               style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '64px 0',
                 textAlign: 'center',
-                padding: '56px 0',
-                color: T.muted,
-                fontSize: 14,
               }}
             >
-              <div style={{ fontSize: 40, marginBottom: 12 }}>📝</div>
-              <div style={{ fontWeight: 600, color: T.text, marginBottom: 6 }}>No drafts yet</div>
-              <div style={{ fontSize: 13 }}>Start designing a process and save it as a draft.</div>
+              <FileText size={40} color={T.light} strokeWidth={1.5} style={{ marginBottom: 12 }} />
+              <div style={{ fontWeight: 600, fontSize: 14, color: T.text, marginBottom: 4 }}>No drafts yet</div>
+              <div style={{ fontSize: 12, color: T.muted, marginBottom: 20 }}>Start designing a process and save it as a draft.</div>
+              <Link
+                href="/processes/new"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  background: 'transparent',
+                  color: ACCENT,
+                  borderRadius: 8,
+                  padding: '6px 14px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  border: '1px solid ' + ACCENT,
+                }}
+              >
+                <Plus size={13} strokeWidth={2} />
+                Create your first process
+              </Link>
             </div>
           ) : (
             <div

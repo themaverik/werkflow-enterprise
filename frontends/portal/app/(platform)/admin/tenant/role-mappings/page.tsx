@@ -206,10 +206,7 @@ export default function RoleMappingsPage() {
                   <span className="text-muted-foreground text-xs">→</span>
                   <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{m.groupName}</span>
                   {m.isManagerTier && (
-                    <span
-                      className="text-xs px-1.5 py-0.5 rounded"
-                      style={{ background: '#eeedfe', color: '#3c3489', border: '1px solid #d9d6f5' }}
-                    >
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-violet-50 text-violet-800 border border-violet-200 dark:bg-violet-950/20 dark:text-violet-300 dark:border-violet-800">
                       manager-tier
                     </span>
                   )}

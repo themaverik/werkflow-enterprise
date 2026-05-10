@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { RefreshCw, Plus, Pencil, FlaskConical, Trash2, Upload } from 'lucide-react'
+import { RefreshCw, Plus, Pencil, FlaskConical, Trash2, Upload, Plug } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { listConnectors, deleteConnector, type ConnectorResponse } from '@/lib/api/connectors'
 import { ConnectorForm } from '@/components/admin/ConnectorForm'
@@ -159,10 +159,13 @@ export default function ConnectorsPage() {
 
       {!isLoading && !error && groups.length === 0 && (
         <Card>
-          <CardContent className="pt-6 text-center py-12">
-            <p className="text-muted-foreground">{t('noConnectors')}</p>
-            <Button variant="link" className="mt-2" onClick={() => setCreateOpen(true)}>
-              Register the first connector
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <Plug className="h-10 w-10 text-muted-foreground mb-3" strokeWidth={1.5} />
+            <p className="text-sm font-medium text-foreground mb-1">No connectors configured</p>
+            <p className="text-xs text-muted-foreground mb-4">Register an external API connector to use in your BPMN processes.</p>
+            <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add connector
             </Button>
           </CardContent>
         </Card>
