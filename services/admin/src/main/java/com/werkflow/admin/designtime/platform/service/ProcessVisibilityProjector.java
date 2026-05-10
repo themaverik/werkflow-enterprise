@@ -36,6 +36,10 @@ public class ProcessVisibilityProjector {
     private static final String SQL_ALL =
             "SELECT process_key, name, department_code FROM flowable.process_draft";
 
+    private static final String SQL_GLOBAL_ONLY =
+            "SELECT process_key, name, department_code FROM flowable.process_draft " +
+            "WHERE department_code IS NULL";
+
     private static final String SQL_SCOPED =
             "SELECT process_key, name, department_code FROM flowable.process_draft " +
             "WHERE department_code IS NULL OR department_code = ?";
@@ -43,9 +47,16 @@ public class ProcessVisibilityProjector {
     /**
      * Returns process definitions visible to the user per ADR-010 §3.
      *
-     * <p>When the spec is unrestricted, all drafts are returned.
-     * When department-scoped, only globally-visible (null dept) and the user's own department
-     * drafts are returned.
+     * <p>Three cases are handled:
+     * <ol>
+     *   <li>Unrestricted (admin / manager-ALL_DEPTS): all drafts returned without a filter.</li>
+     *   <li>User has no department claim ({@code userDept} is {@code null}): only globally-visible
+     *       drafts ({@code department_code IS NULL}) are returned. Binding {@code null} to a
+     *       {@code department_code = ?} predicate is always false in SQL, so the parameterised
+     *       form must not be used in this case.</li>
+     *   <li>User has a department: drafts where {@code department_code IS NULL} (global) or
+     *       {@code department_code = user's dept} are returned.</li>
+     * </ol>
      *
      * @param spec the visibility spec computed from the JWT by {@link VisibilityFilterService}
      * @return ordered list of visible process entries; empty list on any DB error
@@ -65,6 +76,18 @@ public class ProcessVisibilityProjector {
             }
 
             String deptCode = spec.userDept();
+            if (deptCode == null) {
+                log.debug("ProcessVisibilityProjector: no department claim — returning globally-scoped processes only");
+                return jdbcTemplate.query(
+                        SQL_GLOBAL_ONLY,
+                        (rs, row) -> new VisibleProcessEntry(
+                                rs.getString("process_key"),
+                                rs.getString("name"),
+                                rs.getString("department_code")
+                        )
+                );
+            }
+
             log.debug("ProcessVisibilityProjector: department-scoped — dept={}", deptCode);
             return jdbcTemplate.query(
                     SQL_SCOPED,
