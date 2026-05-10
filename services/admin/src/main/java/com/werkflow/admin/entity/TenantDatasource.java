@@ -16,9 +16,9 @@ import java.util.UUID;
 /**
  * Stores the connection metadata for a tenant's registered JDBC datasource.
  *
- * <p>The password is NOT stored directly. {@code passwordSecretRef} is a key
- * into the platform secrets manager (Vault / AWS Secrets Manager / K8s Secrets).
- * The engine's DatasourceRegistry resolves the actual credential at runtime.</p>
+ * <p>The password is stored as AES-256-GCM ciphertext in {@code encryptedPassword}.
+ * {@link com.werkflow.common.security.EncryptionService} encrypts on write and
+ * decrypts on read. The plaintext credential is never persisted or logged.</p>
  *
  * <p>Unique constraint on {@code (tenantId, ref)} ensures each tenant can register
  * a datasource reference once, and the ref slug is immutable after creation.</p>
@@ -68,12 +68,14 @@ public class TenantDatasource {
     private String username;
 
     /**
-     * Secret manager key reference (e.g. {@code vault://secret/db/hris-password}).
-     * The engine resolves the actual password at connection-pool creation time.
+     * AES-256-GCM encrypted password, managed by
+     * {@link com.werkflow.common.security.EncryptionService}.
+     * The plaintext is only decrypted for engine-internal resolution
+     * and is never returned to external callers.
      */
     @NotBlank
-    @Column(name = "password_secret_ref", nullable = false, length = 500)
-    private String passwordSecretRef;
+    @Column(name = "encrypted_password", nullable = false, length = 500)
+    private String encryptedPassword;
 
     /** SQL dialect hint used by the engine to apply dialect-specific features. */
     @Column(name = "dialect", length = 50)

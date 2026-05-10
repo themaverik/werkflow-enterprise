@@ -50,7 +50,7 @@ type FormState = {
   jdbcUrl: string
   driverClassName: string
   username: string
-  passwordSecretRef: string
+  password: string
   dialect: string
   poolMinSize: string
   poolMaxSize: string
@@ -64,9 +64,9 @@ function defaultForm(existing?: TenantDatasourceResponse): FormState {
     jdbcUrl: existing?.jdbcUrl ?? '',
     driverClassName: existing?.driverClassName ?? '',
     username: existing?.username ?? '',
-    // H-5: always start empty — the secret ref is write-only and not returned by the API.
-    // On create this is required; on edit leave blank to keep the existing value.
-    passwordSecretRef: '',
+    // H-5: always start empty — password is write-only and not returned by the API.
+    // On create this is required; on edit leave blank to keep the existing encrypted value.
+    password: '',
     dialect: existing?.dialect ?? '',
     poolMinSize: String(existing?.poolMinSize ?? 1),
     poolMaxSize: String(existing?.poolMaxSize ?? 5),
@@ -91,15 +91,15 @@ export function DatasourceForm({ existing }: Props) {
   }
 
   function buildRequest(): TenantDatasourceRequest {
-    const trimmedRef = form.passwordSecretRef.trim()
+    const trimmedPassword = form.password.trim()
     return {
       ref: form.ref.trim(),
       jdbcUrl: form.jdbcUrl.trim(),
       driverClassName: form.driverClassName.trim(),
       username: form.username.trim(),
-      // H-5: only include passwordSecretRef if the user entered a new value.
-      // On update, omitting it tells the server to keep the existing value.
-      ...(trimmedRef ? { passwordSecretRef: trimmedRef } : {}),
+      // H-5: only include password if the user typed something.
+      // On update, omitting it tells the server to keep the existing encrypted value.
+      ...(trimmedPassword ? { password: trimmedPassword } : {}),
       dialect: form.dialect || undefined,
       poolMinSize: parseInt(form.poolMinSize, 10) || 1,
       poolMaxSize: parseInt(form.poolMaxSize, 10) || 5,
@@ -110,9 +110,9 @@ export function DatasourceForm({ existing }: Props) {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    // On create, passwordSecretRef is required
-    if (!isEdit && !form.passwordSecretRef.trim()) {
-      toast.error('Password Secret Ref is required when registering a new datasource.')
+    // On create, password is required
+    if (!isEdit && !form.password.trim()) {
+      toast.error('Password is required when registering a new datasource.')
       return
     }
     setSaving(true)
@@ -237,25 +237,26 @@ export function DatasourceForm({ existing }: Props) {
         />
       </div>
 
-      {/* Password Secret Ref */}
+      {/* Password */}
       <div className="space-y-1.5">
-        <Label htmlFor="passwordSecretRef">
-          Password Secret Ref
+        <Label htmlFor="password">
+          Password
           {isEdit && (
             <span className="text-muted-foreground text-xs ml-1">(leave blank to keep existing)</span>
           )}
         </Label>
         <Input
-          id="passwordSecretRef"
-          placeholder="werkflow.secrets.db.hris-password"
-          value={form.passwordSecretRef}
-          onChange={(e) => setField('passwordSecretRef', e.target.value)}
+          id="password"
+          type="password"
+          placeholder="••••••••"
+          value={form.password}
+          onChange={(e) => setField('password', e.target.value)}
           required={!isEdit}
           className="font-mono text-sm"
         />
         <p className="text-xs text-muted-foreground">
-          A key into the secrets manager — not the raw password. The engine resolves it at runtime.
-          {isEdit && ' Leave blank to keep the currently stored secret ref.'}
+          Encrypted with AES-256-GCM before storing — never logged or returned.
+          {isEdit && ' Leave blank to keep the currently stored password.'}
         </p>
       </div>
 

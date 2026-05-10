@@ -1,6 +1,5 @@
 package com.werkflow.engine.action.db;
 
-import com.werkflow.common.security.SecretsResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -9,8 +8,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.client.RestTemplate;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for {@link DatasourceRegistry} verifying tenant isolation.
@@ -21,13 +18,12 @@ import static org.mockito.Mockito.*;
 class DatasourceRegistryTest {
 
     @Mock private RestTemplate serviceRestTemplate;
-    @Mock private SecretsResolver secretsResolver;
 
     private DatasourceRegistry registry;
 
     @BeforeEach
     void setUp() {
-        registry = new DatasourceRegistry(serviceRestTemplate, secretsResolver, "http://admin:8083");
+        registry = new DatasourceRegistry(serviceRestTemplate, "http://admin:8083");
     }
 
     // -------------------------------------------------------------------------
