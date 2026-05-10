@@ -214,6 +214,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
   // True when the Expression Builder panel is expanded for the current sequence flow.
   // Auto-opens if the flow already carries a condition expression.
   const [showExprBuilder, setShowExprBuilder] = useState(false)
+  const [showMeta, setShowMeta] = useState(false)
 
   const [doaLevels, setDoaLevels] = useState<DoaLevel[]>([])
   const [custodyMappings, setCustodyMappings] = useState<CustodyMappingResponse[]>([])
@@ -799,7 +800,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
 
         {/* Properties Panel */}
         {showProperties && (
-          <div className="w-80 border-l bg-background overflow-auto flex flex-col">
+          <div className="w-96 min-w-[320px] border-l bg-background overflow-auto flex flex-col">
             {/* Native bpmn-js properties panel — hidden when a fully custom panel takes over */}
             <div
               ref={propertiesPanelRef}
@@ -812,7 +813,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
                 <button
                   type="button"
                   onClick={() => setShowExprBuilder((v) => !v)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left hover:bg-muted/40 transition-colors"
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left hover:bg-muted/40 transition-colors sticky top-0 z-10 bg-background"
                 >
                   <span>Expression Builder</span>
                   <span className="text-xs text-muted-foreground">{showExprBuilder ? '▲' : '▼'}</span>
@@ -855,13 +856,23 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
             {/* Custody Groups reference panel */}
             <CustodyGroupsPanel mappings={custodyMappings} />
 
-            {/* Artifact metadata — always shown at bottom of properties panel */}
+            {/* Artifact metadata — collapsible section at bottom */}
             <div className="border-t">
-              <ArtifactMetadataPanel
-                artifactType="process"
-                value={artifactMetadata}
-                onChange={(v) => { setArtifactMetadata(v); setHasChanges(true) }}
-              />
+              <button
+                type="button"
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:bg-muted/30 sticky top-0 z-10 bg-background"
+                onClick={() => setShowMeta((v) => !v)}
+              >
+                Artifact Metadata
+                <span>{showMeta ? '−' : '+'}</span>
+              </button>
+              {showMeta && (
+                <ArtifactMetadataPanel
+                  artifactType="process"
+                  value={artifactMetadata}
+                  onChange={(v) => { setArtifactMetadata(v); setHasChanges(true) }}
+                />
+              )}
             </div>
           </div>
         )}
@@ -880,7 +891,7 @@ function CustodyGroupsPanel({ mappings }: { mappings: CustodyMappingResponse[] }
     <div className="border-t border-border">
       <button
         type="button"
-        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:bg-muted/30"
+        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:bg-muted/30 sticky top-0 z-10 bg-background"
         onClick={() => setOpen((o) => !o)}
       >
         Custody Groups
