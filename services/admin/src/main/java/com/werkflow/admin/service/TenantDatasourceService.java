@@ -14,11 +14,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * CRUD operations and live connection testing for tenant datasource registrations.
@@ -29,6 +34,10 @@ import java.util.UUID;
  * <p>Passwords are stored only as a secret-manager key reference. The
  * {@link #testConnection} method resolves the credential at call time so that
  * it is never persisted or logged.</p>
+ *
+ * <p>SSRF protection is applied on {@link #create} and {@link #update}: the JDBC URL
+ * scheme must be in the allowlist and the host must not resolve to a private/loopback
+ * address. The driver class name must also be in the server-side allowlist.</p>
  */
 @Slf4j
 @Service
@@ -37,6 +46,29 @@ public class TenantDatasourceService {
 
     private final TenantDatasourceRepository repository;
     private final SecretsResolver secretsResolver;
+
+    // -------------------------------------------------------------------------
+    // Security allowlists (C-1, C-2)
+    // -------------------------------------------------------------------------
+
+    /** Permitted JDBC URL prefixes — prevents SSRF via exotic JDBC schemes. */
+    private static final Set<String> ALLOWED_JDBC_SCHEMES = Set.of(
+        "jdbc:postgresql", "jdbc:mysql", "jdbc:mariadb",
+        "jdbc:oracle:thin", "jdbc:sqlserver", "jdbc:h2:tcp", "jdbc:h2:mem"
+    );
+
+    /** Extracts the host portion from standard JDBC URLs. */
+    private static final Pattern JDBC_HOST_PATTERN =
+        Pattern.compile("(?i)jdbc:[^:]+://([^/:;?@]+)");
+
+    /** Permitted JDBC driver class names — prevents arbitrary class loading. */
+    private static final Set<String> ALLOWED_DRIVER_CLASSES = Set.of(
+        "org.postgresql.Driver",
+        "com.mysql.cj.jdbc.Driver",
+        "oracle.jdbc.OracleDriver",
+        "com.microsoft.sqlserver.jdbc.SQLServerDriver",
+        "org.h2.Driver"
+    );
 
     // -------------------------------------------------------------------------
     // CRUD
@@ -64,8 +96,6 @@ public class TenantDatasourceService {
 
     /**
      * Returns the raw entity for internal use (e.g. engine datasource resolution).
-     * This endpoint also serves the engine's DatasourceRegistry — it resolves the
-     * password via the secrets manager before returning so the engine never has to.
      */
     @Transactional(readOnly = true)
     public TenantDatasource getEntity(String tenantId, String ref) {
@@ -76,9 +106,15 @@ public class TenantDatasourceService {
      * Registers a new datasource for the tenant.
      *
      * @throws ResponseStatusException 409 if the (tenantId, ref) pair already exists
+     * @throws ResponseStatusException 400 if the JDBC URL or driver class is not permitted
      */
     @Transactional
     public TenantDatasourceResponse create(String tenantId, TenantDatasourceRequest request) {
+        validateJdbcUrl(request.jdbcUrl());
+        if (!ALLOWED_DRIVER_CLASSES.contains(request.driverClassName())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Driver class not permitted: " + request.driverClassName());
+        }
         if (repository.existsByTenantIdAndRef(tenantId, request.ref())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                 "Datasource '" + request.ref() + "' already registered for tenant '" + tenantId + "'");
@@ -92,16 +128,26 @@ public class TenantDatasourceService {
     /**
      * Updates an existing datasource registration.
      * The {@code ref} slug is immutable — pass the same value or update other fields.
+     * If {@code passwordSecretRef} is null in the request it is left unchanged.
      *
      * @throws ResponseStatusException 404 if not found
+     * @throws ResponseStatusException 400 if the JDBC URL or driver class is not permitted
      */
     @Transactional
     public TenantDatasourceResponse update(String tenantId, String ref, TenantDatasourceRequest request) {
+        validateJdbcUrl(request.jdbcUrl());
+        if (!ALLOWED_DRIVER_CLASSES.contains(request.driverClassName())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Driver class not permitted: " + request.driverClassName());
+        }
         TenantDatasource entity = resolve(tenantId, ref);
         entity.setJdbcUrl(request.jdbcUrl());
         entity.setDriverClassName(request.driverClassName());
         entity.setUsername(request.username());
-        entity.setPasswordSecretRef(request.passwordSecretRef());
+        // H-5: only update the secret ref if a new value was provided
+        if (request.passwordSecretRef() != null && !request.passwordSecretRef().isBlank()) {
+            entity.setPasswordSecretRef(request.passwordSecretRef());
+        }
         entity.setDialect(request.dialect());
         entity.setPoolMinSize(request.poolMinSize() > 0 ? request.poolMinSize() : 1);
         entity.setPoolMaxSize(request.poolMaxSize() > 0 ? request.poolMaxSize() : 5);
@@ -135,7 +181,10 @@ public class TenantDatasourceService {
      * and credential validity. Uses DriverManagerDataSource — not Hikari —
      * so no pool resources are consumed by the test.
      *
-     * @return test result with ok=true and latency, or ok=false with error message
+     * <p>JDBC exceptions are categorized before returning to avoid leaking
+     * internal topology or credential details to the client (M-1).</p>
+     *
+     * @return test result with ok=true and latency, or ok=false with a safe error message
      */
     public DatasourceTestResult testConnection(String tenantId, String ref) {
         TenantDatasource entity = resolve(tenantId, ref);
@@ -144,7 +193,7 @@ public class TenantDatasourceService {
             resolvedPassword = secretsResolver.resolve(entity.getPasswordSecretRef());
         } catch (Exception e) {
             return new DatasourceTestResult(false,
-                "Failed to resolve password secret '" + entity.getPasswordSecretRef() + "': " + e.getMessage(), 0);
+                "Failed to resolve password secret — check the secret ref configuration", 0);
         }
 
         long start = System.currentTimeMillis();
@@ -165,49 +214,84 @@ public class TenantDatasourceService {
             }
         } catch (Exception e) {
             long latency = System.currentTimeMillis() - start;
+            // M-1: log full detail internally but return only a safe categorized message
             log.warn("tenant.datasource.test.failed tenantId={} ref={} error={}", tenantId, ref, e.getMessage());
-            return new DatasourceTestResult(false, e.getMessage(), latency);
+            return new DatasourceTestResult(false, categorizeJdbcError(e), latency);
         }
     }
 
     // -------------------------------------------------------------------------
-    // Internal engine endpoint — exposes resolved-password DTO for DatasourceRegistry
+    // Internal engine endpoint — returns the DTO without resolving the password
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the datasource config with the password resolved from the secrets manager.
-     * This is the engine-internal endpoint; it is NOT exposed in the public API.
-     * Callers (DatasourceRegistry) pass both tenantCode and ref to get pool config.
+     * Returns the datasource config for the engine's DatasourceRegistry.
+     * The password is NOT resolved here — the engine resolves it locally using
+     * its own SecretsResolver so the plaintext credential never traverses the network.
+     *
+     * <p>This is an internal endpoint; it is not exposed in the public API.</p>
      */
     @Transactional(readOnly = true)
-    public ResolvedDatasourceConfig resolveForEngine(String tenantId, String ref) {
-        TenantDatasource entity = resolve(tenantId, ref);
-        String password = secretsResolver.resolve(entity.getPasswordSecretRef());
-        return new ResolvedDatasourceConfig(
-            entity.getJdbcUrl(),
-            entity.getDriverClassName(),
-            entity.getUsername(),
-            password,
-            entity.getPoolMinSize(),
-            entity.getPoolMaxSize(),
-            entity.getConnectionTimeoutSeconds(),
-            entity.getIdleTimeoutSeconds()
-        );
+    public TenantDatasourceResponse resolveForEngine(String tenantId, String ref) {
+        return toResponse(resolve(tenantId, ref));
+    }
+
+    // -------------------------------------------------------------------------
+    // Security helpers (C-1, M-1)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Validates that the JDBC URL uses a permitted scheme and does not resolve
+     * to a private or loopback address (SSRF protection).
+     *
+     * @throws ResponseStatusException 400 if the URL is not permitted
+     */
+    private void validateJdbcUrl(String url) {
+        if (url == null || ALLOWED_JDBC_SCHEMES.stream().noneMatch(url.toLowerCase()::startsWith)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "JDBC URL scheme not permitted. Allowed prefixes: " + ALLOWED_JDBC_SCHEMES);
+        }
+        Matcher m = JDBC_HOST_PATTERN.matcher(url);
+        if (m.find()) {
+            String host = m.group(1);
+            try {
+                InetAddress addr = InetAddress.getByName(host);
+                if (addr.isLoopbackAddress() || addr.isLinkLocalAddress() ||
+                    addr.isSiteLocalAddress() || addr.isAnyLocalAddress()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "JDBC URL resolves to a private or loopback address");
+                }
+            } catch (UnknownHostException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "JDBC URL host cannot be resolved");
+            }
+        }
     }
 
     /**
-     * Resolved datasource config including the actual password (for engine-internal use only).
+     * Translates raw JDBC exception messages into safe, categorized messages
+     * that do not leak internal topology or credential details.
+     *
+     * @param e the exception caught during connection test
+     * @return a safe message suitable for returning to the client
      */
-    public record ResolvedDatasourceConfig(
-        String jdbcUrl,
-        String driverClassName,
-        String username,
-        String resolvedPassword,
-        int poolMinSize,
-        int poolMaxSize,
-        int connectionTimeoutSeconds,
-        int idleTimeoutSeconds
-    ) {}
+    private String categorizeJdbcError(Exception e) {
+        String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+        if (msg.contains("connection refused") || msg.contains("timed out") || msg.contains("timeout")) {
+            return "Host unreachable or port closed";
+        }
+        if (msg.contains("authentication") || msg.contains("password") || msg.contains("credential")) {
+            return "Authentication failed — check username and secret ref";
+        }
+        if (msg.contains("unknown host") || msg.contains("nodename nor servname")
+                || msg.contains("name or service not known")) {
+            return "Host not found — check JDBC URL";
+        }
+        if (msg.contains("database") && msg.contains("not exist")) {
+            return "Database not found — check JDBC URL";
+        }
+        return "Connection failed — check JDBC URL and credentials";
+    }
 
     // -------------------------------------------------------------------------
     // Helpers
@@ -219,10 +303,17 @@ public class TenantDatasourceService {
                 "Datasource '" + ref + "' not found for tenant '" + tenantId + "'"));
     }
 
+    /**
+     * Maps an entity to a response DTO.
+     * H-5: passwordSecretRef is intentionally excluded from the response — clients
+     * that need to update it supply a new value on PUT; create/update responses
+     * do not need to echo it back.
+     */
     private TenantDatasourceResponse toResponse(TenantDatasource e) {
         return new TenantDatasourceResponse(
             e.getId(), e.getTenantId(), e.getRef(), e.getJdbcUrl(),
-            e.getDriverClassName(), e.getUsername(), e.getPasswordSecretRef(),
+            e.getDriverClassName(), e.getUsername(),
+            null,  // H-5: passwordSecretRef not returned to clients
             e.getDialect(), e.getPoolMinSize(), e.getPoolMaxSize(),
             e.getConnectionTimeoutSeconds(), e.getIdleTimeoutSeconds(),
             e.getCreatedAt(), e.getUpdatedAt()

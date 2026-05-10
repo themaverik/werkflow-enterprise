@@ -9,7 +9,11 @@ export interface TenantDatasourceResponse {
   jdbcUrl: string
   driverClassName: string
   username: string
-  passwordSecretRef: string
+  /**
+   * Always null in API responses — the secret ref is write-only (Fix H-5).
+   * Supply a new value on create or update; never read back.
+   */
+  passwordSecretRef: string | null
   dialect: string | null
   poolMinSize: number
   poolMaxSize: number
@@ -24,8 +28,11 @@ export interface TenantDatasourceRequest {
   jdbcUrl: string
   driverClassName: string
   username: string
-  /** Secret manager key reference — NOT the raw password */
-  passwordSecretRef: string
+  /**
+   * Secret manager key reference — NOT the raw password.
+   * Optional on update: omit to keep the existing value.
+   */
+  passwordSecretRef?: string
   dialect?: string
   poolMinSize: number
   poolMaxSize: number

@@ -81,6 +81,14 @@ springdoc:
     oauth2-redirect-url: http://localhost:8083/swagger-ui/oauth2-redirect.html
   show-actuator: true
 
+resilience4j:
+  ratelimiter:
+    instances:
+      datasource-test:
+        limitForPeriod: 5
+        limitRefreshPeriod: 60s
+        timeoutDuration: 0s
+
 app:
   name: ${APP_NAME:Werkflow Admin Service}
   version: ${APP_VERSION:1.0.0}

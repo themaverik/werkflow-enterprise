@@ -5,6 +5,8 @@ import com.werkflow.admin.dto.datasource.TenantDatasourceRequest;
 import com.werkflow.admin.dto.datasource.TenantDatasourceResponse;
 import com.werkflow.admin.security.JwtClaimsExtractor;
 import com.werkflow.admin.service.TenantDatasourceService;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -24,9 +26,13 @@ import java.util.List;
  * <p>Tenant isolation is enforced at the service layer — callers can only access
  * datasources belonging to their own tenant (resolved from the JWT).</p>
  *
- * <p>The engine-internal endpoint {@code GET /{tenantCode}/{ref}} additionally requires
- * the {@code SUPER_ADMIN} role or an internal service token to prevent tenant-to-tenant
- * datasource enumeration.</p>
+ * <p>The engine-internal endpoint {@code GET /{tenantCode}/{ref}} requires the
+ * {@code ENGINE_SERVICE} role or {@code SUPER_ADMIN}. It returns only the
+ * {@link TenantDatasourceResponse} (no resolved password); the engine resolves
+ * the credential locally via its own SecretsResolver (Fix C-3).</p>
+ *
+ * <p>The test endpoint is rate-limited to 5 calls per 60 seconds per JVM instance
+ * to prevent brute-force host probing (Fix H-3).</p>
  */
 @RestController
 @RequestMapping("/api/v1/config/datasources")
@@ -92,10 +98,17 @@ public class DatasourceController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Tests the live connection for a registered datasource.
+     *
+     * <p>Rate-limited to 5 requests per 60 seconds to prevent brute-force host
+     * probing via the test endpoint (Fix H-3).</p>
+     */
     @PostMapping("/{ref}/test")
     @PreAuthorize("hasAnyRole('WORKFLOW_ADMIN','ADMIN','SUPER_ADMIN')")
     @Operation(summary = "Test connection for a datasource",
                description = "Establishes a throw-away non-pooled connection and runs SELECT 1. Returns latency and DB version on success.")
+    @RateLimiter(name = "datasource-test", fallbackMethod = "testConnectionRateLimited")
     public ResponseEntity<DatasourceTestResult> test(
             @PathVariable String ref,
             @AuthenticationPrincipal Jwt jwt) {
@@ -104,23 +117,40 @@ public class DatasourceController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * Fallback invoked when the rate limiter rejects a test-connection request.
+     */
+    public ResponseEntity<DatasourceTestResult> testConnectionRateLimited(
+            String ref, Jwt jwt, RequestNotPermitted ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+            .body(new DatasourceTestResult(false,
+                "Too many connection tests — try again in 60 seconds", 0));
+    }
+
     // -------------------------------------------------------------------------
     // Engine-internal endpoint — used by DatasourceRegistry in the engine service
     // -------------------------------------------------------------------------
 
+    /**
+     * Returns the datasource configuration for the engine's DatasourceRegistry.
+     *
+     * <p>Fix C-3: the response is {@link TenantDatasourceResponse} which does NOT
+     * include the resolved password. The engine resolves the password locally using
+     * its own SecretsResolver, so the plaintext credential never traverses the wire.</p>
+     */
     @GetMapping("/{tenantCode}/{ref}")
     @PreAuthorize("hasAnyRole('ENGINE_SERVICE','SUPER_ADMIN')")
     @Operation(
-        summary = "Internal: get resolved datasource config for engine",
+        summary = "Internal: get datasource config for engine",
         description = "Called by the engine's DatasourceRegistry to build HikariCP pools. " +
-                      "Returns the resolved password from the secrets manager. " +
+                      "Returns the datasource config without the resolved password. " +
+                      "The engine resolves the credential locally. " +
                       "Requires ENGINE_SERVICE role (service-to-service JWT) or SUPER_ADMIN."
     )
-    public ResponseEntity<TenantDatasourceService.ResolvedDatasourceConfig> resolveForEngine(
+    public ResponseEntity<TenantDatasourceResponse> resolveForEngine(
             @PathVariable String tenantCode,
             @PathVariable String ref) {
-        TenantDatasourceService.ResolvedDatasourceConfig config =
-            datasourceService.resolveForEngine(tenantCode, ref);
+        TenantDatasourceResponse config = datasourceService.resolveForEngine(tenantCode, ref);
         return ResponseEntity.ok(config);
     }
 }
