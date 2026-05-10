@@ -249,7 +249,7 @@ werkflow:
 
   # Set to true to auto-deploy example BPMN processes on startup from classpath:processes/examples/
   examples:
-    deploy-on-startup: ${WERKFLOW_DEPLOY_EXAMPLES:false}
+    deploy-on-startup: ${WERKFLOW_DEPLOY_EXAMPLES:true}
 
   secrets:
     allowed-keys: ${WERKFLOW_SECRETS_ALLOWED_KEYS:}
