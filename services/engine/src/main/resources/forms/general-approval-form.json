@@ -56,6 +56,16 @@
       }
     },
     {
+      "type": "number",
+      "key": "amount",
+      "label": "Amount (USD)",
+      "placeholder": "Enter estimated cost (0 if not applicable)",
+      "validate": {
+        "required": true,
+        "min": 0
+      }
+    },
+    {
       "type": "select",
       "key": "priority",
       "label": "Priority",
