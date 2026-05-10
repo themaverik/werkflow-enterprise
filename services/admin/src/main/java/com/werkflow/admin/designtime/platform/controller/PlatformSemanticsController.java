@@ -32,6 +32,8 @@ public class PlatformSemanticsController {
     private final CategoryProjector categoryProjector;
     private final TagProjector tagProjector;
     private final VisibilityPolicyProjector visibilityPolicyProjector;
+    private final VisibilityFilterService visibilityFilterService;
+    private final ProcessVisibilityProjector processVisibilityProjector;
     private final DepartmentProjector departmentProjector;
     private final ProcessVariableCatalog processVariableCatalog;
     private final LocaleProjector localeProjector;
@@ -119,6 +121,20 @@ public class PlatformSemanticsController {
     @GetMapping("/locale")
     public ResponseEntity<LocaleEntry> locale(@AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(localeProjector.project(tenant(jwt)));
+    }
+
+    /**
+     * Process definitions visible to the requesting user per ADR-010 §3.
+     *
+     * <p>Admins and ALL_DEPTS managers receive the full set of process drafts.
+     * Regular users receive only drafts scoped to their department or globally visible
+     * (null department_code) ones. The frontend Service Catalog uses this to replace
+     * client-side visibility filtering with server-authoritative results.
+     */
+    @GetMapping("/visible-processes")
+    public ResponseEntity<List<VisibleProcessEntry>> visibleProcesses(@AuthenticationPrincipal Jwt jwt) {
+        VisibilityFilterService.VisibilitySpec spec = visibilityFilterService.buildSpec(jwt, tenant(jwt));
+        return ResponseEntity.ok(processVisibilityProjector.listVisible(spec));
     }
 
     private String tenant(Jwt jwt) {
