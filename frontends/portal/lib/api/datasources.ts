@@ -10,10 +10,10 @@ export interface TenantDatasourceResponse {
   driverClassName: string
   username: string
   /**
-   * Always null in API responses — the secret ref is write-only (Fix H-5).
-   * Supply a new value on create or update; never read back.
+   * Always null in API responses — the password is write-only (Fix H-5).
+   * Supply a new plaintext value on create or update; never read back.
    */
-  passwordSecretRef: string | null
+  password: string | null
   dialect: string | null
   poolMinSize: number
   poolMaxSize: number
@@ -29,10 +29,10 @@ export interface TenantDatasourceRequest {
   driverClassName: string
   username: string
   /**
-   * Secret manager key reference — NOT the raw password.
-   * Optional on update: omit to keep the existing value.
+   * Plaintext password. The admin service encrypts it before persisting.
+   * Optional on update: omit to keep the existing encrypted value.
    */
-  passwordSecretRef?: string
+  password?: string
   dialect?: string
   poolMinSize: number
   poolMaxSize: number

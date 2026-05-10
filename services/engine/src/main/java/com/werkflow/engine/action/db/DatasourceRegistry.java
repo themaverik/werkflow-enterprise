@@ -1,6 +1,5 @@
 package com.werkflow.engine.action.db;
 
-import com.werkflow.common.security.SecretsResolver;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
@@ -28,10 +27,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * window by default. The circuit breaker prevents workflow threads piling up against
  * a dead database — it opens after repeated failures and half-opens to probe recovery.</p>
  *
- * <p>Fix C-3: the admin service no longer returns the resolved password. This registry
- * fetches the {@code passwordSecretRef} from the admin service and resolves it locally
- * using the platform {@link SecretsResolver} so that the plaintext credential never
- * traverses the wire.</p>
+ * <p>The admin service's internal {@code resolveForEngine} endpoint returns the
+ * decrypted password directly over the trusted service-to-service channel.
+ * The engine uses it directly — no local {@code SecretsResolver} is required.</p>
  *
  * <p>Fix H-2: the pool cache is keyed by a typed {@link DsKey} record rather than
  * string concatenation to eliminate potential key collisions between tenant codes
@@ -48,7 +46,6 @@ public class DatasourceRegistry {
     private static final int CB_RESET_TIMEOUT_SECONDS = 30;
 
     private final RestTemplate serviceRestTemplate;
-    private final SecretsResolver secretsResolver;
     private final CircuitBreakerRegistry circuitBreakerRegistry;
     private final String adminServiceUrl;
 
@@ -67,10 +64,8 @@ public class DatasourceRegistry {
     public DatasourceRegistry(
             @org.springframework.beans.factory.annotation.Qualifier("serviceRestTemplate")
             RestTemplate serviceRestTemplate,
-            SecretsResolver secretsResolver,
             @Value("${app.admin-service.url:http://localhost:8083}") String adminServiceUrl) {
         this.serviceRestTemplate = serviceRestTemplate;
-        this.secretsResolver = secretsResolver;
         this.adminServiceUrl = adminServiceUrl;
 
         // Default circuit breaker registry with our platform-standard config.
@@ -152,14 +147,13 @@ public class DatasourceRegistry {
     private HikariDataSource createPool(String tenantCode, String datasourceRef) {
         DatasourceConfigDto config = fetchConfig(tenantCode, datasourceRef);
 
-        // C-3: resolve the password locally — never sent over the wire from admin service
-        String resolvedPassword = secretsResolver.resolve(config.passwordSecretRef());
-
+        // Admin service decrypts the password before returning it over the
+        // trusted internal channel — use it directly here.
         HikariConfig hk = new HikariConfig();
         hk.setJdbcUrl(config.jdbcUrl());
         hk.setDriverClassName(config.driverClassName());
         hk.setUsername(config.username());
-        hk.setPassword(resolvedPassword);
+        hk.setPassword(config.password());
         hk.setMinimumIdle(config.poolMinSize());
         hk.setMaximumPoolSize(config.poolMaxSize());
         hk.setConnectionTimeout(Duration.ofSeconds(config.connectionTimeoutSeconds()).toMillis());
@@ -188,15 +182,15 @@ public class DatasourceRegistry {
     /**
      * Projection of the admin service's TenantDatasourceResponse.
      *
-     * <p>Fix C-3: the admin service no longer resolves the password before returning.
-     * This DTO carries {@code passwordSecretRef} (a secrets-manager key) instead of
-     * {@code resolvedPassword}. The registry resolves it locally via {@link SecretsResolver}.</p>
+     * <p>The admin service's internal {@code resolveForEngine} endpoint decrypts the
+     * password before returning, so this DTO carries the plaintext {@code password}
+     * directly. No local {@code SecretsResolver} is required.</p>
      */
     public record DatasourceConfigDto(
         String jdbcUrl,
         String driverClassName,
         String username,
-        String passwordSecretRef,
+        String password,
         int poolMinSize,
         int poolMaxSize,
         int connectionTimeoutSeconds,
