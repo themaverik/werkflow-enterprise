@@ -1,0 +1,67 @@
+{
+  "id": "finance-approval-form",
+  "name": "Finance Approval Form",
+  "versionTag": "1",
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "text": "<h3>Finance Approval Review</h3><p>Review the purchase details and provide your finance decision below.</p>"
+    },
+    {
+      "type": "textarea",
+      "key": "reviewNotes",
+      "label": "Review Notes",
+      "placeholder": "Enter your review observations and comments",
+      "validate": {
+        "required": true,
+        "minLength": 10,
+        "maxLength": 2000
+      }
+    },
+    {
+      "type": "number",
+      "key": "approvedAmount",
+      "label": "Approved Amount (USD)",
+      "placeholder": "Enter the amount approved (may differ from requested)",
+      "validate": {
+        "required": true,
+        "min": 0
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "budgetCode",
+      "label": "Budget Code",
+      "placeholder": "Enter the budget allocation code",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "select",
+      "key": "paymentTerms",
+      "label": "Payment Terms",
+      "values": [
+        { "label": "Net 30", "value": "net30" },
+        { "label": "Net 60", "value": "net60" },
+        { "label": "Immediate", "value": "immediate" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "select",
+      "key": "decision",
+      "label": "Decision",
+      "values": [
+        { "label": "Approved", "value": "approve" },
+        { "label": "Rejected", "value": "reject" }
+      ],
+      "validate": {
+        "required": true
+      }
+    }
+  ]
+}

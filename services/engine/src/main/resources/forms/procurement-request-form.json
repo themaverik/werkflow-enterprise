@@ -1,0 +1,96 @@
+{
+  "id": "procurement-request-form",
+  "name": "Procurement Request Form",
+  "versionTag": "1",
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "text": "<h3>Procurement Request</h3><p>Submit a procurement request for goods or services requiring vendor sourcing and approval.</p>"
+    },
+    {
+      "type": "textfield",
+      "key": "title",
+      "label": "Request Title",
+      "placeholder": "Enter a concise title for this procurement request",
+      "validate": {
+        "required": true,
+        "minLength": 5,
+        "maxLength": 100
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "description",
+      "label": "Description",
+      "placeholder": "Describe the goods or services to be procured",
+      "validate": {
+        "required": true,
+        "minLength": 10,
+        "maxLength": 2000
+      }
+    },
+    {
+      "type": "number",
+      "key": "requestedAmount",
+      "label": "Requested Amount (USD)",
+      "placeholder": "Enter estimated total amount",
+      "validate": {
+        "required": true,
+        "min": 1,
+        "max": 100000000
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "vendor",
+      "label": "Preferred Vendor",
+      "placeholder": "Enter preferred vendor name if known",
+      "validate": {
+        "required": false
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "justification",
+      "label": "Business Justification",
+      "placeholder": "Explain why this procurement is necessary and its business impact",
+      "validate": {
+        "required": true,
+        "minLength": 20,
+        "maxLength": 2000
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "department",
+      "label": "Requesting Department",
+      "placeholder": "Enter your department name",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "date",
+      "key": "requiredDate",
+      "label": "Required By Date",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "select",
+      "key": "priority",
+      "label": "Priority",
+      "values": [
+        { "label": "Low", "value": "low" },
+        { "label": "Medium", "value": "medium" },
+        { "label": "High", "value": "high" },
+        { "label": "Urgent", "value": "urgent" }
+      ],
+      "validate": {
+        "required": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "id": "procurement-approval",
+  "name": "Procurement Approval",
+  "versionTag": "1",
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "text": "<h3>Procurement Approval</h3><p>Review the purchase request details and provide your approval decision.</p>"
+    },
+    {
+      "type": "select",
+      "key": "decision",
+      "label": "Decision",
+      "values": [
+        { "label": "Approve", "value": "approve" },
+        { "label": "Reject", "value": "reject" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "approvalComments",
+      "label": "Comments",
+      "placeholder": "Enter your review comments and justification",
+      "validate": {
+        "required": true,
+        "minLength": 5,
+        "maxLength": 2000
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "purchaseOrderReference",
+      "label": "Purchase Order Reference",
+      "placeholder": "Enter PO number if approving (optional)",
+      "validate": {
+        "maxLength": 100
+      }
+    }
+  ]
+}
