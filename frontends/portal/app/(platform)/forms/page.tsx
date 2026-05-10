@@ -17,7 +17,7 @@ import { toast } from 'sonner'
 const ACCENT = '#149ba5'
 const T = {
   text: '#0f1e2a', muted: '#6b7e8c', light: '#94a3b8',
-  bg: 'var(--muted)', card: 'var(--card)', border: 'var(--border)',
+  bg: 'hsl(var(--muted))', card: 'hsl(var(--card))', border: 'hsl(var(--border))',
   success: '#16a34a', successBg: '#f0fdf4', successBorder: '#bbf7d0',
   warning: '#c27b00', warningBg: '#fffbeb', warningBorder: '#fde68a',
   danger: '#dc2626',
