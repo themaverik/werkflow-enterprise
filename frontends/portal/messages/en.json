@@ -32,7 +32,8 @@
     "connectorsData": "Connectors & Data Sources",
     "deadLetterJobs": "Failed Jobs",
     "processHealth": "Process Health",
-    "datasources": "Data Sources"
+    "datasources": "Data Sources",
+    "marketplace": "Marketplace"
   },
   "dashboard": {
     "title": "Dashboard",
