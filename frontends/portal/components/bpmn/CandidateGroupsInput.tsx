@@ -64,14 +64,14 @@ const TAG_BOX: Record<string, string> = {
   alignItems: 'center',
   border: '1px solid #e2eaee',
   borderRadius: '6px',
-  background: '#ffffff',
+  background: 'var(--wf-bg, #ffffff)',
 }
 
 const SUGGEST_LIST: Record<string, string> = {
   border: '1px solid #e2eaee',
   borderRadius: '6px',
   overflow: 'hidden',
-  background: '#ffffff',
+  background: 'var(--wf-bg, #ffffff)',
   listStyle: 'none',
   padding: '0',
   margin: '0',

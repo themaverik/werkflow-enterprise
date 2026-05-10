@@ -451,8 +451,38 @@ export default function FormsPage() {
 
         {/* Empty state */}
         {!isLoading && visibleForms.length === 0 && (
-          <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 13, color: T.muted }}>
-            {t('noFormsCreated')}
+          <div style={{
+            padding: '64px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+          }}>
+            <FileText size={40} strokeWidth={1.5} style={{ color: T.light, marginBottom: 12 }} />
+            <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>No forms yet</div>
+            <div style={{ fontSize: 12, color: T.muted, marginBottom: 16 }}>Design a form to attach to your process workflows.</div>
+            {isManagerOrAbove && (
+              <Link
+                href="/forms/new"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 14px',
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: ACCENT,
+                  border: '1px solid ' + ACCENT,
+                  textDecoration: 'none',
+                  background: 'transparent',
+                }}
+              >
+                <Plus size={13} strokeWidth={2} />
+                Create your first form
+              </Link>
+            )}
           </div>
         )}
       </div>
