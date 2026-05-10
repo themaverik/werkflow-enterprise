@@ -226,352 +226,735 @@ ON CONFLICT (template_key) DO NOTHING;
 
 -- ============================================================
 -- ENTERPRISE FORM SCHEMAS
+-- Canonical 12 forms matching classpath forms/ JSON files.
+-- Stale forms (asset-transfer, capex-approval, sla-*, committee-*,
+-- doa-*) are NOT inserted here — they were removed from the
+-- canonical set. V8__cleanup_and_seed_catalogue.sql removes them
+-- from running DBs and upserts all 12 canonical forms.
 -- ============================================================
 
--- CapEx Request Form (final state: V9 schema — textarea justification, minLength 10)
-INSERT INTO form_schemas (form_key, version, name, schema_json, description, form_type, is_active, created_by, updated_by)
-VALUES (
-    'capex-request', 1, 'CapEx Request Form',
-    '{
-        "type": "default",
-        "schemaVersion": 9,
-        "components": [
-            {"type": "textfield", "id": "requesterName", "key": "requesterName", "label": "Requester Name", "validate": {"required": true}},
-            {"type": "textfield", "id": "requesterEmail", "key": "requesterEmail", "label": "Email",
-             "validate": {"required": true, "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"}},
-            {"type": "textfield", "id": "departmentId", "key": "departmentId", "label": "Department ID", "validate": {"required": true}},
-            {"type": "textfield", "id": "projectName", "key": "projectName", "label": "Project Name", "validate": {"required": true}},
-            {"type": "textarea", "id": "description", "key": "description", "label": "Description", "validate": {"required": true, "minLength": 10}},
-            {"type": "number", "id": "requestAmount", "key": "requestAmount", "label": "Requested Amount ($)", "validate": {"required": true, "min": 1}},
-            {"type": "select", "id": "category", "key": "category", "label": "Category", "validate": {"required": true},
-             "values": [
-                 {"label": "Equipment", "value": "EQUIPMENT"},
-                 {"label": "Software", "value": "SOFTWARE"},
-                 {"label": "Infrastructure", "value": "INFRASTRUCTURE"},
-                 {"label": "Facility", "value": "FACILITY"},
-                 {"label": "Other", "value": "OTHER"}
-             ]},
-            {"type": "textarea", "id": "justification", "key": "justification", "label": "Business Justification", "validate": {"required": true, "minLength": 10}},
-            {"type": "textfield", "id": "expectedROI", "key": "expectedROI", "label": "Expected ROI (%)", "validate": {"required": false}}
-        ]
-    }'::jsonb,
-    'Capital Expenditure Request Form',
-    'PROCESS_START', true, 'system', 'system'
-) ON CONFLICT (form_key, version) DO NOTHING;
-
--- CapEx Approval Form (decision form used by approvers)
-INSERT INTO form_schemas (form_key, version, name, schema_json, description, form_type, is_active, created_by, updated_by)
-VALUES (
-    'capex-approval', 1, 'CapEx Approval Form',
-    '{
-        "type": "default",
-        "schemaVersion": 9,
-        "components": [
-            {"type": "text", "id": "requestSummary", "text": "### Review Capital Expenditure Request"},
-            {"type": "textfield", "id": "projectName", "key": "projectName", "label": "Project Name", "disabled": true},
-            {"type": "number", "id": "requestAmount", "key": "requestAmount", "label": "Requested Amount ($)", "disabled": true},
-            {"type": "textarea", "id": "description", "key": "description", "label": "Description", "disabled": true},
-            {"type": "select", "id": "decision", "key": "approved", "label": "Decision", "validate": {"required": true},
-             "values": [{"label": "Approve", "value": "true"}, {"label": "Reject", "value": "false"}]},
-            {"type": "textarea", "id": "comments", "key": "approvalComments", "label": "Comments", "validate": {"required": true, "minLength": 10}}
-        ]
-    }'::jsonb,
-    'CapEx Approval Form — used by approvers to make approval decisions',
-    'APPROVAL', true, 'system', 'system'
-) ON CONFLICT (form_key, version) DO NOTHING;
-
--- Asset Transfer Form
-INSERT INTO form_schemas (form_key, version, name, schema_json, description, form_type, is_active, created_by, updated_by)
-VALUES (
-    'asset-transfer', 1, 'Asset Transfer Form',
-    '{
-        "type": "default",
-        "schemaVersion": 9,
-        "components": [
-            {"type": "textfield", "id": "assetId", "key": "assetId", "label": "Asset ID", "validate": {"required": true}},
-            {"type": "textfield", "id": "assetName", "key": "assetName", "label": "Asset Name", "validate": {"required": true}},
-            {"type": "select", "id": "assetType", "key": "assetType", "label": "Asset Type", "validate": {"required": true},
-             "values": [
-                 {"label": "Computer Equipment", "value": "COMPUTER"},
-                 {"label": "Office Furniture", "value": "FURNITURE"},
-                 {"label": "Vehicle", "value": "VEHICLE"},
-                 {"label": "Machinery", "value": "MACHINERY"},
-                 {"label": "Other", "value": "OTHER"}
-             ]},
-            {"type": "textfield", "id": "fromDepartment", "key": "fromDepartment", "label": "From Department", "validate": {"required": true}},
-            {"type": "textfield", "id": "toDepartment", "key": "toDepartment", "label": "To Department", "validate": {"required": true}},
-            {"type": "textfield", "id": "fromLocation", "key": "fromLocation", "label": "From Location", "validate": {"required": true}},
-            {"type": "textfield", "id": "toLocation", "key": "toLocation", "label": "To Location", "validate": {"required": true}},
-            {"type": "textfield", "id": "transferDate", "key": "transferDate", "label": "Transfer Date", "description": "Format: YYYY-MM-DD", "validate": {"required": true}},
-            {"type": "textarea", "id": "reason", "key": "reason", "label": "Reason for Transfer", "validate": {"required": true, "minLength": 20}},
-            {"type": "textfield", "id": "requestedBy", "key": "requestedBy", "label": "Requested By", "validate": {"required": true}}
-        ]
-    }'::jsonb,
-    'Asset Transfer Form — request asset transfer between departments',
-    'TASK_FORM', true, 'system', 'system'
-) ON CONFLICT (form_key, version) DO NOTHING;
-
--- Asset Request Form (final state: V18 three-level cascade + V19 office locations + V20 deliveryDate subtype:date)
+-- 1. asset-request-form
 INSERT INTO form_schemas (form_key, version, name, schema_json, description, form_type, is_active, created_by, updated_by)
 VALUES (
     'asset-request-form', 1, 'Asset Request Form',
     '{
-        "type": "default",
-        "components": [
-            {
-                "type": "text",
-                "text": "<h3>Asset Request</h3><p>Select an asset type, category, and item, then complete the request details below.</p>"
-            },
-            {
-                "type": "select",
-                "key": "assetTypeId",
-                "label": "Asset Type",
-                "valuesKey": "assetTypeOptions",
-                "validate": {"required": true},
-                "properties": {
-                    "dataSource": {
-                        "url": "/api/business/asset-categories/root",
-                        "labelField": "name",
-                        "valueField": "id",
-                        "valuesKey": "assetTypeOptions"
-                    }
-                }
-            },
-            {
-                "type": "select",
-                "key": "categoryId",
-                "label": "Asset Category",
-                "valuesKey": "categoryOptions",
-                "validate": {"required": true},
-                "properties": {
-                    "dataSource": {
-                        "url": "/api/business/asset-categories",
-                        "labelField": "name",
-                        "valueField": "id",
-                        "valuesKey": "categoryOptions",
-                        "dependsOn": "assetTypeId",
-                        "dependsOnParam": "parentCategoryId"
-                    }
-                }
-            },
-            {
-                "type": "select",
-                "key": "assetDefinitionId",
-                "label": "Asset",
-                "valuesKey": "assetDefinitions",
-                "validate": {"required": true},
-                "properties": {
-                    "dataSource": {
-                        "url": "/api/business/asset-definitions",
-                        "labelField": "name",
-                        "valueField": "id",
-                        "filter": {"active": true},
-                        "valuesKey": "assetDefinitions",
-                        "dependsOn": "categoryId",
-                        "dependsOnParam": "categoryId"
-                    }
-                }
-            },
-            {
-                "type": "number",
-                "key": "quantity",
-                "label": "Quantity",
-                "defaultValue": 1,
-                "validate": {"required": true, "min": 1}
-            },
-            {
-                "type": "select",
-                "key": "officeLocation",
-                "label": "Office Location",
-                "validate": {"required": true},
-                "values": [
-                    {"label": "Seattle, USA",         "value": "SEATTLE_US"},
-                    {"label": "Bangalore, India",     "value": "BANGALORE_IN"},
-                    {"label": "Shillong, India",      "value": "SHILLONG_IN"},
-                    {"label": "Stockholm, Sweden",    "value": "STOCKHOLM_SE"},
-                    {"label": "Melbourne, Australia", "value": "MELBOURNE_AU"}
-                ]
-            },
-            {
-                "type": "datetime",
-                "key": "deliveryDate",
-                "label": "Required By Date (Optional)",
-                "subtype": "date"
-            },
-            {
-                "type": "textarea",
-                "key": "justification",
-                "label": "Justification",
-                "validate": {"required": true, "minLength": 10}
-            },
-            {
-                "type": "textfield",
-                "key": "requesterName",
-                "label": "Your Name",
-                "readonly": true,
-                "validate": {"required": false}
-            },
-            {
-                "type": "textfield",
-                "key": "requesterEmail",
-                "label": "Your Email",
-                "readonly": true,
-                "validate": {"required": false}
+      "type": "default",
+      "components": [
+        {
+          "type": "text",
+          "text": "<h3>Asset Request</h3><p>Select an asset category and item, then complete the request details below.</p>"
+        },
+        {
+          "type": "select",
+          "key": "categoryId",
+          "label": "Asset Category",
+          "valuesKey": "categoryOptions",
+          "validate": { "required": true },
+          "properties": {
+            "dataSource": {
+              "url": "/api/business/asset-categories",
+              "labelField": "name",
+              "valueField": "id",
+              "filter": { "active": true }
             }
-        ]
+          }
+        },
+        {
+          "type": "select",
+          "key": "assetDefinitionId",
+          "label": "Asset",
+          "valuesExpression": "= assetDefinitions[item.categoryId = categoryId]",
+          "validate": { "required": true },
+          "properties": {
+            "dataSource": {
+              "url": "/api/business/asset-definitions",
+              "labelField": "name",
+              "valueField": "id",
+              "extraFields": ["categoryId"],
+              "filter": { "active": true },
+              "dependsOn": "categoryId",
+              "dependsOnParam": "categoryId",
+              "valuesKey": "assetDefinitions"
+            }
+          }
+        },
+        {
+          "type": "number",
+          "key": "quantity",
+          "label": "Quantity",
+          "defaultValue": 1,
+          "validate": { "required": true, "min": 1 }
+        },
+        {
+          "type": "select",
+          "key": "officeLocation",
+          "label": "Office Location",
+          "validate": { "required": true },
+          "values": [
+            { "label": "Seattle, USA", "value": "SEATTLE_US" },
+            { "label": "Bangalore, India", "value": "BANGALORE_IN" },
+            { "label": "Shillong, India", "value": "SHILLONG_IN" },
+            { "label": "Stockholm, Sweden", "value": "STOCKHOLM_SE" },
+            { "label": "Melbourne, Australia", "value": "MELBOURNE_AU" }
+          ]
+        },
+        {
+          "type": "datetime",
+          "subtype": "date",
+          "key": "deliveryDate",
+          "label": "Required By Date (Optional)"
+        },
+        {
+          "type": "textarea",
+          "key": "justification",
+          "label": "Justification",
+          "validate": { "required": true, "minLength": 10 }
+        },
+        {
+          "type": "textfield",
+          "key": "requesterName",
+          "label": "Your Name",
+          "readonly": true,
+          "validate": { "required": false }
+        },
+        {
+          "type": "textfield",
+          "key": "requesterEmail",
+          "label": "Your Email",
+          "readonly": true,
+          "validate": { "required": false }
+        }
+      ]
     }'::jsonb,
-    'Asset Request Form — three-level cascade (type→category→asset), enterprise office locations',
+    'Asset Request Form — category cascade + enterprise office locations',
+    'PROCESS_START', true, 'system', 'system'
+) ON CONFLICT (form_key, version) DO NOTHING;
+
+-- 2. capex-request-form
+INSERT INTO form_schemas (form_key, version, name, schema_json, description, form_type, is_active, created_by, updated_by)
+VALUES (
+    'capex-request-form', 1, 'CapEx Request Form',
+    '{
+      "type": "default",
+      "components": [
+        {
+          "type": "text",
+          "text": "<h3>Capital Expenditure Request Form</h3><p>Please provide details for your CapEx request.</p>"
+        },
+        {
+          "type": "textfield",
+          "key": "requestTitle",
+          "label": "Request Title",
+          "placeholder": "Enter request title",
+          "validate": { "required": true, "minLength": 5, "maxLength": 100 }
+        },
+        {
+          "type": "select",
+          "key": "category",
+          "label": "Category",
+          "values": [
+            { "label": "Equipment", "value": "equipment" },
+            { "label": "Software", "value": "software" },
+            { "label": "Infrastructure", "value": "infrastructure" },
+            { "label": "Facility", "value": "facility" },
+            { "label": "Other", "value": "other" }
+          ],
+          "validate": { "required": true }
+        },
+        {
+          "type": "number",
+          "key": "requestAmount",
+          "label": "Request Amount (USD)",
+          "placeholder": "Enter amount",
+          "validate": { "required": true, "min": 1, "max": 10000000 }
+        },
+        {
+          "type": "textfield",
+          "key": "department",
+          "label": "Department",
+          "placeholder": "Enter department",
+          "validate": { "required": true }
+        },
+        {
+          "type": "textfield",
+          "key": "costCenter",
+          "label": "Cost Center",
+          "placeholder": "Enter cost center code",
+          "validate": { "required": true }
+        },
+        {
+          "type": "textarea",
+          "key": "description",
+          "label": "Description",
+          "placeholder": "Describe the expenditure in detail",
+          "validate": { "required": true, "minLength": 20, "maxLength": 2000 }
+        },
+        {
+          "type": "textarea",
+          "key": "businessJustification",
+          "label": "Business Justification",
+          "placeholder": "Explain why this expenditure is necessary",
+          "validate": { "required": true, "minLength": 50, "maxLength": 2000 }
+        },
+        {
+          "type": "textarea",
+          "key": "expectedBenefits",
+          "label": "Expected Benefits",
+          "placeholder": "List expected benefits and ROI",
+          "validate": { "required": true, "minLength": 20 }
+        },
+        {
+          "type": "select",
+          "key": "priority",
+          "label": "Priority",
+          "values": [
+            { "label": "Low", "value": "low" },
+            { "label": "Medium", "value": "medium" },
+            { "label": "High", "value": "high" },
+            { "label": "Critical", "value": "critical" }
+          ],
+          "validate": { "required": true }
+        },
+        {
+          "type": "date",
+          "key": "requiredByDate",
+          "label": "Required By Date",
+          "validate": { "required": true }
+        },
+        {
+          "type": "textfield",
+          "key": "vendor",
+          "label": "Preferred Vendor (Optional)",
+          "placeholder": "Enter vendor name if known"
+        },
+        {
+          "type": "select",
+          "key": "fundingSource",
+          "label": "Funding Source",
+          "values": [
+            { "label": "Operating Budget", "value": "operating" },
+            { "label": "Capital Budget", "value": "capital" },
+            { "label": "Grant", "value": "grant" },
+            { "label": "External Funding", "value": "external" }
+          ],
+          "validate": { "required": true }
+        },
+        {
+          "type": "checkbox",
+          "key": "budgetApproved",
+          "label": "Budget has been pre-approved",
+          "validate": { "required": false }
+        },
+        {
+          "type": "textfield",
+          "key": "projectCode",
+          "label": "Project Code (if applicable)",
+          "placeholder": "Enter project code"
+        },
+        {
+          "type": "number",
+          "key": "estimatedMaintenanceCost",
+          "label": "Annual Maintenance Cost (USD)",
+          "placeholder": "Enter estimated annual maintenance cost",
+          "validate": { "min": 0 }
+        },
+        {
+          "type": "number",
+          "key": "usefulLife",
+          "label": "Expected Useful Life (Years)",
+          "placeholder": "Enter expected useful life in years",
+          "validate": { "required": true, "min": 1, "max": 50 }
+        },
+        {
+          "type": "select",
+          "key": "depreciationMethod",
+          "label": "Depreciation Method",
+          "values": [
+            { "label": "Straight Line", "value": "straight_line" },
+            { "label": "Declining Balance", "value": "declining_balance" },
+            { "label": "Units of Production", "value": "units_production" }
+          ],
+          "validate": { "required": true }
+        },
+        {
+          "type": "textarea",
+          "key": "alternativesConsidered",
+          "label": "Alternatives Considered",
+          "placeholder": "Describe alternative options considered",
+          "validate": { "minLength": 20 }
+        },
+        {
+          "type": "textarea",
+          "key": "riskAssessment",
+          "label": "Risk Assessment",
+          "placeholder": "Identify potential risks and mitigation strategies",
+          "validate": { "required": true, "minLength": 20 }
+        },
+        {
+          "type": "textfield",
+          "key": "requestorName",
+          "label": "Requestor Name",
+          "placeholder": "Enter your full name",
+          "validate": { "required": true }
+        },
+        {
+          "type": "email",
+          "key": "requestorEmail",
+          "label": "Requestor Email",
+          "placeholder": "Enter your email",
+          "validate": { "required": true }
+        },
+        {
+          "type": "textarea",
+          "key": "additionalComments",
+          "label": "Additional Comments",
+          "placeholder": "Any additional information"
+        }
+      ]
+    }'::jsonb,
+    'Capital Expenditure Request Form — full CapEx submission form',
+    'PROCESS_START', true, 'system', 'system'
+) ON CONFLICT (form_key, version) DO NOTHING;
+
+-- 3. event-ticket-form
+INSERT INTO form_schemas (form_key, version, name, schema_json, description, form_type, is_active, created_by, updated_by)
+VALUES (
+    'event-ticket-form', 1, 'Event Ticket Request Form',
+    '{
+      "id": "event-ticket-form",
+      "name": "Event Ticket Request Form",
+      "versionTag": "1",
+      "type": "default",
+      "components": [
+        {
+          "type": "text",
+          "text": "<h3>Event Ticket Request</h3><p>Submit a request to attend or participate in an event.</p>"
+        },
+        {
+          "type": "textfield",
+          "key": "eventName",
+          "label": "Event Name",
+          "placeholder": "Enter the full name of the event",
+          "validate": { "required": true, "minLength": 3, "maxLength": 150 }
+        },
+        {
+          "type": "date",
+          "key": "eventDate",
+          "label": "Event Date",
+          "validate": { "required": true }
+        },
+        {
+          "type": "textfield",
+          "key": "venue",
+          "label": "Venue",
+          "placeholder": "Enter the event venue or location",
+          "validate": { "required": true }
+        },
+        {
+          "type": "number",
+          "key": "ticketCount",
+          "label": "Number of Tickets",
+          "placeholder": "Enter the number of tickets required",
+          "validate": { "required": true, "min": 1, "max": 100 }
+        },
+        {
+          "type": "select",
+          "key": "purpose",
+          "label": "Purpose",
+          "values": [
+            { "label": "Conference", "value": "conference" },
+            { "label": "Workshop", "value": "workshop" },
+            { "label": "Team Building", "value": "team_building" },
+            { "label": "Client Entertainment", "value": "client_entertainment" },
+            { "label": "Other", "value": "other" }
+          ],
+          "validate": { "required": true }
+        },
+        {
+          "type": "number",
+          "key": "estimatedCost",
+          "label": "Estimated Cost (USD)",
+          "placeholder": "Enter total estimated cost for all tickets",
+          "validate": { "required": true, "min": 0 }
+        },
+        {
+          "type": "textarea",
+          "key": "justification",
+          "label": "Justification",
+          "placeholder": "Explain the business value or personal development benefit of attending",
+          "validate": { "required": true, "minLength": 10, "maxLength": 1000 }
+        },
+        {
+          "type": "textfield",
+          "key": "requestedBy",
+          "label": "Requested By",
+          "placeholder": "Enter your full name",
+          "validate": { "required": true }
+        }
+      ]
+    }'::jsonb,
+    'Event Ticket Request Form — employee event attendance request',
+    'PROCESS_START', true, 'system', 'system'
+) ON CONFLICT (form_key, version) DO NOTHING;
+
+-- 4. budget-request-form (schema from finance-approval-form.json)
+INSERT INTO form_schemas (form_key, version, name, schema_json, description, form_type, is_active, created_by, updated_by)
+VALUES (
+    'budget-request-form', 1, 'Budget Request Form',
+    '{
+      "id": "finance-approval-form",
+      "name": "Finance Approval Form",
+      "versionTag": "1",
+      "type": "default",
+      "components": [
+        {
+          "type": "text",
+          "text": "<h3>Finance Approval Review</h3><p>Review the purchase details and provide your finance decision below.</p>"
+        },
+        {
+          "type": "textarea",
+          "key": "reviewNotes",
+          "label": "Review Notes",
+          "placeholder": "Enter your review observations and comments",
+          "validate": { "required": true, "minLength": 10, "maxLength": 2000 }
+        },
+        {
+          "type": "number",
+          "key": "approvedAmount",
+          "label": "Approved Amount (USD)",
+          "placeholder": "Enter the amount approved (may differ from requested)",
+          "validate": { "required": true, "min": 0 }
+        },
+        {
+          "type": "textfield",
+          "key": "budgetCode",
+          "label": "Budget Code",
+          "placeholder": "Enter the budget allocation code",
+          "validate": { "required": true }
+        },
+        {
+          "type": "select",
+          "key": "paymentTerms",
+          "label": "Payment Terms",
+          "values": [
+            { "label": "Net 30", "value": "net30" },
+            { "label": "Net 60", "value": "net60" },
+            { "label": "Immediate", "value": "immediate" }
+          ],
+          "validate": { "required": true }
+        },
+        {
+          "type": "select",
+          "key": "decision",
+          "label": "Decision",
+          "values": [
+            { "label": "Approved", "value": "approve" },
+            { "label": "Rejected", "value": "reject" }
+          ],
+          "validate": { "required": true }
+        }
+      ]
+    }'::jsonb,
+    'Budget Request Form — finance approval decision form for budget requests',
+    'PROCESS_START', true, 'system', 'system'
+) ON CONFLICT (form_key, version) DO NOTHING;
+
+-- 5. leave-request-form
+INSERT INTO form_schemas (form_key, version, name, schema_json, description, form_type, is_active, created_by, updated_by)
+VALUES (
+    'leave-request-form', 1, 'Leave Request Form',
+    '{
+      "type": "default",
+      "components": [
+        {
+          "type": "text",
+          "text": "<h3>Leave Request Form</h3><p>Submit your leave request for approval.</p>"
+        },
+        {
+          "type": "select",
+          "key": "leaveType",
+          "label": "Leave Type",
+          "values": [
+            { "label": "Annual Leave", "value": "annual" },
+            { "label": "Sick Leave", "value": "sick" },
+            { "label": "Personal Leave", "value": "personal" },
+            { "label": "Parental Leave", "value": "parental" },
+            { "label": "Bereavement Leave", "value": "bereavement" },
+            { "label": "Unpaid Leave", "value": "unpaid" },
+            { "label": "Compensatory Leave", "value": "compensatory" },
+            { "label": "Study Leave", "value": "study" }
+          ],
+          "validate": { "required": true }
+        },
+        {
+          "type": "date",
+          "key": "startDate",
+          "label": "Start Date",
+          "validate": { "required": true }
+        },
+        {
+          "type": "date",
+          "key": "endDate",
+          "label": "End Date",
+          "validate": { "required": true }
+        },
+        {
+          "type": "number",
+          "key": "totalDays",
+          "label": "Total Days",
+          "placeholder": "Calculate total days",
+          "validate": { "required": true, "min": 0.5, "max": 365 }
+        },
+        {
+          "type": "textarea",
+          "key": "reason",
+          "label": "Reason for Leave",
+          "placeholder": "Enter reason for leave request",
+          "validate": { "required": true, "minLength": 10, "maxLength": 500 }
+        },
+        {
+          "type": "textfield",
+          "key": "contactNumber",
+          "label": "Contact Number During Leave",
+          "placeholder": "Enter contact number",
+          "validate": { "required": true }
+        },
+        {
+          "type": "email",
+          "key": "emergencyEmail",
+          "label": "Emergency Email",
+          "placeholder": "Enter emergency contact email",
+          "validate": { "required": true }
+        },
+        {
+          "type": "textfield",
+          "key": "employeeId",
+          "label": "Employee ID",
+          "placeholder": "Enter your employee ID",
+          "validate": { "required": true }
+        },
+        {
+          "type": "textfield",
+          "key": "employeeName",
+          "label": "Employee Name",
+          "placeholder": "Enter your full name",
+          "validate": { "required": true }
+        },
+        {
+          "type": "textfield",
+          "key": "department",
+          "label": "Department",
+          "placeholder": "Enter your department",
+          "validate": { "required": true }
+        }
+      ]
+    }'::jsonb,
+    'Leave Request Form — employee leave submission form',
+    'PROCESS_START', true, 'system', 'system'
+) ON CONFLICT (form_key, version) DO NOTHING;
+
+-- 6. procurement-request-form
+INSERT INTO form_schemas (form_key, version, name, schema_json, description, form_type, is_active, created_by, updated_by)
+VALUES (
+    'procurement-request-form', 1, 'Procurement Request Form',
+    '{
+      "id": "procurement-request-form",
+      "name": "Procurement Request Form",
+      "versionTag": "1",
+      "type": "default",
+      "components": [
+        {
+          "type": "text",
+          "text": "<h3>Procurement Request</h3><p>Submit a procurement request for goods or services requiring vendor sourcing and approval.</p>"
+        },
+        {
+          "type": "textfield",
+          "key": "title",
+          "label": "Request Title",
+          "placeholder": "Enter a concise title for this procurement request",
+          "validate": { "required": true, "minLength": 5, "maxLength": 100 }
+        },
+        {
+          "type": "textarea",
+          "key": "description",
+          "label": "Description",
+          "placeholder": "Describe the goods or services to be procured",
+          "validate": { "required": true, "minLength": 10, "maxLength": 2000 }
+        },
+        {
+          "type": "number",
+          "key": "requestedAmount",
+          "label": "Requested Amount (USD)",
+          "placeholder": "Enter estimated total amount",
+          "validate": { "required": true, "min": 1, "max": 100000000 }
+        },
+        {
+          "type": "textfield",
+          "key": "vendor",
+          "label": "Preferred Vendor",
+          "placeholder": "Enter preferred vendor name if known",
+          "validate": { "required": false }
+        },
+        {
+          "type": "textarea",
+          "key": "justification",
+          "label": "Business Justification",
+          "placeholder": "Explain why this procurement is necessary and its business impact",
+          "validate": { "required": true, "minLength": 20, "maxLength": 2000 }
+        },
+        {
+          "type": "textfield",
+          "key": "department",
+          "label": "Requesting Department",
+          "placeholder": "Enter your department name",
+          "validate": { "required": true }
+        },
+        {
+          "type": "date",
+          "key": "requiredDate",
+          "label": "Required By Date",
+          "validate": { "required": true }
+        },
+        {
+          "type": "select",
+          "key": "priority",
+          "label": "Priority",
+          "values": [
+            { "label": "Low", "value": "low" },
+            { "label": "Medium", "value": "medium" },
+            { "label": "High", "value": "high" },
+            { "label": "Urgent", "value": "urgent" }
+          ],
+          "validate": { "required": true }
+        }
+      ]
+    }'::jsonb,
+    'Procurement Request Form — process start form for procurement approval workflow',
+    'PROCESS_START', true, 'system', 'system'
+) ON CONFLICT (form_key, version) DO NOTHING;
+
+-- 7. vendor-selection
+INSERT INTO form_schemas (form_key, version, name, schema_json, description, form_type, is_active, created_by, updated_by)
+VALUES (
+    'vendor-selection', 1, 'Vendor Selection Form',
+    '{
+      "id": "vendor-selection",
+      "name": "Vendor Selection",
+      "versionTag": "1",
+      "type": "default",
+      "components": [
+        {
+          "type": "text",
+          "text": "<h3>Select Vendor</h3><p>Review the list of approved vendors and select the preferred supplier for this purchase request.</p>"
+        },
+        {
+          "type": "textfield",
+          "key": "selectedVendorId",
+          "label": "Selected Vendor ID",
+          "placeholder": "Enter the vendor ID from the approved vendor list",
+          "validate": { "required": true }
+        },
+        {
+          "type": "textfield",
+          "key": "selectedVendorName",
+          "label": "Vendor Name",
+          "placeholder": "Enter the vendor name",
+          "validate": { "required": true }
+        },
+        {
+          "type": "textarea",
+          "key": "vendorSelectionNotes",
+          "label": "Selection Notes",
+          "placeholder": "Provide justification for vendor selection",
+          "validate": { "maxLength": 1000 }
+        }
+      ]
+    }'::jsonb,
+    'Vendor Selection Form — procurement workflow task form for vendor selection',
     'TASK_FORM', true, 'system', 'system'
 ) ON CONFLICT (form_key, version) DO NOTHING;
 
--- SLA Escalation Forms (V26)
-INSERT INTO form_schemas (form_key, version, schema_json, description, form_type, is_active, created_by, updated_by)
+-- 8. quotation-review
+INSERT INTO form_schemas (form_key, version, name, schema_json, description, form_type, is_active, created_by, updated_by)
 VALUES (
-    'sla-escalation-form', 1,
+    'quotation-review', 1, 'Quotation Review Form',
     '{
-        "type": "default",
-        "schemaVersion": 9,
-        "components": [
-            {"type": "textfield", "id": "title", "key": "title", "label": "Item Title", "validate": {"required": true, "maxLength": 100}},
-            {"type": "textarea", "id": "description", "key": "description", "label": "Description", "validate": {"required": true, "minLength": 10}},
-            {"type": "select", "id": "priority", "key": "priority", "label": "Priority", "validate": {"required": true},
-             "values": [
-                 {"label": "Low", "value": "LOW"},
-                 {"label": "Medium", "value": "MEDIUM"},
-                 {"label": "High", "value": "HIGH"},
-                 {"label": "Critical", "value": "CRITICAL"}
-             ]},
-            {"type": "textfield", "id": "reviewerGroup", "key": "reviewerGroup", "label": "Reviewer Group (optional)",
-             "description": "Candidate group ID to assign the review task to", "validate": {"required": false}}
-        ]
+      "id": "quotation-review",
+      "name": "Quotation Review",
+      "versionTag": "1",
+      "type": "default",
+      "components": [
+        {
+          "type": "text",
+          "text": "<h3>Review Quotations</h3><p>Compare vendor quotations and select the best offer. Enter the winning quotation ID to proceed.</p>"
+        },
+        {
+          "type": "textfield",
+          "key": "selectedQuotationId",
+          "label": "Selected Quotation ID",
+          "placeholder": "Enter the ID of the accepted quotation",
+          "validate": { "required": true }
+        },
+        {
+          "type": "number",
+          "key": "agreedUnitPrice",
+          "label": "Agreed Unit Price",
+          "validate": { "required": true, "min": 0 }
+        },
+        {
+          "type": "textarea",
+          "key": "quotationReviewNotes",
+          "label": "Review Notes",
+          "placeholder": "Summarise your quotation comparison and selection rationale",
+          "validate": { "required": true, "minLength": 5, "maxLength": 2000 }
+        }
+      ]
     }'::jsonb,
-    'SLA Escalation Form — process start form for the SLA escalation sample workflow',
-    'PROCESS_START', true, 'system', 'system'
+    'Quotation Review Form — procurement workflow task form for quotation evaluation',
+    'TASK_FORM', true, 'system', 'system'
 ) ON CONFLICT (form_key, version) DO NOTHING;
 
-INSERT INTO form_schemas (form_key, version, schema_json, description, form_type, is_active, created_by, updated_by)
+-- 9. procurement-approval
+INSERT INTO form_schemas (form_key, version, name, schema_json, description, form_type, is_active, created_by, updated_by)
 VALUES (
-    'sla-escalation-decision', 1,
+    'procurement-approval', 1, 'Procurement Approval Form',
     '{
-        "type": "default",
-        "schemaVersion": 9,
-        "components": [
-            {"type": "text", "id": "reviewHeader", "text": "### Review Item"},
-            {"type": "textfield", "id": "title", "key": "title", "label": "Item Title", "disabled": true},
-            {"type": "textarea", "id": "description", "key": "description", "label": "Description", "disabled": true},
-            {"type": "textfield", "id": "priority", "key": "priority", "label": "Priority", "disabled": true},
-            {"type": "select", "id": "decisionField", "key": "decision", "label": "Decision", "validate": {"required": true},
-             "values": [
-                 {"label": "Approve", "value": "approve"},
-                 {"label": "Reject", "value": "reject"},
-                 {"label": "Request More Info", "value": "more_info"}
-             ]},
-            {"type": "textarea", "id": "reviewComments", "key": "reviewComments", "label": "Comments", "validate": {"required": false}}
-        ]
+      "id": "procurement-approval",
+      "name": "Procurement Approval",
+      "versionTag": "1",
+      "type": "default",
+      "components": [
+        {
+          "type": "text",
+          "text": "<h3>Procurement Approval</h3><p>Review the purchase request details and provide your approval decision.</p>"
+        },
+        {
+          "type": "select",
+          "key": "decision",
+          "label": "Decision",
+          "values": [
+            { "label": "Approve", "value": "approve" },
+            { "label": "Reject", "value": "reject" }
+          ],
+          "validate": { "required": true }
+        },
+        {
+          "type": "textarea",
+          "key": "approvalComments",
+          "label": "Comments",
+          "placeholder": "Enter your review comments and justification",
+          "validate": { "required": true, "minLength": 5, "maxLength": 2000 }
+        },
+        {
+          "type": "textfield",
+          "key": "purchaseOrderReference",
+          "label": "Purchase Order Reference",
+          "placeholder": "Enter PO number if approving (optional)",
+          "validate": { "maxLength": 100 }
+        }
+      ]
     }'::jsonb,
-    'SLA Escalation Decision Form — used by both Review Item and Escalated Review tasks',
-    'APPROVAL', true, 'system', 'system'
-) ON CONFLICT (form_key, version) DO NOTHING;
-
--- Parallel Committee Approval Forms (V27)
-INSERT INTO form_schemas (form_key, version, schema_json, description, form_type, is_active, created_by, updated_by)
-VALUES (
-    'committee-review-start', 1,
-    '{
-        "type": "default",
-        "schemaVersion": 9,
-        "components": [
-            {"type": "textfield", "id": "proposalTitle", "key": "proposalTitle", "label": "Proposal Title", "validate": {"required": true, "maxLength": 150}},
-            {"type": "textarea", "id": "proposalDescription", "key": "proposalDescription", "label": "Proposal Description", "validate": {"required": true, "minLength": 20}},
-            {"type": "select", "id": "proposalCategory", "key": "proposalCategory", "label": "Category", "validate": {"required": true},
-             "values": [
-                 {"label": "Policy", "value": "POLICY"},
-                 {"label": "Budget", "value": "BUDGET"},
-                 {"label": "Strategic Initiative", "value": "STRATEGIC"},
-                 {"label": "Operational Change", "value": "OPERATIONAL"},
-                 {"label": "Other", "value": "OTHER"}
-             ]},
-            {"type": "textfield", "id": "attachments", "key": "attachments", "label": "Supporting Documents (optional)",
-             "description": "Comma-separated document references or URLs", "validate": {"required": false}}
-        ]
-    }'::jsonb,
-    'Committee Review Start Form — process start form for the parallel committee approval workflow',
-    'PROCESS_START', true, 'system', 'system'
-) ON CONFLICT (form_key, version) DO NOTHING;
-
-INSERT INTO form_schemas (form_key, version, schema_json, description, form_type, is_active, created_by, updated_by)
-VALUES (
-    'committee-review-decision', 1,
-    '{
-        "type": "default",
-        "schemaVersion": 9,
-        "components": [
-            {"type": "text", "id": "reviewHeader", "text": "### Committee Member Vote"},
-            {"type": "textfield", "id": "proposalTitle", "key": "proposalTitle", "label": "Proposal Title", "disabled": true},
-            {"type": "textarea", "id": "proposalDescription", "key": "proposalDescription", "label": "Proposal Description", "disabled": true},
-            {"type": "textfield", "id": "proposalCategory", "key": "proposalCategory", "label": "Category", "disabled": true},
-            {"type": "select", "id": "voteField", "key": "vote", "label": "Vote", "validate": {"required": true},
-             "values": [
-                 {"label": "Approve", "value": "approve"},
-                 {"label": "Reject", "value": "reject"},
-                 {"label": "Abstain", "value": "abstain"}
-             ]},
-            {"type": "textarea", "id": "voteComments", "key": "voteComments", "label": "Comments",
-             "description": "Rationale or conditions attached to your vote", "validate": {"required": false}}
-        ]
-    }'::jsonb,
-    'Committee Review Decision Form — used by all three committee member review tasks',
-    'APPROVAL', true, 'system', 'system'
-) ON CONFLICT (form_key, version) DO NOTHING;
-
--- DOA Routing Forms (V28)
-INSERT INTO form_schemas (form_key, version, schema_json, description, form_type, is_active, created_by, updated_by)
-VALUES (
-    'doa-request-form', 1,
-    '{
-        "type": "default",
-        "schemaVersion": 9,
-        "components": [
-            {"type": "textfield", "id": "requestTitle", "key": "requestTitle", "label": "Request Title", "validate": {"required": true, "maxLength": 150}},
-            {"type": "number", "id": "requestAmount", "key": "requestAmount", "label": "Request Amount", "validate": {"required": true, "min": 0}},
-            {"type": "select", "id": "department", "key": "department", "label": "Department", "validate": {"required": true},
-             "values": [
-                 {"label": "Finance", "value": "FINANCE"},
-                 {"label": "IT", "value": "IT"},
-                 {"label": "Operations", "value": "OPERATIONS"},
-                 {"label": "HR", "value": "HR"},
-                 {"label": "Legal", "value": "LEGAL"},
-                 {"label": "Other", "value": "OTHER"}
-             ]},
-            {"type": "textarea", "id": "justification", "key": "justification", "label": "Business Justification", "validate": {"required": true, "minLength": 20}}
-        ]
-    }'::jsonb,
-    'DoA Request Form — process start form for the DoA routing sample workflow',
-    'PROCESS_START', true, 'system', 'system'
-) ON CONFLICT (form_key, version) DO NOTHING;
-
-INSERT INTO form_schemas (form_key, version, schema_json, description, form_type, is_active, created_by, updated_by)
-VALUES (
-    'doa-approval-form', 1,
-    '{
-        "type": "default",
-        "schemaVersion": 9,
-        "components": [
-            {"type": "text", "id": "approvalHeader", "text": "### Spend Request Review"},
-            {"type": "textfield", "id": "requestTitle", "key": "requestTitle", "label": "Request Title", "disabled": true},
-            {"type": "number", "id": "requestAmount", "key": "requestAmount", "label": "Request Amount", "disabled": true},
-            {"type": "textfield", "id": "department", "key": "department", "label": "Department", "disabled": true},
-            {"type": "textarea", "id": "justification", "key": "justification", "label": "Business Justification", "disabled": true},
-            {"type": "select", "id": "approvalDecision", "key": "approvalDecision", "label": "Decision", "validate": {"required": true},
-             "values": [
-                 {"label": "Approve", "value": "APPROVED"},
-                 {"label": "Reject", "value": "REJECTED"},
-                 {"label": "Request More Information", "value": "MORE_INFO"}
-             ]},
-            {"type": "textarea", "id": "approvalComments", "key": "approvalComments", "label": "Comments", "validate": {"required": false}}
-        ]
-    }'::jsonb,
-    'DoA Approval Form — used by all four approval tasks in the DoA routing workflow',
+    'Procurement Approval Form — approval decision form for procurement workflow',
     'APPROVAL', true, 'system', 'system'
 ) ON CONFLICT (form_key, version) DO NOTHING;
 

@@ -9,7 +9,7 @@
              expressionLanguage="http://www.w3.org/1999/XPath"
              targetNamespace="http://werkflow.com/bpmn/finance">
 
-  <process id="finance-approval-process" name="Finance Approval Process" isExecutable="true"
+  <process id="finance-approval-process" name="Budget Request Process" isExecutable="true"
            flowable:versionTag="1">
 
     <extensionElements>
@@ -22,7 +22,7 @@
 
     <!-- Start Event -->
     <startEvent id="startEvent" name="Finance Review Requested"
-                flowable:formKey="finance-approval-form"
+                flowable:formKey="budget-request-form"
                 flowable:initiator="initiator">
       <documentation>Triggered when procurement raises a purchase order requiring finance sign-off</documentation>
     </startEvent>
@@ -30,7 +30,7 @@
     <!-- Finance Review Task -->
     <userTask id="financeReview" name="Finance Review"
               flowable:candidateGroups="FINANCE_APPROVER,SUPER_ADMIN"
-              flowable:formKey="finance-approval-form">
+              flowable:formKey="budget-request-form">
       <documentation>Finance team member reviews the purchase amount, budget code, and payment terms. Sets decision = approve or reject.</documentation>
       <extensionElements>
         <flowable:field name="outcomeVariable"><flowable:string>decision</flowable:string></flowable:field>
