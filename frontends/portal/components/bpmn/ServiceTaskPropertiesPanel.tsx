@@ -91,6 +91,22 @@ function writeExtractFields(
   modeling.updateProperties(element, { 'ab:extractFields': value || undefined })
 }
 
+// ---------------------------------------------------------------------------
+// Helper: produce a human-readable error message for connector field errors.
+// Strips raw Spring/Zod validation formats like "(Field 'connection') value is undefined"
+// and replaces them with a concise, user-friendly string.
+// ---------------------------------------------------------------------------
+
+function formatConnectorError(raw: string): string {
+  if (!raw) return 'Failed to load connectors.'
+  // Detect Spring Boot / Zod style "(Field 'xxx') value is undefined" patterns
+  const technicalPattern = /^\(Field '.*?'\)\s+value is/i
+  if (technicalPattern.test(raw)) {
+    return 'Connector configuration is incomplete. Please select a valid connector.'
+  }
+  return raw
+}
+
 /**
  * ServiceTaskPropertiesPanel Component
  *
@@ -128,6 +144,9 @@ export default function ServiceTaskPropertiesPanel({
   const [connectors, setConnectors] = useState<ConnectorResponse[]>([])
   const [selectedConnectorKey, setSelectedConnectorKey] = useState('')
   const [connectorLoadError, setConnectorLoadError] = useState<string | null>(null)
+  // Track whether the user has interacted with the connector select.
+  // Errors are suppressed until isDirty=true to avoid noise on initial render.
+  const [connectorFieldDirty, setConnectorFieldDirty] = useState(false)
 
   // ---- DTDS state ----
   const [selectedOperationId, setSelectedOperationId] = useState('')
@@ -166,6 +185,9 @@ export default function ServiceTaskPropertiesPanel({
     setConnectorPath(bo.get('ab:path') || '')
     setBodyTemplate(bo.get('ab:body') || '')
     setSelectedOperationId(bo.get('ab:operationId') || '')
+    // Reset dirty state when switching to a different element so errors are suppressed
+    // until the user interacts with the connector select on the new element.
+    setConnectorFieldDirty(false)
 
     // Input mappings: stored as "path:${var}\npath2:${var2}"
     const rawMappings: string = bo.get('ab:inputMappings') || ''
@@ -259,6 +281,7 @@ export default function ServiceTaskPropertiesPanel({
   // ---- Connector selector ----
 
   const handleConnectorSelect = async (key: string) => {
+    setConnectorFieldDirty(true)
     setSelectedConnectorKey(key)
     setConnectorKey(key)
     modeler.get('modeling').updateProperties(element, { 'ab:connector': key || undefined })
@@ -418,9 +441,16 @@ export default function ServiceTaskPropertiesPanel({
               </SelectContent>
             </Select>
           )}
-          {(dtdsConnectors.error || connectorLoadError) && (
+          {/* Show a neutral helper when no connector is selected and the field has not been touched */}
+          {!selectedConnectorKey && !connectorFieldDirty && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Select a connector to configure the request.
+            </p>
+          )}
+          {/* Only surface connector load errors after the user has interacted with the field */}
+          {connectorFieldDirty && (dtdsConnectors.error || connectorLoadError) && (
             <p className="text-xs text-destructive mt-1">
-              {dtdsConnectors.error?.message ?? connectorLoadError}
+              {formatConnectorError(dtdsConnectors.error?.message ?? connectorLoadError ?? '')}
             </p>
           )}
         </CardContent>
