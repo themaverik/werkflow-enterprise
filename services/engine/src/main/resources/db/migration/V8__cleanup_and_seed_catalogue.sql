@@ -35,10 +35,10 @@ WHERE key_ IN (
 );
 
 DELETE FROM act_re_deployment
-WHERE id NOT IN (
+WHERE id_ NOT IN (
     SELECT DISTINCT deployment_id_ FROM act_re_procdef
 )
-AND name IN (
+AND name_ IN (
     'asset-transfer-approval-process',
     'document-review',
     'sla-escalation',
