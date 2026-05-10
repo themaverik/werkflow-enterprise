@@ -123,17 +123,37 @@ public class NamedQueryExecutor {
     /**
      * Scans SQL for DML/DDL keywords using a word-boundary, case-insensitive regex.
      *
+     * <p>H-1: SQL comments are stripped before scanning so that payloads that hide
+     * DML keywords inside block or line comments cannot bypass the guard.</p>
+     *
      * @throws IllegalArgumentException naming the offending keyword
      */
     public static void rejectDml(String sql) {
         if (sql == null || sql.isBlank()) return;
-        var matcher = DML_PATTERN.matcher(sql);
+        String stripped = stripSqlComments(sql);
+        var matcher = DML_PATTERN.matcher(stripped);
         if (matcher.find()) {
             throw new IllegalArgumentException(
                 "Query contains DML keyword '" + matcher.group().toUpperCase() +
                 "' but connector is readOnly=true. " +
                 "Set readOnly=false in the connector transport config if writes are intended.");
         }
+    }
+
+    /**
+     * Strips SQL block comments and line comments before DML keyword scanning
+     * so that comment-embedded keywords cannot bypass the guard.
+     *
+     * @param sql raw SQL string
+     * @return SQL with all comments replaced by spaces
+     */
+    private static String stripSqlComments(String sql) {
+        if (sql == null) return null;
+        // Strip block comments /* ... */
+        String stripped = sql.replaceAll("(?s)/\\*.*?\\*/", " ");
+        // Strip line comments -- ...
+        stripped = stripped.replaceAll("--[^\n\r]*", " ");
+        return stripped;
     }
 
     // -------------------------------------------------------------------------
