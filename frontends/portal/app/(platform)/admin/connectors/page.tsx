@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { RefreshCw, Plus, Pencil, FlaskConical, Trash2, Upload, Plug } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from 'next-intl'
 import { listConnectors, deleteConnector, type ConnectorResponse } from '@/lib/api/connectors'
 import { ConnectorForm } from '@/components/admin/ConnectorForm'
@@ -132,9 +133,20 @@ export default function ConnectorsPage() {
       </div>
 
       {isLoading && (
-        <div className="text-center py-12">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-          <p className="text-muted-foreground mt-2">{t('loading')}</p>
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-7 w-16 rounded-md" />
+              </div>
+              <Skeleton className="h-3 w-56" />
+              <div className="flex gap-2">
+                <Skeleton className="h-5 w-20 rounded-full" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

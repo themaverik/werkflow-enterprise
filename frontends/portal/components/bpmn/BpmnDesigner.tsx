@@ -547,6 +547,18 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
     }
   }, [user?.roles])
 
+  // Ctrl+S / Cmd+S keyboard shortcut for save draft
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        if (!saveDraftMutation.isPending) saveDraftMutation.mutate()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [saveDraftMutation])
+
   // Deploy to backend
   const deployMutation = useMutation({
     mutationFn: async () => {
@@ -738,24 +750,26 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
               onChange={handleUpload}
               className="hidden"
             />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              title="Load from file"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              {t('load')}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownload}
-              title="Download as file"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              {t('download')}
-            </Button>
+            <div className="flex items-center gap-2 border-l pl-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                title="Load from file"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {t('load')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownload}
+                title="Download as file"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {t('download')}
+              </Button>
+            </div>
 
             {/* Save/Deploy */}
             {draftSuccess && (
@@ -766,22 +780,26 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
             {draftError && (
               <span className="text-sm text-red-600">{t('draftFailedInline', { error: draftError })}</span>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => saveDraftMutation.mutate()}
-              disabled={saveDraftMutation.isPending}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {saveDraftMutation.isPending ? t('saving') : t('saveDraft')}
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => deployMutation.mutate()}
-              disabled={deployMutation.isPending || !processName}
-            >
-              {deployMutation.isPending ? t('deploying') : t('deploy')}
-            </Button>
+            <div className="flex items-center gap-2 border-l pl-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => saveDraftMutation.mutate()}
+                disabled={saveDraftMutation.isPending}
+                title="Save draft (Ctrl+S)"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {saveDraftMutation.isPending ? t('saving') : t('saveDraft')}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => deployMutation.mutate()}
+                disabled={deployMutation.isPending || !processName}
+                title="Deploy to engine"
+              >
+                {deployMutation.isPending ? t('deploying') : t('deploy')}
+              </Button>
+            </div>
           </div>
         </div>
       </Card>

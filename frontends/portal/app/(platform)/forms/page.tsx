@@ -7,7 +7,8 @@ import { useSession } from 'next-auth/react'
 import { getFormDefinitions, deleteFormDefinition } from '@/lib/api/flowable'
 import { useState, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
-import { ErrorDisplay, LoadingState } from '@/components/ui/error-display'
+import { ErrorDisplay } from '@/components/ui/error-display'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthorization } from '@/lib/auth/use-authorization'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from 'sonner'
@@ -16,7 +17,7 @@ import { toast } from 'sonner'
 const ACCENT = '#149ba5'
 const T = {
   text: '#0f1e2a', muted: '#6b7e8c', light: '#94a3b8',
-  bg: '#f0f4f6', card: '#ffffff', border: '#e2eaee',
+  bg: 'var(--muted)', card: 'var(--card)', border: 'var(--border)',
   success: '#16a34a', successBg: '#f0fdf4', successBorder: '#bbf7d0',
   warning: '#c27b00', warningBg: '#fffbeb', warningBorder: '#fde68a',
   danger: '#dc2626',
@@ -233,7 +234,21 @@ export default function FormsPage() {
       </div>
 
       {/* ── Loading / error ────────────────────────────────────────────────── */}
-      {isLoading && <LoadingState message={t('loading')} className="mb-6" />}
+      {isLoading && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-3 w-1/2" />
+              <div className="flex gap-2">
+                <Skeleton className="h-5 w-14 rounded-full" />
+                <Skeleton className="h-5 w-18 rounded-full" />
+              </div>
+              <Skeleton className="h-7 w-full rounded-md" />
+            </div>
+          ))}
+        </div>
+      )}
       {error && !isLoading && (
         <ErrorDisplay
           error={error as Error}
