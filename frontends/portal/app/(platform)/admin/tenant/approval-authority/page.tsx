@@ -20,6 +20,23 @@ interface ConfigVar {
   description?: string
 }
 
+async function fetchLocale(token: string): Promise<{ currencyCode: string; locale: string } | null> {
+  const res = await fetch('/api/proxy/admin/platform/locale', {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) return null
+  return res.json() as Promise<{ currencyCode: string; locale: string } | null>
+}
+
+function formatCurrency(value: string, locale: string, currency: string): string | null {
+  if (value.toLowerCase() === 'unlimited') return 'Unlimited'
+  const num = parseFloat(value.replace(/,/g, ''))
+  if (isNaN(num)) return null
+  try {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 0 }).format(num)
+  } catch { return null }
+}
+
 async function fetchConfigVars(type: string, token: string): Promise<ConfigVar[]> {
   const res = await fetch(`/api/proxy/admin/config/vars?type=${type}`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -95,6 +112,13 @@ export default function ApprovalAuthorityPage() {
     enabled: status === 'authenticated',
     staleTime: 300_000,
     retry: 1,
+  })
+
+  const { data: localeData } = useQuery({
+    queryKey: ['pss', 'locale'],
+    queryFn: () => fetchLocale(token),
+    enabled: status === 'authenticated',
+    staleTime: 300_000,
   })
 
   const saveMutation = useMutation({
@@ -183,6 +207,11 @@ export default function ApprovalAuthorityPage() {
                         placeholder="e.g. 10000 or unlimited"
                         aria-label={`Max amount for ${v.varKey}`}
                       />
+                      {formatCurrency(draft, localeData?.locale ?? 'en-US', localeData?.currencyCode ?? 'USD') && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {formatCurrency(draft, localeData?.locale ?? 'en-US', localeData?.currencyCode ?? 'USD')}
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right flex items-center justify-end gap-2">
                       {isDirty && (
@@ -229,6 +258,11 @@ export default function ApprovalAuthorityPage() {
                         if (e.key === 'Escape') { setPendingLevel(null); setPendingAmount('') }
                       }}
                     />
+                    {formatCurrency(pendingAmount, localeData?.locale ?? 'en-US', localeData?.currencyCode ?? 'USD') && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formatCurrency(pendingAmount, localeData?.locale ?? 'en-US', localeData?.currencyCode ?? 'USD')}
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right flex items-center justify-end gap-2">
                     <Button
