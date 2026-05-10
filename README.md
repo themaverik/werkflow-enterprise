@@ -124,10 +124,28 @@ In development, all emails are captured by [Mailpit](http://localhost:8025) — 
 | `SMTP_STARTTLS_REQUIRED` | Set to `true` |
 | `MAIL_FROM` | Sender address (e.g. `noreply@yourdomain.com`) |
 
+## Example Processes
+
+The engine auto-deploys example processes on startup from `services/engine/src/main/resources/processes/examples/`. All are at version 1.
+
+| Category | Process | Description |
+|----------|---------|-------------|
+| Enterprise Cat1 | Procurement Approval | Multi-tier vendor selection + DMN-routed approval |
+| Enterprise Cat1 | CapEx Approval | Capital expenditure request with DOA routing |
+| Enterprise Cat1 | Finance Approval | Finance and budget approval workflow |
+| Enterprise Cat2 | Leave Request | Employee leave application |
+| Enterprise Cat2 | Event Ticket Request | Event attendance request |
+| Enterprise Cat2 | General Approval | Generic DOA-routed approval (amount-gated) |
+| Enterprise Cat2 | Onboarding Checklist | New hire onboarding tasks |
+| Enterprise Cat2 | Asset Request | Hardware/asset procurement with signal correlation |
+
+> Note: Engine Flyway is disabled (`FLYWAY_ENABLED:false`). If adding new DB migrations (V5+), apply them manually to the `flowable` schema via psql — Flowable manages its own schema tables.
+
 ## Documentation
 
 - [Quick Start](./docs/QUICKSTART.md)
 - [Connector Guide](./docs/CONNECTOR-GUIDE.md)
+- [Connector Marketplace](http://localhost:4000/admin/marketplace) — install connectors from the portal (ADMIN role required)
 - [Deployment Configuration](./docs/Deployment-Configuration-Guide.md)
 - [Keycloak Setup](./docs/Keycloak-Implementation-Guide.md)
 - [Architecture Decisions](./docs/Architecture/)

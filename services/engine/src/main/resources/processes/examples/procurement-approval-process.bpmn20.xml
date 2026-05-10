@@ -12,7 +12,14 @@
   <!-- ADR-008: cross-process signal — thrown by procurement, caught by asset-request -->
   <signal id="procurementApprovedSignal" name="procurementApproved" flowable:scope="global"/>
 
-  <process id="procurement-approval-process" name="Procurement Approval Process" isExecutable="true">
+  <process id="procurement-approval-process" name="Procurement Approval Process" isExecutable="true"
+           flowable:versionTag="1">
+
+    <extensionElements>
+      <flowable:properties>
+        <flowable:property name="category" value="examples"/>
+      </flowable:properties>
+    </extensionElements>
 
     <documentation>Purchase request approval workflow with vendor selection and DMN-backed approval routing.
 After calculating total cost, a Business Rule Task evaluates the procurement_matrix decision table to
@@ -21,7 +28,7 @@ An exclusive gateway then routes the request to the appropriate human task. Edit
 to adjust spend thresholds and category rules — no code changes required.</documentation>
 
     <!-- Start Event -->
-    <startEvent id="startEvent" name="Purchase Request Submitted" flowable:formKey="procurement-request">
+    <startEvent id="startEvent" name="Purchase Request Submitted" flowable:formKey="procurement-request-form">
       <documentation>Employee submits a purchase request</documentation>
     </startEvent>
 

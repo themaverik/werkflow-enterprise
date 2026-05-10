@@ -1,0 +1,39 @@
+{
+  "id": "vendor-selection",
+  "name": "Vendor Selection",
+  "versionTag": "1",
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "text": "<h3>Select Vendor</h3><p>Review the list of approved vendors and select the preferred supplier for this purchase request.</p>"
+    },
+    {
+      "type": "textfield",
+      "key": "selectedVendorId",
+      "label": "Selected Vendor ID",
+      "placeholder": "Enter the vendor ID from the approved vendor list",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "selectedVendorName",
+      "label": "Vendor Name",
+      "placeholder": "Enter the vendor name",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "vendorSelectionNotes",
+      "label": "Selection Notes",
+      "placeholder": "Provide justification for vendor selection",
+      "validate": {
+        "maxLength": 1000
+      }
+    }
+  ]
+}
