@@ -1,5 +1,6 @@
 package com.werkflow.admin.controller;
 
+import com.werkflow.admin.designtime.platform.service.CandidateGroupsAggregator;
 import com.werkflow.admin.dto.RoleGroupMappingRequest;
 import com.werkflow.admin.dto.RoleGroupMappingResponse;
 import com.werkflow.admin.security.JwtClaimsExtractor;
@@ -23,6 +24,7 @@ public class RoleGroupMappingController {
 
     private final RoleGroupMappingService service;
     private final JwtClaimsExtractor jwtClaimsExtractor;
+    private final CandidateGroupsAggregator candidateGroupsAggregator;
 
     private String resolveTenant(String tenantCode, Jwt jwt) {
         return (tenantCode != null && !tenantCode.isBlank()) ? tenantCode : jwtClaimsExtractor.getTenantId(jwt);
@@ -49,8 +51,14 @@ public class RoleGroupMappingController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<RoleGroupMappingResponse> create(@Valid @RequestBody RoleGroupMappingRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
+    public ResponseEntity<RoleGroupMappingResponse> create(
+            @Valid @RequestBody RoleGroupMappingRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        String tenant = resolveTenant(request.tenantCode(), jwt);
+        RoleGroupMappingRequest resolved = new RoleGroupMappingRequest(tenant, request.roleName(), request.groupName());
+        RoleGroupMappingResponse result = service.create(resolved);
+        candidateGroupsAggregator.evict(tenant);
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     /** Updates the manager-tier flag on a role-group mapping (ADR-010 visibility policy). */
@@ -69,7 +77,8 @@ public class RoleGroupMappingController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        service.delete(id);
+        String tenantCode = service.delete(id);
+        candidateGroupsAggregator.evict(tenantCode);
         return ResponseEntity.noContent().build();
     }
 }

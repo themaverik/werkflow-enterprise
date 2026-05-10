@@ -30,7 +30,8 @@
     "visibilityPolicy": "Visibility Policy",
     "locale": "Locale & Currency",
     "deadLetterJobs": "Failed Jobs",
-    "processHealth": "Process Health"
+    "processHealth": "Process Health",
+    "datasources": "Datasources"
   },
   "dashboard": {
     "title": "Dashboard",

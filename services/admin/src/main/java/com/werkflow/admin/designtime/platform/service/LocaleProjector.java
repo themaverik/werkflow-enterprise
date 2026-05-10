@@ -7,6 +7,7 @@ import com.werkflow.admin.designtime.platform.dto.LocaleEntry;
 import com.werkflow.admin.repository.ConfigurationVariableRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +38,10 @@ public class LocaleProjector {
                 .map(v -> parseLocaleEntry(v.getVarValue(), tenantCode))
                 .orElse(LocaleEntry.defaultUsd());
     }
+
+    /** Evicts the locale cache for the tenant — call after any LOCALE config var mutation. */
+    @CacheEvict(value = {CacheConfig.PSS_LOCALE, CacheConfig.PSS_CAPABILITIES}, key = "#tenantCode")
+    public void evict(String tenantCode) {}
 
     private LocaleEntry parseLocaleEntry(String json, String tenantCode) {
         try {

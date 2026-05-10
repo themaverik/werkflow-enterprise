@@ -92,6 +92,7 @@ export default function RoleMappingsPage() {
     mutationFn: (body: { roleName: string; groupName: string }) => addMapping(body, token),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tier2Mappings'] })
+      qc.invalidateQueries({ queryKey: ['pss', 'candidateGroups'] })
       setNewRole('')
       setNewGroup('')
       toast.success('Mapping added')
@@ -101,7 +102,10 @@ export default function RoleMappingsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteMapping(id, token),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tier2Mappings'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tier2Mappings'] })
+      qc.invalidateQueries({ queryKey: ['pss', 'candidateGroups'] })
+    },
     onError: () => toast.error('Failed to delete mapping'),
   })
 

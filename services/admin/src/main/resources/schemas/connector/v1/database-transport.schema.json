@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://werkflow.io/schemas/connector/v1/database-transport.schema.json",
+  "title": "Werkflow Database Transport Adapter",
+  "description": "Subschema for `spec.transport.config` and `spec.operations[].transportSpecific` when transport.type=database. Enforces architectural constraints: named queries only (no raw SQL in BPMN), parameterized binding (no string interpolation into SQL), read-mostly by default, view-scoped access recommended, hard row limits.",
+  "type": "object",
+  "$defs": {
+    "TransportConfig": {
+      "type": "object",
+      "required": ["datasourceRef", "queries"],
+      "additionalProperties": false,
+      "properties": {
+        "datasourceRef": {
+          "type": "string",
+          "description": "Reference to a registered Werkflow datasource. JDBC URL and credentials live in the datasource registry, NEVER in the connector definition. The datasource is per-tenant; the same connector definition routes to different DBs across tenants.",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "dialect": {
+          "type": "string",
+          "enum": ["postgresql", "mysql", "oracle", "mssql", "db2", "snowflake", "h2", "ansi"],
+          "default": "ansi",
+          "description": "Used by the engine to select dialect-aware features (e.g., FETCH FIRST vs LIMIT, RETURNING clause support)."
+        },
+        "readOnly": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true (default), the engine sets connection.setReadOnly(true) and rejects queries detected as DML/DDL at registration time. Setting this to false requires an explicit security review and enables write operations — discouraged. Workflow writes should go through REST APIs of the system that owns the data."
+        },
+        "pool": {
+          "type": "object",
+          "description": "Connection pool sizing for this connector. Independent of other connectors targeting the same datasource — prevents one slow connector from starving another.",
+          "properties": {
+            "minSize": { "type": "integer", "minimum": 0, "default": 1 },
+            "maxSize": { "type": "integer", "minimum": 1, "maximum": 50, "default": 5 },
+            "connectionTimeoutSeconds": { "type": "integer", "minimum": 1, "default": 5 },
+            "idleTimeoutSeconds": { "type": "integer", "minimum": 1, "default": 600 }
+          }
+        },
+        "circuitBreaker": {
+          "type": "object",
+          "description": "Fail-fast behavior when the database is unhealthy. Prevents workflow threads from piling up against a dead DB.",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "failureThreshold": { "type": "integer", "minimum": 1, "default": 5 },
+            "resetTimeoutSeconds": { "type": "integer", "minimum": 1, "default": 30 }
+          }
+        },
+        "queries": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "description": "Named, parameterized queries this connector exposes. Operations reference queries by id. SQL is registered here ONCE by an admin/DBA — never composed dynamically from BPMN inputs.",
+          "items": { "$ref": "#/$defs/NamedQuery" }
+        },
+        "schemaAllowlist": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Optional. If present, the engine validates at registration time that every named query references only objects in these schemas. Belt-and-braces alongside DB-level grants. e.g., ['reporting', 'public']."
+        }
+      }
+    },
+    "NamedQuery": {
+      "type": "object",
+      "required": ["id", "sql", "resultMode"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-zA-Z0-9]*$",
+          "description": "Stable identifier referenced from operations[].transportSpecific.queryRef. camelCase."
+        },
+        "sql": {
+          "type": "string",
+          "description": "Parameterized SQL using named parameters (`:paramName`). Parameter values are bound via PreparedStatement — string interpolation is rejected at registration time. The engine parses this for safety: presence of DML keywords (INSERT/UPDATE/DELETE/MERGE/TRUNCATE/DROP/ALTER/CREATE/GRANT) is rejected unless transportConfig.readOnly=false AND the query has a matching writeOperation: true flag.",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "parameters": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/QueryParameter" },
+          "description": "Declared parameters bound to `:paramName` placeholders in `sql`. Order does not matter; binding is by name."
+        },
+        "resultMode": {
+          "type": "string",
+          "enum": ["object", "array", "scalar", "void"],
+          "description": "How the result set maps into the operation's output. `object` = single row → object (errors if 0 or >1 rows). `array` = list of rows. `scalar` = single value (single row, single column). `void` = no result body (for write operations)."
+        },
+        "writeOperation": {
+          "type": "boolean",
+          "default": false,
+          "description": "Must be true for INSERT/UPDATE/DELETE statements. Combined with transportConfig.readOnly=false to actually permit writes. Two-key safety."
+        },
+        "rowLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000,
+          "default": 10000,
+          "description": "Hard upper bound on returned rows. Enforced at the JDBC layer via setMaxRows(). Workflows should not be ETL — if a customer needs >10K rows, that's a signal to redesign as a streaming integration."
+        },
+        "queryTimeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300,
+          "default": 5,
+          "description": "Enforced via Statement.setQueryTimeout(). Default 5s — much shorter than HTTP defaults because workflow DB queries should be reference lookups, not analytics."
+        },
+        "fetchSize": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 100,
+          "description": "JDBC fetch size hint for streaming large result sets. Tune for DB driver: PostgreSQL needs autoCommit=false to honor this; Oracle's default is 10."
+        },
+        "x-werkflow-keysetPagination": {
+          "$ref": "#/$defs/KeysetPagination",
+          "description": "Required when the operation's top-level pagination.strategy=keyset. Keyset is the only sane choice for large tables; OFFSET-based pagination is a footgun and is not supported here."
+        }
+      }
+    },
+    "QueryParameter": {
+      "type": "object",
+      "required": ["name", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+          "description": "Parameter name as it appears in `:paramName` in the SQL. Bound from operation input by exact name match."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["string", "integer", "long", "decimal", "boolean", "date", "timestamp", "uuid", "array-of-string", "array-of-integer"],
+          "description": "JDBC binding type. Drives the PreparedStatement.setX call. `array-of-*` uses Connection.createArrayOf() — not all drivers support arrays; verify against your dialect."
+        },
+        "required": { "type": "boolean", "default": true },
+        "default": {
+          "description": "Default value if the operation input does not supply this parameter. Type must match `type`."
+        },
+        "maxLength": {
+          "type": "integer",
+          "description": "For string parameters. Enforced before binding to prevent oversized inputs from reaching the DB."
+        }
+      }
+    },
+    "KeysetPagination": {
+      "type": "object",
+      "required": ["keyColumns", "ordering"],
+      "description": "Keyset pagination uses the last row's key values as the cursor for the next page. The named query must be authored to accept these as parameters and apply them in a WHERE clause.",
+      "properties": {
+        "keyColumns": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": { "type": "string" },
+          "description": "Columns that uniquely identify a row's position in the ordering. Typically the primary key, or (sortColumn, primaryKey) for non-unique sort columns."
+        },
+        "ordering": {
+          "type": "string",
+          "enum": ["asc", "desc"],
+          "description": "Direction of iteration. Must match the SQL's ORDER BY direction."
+        },
+        "cursorParameters": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Parameter names corresponding to the previous page's last keyColumn values. The engine populates these on subsequent page fetches; the SQL applies them as `WHERE (col1, col2) > (:cursor_col1, :cursor_col2)` (or analogous)."
+        },
+        "pageSizeParameter": {
+          "type": "string",
+          "description": "Parameter name controlling LIMIT / FETCH FIRST n ROWS. Bound from pagination.defaults.pageSize."
+        }
+      }
+    },
+    "OperationTransportSpecific": {
+      "type": "object",
+      "required": ["queryRef"],
+      "additionalProperties": false,
+      "properties": {
+        "queryRef": {
+          "type": "string",
+          "pattern": "^[a-z][a-zA-Z0-9]*$",
+          "description": "References a query by id from transportConfig.queries[]. Validated at registration time — references to undefined queries reject deployment."
+        },
+        "outputMapping": {
+          "type": "object",
+          "description": "Maps result-set columns to output schema fields. Only needed when column names don't match the operation output schema property names. Default: identity mapping (column name = field name).",
+          "additionalProperties": { "type": "string" }
+        },
+        "x-werkflow-emptyResult": {
+          "type": "string",
+          "enum": ["null", "empty-list", "error"],
+          "default": "null",
+          "description": "Behavior when the query returns zero rows. For resultMode=object: `null` (default) sets the variable to null; `error` raises a NOT_FOUND mapped error. For resultMode=array: `empty-list` (default) sets variable to []; other modes are equivalent."
+        }
+      }
+    }
+  }
+}
