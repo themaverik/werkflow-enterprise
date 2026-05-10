@@ -1,63 +1,61 @@
 # Admin Service
 
-User, organization, department, and role management service for werkflow enterprise platform.
+Platform Semantics Service (PSS) and tenant configuration management for Werkflow Enterprise.
 
 ## Overview
 
-This service provides centralized identity and access management (IAM) functionality across all departments.
+Provides tenant-scoped configuration, role-to-group mappings, connector registry, process design-time
+support (BPMN variable scope, DMN facade), and the Platform Semantics Service (PSS) which aggregates
+locale, visibility policy, candidate groups, categories, and FEEL expression catalogs.
 
 ## Responsibilities
 
-- User management (CRUD, profiles)
-- Organization hierarchy management
-- Department management
-- Role and permission management
-- Team management
-- User-role assignment
-- Cross-department user lookup
+- Tenant configuration variables (locale, visibility policy, custom FEEL vars)
+- Role-to-group mappings (Tier 1 YAML read-through, Tier 2 DB-backed)
+- Custody mappings (process custody owner to candidate group routing)
+- Connector registry (connector definitions, tenant endpoints, credentials)
+- Tenant datasource registry (JDBC datasource CRUD, connection test, engine-internal resolver)
+- Connector generators (OpenAPI 3.1 import, JSON Schema import)
+- Keycloak realm role proxy (for Admin UI role dropdowns)
+- PSS endpoints: candidate groups, departments, locale, visibility policy, FEEL expressions
+- BPMN process variable scope analysis (design-time)
+- DMN decision variable facade (design-time)
+- DTDS connector catalog with schema resolution, field flattening, and 30-min Caffeine cache
 
 ## Technology Stack
 
-- Java 17
+- Java 21
 - Spring Boot 3.3.x
-- PostgreSQL 15 (schema: admin_service)
-- OAuth2/JWT authentication
-- Integration with Keycloak for SSO
+- PostgreSQL 15 (schema: `admin_service`)
+- Caffeine in-memory cache (5-minute TTL for PSS endpoints)
+- OAuth2/JWT authentication (Keycloak)
 
 ## Port
 
-- **8083** - HTTP REST API
+- **8083** — HTTP REST API
 
-## Status
+## Key API Endpoints
 
-**TODO**: To be implemented in Phase 1, Week 7-8
-
-## API Endpoints (Planned)
-
-### Users
-- `POST /api/users` - Create user
-- `GET /api/users` - List users
-- `GET /api/users/{id}` - Get user
-- `PUT /api/users/{id}` - Update user
-- `DELETE /api/users/{id}` - Delete user
-
-### Organizations
-- `POST /api/organizations` - Create organization
-- `GET /api/organizations` - List organizations
-- `GET /api/organizations/{id}` - Get organization
-
-### Departments
-- `POST /api/departments` - Create department
-- `GET /api/departments` - List departments
-- `GET /api/departments/{id}` - Get department
-- `PUT /api/departments/{id}` - Update department
-- `DELETE /api/departments/{id}` - Delete department
-
-### Roles
-- `POST /api/roles` - Create role
-- `GET /api/roles` - List roles
-- `POST /api/users/{userId}/roles/{roleId}` - Assign role to user
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/design/platform/candidate-groups` | Aggregated Tier 1 + Tier 2 candidate groups |
+| GET | `/api/v1/design/platform/capabilities` | Full PSS capability bundle |
+| GET/POST/PUT/DELETE | `/api/v1/config/vars` | Tenant configuration variables |
+| GET/POST/DELETE | `/api/v1/config/role-mappings` | Tier 2 role-to-group mappings |
+| GET/POST/PUT/DELETE | `/api/v1/config/datasources` | Tenant JDBC datasource registry |
+| POST | `/api/v1/config/datasources/{ref}/test` | Live connection test |
+| GET | `/api/v1/design/bpmn/variable-scope` | Process variable scope at activity |
+| GET | `/api/v1/design/dmn/variables` | DMN input/output variables |
+| GET | `/api/v1/connectors` | Connector definitions |
+| POST | `/api/v1/connectors/generators/openapi` | Generate connector from OpenAPI 3.1 spec |
+| POST | `/api/v1/connectors/generators/json-schema` | Generate connector stub from JSON Schema |
 
 ## Configuration
 
-See `config/env/.env.admin` for service-specific configuration.
+See `config/env/.env.admin` for environment variables. Key settings:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ENGINE_SERVICE_URL` | `http://werkflow-engine:8081` | Engine service (Docker network) |
+| `ERP_SERVICE_URL` | `http://werkflow-business:8084` | ERP service URL |
+| `KEYCLOAK_URL` | — | Keycloak base URL |

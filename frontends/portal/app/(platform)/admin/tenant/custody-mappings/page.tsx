@@ -84,9 +84,10 @@ interface ChipRowProps {
   onRemoveGroup: (g: string) => void
   groupsError: string
   availableGroups: CandidateGroupEntry[]
+  isLoadingGroups?: boolean
 }
 
-function ChipRow({ groups, onAddGroup, onRemoveGroup, groupsError, availableGroups }: ChipRowProps) {
+function ChipRow({ groups, onAddGroup, onRemoveGroup, groupsError, availableGroups, isLoadingGroups }: ChipRowProps) {
   const unselected = availableGroups.filter((g) => !groups.includes(g.key))
   const tier1 = unselected.filter((g) => g.tier === 1)
   const tier2 = unselected.filter((g) => g.tier === 2)
@@ -144,6 +145,29 @@ function ChipRow({ groups, onAddGroup, onRemoveGroup, groupsError, availableGrou
             )}
           </select>
         )}
+        {isLoadingGroups && unselected.length === 0 && (
+          <select disabled className="h-7 rounded-md border border-input bg-background px-2 text-xs font-mono text-muted-foreground opacity-50">
+            <option>Loading groups…</option>
+          </select>
+        )}
+        {!isLoadingGroups && availableGroups.length === 0 && (
+          <input
+            type="text"
+            placeholder="group name + Enter"
+            className="h-7 rounded-md border border-input bg-background px-2 text-xs font-mono text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            aria-label="Add candidate group by name"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const val = e.currentTarget.value.trim()
+                if (val && !groups.includes(val)) {
+                  onAddGroup(val)
+                  e.currentTarget.value = ''
+                }
+                e.preventDefault()
+              }
+            }}
+          />
+        )}
       </div>
       {groupsError && <p className="text-destructive text-xs mt-1">{groupsError}</p>}
     </div>
@@ -161,7 +185,7 @@ export default function CustodyMappingsPage() {
   const [addingNew, setAddingNew] = useState(false)
   const [newState, setNewState] = useState<EditState>(blankEditState())
 
-  const { data: availableGroups = [] } = useCandidateGroups()
+  const { data: availableGroups = [], isLoading: isLoadingGroups } = useCandidateGroups()
 
   const { data: mappings = [], isLoading } = useQuery({
     queryKey: ['custodyMappings'],
@@ -288,6 +312,7 @@ export default function CustodyMappingsPage() {
                       onRemoveGroup={(g) => setEditState((s) => ({ ...s, candidateGroups: s.candidateGroups.filter((x) => x !== g) }))}
                       groupsError={editState.groupsError}
                       availableGroups={availableGroups}
+                      isLoadingGroups={isLoadingGroups}
                     />
                   </td>
                   <td className="px-4 py-3 align-top">
@@ -386,6 +411,7 @@ export default function CustodyMappingsPage() {
                     onRemoveGroup={(g) => setNewState((s) => ({ ...s, candidateGroups: s.candidateGroups.filter((x) => x !== g) }))}
                     groupsError={newState.groupsError}
                     availableGroups={availableGroups}
+                    isLoadingGroups={isLoadingGroups}
                   />
                 </td>
                 <td className="px-4 py-3 align-top">
@@ -434,9 +460,15 @@ export default function CustodyMappingsPage() {
             </dd>
           </div>
           <div>
-            <dt className="font-semibold text-foreground">Process Custody (set in the process designer)</dt>
+            <dt className="font-semibold text-foreground">Approval Group</dt>
             <dd className="mt-0.5 leading-relaxed">
-              Definition governance. Records which department owns a process, its category, and searchable tags. Set once per process definition.
+              The Flowable candidate group assigned to a BPMN user task. Maps to a set of Keycloak roles. Configured per task in the process designer.
+            </dd>
+          </div>
+          <div>
+            <dt className="font-semibold text-foreground">Custody Owner</dt>
+            <dd className="mt-0.5 leading-relaxed">
+              The department or entity that owns a process (e.g. DEPT:FINANCE). Used to look up which approval groups handle tasks in that process at runtime.
             </dd>
           </div>
         </dl>

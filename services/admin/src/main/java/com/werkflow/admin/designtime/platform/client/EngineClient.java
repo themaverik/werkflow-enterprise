@@ -23,7 +23,7 @@ public class EngineClient {
 
     private final RestTemplate restTemplate;
 
-    @Value("${app.engine-service.url:http://werkflow-engine:8080}")
+    @Value("${app.engine-service.url:http://werkflow-engine:8081}")
     private String engineBaseUrl;
 
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
