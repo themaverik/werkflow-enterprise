@@ -208,11 +208,15 @@ export default function RoleMappingsPage() {
               {/* Add row */}
               <tr className="bg-muted/20 border-t border-border">
                 <td className="px-4 py-3">
-                  <Select value={newRole} onValueChange={setNewRole}>
+                  <Select
+                    value={newRole || '__none__'}
+                    onValueChange={(v) => setNewRole(v === '__none__' ? '' : v)}
+                  >
                     <SelectTrigger className="h-8 text-xs font-mono" aria-label="Select Keycloak role">
                       <SelectValue placeholder="Select role…" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__none__" className="text-xs text-muted-foreground">Select role…</SelectItem>
                       {realmRoles.map((r) => (
                         <SelectItem key={r} value={r} className="font-mono text-xs">{r}</SelectItem>
                       ))}

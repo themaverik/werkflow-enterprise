@@ -247,7 +247,7 @@ export default function ExpressionBuilder({
                   {index > 0 && (
                     <div>
                       <Select
-                        value={condition.logicalOperator}
+                        value={condition.logicalOperator ?? 'AND'}
                         onValueChange={(value: 'AND' | 'OR') =>
                           updateCondition(index, { logicalOperator: value })
                         }
@@ -268,13 +268,14 @@ export default function ExpressionBuilder({
                       <Label className="text-xs">{t('variable')}</Label>
                       {availableVariables.length > 0 ? (
                         <Select
-                          value={condition.variable}
-                          onValueChange={(value) => updateCondition(index, { variable: value })}
+                          value={condition.variable || '__none__'}
+                          onValueChange={(value) => updateCondition(index, { variable: value === '__none__' ? '' : value })}
                         >
                           <SelectTrigger className="h-8 text-xs">
                             <SelectValue placeholder="Select" />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="__none__">Select variable…</SelectItem>
                             {availableVariables.map((variable) => (
                               <SelectItem key={variable} value={variable}>
                                 {variable}
@@ -316,13 +317,14 @@ export default function ExpressionBuilder({
                       <div className="flex gap-1">
                         {condition.variable && catalogValues[condition.variable] ? (
                           <Select
-                            value={condition.value}
-                            onValueChange={(v) => updateCondition(index, { value: v })}
+                            value={condition.value || '__none__'}
+                            onValueChange={(v) => updateCondition(index, { value: v === '__none__' ? '' : v })}
                           >
                             <SelectTrigger className="h-8 text-xs flex-1">
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
+                              <SelectItem value="__none__">Select value…</SelectItem>
                               {catalogValues[condition.variable].map((opt) => (
                                 <SelectItem key={opt.value} value={opt.value}>
                                   {opt.label}

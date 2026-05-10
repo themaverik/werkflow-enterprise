@@ -395,12 +395,15 @@ export default function ServiceTaskPropertiesPanel({
             <p className="text-xs text-muted-foreground">Loading connectors…</p>
           )}
           {!dtdsConnectors.isLoading && (
-            <Select value={selectedConnectorKey} onValueChange={handleConnectorSelect}>
+            <Select
+              value={selectedConnectorKey || '__none__'}
+              onValueChange={v => handleConnectorSelect(v === '__none__' ? '' : v)}
+            >
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue placeholder="(none)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">(none)</SelectItem>
+                <SelectItem value="__none__">(none)</SelectItem>
                 {dtdsConnectors.connectors.length > 0
                   ? dtdsConnectors.connectors.map(c => (
                       <SelectItem key={c.key} value={c.key}>
