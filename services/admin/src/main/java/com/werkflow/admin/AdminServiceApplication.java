@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.scheduling.annotation.EnableAsync;
 
 @SpringBootApplication(scanBasePackages = {"com.werkflow.admin", "com.werkflow.common"})
-@EnableJpaAuditing
+@EnableJpaAuditing(dateTimeProviderRef = "offsetDateTimeProvider")
 @EnableAsync
 public class AdminServiceApplication {
 
