@@ -45,13 +45,17 @@ export function DtdsOperationPicker({
     )
   }
 
+  const NONE = '__none__'
   return (
-    <Select value={value} onValueChange={onChange}>
+    <Select
+      value={value || NONE}
+      onValueChange={v => onChange(v === NONE ? '' : v)}
+    >
       <SelectTrigger className="h-8 text-xs">
         <SelectValue placeholder="Select operation" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="">
+        <SelectItem value={NONE}>
           (none)
         </SelectItem>
         {operations.map(op => (
