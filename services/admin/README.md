@@ -17,7 +17,7 @@ locale, visibility policy, candidate groups, categories, and FEEL expression cat
 - Tenant datasource registry (JDBC datasource CRUD, connection test with rate limiting, engine-internal resolver)
 - Connector generators (OpenAPI 3.1 import — $ref SSRF-safe, JSON Schema import)
 - Keycloak realm role proxy (for Admin UI role dropdowns)
-- PSS endpoints: candidate groups, departments, locale, visibility policy, FEEL expressions
+- PSS endpoints: candidate groups, departments, locale, visibility policy, FEEL expressions, visible-processes
 - BPMN process variable scope analysis (design-time)
 - DMN decision variable facade (design-time)
 - DTDS connector catalog with schema resolution, field flattening, and 30-min Caffeine cache
@@ -40,6 +40,7 @@ locale, visibility policy, candidate groups, categories, and FEEL expression cat
 |--------|------|-------------|
 | GET | `/api/v1/design/platform/candidate-groups` | Aggregated Tier 1 + Tier 2 candidate groups |
 | GET | `/api/v1/design/platform/capabilities` | Full PSS capability bundle |
+| GET | `/api/v1/design/platform/visible-processes` | ADR-010 §3 visibility-filtered process key list (any authenticated user) |
 | GET/POST/PUT/DELETE | `/api/v1/config/vars` | Tenant configuration variables |
 | GET/POST/DELETE | `/api/v1/config/role-mappings` | Tier 2 role-to-group mappings |
 | GET/POST/PUT/DELETE | `/api/v1/config/datasources` | Tenant JDBC datasource registry |
