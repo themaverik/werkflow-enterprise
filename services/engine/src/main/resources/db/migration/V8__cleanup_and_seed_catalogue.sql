@@ -73,6 +73,7 @@ DELETE FROM form_schemas
 WHERE form_key IN (
     'asset-transfer',
     'capex-approval',
+    'document-review-form',
     'sla-escalation-form',
     'sla-escalation-decision',
     'committee-review-start',
