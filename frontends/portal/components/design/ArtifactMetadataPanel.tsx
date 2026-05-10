@@ -1,15 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { ChevronDown } from 'lucide-react'
 import { usePlatformCapabilities, useCategories, useDepartments } from '@/lib/platform/usePlatformCapabilities'
 import { platformApi } from '@/lib/platform/api'
 import type { ArtifactMetadata, TagEntry } from '@/lib/platform/types'
+import { PssPill, FeelChip, MetaRow, Note } from './panel-primitives'
 
 interface Props {
   artifactType: 'process' | 'form' | 'dmn'
@@ -19,8 +16,9 @@ interface Props {
 
 /**
  * Shared metadata panel used by BPMN, Form, and DMN designers.
- * Provides department (visibility), category (catalog), and tags (search) inputs.
- * Per ADR-010: department is visibility scoping only — not a routing input.
+ * Provides department (visibility scoping), category (catalog), and tags (search).
+ * Per ADR-010: department is visibility only — not a routing input.
+ * Styled to match design spec (section 4 — Metadata · ADR-010).
  */
 export function ArtifactMetadataPanel({ value, onChange }: Props) {
   const { data: session, status } = useSession()
@@ -33,11 +31,16 @@ export function ArtifactMetadataPanel({ value, onChange }: Props) {
   const [tagInput, setTagInput] = useState('')
   const [tagSuggestions, setTagSuggestions] = useState<TagEntry[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [deptOpen, setDeptOpen] = useState(false)
+  const [catOpen, setCatOpen] = useState(false)
+  const deptRef = useRef<HTMLDivElement>(null)
+  const catRef = useRef<HTMLDivElement>(null)
 
   const erpConnected = capabilities?.erpConnected ?? false
   const showDepartment = erpConnected && departments.length > 0
+  const hasCategories = categories.length > 0
 
-  // Fetch tag autocomplete suggestions
+  // Tag autocomplete
   useEffect(() => {
     if (!token || tagInput.trim().length < 1) {
       setTagSuggestions([])
@@ -47,6 +50,16 @@ export function ArtifactMetadataPanel({ value, onChange }: Props) {
       .then(setTagSuggestions)
       .catch(() => setTagSuggestions([]))
   }, [tagInput, token])
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function onOutside(e: MouseEvent) {
+      if (deptRef.current && !deptRef.current.contains(e.target as Node)) setDeptOpen(false)
+      if (catRef.current && !catRef.current.contains(e.target as Node)) setCatOpen(false)
+    }
+    document.addEventListener('mousedown', onOutside)
+    return () => document.removeEventListener('mousedown', onOutside)
+  }, [])
 
   const addTag = (tag: string) => {
     const normalized = tag.toLowerCase().trim()
@@ -68,104 +81,331 @@ export function ArtifactMetadataPanel({ value, onChange }: Props) {
     }
   }
 
+  const selectedDept = value.departmentCode
+    ? departments.find((d) => d.code === value.departmentCode)
+    : undefined
+
+  const selectedCat = value.categoryCode
+    ? categories.find((c) => c.code === value.categoryCode)
+    : undefined
+
   return (
-    <div className="space-y-4 p-4 border rounded-md bg-muted/30">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      {/* Section eyebrow */}
+      <p
+        style={{
+          fontSize: '10px',
+          color: '#6b7e8c',
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          fontWeight: 700,
+        }}
+      >
         Metadata
       </p>
 
+      {/* ── Department ── */}
       {showDepartment && (
-        <div className="space-y-1">
-          <Label className="text-xs">
-            Department
-            <span className="text-muted-foreground ml-1">(visibility scope)</span>
-          </Label>
-          <Select
-            value={value.departmentCode || '__none__'}
-            onValueChange={(v) => onChange({ ...value, departmentCode: v === '__none__' ? undefined : v })}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <label
+            style={{ fontSize: '11px', color: '#6b7e8c', fontWeight: 500 }}
           >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder="All departments (visible to all)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">All departments</SelectItem>
-              {departments.map((d) => (
-                <SelectItem key={d.code} value={d.code}>
-                  {d.displayName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            Choose a department to scope visibility, or leave empty for all-departments visibility.
+            Department
+          </label>
+          <div ref={deptRef} style={{ position: 'relative' }}>
+            <MetaRow bound={!!selectedDept}>
+              {selectedDept ? (
+                <FeelChip
+                  label={selectedDept.displayName}
+                  kind="dept"
+                  onRemove={() => {
+                    onChange({ ...value, departmentCode: undefined })
+                    setDeptOpen(false)
+                  }}
+                />
+              ) : (
+                <span style={{ color: '#a8b9c4', fontSize: '12px' }}>
+                  All departments
+                </span>
+              )}
+              <ChevronDown
+                size={13}
+                style={{ color: '#a8b9c4', flexShrink: 0, cursor: 'pointer' }}
+                onClick={() => setDeptOpen((o) => !o)}
+                aria-label="Toggle department picker"
+              />
+            </MetaRow>
+            {deptOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 4px)',
+                  left: 0,
+                  right: 0,
+                  zIndex: 20,
+                  background: '#fff',
+                  border: '1px solid #e2eaee',
+                  borderRadius: '6px',
+                  boxShadow: '0 2px 8px rgba(15,30,42,0.06)',
+                  overflow: 'hidden',
+                }}
+                role="listbox"
+                aria-label="Select department"
+              >
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={!selectedDept}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '7px 10px',
+                    fontSize: '12px',
+                    border: 'none',
+                    background: !selectedDept ? '#e6f1fb' : 'transparent',
+                    color: !selectedDept ? '#0c447c' : '#0f1e2a',
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => {
+                    onChange({ ...value, departmentCode: undefined })
+                    setDeptOpen(false)
+                  }}
+                >
+                  All departments (empty)
+                </button>
+                {departments.map((d) => (
+                  <button
+                    key={d.code}
+                    type="button"
+                    role="option"
+                    aria-selected={value.departmentCode === d.code}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '7px 10px',
+                      fontSize: '12px',
+                      border: 'none',
+                      borderTop: '1px solid #eef2f5',
+                      background: value.departmentCode === d.code ? '#e6f1fb' : 'transparent',
+                      color: value.departmentCode === d.code ? '#0c447c' : '#0f1e2a',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => {
+                      onChange({ ...value, departmentCode: d.code })
+                      setDeptOpen(false)
+                    }}
+                  >
+                    {d.displayName}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <PssPill endpoint="/departments" />
+          <p style={{ fontSize: '10px', color: '#6b7e8c', lineHeight: 1.5, marginTop: '2px' }}>
+            Single value or empty. Empty = visible to all.
           </p>
         </div>
       )}
 
-      <div className="space-y-1">
-        <Label className="text-xs">Category</Label>
-        <Select
-          value={value.categoryCode || '__none__'}
-          onValueChange={(v) => onChange({ ...value, categoryCode: v === '__none__' ? undefined : v })}
-        >
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue placeholder="Select category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">Uncategorized</SelectItem>
-            {categories.map((c) => (
-              <SelectItem key={c.id} value={c.code}>
-                {c.displayName}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* ── Category ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <label style={{ fontSize: '11px', color: '#6b7e8c', fontWeight: 500 }}>
+          Category
+        </label>
+        {!hasCategories ? (
+          <Note variant="muted">
+            No categories configured.{' '}
+            <a
+              href="/admin/tenant/categories"
+              style={{ color: '#149ba5', textDecoration: 'underline' }}
+            >
+              configure →
+            </a>
+          </Note>
+        ) : (
+          <div ref={catRef} style={{ position: 'relative' }}>
+            <MetaRow bound={!!selectedCat}>
+              {selectedCat ? (
+                <FeelChip
+                  label={selectedCat.displayName}
+                  kind="cat"
+                  onRemove={() => {
+                    onChange({ ...value, categoryCode: undefined })
+                    setCatOpen(false)
+                  }}
+                />
+              ) : (
+                <span style={{ color: '#a8b9c4', fontSize: '12px' }}>
+                  Uncategorized
+                </span>
+              )}
+              <ChevronDown
+                size={13}
+                style={{ color: '#a8b9c4', flexShrink: 0, cursor: 'pointer' }}
+                onClick={() => setCatOpen((o) => !o)}
+                aria-label="Toggle category picker"
+              />
+            </MetaRow>
+            {catOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 4px)',
+                  left: 0,
+                  right: 0,
+                  zIndex: 20,
+                  background: '#fff',
+                  border: '1px solid #e2eaee',
+                  borderRadius: '6px',
+                  boxShadow: '0 2px 8px rgba(15,30,42,0.06)',
+                  overflow: 'hidden',
+                }}
+                role="listbox"
+                aria-label="Select category"
+              >
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={!selectedCat}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '7px 10px',
+                    fontSize: '12px',
+                    border: 'none',
+                    background: !selectedCat ? '#e1f5ee' : 'transparent',
+                    color: !selectedCat ? '#085041' : '#0f1e2a',
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => {
+                    onChange({ ...value, categoryCode: undefined })
+                    setCatOpen(false)
+                  }}
+                >
+                  Uncategorized
+                </button>
+                {categories.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    role="option"
+                    aria-selected={value.categoryCode === c.code}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '7px 10px',
+                      fontSize: '12px',
+                      border: 'none',
+                      borderTop: '1px solid #eef2f5',
+                      background: value.categoryCode === c.code ? '#e1f5ee' : 'transparent',
+                      color: value.categoryCode === c.code ? '#085041' : '#0f1e2a',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => {
+                      onChange({ ...value, categoryCode: c.code })
+                      setCatOpen(false)
+                    }}
+                  >
+                    {c.displayName}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        <PssPill endpoint="/categories" />
+        <p style={{ fontSize: '10px', color: '#6b7e8c', lineHeight: 1.5, marginTop: '2px' }}>
+          Tenant-registered controlled vocabulary.
+        </p>
       </div>
 
-      <div className="space-y-1">
-        <Label className="text-xs">Tags</Label>
-        <div className="flex flex-wrap gap-1 mb-1">
+      {/* ── Tags ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <label style={{ fontSize: '11px', color: '#6b7e8c', fontWeight: 500 }}>
+          Tags
+        </label>
+        <MetaRow>
           {value.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-xs gap-1">
-              {tag}
-              <button
-                type="button"
-                onClick={() => removeTag(tag)}
-                className="ml-1 opacity-60 hover:opacity-100 text-xs leading-none"
-              >
-                ×
-              </button>
-            </Badge>
+            <FeelChip
+              key={tag}
+              label={`#${tag}`}
+              kind="tag"
+              onRemove={() => removeTag(tag)}
+            />
           ))}
-        </div>
-        <div className="relative">
-          <Input
-            className="h-7 text-xs"
-            placeholder="Add tag and press Enter"
-            value={tagInput}
-            onChange={(e) => {
-              setTagInput(e.target.value)
-              setShowSuggestions(true)
-            }}
-            onKeyDown={handleTagKeyDown}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-          />
-          {showSuggestions && tagSuggestions.length > 0 && (
-            <div className="absolute z-10 top-full mt-1 w-full border rounded bg-background shadow text-xs">
-              {tagSuggestions.slice(0, 8).map((s) => (
-                <button
-                  key={s.tag}
-                  type="button"
-                  className="w-full text-left px-2 py-1 hover:bg-muted flex justify-between"
-                  onMouseDown={() => addTag(s.tag)}
-                >
-                  <span>{s.tag}</span>
-                  <span className="text-muted-foreground">{s.usageCount}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+          <div style={{ position: 'relative', flex: 1, minWidth: '80px' }}>
+            <input
+              type="text"
+              placeholder={value.tags.length === 0 ? 'add tag…' : '+'}
+              value={tagInput}
+              onChange={(e) => {
+                setTagInput(e.target.value)
+                setShowSuggestions(true)
+              }}
+              onKeyDown={handleTagKeyDown}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+              aria-label="Add tag"
+              style={{
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                fontSize: '11px',
+                color: '#0f1e2a',
+                width: '100%',
+                padding: '1px 2px',
+                fontFamily: 'inherit',
+              }}
+            />
+            {showSuggestions && tagSuggestions.length > 0 && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 4px)',
+                  left: 0,
+                  right: 0,
+                  zIndex: 20,
+                  background: '#fff',
+                  border: '1px solid #e2eaee',
+                  borderRadius: '6px',
+                  boxShadow: '0 2px 8px rgba(15,30,42,0.06)',
+                  overflow: 'hidden',
+                  minWidth: '160px',
+                }}
+                role="listbox"
+                aria-label="Tag suggestions"
+              >
+                {tagSuggestions.slice(0, 8).map((s) => (
+                  <button
+                    key={s.tag}
+                    type="button"
+                    role="option"
+                    aria-selected={false}
+                    onMouseDown={() => addTag(s.tag)}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '6px 10px',
+                      fontSize: '11px',
+                      border: 'none',
+                      borderTop: '1px solid #eef2f5',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      color: '#0f1e2a',
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    <span>{s.tag}</span>
+                    <span style={{ color: '#6b7e8c', fontSize: '10px' }}>{s.usageCount}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </MetaRow>
+        <PssPill endpoint="/tags · autocomplete" />
       </div>
     </div>
   )

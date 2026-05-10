@@ -1,9 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
+    /* ── Werkflow design tokens ──────────────────────────── */
+    --wf-accent: #149ba5;
+    --wf-accent-dk: #0e7a83;
+    --wf-accent-lt: #dff4f5;
+    --wf-accent-bg: #f0fafb;
+    --wf-brand: #111c27;
+    --wf-brand-2: #1a2d3d;
+    --wf-text: #0f1e2a;
+    --wf-text-2: #354a5b;
+    --wf-muted: #6b7e8c;
+    --wf-light: #a8b9c4;
+    --wf-border: #e2eaee;
+    --wf-border-2: #eef2f5;
+    --wf-bg: #f0f4f6;
+    --wf-card: #ffffff;
+    --wf-canvas: #edf2f5;
+
+    --wf-success: #16a34a;
+    --wf-success-bg: #f0fdf4;
+    --wf-warning: #c27b00;
+    --wf-warning-bg: #fffbeb;
+    --wf-danger: #dc2626;
+    --wf-danger-bg: #fef2f2;
+    --wf-info: #1d4ed8;
+    --wf-info-bg: #eff6ff;
+    --wf-purple: #7c3aed;
+
+    --wf-radius: 8px;
+    --wf-radius-sm: 6px;
+    --wf-radius-lg: 12px;
+    --wf-shadow-sm: 0 1px 2px rgba(15,30,42,0.04);
+    --wf-shadow: 0 2px 8px rgba(15,30,42,0.06);
+    --wf-shadow-lg: 0 12px 40px rgba(15,30,42,0.12);
     /* Sidebar tokens */
     --sidebar-bg: #111c27;
     --sidebar-bg-hsl: 210 39% 11%;
