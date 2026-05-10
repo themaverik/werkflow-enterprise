@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Pattern;
 /**
  * Request body for creating or updating a tenant datasource registration.
  *
- * <p>On create, {@code passwordSecretRef} is required. On update, it may be omitted
+ * <p>On create, {@code password} is required. On update, it may be omitted
  * (null or blank) to keep the existing value — the service skips the field when null.</p>
  */
 public record TenantDatasourceRequest(
@@ -29,12 +29,13 @@ public record TenantDatasourceRequest(
     String username,
 
     /**
-     * Key reference into the secrets manager — NOT the raw password.
-     * Example: {@code werkflow.secrets.db.hris-password}.
-     * May be null or blank on update to retain the existing value.
+     * Plaintext password supplied by the user. The admin service encrypts this
+     * value using AES-256-GCM (via {@link com.werkflow.common.security.EncryptionService})
+     * before persisting — the raw value is never stored.
+     * May be null or blank on update to retain the existing encrypted value.
      */
     @Nullable
-    String passwordSecretRef,
+    String password,
 
     String dialect,
 

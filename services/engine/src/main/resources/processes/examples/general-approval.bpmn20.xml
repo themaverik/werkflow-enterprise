@@ -9,7 +9,14 @@
              expressionLanguage="http://www.w3.org/1999/XPath"
              targetNamespace="http://werkflow.com/bpmn/examples">
 
-  <process id="general-approval" name="General Approval" isExecutable="true">
+  <process id="general-approval" name="General Approval" isExecutable="true"
+           flowable:versionTag="1">
+
+    <extensionElements>
+      <flowable:properties>
+        <flowable:property name="category" value="examples"/>
+      </flowable:properties>
+    </extensionElements>
 
     <documentation>General-purpose approval workflow. Demonstrates DOA-based routing: requests up to $50K require Manager approval only; requests over $50K also require Director approval. Engine-internal — no external API calls. Email notifications are sent automatically by GlobalTaskNotificationListener on task assignment and completion.</documentation>
 

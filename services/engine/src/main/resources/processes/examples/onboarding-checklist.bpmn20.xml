@@ -9,7 +9,14 @@
              expressionLanguage="http://www.w3.org/1999/XPath"
              targetNamespace="http://werkflow.com/bpmn/examples">
 
-  <process id="onboarding-checklist" name="Onboarding Checklist" isExecutable="true">
+  <process id="onboarding-checklist" name="Onboarding Checklist" isExecutable="true"
+           flowable:versionTag="1">
+
+    <extensionElements>
+      <flowable:properties>
+        <flowable:property name="category" value="examples"/>
+      </flowable:properties>
+    </extensionElements>
 
     <documentation>Employee onboarding workflow. HR submits the new hire details; IT and Facilities tasks run in parallel; once both are complete a manager assigns a buddy. Demonstrates parallel gateway usage. Engine-internal — no external API calls.</documentation>
 

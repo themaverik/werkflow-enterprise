@@ -1,0 +1,35 @@
+{
+  "id": "general-approval-decision",
+  "name": "Approval Decision",
+  "versionTag": "1",
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "text": "<h3>Approval Decision</h3><p>Review the request details and enter your decision below.</p>"
+    },
+    {
+      "type": "select",
+      "key": "decision",
+      "label": "Decision",
+      "values": [
+        { "label": "Approve", "value": "approve" },
+        { "label": "Reject", "value": "reject" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "comments",
+      "label": "Comments",
+      "placeholder": "Provide justification for your decision",
+      "validate": {
+        "required": true,
+        "minLength": 5,
+        "maxLength": 2000
+      }
+    }
+  ]
+}
