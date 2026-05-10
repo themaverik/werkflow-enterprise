@@ -54,6 +54,15 @@ Exposes design-time APIs consumed by the Admin Service and Portal.
 
 `DatabaseConnectorDelegate` uses per-tenant HikariCP pools managed by `DatasourceRegistry` and wraps each execution in a Resilience4j circuit breaker keyed `{tenantCode}:{connectorKey}`.
 
+## Security Properties
+
+| Property | Enforced at |
+|----------|-------------|
+| SQL comments stripped before DML keyword rejection | `NamedQueryExecutor.rejectDml()` |
+| `DsKey(tenantCode, ref)` record — no string-concat key collision | `DatasourceRegistry` pool cache |
+| Database password resolved locally via `SecretsResolver` — never received over the wire | `DatasourceRegistry` |
+| Circuit breaker entries evicted on datasource removal | `DatasourceRegistry.evict()` |
+
 ## Configuration
 
 See `config/env/.env.engine` for environment variables. Key settings:
