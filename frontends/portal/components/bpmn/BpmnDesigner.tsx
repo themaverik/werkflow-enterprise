@@ -795,11 +795,11 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
       {/* Main content area with canvas and properties panel */}
       <div className="flex flex-1 overflow-hidden">
         {/* BPMN Canvas */}
-        <div ref={containerRef} className="flex-1 bg-gray-50" />
+        <div ref={containerRef} className="flex-1 bg-gray-50 dark:bg-gray-900" />
 
         {/* Properties Panel */}
         {showProperties && (
-          <div className="w-80 border-l bg-white overflow-auto flex flex-col">
+          <div className="w-80 border-l bg-background overflow-auto flex flex-col">
             {/* Native bpmn-js properties panel — hidden when a fully custom panel takes over */}
             <div
               ref={propertiesPanelRef}
@@ -812,10 +812,10 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
                 <button
                   type="button"
                   onClick={() => setShowExprBuilder((v) => !v)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left hover:bg-muted/40 transition-colors"
                 >
                   <span>Expression Builder</span>
-                  <span className="text-xs text-gray-400">{showExprBuilder ? '▲' : '▼'}</span>
+                  <span className="text-xs text-muted-foreground">{showExprBuilder ? '▲' : '▼'}</span>
                 </button>
                 {showExprBuilder && (
                   <div className="p-3 overflow-auto">
@@ -852,6 +852,9 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
               </div>
             )}
 
+            {/* Custody Groups reference panel */}
+            <CustodyGroupsPanel mappings={custodyMappings} />
+
             {/* Artifact metadata — always shown at bottom of properties panel */}
             <div className="border-t">
               <ArtifactMetadataPanel
@@ -863,6 +866,51 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// ── CustodyGroupsPanel ────────────────────────────────────────────────────────
+// Collapsible reference panel listing custody group candidate-group keys.
+// Rendered in the React portal shell (not inside bpmn-js) — Tailwind is safe here.
+function CustodyGroupsPanel({ mappings }: { mappings: CustodyMappingResponse[] }) {
+  const [open, setOpen] = useState(true)
+
+  return (
+    <div className="border-t border-border">
+      <button
+        type="button"
+        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:bg-muted/30"
+        onClick={() => setOpen((o) => !o)}
+      >
+        Custody Groups
+        <span>{open ? '−' : '+'}</span>
+      </button>
+      {open && (
+        <div className="px-3 pb-3 space-y-1">
+          {mappings.length === 0 && (
+            <p className="text-xs text-muted-foreground">No custody mappings configured.</p>
+          )}
+          {mappings.map((m) => (
+            <div key={m.id} className="space-y-0.5">
+              <p className="text-xs font-mono text-foreground">{m.custodyOwner}</p>
+              <div className="flex flex-wrap gap-1">
+                {m.candidateGroups.map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    title="Click to copy"
+                    className="text-xs font-mono px-1.5 py-0.5 rounded border border-border bg-muted hover:bg-accent/20 cursor-copy"
+                    onClick={() => navigator.clipboard.writeText(g)}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

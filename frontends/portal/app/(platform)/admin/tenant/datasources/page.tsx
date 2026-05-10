@@ -14,13 +14,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Plus, RefreshCw, Pencil, Trash2, Database } from 'lucide-react'
+import { Plus, RefreshCw, Pencil, Trash2, Database, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   listDatasources,
   deleteDatasource,
+  testDatasourceConnection,
   type TenantDatasourceResponse,
 } from '@/lib/api/datasources'
+
+type HealthResult = { ok: boolean; message: string } | 'testing'
 
 export default function DatasourcesPage() {
   const { data: session, status } = useSession()
@@ -28,6 +31,17 @@ export default function DatasourcesPage() {
   const router = useRouter()
   const qc = useQueryClient()
   const [deletingRef, setDeletingRef] = useState<string | null>(null)
+  const [healthResults, setHealthResults] = useState<Record<string, HealthResult>>({})
+
+  const handleTest = async (ref: string) => {
+    setHealthResults((r) => ({ ...r, [ref]: 'testing' }))
+    try {
+      const result = await testDatasourceConnection(ref, token)
+      setHealthResults((r) => ({ ...r, [ref]: { ok: result.ok, message: result.message ?? '' } }))
+    } catch {
+      setHealthResults((r) => ({ ...r, [ref]: { ok: false, message: 'Connection failed' } }))
+    }
+  }
 
   const { data: datasources = [], isLoading, error, refetch } = useQuery({
     queryKey: ['tenant-datasources'],
@@ -119,6 +133,8 @@ export default function DatasourcesPage() {
               datasource={ds}
               onEdit={() => router.push(`/admin/tenant/datasources/${ds.ref}/edit`)}
               onDelete={() => setDeletingRef(ds.ref)}
+              health={healthResults[ds.ref]}
+              onTest={() => handleTest(ds.ref)}
             />
           ))}
         </div>
@@ -164,10 +180,14 @@ function DatasourceCard({
   datasource,
   onEdit,
   onDelete,
+  health,
+  onTest,
 }: {
   datasource: TenantDatasourceResponse
   onEdit: () => void
   onDelete: () => void
+  health?: HealthResult
+  onTest: () => void
 }) {
   return (
     <Card className="flex flex-col">
@@ -222,6 +242,37 @@ function DatasourceCard({
         <p className="text-xs text-muted-foreground font-mono truncate">
           {datasource.driverClassName}
         </p>
+
+        {/* Health row */}
+        <div className="flex items-center gap-2 pt-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 text-xs px-2"
+            onClick={onTest}
+            disabled={health === 'testing'}
+          >
+            {health === 'testing' ? (
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+            ) : null}
+            Test
+          </Button>
+          {health === 'testing' && (
+            <span className="text-xs text-muted-foreground">Testing…</span>
+          )}
+          {health && health !== 'testing' && health.ok && (
+            <span className="flex items-center gap-1 text-xs" style={{ color: '#149ba5' }}>
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-current" />
+              Connected
+            </span>
+          )}
+          {health && health !== 'testing' && !health.ok && (
+            <span className="flex items-center gap-1 text-xs text-destructive">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-current" />
+              {health.message || 'Failed'}
+            </span>
+          )}
+        </div>
       </CardContent>
     </Card>
   )

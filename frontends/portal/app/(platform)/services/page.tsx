@@ -5,17 +5,11 @@ import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import { getProcessDefinitions } from '@/lib/api/flowable'
-import { useCategories, useDepartments, usePlatformCapabilities } from '@/lib/platform/usePlatformCapabilities'
+import { useCategories, useDepartments } from '@/lib/platform/usePlatformCapabilities'
 import { FeelChip, Note } from '@/components/design/panel-primitives'
 import { ChevronRight, Play, Tag, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { CategoryEntry, DepartmentEntry } from '@/lib/platform/types'
-
-// ── Visibility rule (ADR-010 §3, client-side) ─────────────────────────────
-// admins/designers: see all
-// managers with managerScope=ALL_DEPTS: see all
-// employees: see own-dept + null-dept artifacts
-// null departmentCode = visible to all
 
 interface ProcessDef {
   id: string
@@ -24,22 +18,10 @@ interface ProcessDef {
   category: string | undefined
 }
 
-function matchesVisibility(
-  process: ProcessDef,
-  userDeptCode: string | undefined,
-  userRoles: string[],
-  managerScope: string | undefined,
-): boolean {
-  const isAdmin = userRoles.some((r) =>
-    r === 'ROLE_ADMIN' || r === 'ROLE_DESIGNER' || r === 'ROLE_IT_ADMIN'
-  )
-  if (isAdmin) return true
-  const isManager = userRoles.some((r) => r === 'ROLE_MANAGER' || r === 'ROLE_DEPT_MANAGER')
-  if (isManager && managerScope === 'ALL_DEPTS') return true
-  // process.category is used as departmentCode on the process definition
-  const artifactDept = process.category ?? null
-  if (!artifactDept) return true // visible to all
-  return artifactDept === userDeptCode
+interface VisibleProcessEntry {
+  processKey: string
+  name: string
+  departmentCode: string | null
 }
 
 // ── Category color fallback ────────────────────────────────────────────────
@@ -68,21 +50,27 @@ export default function ServiceCatalogPage() {
 
   const { data: categories = [] } = useCategories()
   const { data: departments = [] } = useDepartments()
-  const { data: capabilities } = usePlatformCapabilities()
 
-  // Derive user roles and dept from session token claims
-  const userRoles: string[] = session?.user?.roles ?? []
-  // departmentCode is not in the standard session type; access via unknown cast safely
-  const userDeptCode: string | undefined = (session?.user as unknown as { departmentCode?: string })?.departmentCode
-  const managerScope = capabilities?.configured?.visibilityPolicy?.managerScope
+  // Server-side visibility: fetch visible process keys per ADR-010 §3
+  const { data: visibleKeys } = useQuery<VisibleProcessEntry[] | null>({
+    queryKey: ['pss', 'visibleProcesses'],
+    queryFn: async () => {
+      const res = await fetch('/api/proxy/admin/platform/visible-processes', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return null // null = unrestricted (admin or endpoint unavailable)
+      return res.json() as Promise<VisibleProcessEntry[]>
+    },
+    enabled: status === 'authenticated',
+    staleTime: 2 * 60 * 1000,
+  })
 
-  // Client-side visibility filter
-  const visible = (processes as ProcessDef[]).filter((p) =>
-    matchesVisibility(p, userDeptCode, userRoles, managerScope)
-  )
-  const hidden = (processes as ProcessDef[]).filter((p) =>
-    !matchesVisibility(p, userDeptCode, userRoles, managerScope)
-  )
+  // Server-side visibility filter: if visibleKeys is non-null, restrict to those keys only
+  const visible = visibleKeys !== null && visibleKeys !== undefined
+    ? (processes as ProcessDef[]).filter((p) =>
+        visibleKeys.some((vk) => vk.processKey === p.key)
+      )
+    : (processes as ProcessDef[])
 
   // Apply dept chip filter
   const afterDeptFilter = activeDeptCode
@@ -118,17 +106,6 @@ export default function ServiceCatalogPage() {
   // Dept filter pills from PSS departments
   const deptPills: DepartmentEntry[] = departments
 
-  // Compute hidden dept breakdown for notice
-  const hiddenByDept: Record<string, number> = {}
-  hidden.forEach((p) => {
-    const dept = p.category ?? 'Unknown'
-    hiddenByDept[dept] = (hiddenByDept[dept] ?? 0) + 1
-  })
-  const hiddenCount = hidden.length
-  const hiddenDescription = Object.entries(hiddenByDept)
-    .map(([d, n]) => `${d} (${n})`)
-    .join(', ')
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* ── Page header ── */}
@@ -157,7 +134,7 @@ export default function ServiceCatalogPage() {
             fontWeight: 600,
             cursor: 'pointer',
             border: `1px solid ${activeDeptCode === null ? '#149ba5' : '#e2eaee'}`,
-            background: activeDeptCode === null ? '#f0fafb' : '#fff',
+            background: activeDeptCode === null ? '#f0fafb' : 'var(--wf-bg, transparent)',
             color: activeDeptCode === null ? '#149ba5' : '#6b7e8c',
           }}
         >
@@ -178,7 +155,7 @@ export default function ServiceCatalogPage() {
               fontWeight: 600,
               cursor: 'pointer',
               border: `1px solid ${activeDeptCode === d.code ? '#0c447c' : '#e2eaee'}`,
-              background: activeDeptCode === d.code ? '#e6f1fb' : '#fff',
+              background: activeDeptCode === d.code ? '#e6f1fb' : 'var(--wf-bg, transparent)',
               color: activeDeptCode === d.code ? '#0c447c' : '#6b7e8c',
             }}
           >
@@ -198,7 +175,7 @@ export default function ServiceCatalogPage() {
             padding: '4px 10px',
             border: '1px solid #e2eaee',
             borderRadius: '20px',
-            background: '#fff',
+            background: 'var(--wf-bg, transparent)',
             fontSize: '12px',
           }}
         >
@@ -232,13 +209,6 @@ export default function ServiceCatalogPage() {
         </div>
       </div>
 
-      {/* ── Hidden artifacts notice ── */}
-      {hiddenCount > 0 && (
-        <Note variant="muted">
-          {hiddenCount} artifact{hiddenCount !== 1 ? 's' : ''} hidden — {hiddenDescription}
-        </Note>
-      )}
-
       {/* ── Content ── */}
       {isLoading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
@@ -246,7 +216,7 @@ export default function ServiceCatalogPage() {
             <div
               key={i}
               style={{
-                background: '#fff',
+                background: 'var(--wf-bg, #fff)',
                 border: '1px solid #e2eaee',
                 borderRadius: '12px',
                 height: '180px',
@@ -323,7 +293,7 @@ export default function ServiceCatalogPage() {
                       <div
                         key={process.id}
                         style={{
-                          background: '#fff',
+                          background: 'var(--wf-bg, #fff)',
                           border: '1px solid #e2eaee',
                           borderRadius: '12px',
                           padding: '18px',
