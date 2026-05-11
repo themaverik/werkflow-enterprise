@@ -37,10 +37,10 @@ import {
 
 import FlowablePropertiesProviderModule from '@/lib/bpmn/flowable-properties-module'
 import flowableModdleDescriptor from '@/lib/bpmn/flowable-moddle.json'
-import { setFormSchemaOptions, setNotificationTemplateOptions, setGroupOptions, setProcessDefinitionOptions, setDmnDecisionOptions, setDelegateOptions, setCurrentUserRoles, setConnectorOptions } from '@/lib/bpmn/flowable-properties-provider'
+import { setFormSchemaOptions, setNotificationTemplateOptions, setGroupOptions, setProcessDefinitionOptions, setDmnDecisionOptions, setDelegateOptions, setCurrentUserRoles, setConnectorOptions, setProcessVariableOptions, setCustodyVarGroups } from '@/lib/bpmn/flowable-properties-provider'
 import { getFormDefinitions, getFormDefinition, getNotificationTemplates, getGroups, getProcessDefinitions, getDelegates } from '@/lib/api/flowable'
 import { listDecisions, getDecisionXml } from '@/lib/api/dmn'
-import { listDtdsConnectors } from '@/lib/api/dtds'
+import { listDtdsConnectors, listProcessVariablesAt } from '@/lib/api/dtds'
 
 // Variables set by Flowable engine infrastructure — present in every process instance
 const STANDARD_EXPRESSION_VARIABLES = [
@@ -214,7 +214,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
   // True when the Expression Builder panel is expanded for the current sequence flow.
   // Auto-opens if the flow already carries a condition expression.
   const [showExprBuilder, setShowExprBuilder] = useState(false)
-  const [showMeta, setShowMeta] = useState(false)
+  const [showMeta, setShowMeta] = useState(true)
 
   const [doaLevels, setDoaLevels] = useState<DoaLevel[]>([])
   const [custodyMappings, setCustodyMappings] = useState<CustodyMappingResponse[]>([])
@@ -423,17 +423,25 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
       platformApi.candidateGroups(token)
         .then((groups: CandidateGroupEntry[]) => {
           if (!cancelled) {
-            setGroupOptions(groups.map((g) => ({ id: g.key, name: g.label })))
+            setGroupOptions(groups)
             refreshPropertiesPanel()
           }
         })
         .catch((err: unknown) => {
           if (!cancelled) {
-            // Fall back to legacy getGroups on PSS failure
+            // Fall back to legacy getGroups on PSS failure — map to minimal CandidateGroupEntry shape
             getGroups()
               .then((groups) => {
                 if (!cancelled) {
-                  setGroupOptions(groups.map((g) => ({ id: g.id, name: g.name })))
+                  setGroupOptions(groups.map((g) => ({
+                    key: g.id,
+                    label: g.name,
+                    kind: 'BUSINESS' as const,
+                    tier: 2 as const,
+                    readOnly: false,
+                    isManagerTier: false,
+                    mappedFromRoles: [],
+                  })))
                   refreshPropertiesPanel()
                 }
               })
@@ -528,6 +536,28 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
         })
     }
 
+    const fetchCustodyVarGroups = () => {
+      if (!token) return
+      platformApi.feelExpressions(token)
+        .then((catalog) => {
+          if (cancelled) return
+          const groups = catalog.custodyVars.groupResolutions.map((r) => ({
+            key: `\${custodyVars.${r.key}}`,
+            label: `\${custodyVars.${r.key}}`,
+            pattern: `→ ${r.key}_*`,
+          }))
+          // Always add the dynamic lookup entry
+          groups.push({
+            key: '${custodyVars[itemCategory]}',
+            label: '${custodyVars[itemCategory]}',
+            pattern: 'by variable',
+          })
+          setCustodyVarGroups(groups)
+          refreshPropertiesPanel()
+        })
+        .catch(() => { /* non-critical */ })
+    }
+
     fetchForms()
     fetchTemplates()
     fetchGroups()
@@ -537,6 +567,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
     fetchCustodyMappings_()
     fetchDelegates()
     fetchConnectors()
+    fetchCustodyVarGroups()
     return () => { cancelled = true }
   }, [])
 
@@ -546,6 +577,25 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
       setCurrentUserRoles(user.roles)
     }
   }, [user?.roles])
+
+  // Fetch DTDS process variables in scope whenever a UserTask is selected
+  useEffect(() => {
+    if (!modeler || !processId || !selectedElement || selectedElement.type !== 'bpmn:UserTask') {
+      setProcessVariableOptions([])
+      return
+    }
+    const processDefId = processId.split(':')[0]
+    const activityId = (selectedElement as any).businessObject?.id
+    if (!activityId) return
+
+    listProcessVariablesAt(processDefId, activityId)
+      .then((vars) => {
+        setProcessVariableOptions(vars ?? [])
+        // Trigger bpmn-js properties panel refresh so CandidateGroupsInput re-renders
+        try { (modeler as any).get('eventBus').fire('propertiesPanel.updated') } catch (_) {}
+      })
+      .catch(() => setProcessVariableOptions([]))
+  }, [selectedElement, processId, modeler])
 
   // Ctrl+S / Cmd+S keyboard shortcut for save draft
   useEffect(() => {
@@ -818,11 +868,11 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
 
         {/* Properties Panel */}
         {showProperties && (
-          <div className="w-96 min-w-[320px] border-l bg-background overflow-auto flex flex-col">
+          <div className="w-96 min-w-[320px] border-l bg-background overflow-y-auto werkflow-props-panel">
             {/* Native bpmn-js properties panel — hidden when a fully custom panel takes over */}
             <div
               ref={propertiesPanelRef}
-              className={isExternalApiServiceTask(selectedElement) ? 'hidden' : 'flex-1'}
+              className={isExternalApiServiceTask(selectedElement) ? 'hidden' : ''}
             />
 
             {/* Sequence flow: optional Expression Builder toggle */}
@@ -875,21 +925,56 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
             <CustodyGroupsPanel mappings={custodyMappings} />
 
             {/* Artifact metadata — collapsible section at bottom */}
-            <div className="border-t">
+            <div style={{ background: 'hsl(var(--card))' }}>
               <button
                 type="button"
-                className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:bg-muted/30 sticky top-0 z-10 bg-background"
                 onClick={() => setShowMeta((v) => !v)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  width: '100%',
+                  height: '32px',
+                  background: 'hsl(var(--card))',
+                  borderBottom: '1px solid hsl(225, 10%, 75%)',
+                  borderTop: 'none',
+                  borderLeft: 'none',
+                  borderRight: 'none',
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10,
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
               >
-                Artifact Metadata
-                <span>{showMeta ? '−' : '+'}</span>
+                <span style={{ fontSize: '14px', fontWeight: showMeta ? 500 : 400, color: 'hsl(225, 10%, 15%)', marginLeft: '12px' }}>
+                  Artifact Metadata
+                </span>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '22px',
+                  width: '22px',
+                  margin: '5px',
+                  transform: showMeta ? 'rotate(90deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.15s ease',
+                  color: 'hsl(225, 10%, 35%)',
+                }}>
+                  <svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14">
+                    <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
               </button>
               {showMeta && (
-                <ArtifactMetadataPanel
-                  artifactType="process"
-                  value={artifactMetadata}
-                  onChange={(v) => { setArtifactMetadata(v); setHasChanges(true) }}
-                />
+                <div style={{ background: 'hsl(var(--card))' }}>
+                  <ArtifactMetadataPanel
+                    artifactType="process"
+                    value={artifactMetadata}
+                    onChange={(v) => { setArtifactMetadata(v); setHasChanges(true) }}
+                  />
+                </div>
               )}
             </div>
           </div>
@@ -901,43 +986,96 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
 
 // ── CustodyGroupsPanel ────────────────────────────────────────────────────────
 // Collapsible reference panel listing custody group candidate-group keys.
-// Rendered in the React portal shell (not inside bpmn-js) — Tailwind is safe here.
+// Uses inline styles to match the ArtifactMetadataPanel visual system.
 function CustodyGroupsPanel({ mappings }: { mappings: CustodyMappingResponse[] }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
   return (
-    <div className="border-t border-border">
+    <div style={{ background: 'hsl(var(--card))' }}>
       <button
         type="button"
-        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:bg-muted/30 sticky top-0 z-10 bg-background"
         onClick={() => setOpen((o) => !o)}
+        style={{
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          width: '100%',
+          height: '32px',
+          background: 'hsl(var(--card))',
+          borderBottom: '1px solid hsl(225, 10%, 75%)',
+          borderTop: 'none',
+          borderLeft: 'none',
+          borderRight: 'none',
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          cursor: 'pointer',
+          padding: 0,
+        }}
       >
-        Custody Groups
-        <span>{open ? '−' : '+'}</span>
+        <span style={{ fontSize: '14px', fontWeight: open ? 500 : 400, color: 'hsl(225, 10%, 15%)', marginLeft: '12px' }}>
+          Custody Groups
+        </span>
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '22px',
+          width: '22px',
+          margin: '5px',
+          transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+          transition: 'transform 0.15s ease',
+          color: 'hsl(225, 10%, 35%)',
+        }}>
+          <svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14">
+            <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </span>
       </button>
       {open && (
-        <div className="px-3 pb-3 space-y-1">
+        <div style={{ padding: '4px 12px 12px', display: 'flex', flexDirection: 'column', gap: '8px', background: 'hsl(var(--card))' }}>
           {mappings.length === 0 && (
-            <p className="text-xs text-muted-foreground">No custody mappings configured.</p>
+            <p style={{ fontSize: '11px', color: '#a8b9c4', margin: 0 }}>No custody mappings configured.</p>
           )}
           {mappings.map((m) => (
-            <div key={m.id} className="space-y-0.5">
-              <p className="text-xs font-mono text-foreground">{m.custodyOwner}</p>
-              <div className="flex flex-wrap gap-1">
+            <div key={m.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <p style={{ fontSize: '11px', fontWeight: 600, color: '#0f1e2a', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>
+                {m.custodyOwner}
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                 {m.candidateGroups.map((g) => (
                   <button
                     key={g}
                     type="button"
                     title="Click to copy"
-                    className="text-xs font-mono px-1.5 py-0.5 rounded border border-border bg-muted hover:bg-accent/20 cursor-copy"
-                    onClick={() => navigator.clipboard.writeText(g)}
+                    style={{
+                      fontSize: '10px',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      border: copiedKey === g ? '1px solid #149ba5' : '1px solid #e2eaee',
+                      background: copiedKey === g ? '#e6f8f8' : '#f5f8fa',
+                      color: copiedKey === g ? '#149ba5' : '#0f1e2a',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                    onClick={() => {
+                      navigator.clipboard.writeText(g)
+                      setCopiedKey(g)
+                      setTimeout(() => setCopiedKey(null), 1500)
+                    }}
                   >
-                    {g}
+                    {copiedKey === g ? '✓ copied' : g}
                   </button>
                 ))}
               </div>
             </div>
           ))}
+          <p style={{ fontSize: '10px', color: '#a8b9c4', margin: '4px 0 0', lineHeight: 1.5 }}>
+            Click any group key to copy it for use in condition expressions.
+          </p>
         </div>
       )}
     </div>

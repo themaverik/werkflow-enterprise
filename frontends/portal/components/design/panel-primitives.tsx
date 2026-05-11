@@ -16,11 +16,11 @@ export function PssPill({ endpoint }: PssPillProps): JSX.Element {
       style={{
         fontSize: '10px',
         padding: '2px 7px',
-        background: '#fff7ed',
-        color: '#9a4f06',
+        background: 'transparent',
+        color: 'hsl(225, 10%, 55%)',
         borderRadius: '6px',
         fontFamily: "'JetBrains Mono', monospace",
-        border: '1px solid #fde6c8',
+        border: 'none',
       }}
     >
       <svg width="8" height="8" viewBox="0 0 8 8" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>

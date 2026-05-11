@@ -15,9 +15,9 @@
 |------|--------|
 | E2E quality gate | 7/7 specs passing |
 | ADRs | ADR-001 through ADR-010 written |
-| Active milestone | M4.4a ✅ M4.4b ✅ COMPLETE — next: M4.5 Connector Spec + DTDS |
-| Next session | M4.5 — ConnectorDefinition envelope, DTDS shared core, connector registry migration |
-| Branch | feature/m4-4-platform-semantics — ready to merge |
+| Active milestone | M4.9 — UI Polish (in progress) |
+| Next session | M4.9 — resolve open questions on BPMN designer assignment panel architecture |
+| Branch | feature/m4-9-ui-polish |
 
 ---
 
@@ -210,6 +210,35 @@ All screens must be implemented against the approved Figma-export HTML designs:
 - [x] Monitoring sidebar section (ADMIN/SUPER_ADMIN): Analytics Dashboard + Process Health links
 - [x] Health check endpoints on all services (`/actuator/health`) via portal proxy
 - [ ] Basic alerting runbook doc — deferred post-demo
+
+---
+
+## M4.9 — UI Polish (BPMN Designer + Portal)
+
+**Branch**: `feature/m4-9-ui-polish`
+**Phase**: Post-M4 hardening before internal demo
+**Last session**: 2026-05-12
+
+### Completed this session
+
+- [x] Datasource edit page crash — replaced `use(params)` with `useParams()` (Next.js 14 compat)
+- [x] Service Catalog "General" label repeating on all groups — fixed category fallback logic
+- [x] BPMN right panel: Custody Groups + Artifact Metadata headers now use bpmn-js chevron style (no +/- buttons, consistent font)
+- [x] Artifact Metadata: removed dev-time PSS pill links
+- [x] Role Mappings page crash — `g.groupName` → `g.key`/`g.label` (CandidateGroupEntry shape change)
+- [x] CandidateGroupsInput: tier 1 filter no longer requires `readOnly: true`
+- [x] Moved `candidateGroupsEntry` into the `flowable-assignment` group; removed duplicate from `HUMAN_APPROVAL` action block; fixed attribute access (`flowable:candidateGroups` → `candidateGroups`)
+
+### Open Questions — pick up next session
+
+> **Context**: The Action Block → HUMAN_APPROVAL → Assignee Expression is the authoritative assignment mechanism in Werkflow. The standard BPMN Assignment section (Assignee, Candidate Users, Candidate Groups) maps to different XML attributes that the engine may not read.
+
+- [ ] **Task 1** — Decide: remove standard BPMN `flowable-assignment` group from UserTask panel entirely, or keep as low-level override? Consult ADR-009 (BPMN task type → action block mapping).
+- [ ] **Task 2** — Move the 4-section suggestion panel (Process Variables, Custody Lookups, Business Tier 2, System Tier 1) to assist the Assignee Expression FEEL field in Action Block → HUMAN_APPROVAL. Currently wired to the wrong field (`candidateGroups`).
+- [ ] **Task 3** — Scope Artifact Metadata panel to process level only (no element selected). Hide when any element is active on the canvas.
+- [ ] **Task 4** — Decide Custody Groups reference panel visibility: always-on, process-level-only, or only when a UserTask with HUMAN_APPROVAL is selected.
+- [ ] **Task 5** — Remove `flowable-assignment` group (Assignee, Candidate Users, Candidate Groups text fields) from `flowable-properties-provider.ts` once Task 1 decision is made.
+- [ ] **Open question** — Attribute discrepancy: native `assignee` field reads `businessObject.assignee`; Action Block reads `businessObject.get('flowable:assignee')`. Are these the same XML attribute? Verify with moddle extension config and engine behaviour.
 
 ---
 

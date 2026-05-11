@@ -33,7 +33,7 @@ async function fetchTier2(token: string): Promise<Tier2Mapping[]> {
 
 async function fetchCandidateGroups(
   token: string
-): Promise<Array<{ groupName: string; tier: number; isManagerTier?: boolean }>> {
+): Promise<Array<{ key: string; label: string; tier: number; isManagerTier?: boolean }>> {
   const res = await fetch('/api/proxy/admin/platform/candidate-groups', {
     headers: { Authorization: `Bearer ${token}` },
   })
@@ -284,10 +284,10 @@ export default function RoleMappingsPage() {
                 )}
                 {!loadingGroups && candidateGroups
                   .filter((g) => g.tier === 2)
-                  .sort((a, b) => a.groupName.localeCompare(b.groupName))
+                  .sort((a, b) => a.key.localeCompare(b.key))
                   .map((g) => (
-                    <SelectItem key={g.groupName} value={g.groupName} className="font-mono text-xs">
-                      {g.groupName}
+                    <SelectItem key={g.key} value={g.key} className="font-mono text-xs">
+                      {g.label}
                     </SelectItem>
                   ))}
                 {!loadingGroups && candidateGroups.filter((g) => g.tier === 2).length === 0 && (
