@@ -162,6 +162,11 @@
   fill: transparent;
 }
 
+/* Werkflow properties panel wrapper — provides font cascade into Preact components */
+.werkflow-props-panel {
+  font-family: var(--font-dm-sans), sans-serif;
+}
+
 /* Properties panel chrome */
 .bio-properties-panel {
   background: hsl(var(--card)) !important;

@@ -234,7 +234,7 @@ export default function ServiceCatalogPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
           {groupEntries.map(([code, group]) => {
             const catColor = getCategoryColor(group.category, group.colorIndex)
-            const catLabel = group.category?.displayName ?? 'General'
+            const catLabel = group.category?.displayName ?? (code === '__uncategorized__' ? 'General' : code)
 
             return (
               <section key={code} aria-label={catLabel}>
@@ -262,7 +262,7 @@ export default function ServiceCatalogPage() {
                       flexShrink: 0,
                     }}
                   >
-                    <span style={{ fontSize: '14px' }}>{group.category?.icon ?? '□'}</span>
+                    <span style={{ fontSize: '14px' }}>{group.category?.icon ?? (code === '__uncategorized__' ? '□' : '?')}</span>
                   </div>
                   <div>
                     <p style={{ fontWeight: 700, fontSize: '14px', color: '#0f1e2a', margin: 0 }}>
