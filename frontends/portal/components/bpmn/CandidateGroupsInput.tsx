@@ -1,11 +1,14 @@
 import { h, Fragment } from 'preact'
 import type { CandidateGroupEntry } from '@/lib/platform/types'
+import type { ProcessVariable } from '@/lib/api/dtds'
 
 interface Props {
   id: string
   getValue: () => string
   setValue: (value: string) => void
   availableGroups: CandidateGroupEntry[]
+  processVariables: ProcessVariable[]
+  custodyVarGroups: Array<{ key: string; label: string; pattern: string }>
   label?: string
   element?: unknown
 }
@@ -134,12 +137,27 @@ const DOT_COLORS: Record<string, string> = {
 }
 
 /**
+ * Returns a human-readable source annotation for a process variable.
+ * Prefers setByTask (display name), falls back to activity ID heuristics.
+ */
+function getVariableSource(v: ProcessVariable): string {
+  if (v.setByTask) return `from ${v.setByTask}`
+  const id = (v.setByActivity ?? '').toLowerCase()
+  if (id.includes('startevent') || id.includes('start_')) return 'from process start'
+  if (id.includes('dmn') || id.includes('decision') || id.includes('businessrule')) return 'from DMN'
+  return `from ${v.setByActivity ?? 'upstream'}`
+}
+
+/**
  * Tag-select component for BPMN candidate groups.
- * Renders three sections: FEEL expressions, Business (Tier 2), System (Tier 1 — read-only).
- * No DEPARTMENT or DOA groups per ADR-010.
+ * Renders four data-sourced sections:
+ *   1. Process Variables · in scope (from DTDS variables-at)
+ *   2. Custody Lookups (from PSS feel-expressions custodyVars)
+ *   3. Business · Tier 2 (from CandidateGroupEntry tier=2)
+ *   4. System · Tier 1 · read-only (from CandidateGroupEntry tier=1)
  * Rendered by the bpmn-js properties panel (Preact). Uses inline styles only — no Tailwind.
  */
-export function CandidateGroupsInput({ getValue, setValue, availableGroups }: Props) {
+export function CandidateGroupsInput({ getValue, setValue, availableGroups, processVariables, custodyVarGroups }: Props) {
   const raw = getValue()
   const current: string[] = raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : []
 
@@ -149,12 +167,6 @@ export function CandidateGroupsInput({ getValue, setValue, availableGroups }: Pr
       : [...current, groupKey]
     setValue(next.join(','))
   }
-
-  // The FEEL routing variable is always first in the list as the primary suggestion
-  const feelEntry = { key: '${assignedGroup}', label: '${assignedGroup}', kind: 'FEEL' as const, meta: 'DMN result' }
-  const custodyFeel = availableGroups.filter((g) => (g as unknown as { kind: string }).kind === 'FEEL')
-  const tier2Groups = availableGroups.filter((g) => g.tier === 2)
-  const tier1Groups = availableGroups.filter((g) => g.tier === 1 && g.readOnly)
 
   // Chips for currently selected values
   const chips = current.map((key) => {
@@ -236,56 +248,85 @@ export function CandidateGroupsInput({ getValue, setValue, availableGroups }: Pr
     )
   }
 
-  const buildGroupHeader = (title: string, isFirst: boolean) =>
+  const buildGroupHeader = (title: string, isFirst: boolean, subtitle?: string) =>
     h('li', {
       role: 'presentation',
-      style: isFirst
-        ? { ...GROUP_HEADER, borderTop: 'none' }
-        : GROUP_HEADER,
-    }, title)
+      style: isFirst ? { ...GROUP_HEADER, borderTop: 'none' } : GROUP_HEADER,
+    },
+      title,
+      subtitle
+        ? h('span', {
+            style: {
+              display: 'block',
+              fontSize: '9px',
+              color: '#8a9caa',
+              fontWeight: '400',
+              letterSpacing: '0',
+              textTransform: 'none',
+              marginTop: '1px',
+            },
+          }, subtitle)
+        : null
+    )
+
+  // ── Section 1: Process Variables · in scope ──
+  const processVarSection = processVariables.length > 0
+    ? h(Fragment, null,
+        buildGroupHeader('Process Variables · in scope', true, 'string-typed, resolved at runtime'),
+        ...processVariables.map((v) =>
+          buildItem(`\${${v.name}}`, `\${${v.name}}`, 'feel', getVariableSource(v))
+        )
+      )
+    : null
+
+  // ── Section 2: Custody Lookups ──
+  const custodySection = custodyVarGroups.length > 0
+    ? h(Fragment, null,
+        buildGroupHeader('Custody Lookups', processVariables.length === 0, 'Computed groups · ADR-004'),
+        ...custodyVarGroups.map((g) =>
+          buildItem(g.key, g.label, 'feel', g.pattern)
+        )
+      )
+    : null
+
+  // ── Section 3: Business · Tier 2 ──
+  const tier2 = availableGroups.filter((g) => g.tier === 2)
+  const tier2Section = tier2.length > 0
+    ? h(Fragment, null,
+        buildGroupHeader('Business · Tier 2', !processVarSection && !custodySection),
+        ...tier2.map((g) =>
+          buildItem(g.key, g.label, 'business', undefined, g.isManagerTier ? 'manager-tier' : undefined)
+        )
+      )
+    : null
+
+  // ── Section 4: System · Tier 1 — read-only ──
+  const tier1 = availableGroups.filter((g) => g.tier === 1)
+  const tier1Section = tier1.length > 0
+    ? h(Fragment, null,
+        buildGroupHeader('System · Tier 1 · read-only', !processVarSection && !custodySection && !tier2Section),
+        ...tier1.map((g) =>
+          buildItem(g.key, g.label, 'system', undefined, undefined, true)
+        )
+      )
+    : null
 
   const suggestList = h('ul', {
     role: 'listbox',
     'aria-label': 'Candidate group options',
     style: SUGGEST_LIST,
   },
-    // FEEL EXPRESSIONS section
-    buildGroupHeader('FEEL Expressions', true),
-    buildItem(feelEntry.key, feelEntry.label, 'feel', feelEntry.meta),
-    ...custodyFeel.map((g) =>
-      buildItem(g.key, g.label, 'feel', 'custody')
-    ),
-    // BUSINESS Tier 2 section
-    tier2Groups.length > 0
-      ? h(Fragment, null,
-          buildGroupHeader('Business · Tier 2', false),
-          ...tier2Groups.map((g) =>
-            buildItem(
-              g.key,
-              g.label,
-              'business',
-              undefined,
-              g.isManagerTier ? 'manager-tier' : undefined
-            )
-          )
-        )
-      : null,
-    // SYSTEM Tier 1 — read-only
-    tier1Groups.length > 0
-      ? h(Fragment, null,
-          buildGroupHeader('System · Tier 1 · read-only', false),
-          ...tier1Groups.map((g) =>
-            buildItem(g.key, g.label, 'system', undefined, undefined, true)
-          )
-        )
-      : null
+    processVarSection,
+    custodySection,
+    tier2Section,
+    tier1Section
   )
 
   // Informational note
   const note = h('div', { style: NOTE_INFO, role: 'note' },
     h('span', { 'aria-hidden': 'true', style: { flexShrink: '0', marginTop: '1px' } }, 'ℹ'),
     h('span', null,
-      'No DEPARTMENT or DOA groups — routing happens in the upstream DMN (ADR-010)'
+      'Process variables come from forms (Key fields), DMN outputs, service tasks, and process-start delegates. DTDS computes scope from upstream BPMN nodes.'
     )
   )
 

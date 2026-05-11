@@ -6,7 +6,7 @@ import { ChevronDown } from 'lucide-react'
 import { usePlatformCapabilities, useCategories, useDepartments } from '@/lib/platform/usePlatformCapabilities'
 import { platformApi } from '@/lib/platform/api'
 import type { ArtifactMetadata, TagEntry } from '@/lib/platform/types'
-import { PssPill, FeelChip, MetaRow, Note } from './panel-primitives'
+import { FeelChip, MetaRow, Note } from './panel-primitives'
 
 interface Props {
   artifactType: 'process' | 'form' | 'dmn'
@@ -90,20 +90,7 @@ export function ArtifactMetadataPanel({ value, onChange }: Props) {
     : undefined
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-      {/* Section eyebrow */}
-      <p
-        style={{
-          fontSize: '10px',
-          color: '#6b7e8c',
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-          fontWeight: 700,
-        }}
-      >
-        Metadata
-      </p>
-
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '8px 12px 12px' }}>
       {/* ── Department ── */}
       {showDepartment && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -113,28 +100,29 @@ export function ArtifactMetadataPanel({ value, onChange }: Props) {
             Department
           </label>
           <div ref={deptRef} style={{ position: 'relative' }}>
-            <MetaRow bound={!!selectedDept}>
-              {selectedDept ? (
-                <FeelChip
-                  label={selectedDept.displayName}
-                  kind="dept"
-                  onRemove={() => {
-                    onChange({ ...value, departmentCode: undefined })
-                    setDeptOpen(false)
-                  }}
+            <div style={{ cursor: 'pointer' }} onClick={() => setDeptOpen((o) => !o)}>
+              <MetaRow bound={!!selectedDept}>
+                {selectedDept ? (
+                  <FeelChip
+                    label={selectedDept.displayName}
+                    kind="dept"
+                    onRemove={() => {
+                      onChange({ ...value, departmentCode: undefined })
+                      setDeptOpen(false)
+                    }}
+                  />
+                ) : (
+                  <span style={{ color: '#a8b9c4', fontSize: '12px' }}>
+                    All departments
+                  </span>
+                )}
+                <ChevronDown
+                  size={13}
+                  style={{ color: '#a8b9c4', flexShrink: 0 }}
+                  aria-label="Toggle department picker"
                 />
-              ) : (
-                <span style={{ color: '#a8b9c4', fontSize: '12px' }}>
-                  All departments
-                </span>
-              )}
-              <ChevronDown
-                size={13}
-                style={{ color: '#a8b9c4', flexShrink: 0, cursor: 'pointer' }}
-                onClick={() => setDeptOpen((o) => !o)}
-                aria-label="Toggle department picker"
-              />
-            </MetaRow>
+              </MetaRow>
+            </div>
             {deptOpen && (
               <div
                 style={{
@@ -201,10 +189,6 @@ export function ArtifactMetadataPanel({ value, onChange }: Props) {
               </div>
             )}
           </div>
-          <PssPill endpoint="/departments" />
-          <p style={{ fontSize: '10px', color: '#6b7e8c', lineHeight: 1.5, marginTop: '2px' }}>
-            Single value or empty. Empty = visible to all.
-          </p>
         </div>
       )}
 
@@ -225,28 +209,29 @@ export function ArtifactMetadataPanel({ value, onChange }: Props) {
           </Note>
         ) : (
           <div ref={catRef} style={{ position: 'relative' }}>
-            <MetaRow bound={!!selectedCat}>
-              {selectedCat ? (
-                <FeelChip
-                  label={selectedCat.displayName}
-                  kind="cat"
-                  onRemove={() => {
-                    onChange({ ...value, categoryCode: undefined })
-                    setCatOpen(false)
-                  }}
+            <div style={{ cursor: 'pointer' }} onClick={() => setCatOpen((o) => !o)}>
+              <MetaRow bound={!!selectedCat}>
+                {selectedCat ? (
+                  <FeelChip
+                    label={selectedCat.displayName}
+                    kind="cat"
+                    onRemove={() => {
+                      onChange({ ...value, categoryCode: undefined })
+                      setCatOpen(false)
+                    }}
+                  />
+                ) : (
+                  <span style={{ color: '#a8b9c4', fontSize: '12px' }}>
+                    Uncategorized
+                  </span>
+                )}
+                <ChevronDown
+                  size={13}
+                  style={{ color: '#a8b9c4', flexShrink: 0 }}
+                  aria-label="Toggle category picker"
                 />
-              ) : (
-                <span style={{ color: '#a8b9c4', fontSize: '12px' }}>
-                  Uncategorized
-                </span>
-              )}
-              <ChevronDown
-                size={13}
-                style={{ color: '#a8b9c4', flexShrink: 0, cursor: 'pointer' }}
-                onClick={() => setCatOpen((o) => !o)}
-                aria-label="Toggle category picker"
-              />
-            </MetaRow>
+              </MetaRow>
+            </div>
             {catOpen && (
               <div
                 style={{
@@ -314,11 +299,18 @@ export function ArtifactMetadataPanel({ value, onChange }: Props) {
             )}
           </div>
         )}
-        <PssPill endpoint="/categories" />
-        <p style={{ fontSize: '10px', color: '#6b7e8c', lineHeight: 1.5, marginTop: '2px' }}>
-          Tenant-registered controlled vocabulary.
-        </p>
       </div>
+
+      {/* ── Inactive fields note ── */}
+      {!showDepartment && !hasCategories && (
+        <Note variant="muted">
+          Department and category fields activate once ERP is connected and categories are configured in{' '}
+          <a href="/admin/tenant/categories" style={{ color: '#149ba5', textDecoration: 'underline' }}>
+            Tenant Admin
+          </a>
+          . Tags are available now.
+        </Note>
+      )}
 
       {/* ── Tags ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -405,7 +397,6 @@ export function ArtifactMetadataPanel({ value, onChange }: Props) {
             )}
           </div>
         </MetaRow>
-        <PssPill endpoint="/tags · autocomplete" />
       </div>
     </div>
   )

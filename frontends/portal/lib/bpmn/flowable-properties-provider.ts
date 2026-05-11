@@ -18,6 +18,8 @@ import {
   isTextFieldEntryEdited,
 } from '@bpmn-io/properties-panel'
 import { CandidateGroupsInput } from '@/components/bpmn/CandidateGroupsInput'
+import type { CandidateGroupEntry } from '@/lib/platform/types'
+import type { ProcessVariable } from '@/lib/api/dtds'
 
 /**
  * Module-level variable for form schema options.
@@ -47,10 +49,30 @@ export function setNotificationTemplateOptions(options: Array<{ key: string; nam
  * Module-level variable for group options.
  * Set from BpmnDesigner.tsx after fetching from API.
  */
-let groupOptions: Array<{ id: string; name: string }> = []
+let groupOptions: CandidateGroupEntry[] = []
 
-export function setGroupOptions(options: Array<{ id: string; name: string }>) {
+export function setGroupOptions(options: CandidateGroupEntry[]) {
   groupOptions = options
+}
+
+/**
+ * Module-level variable for process variables in scope at the selected UserTask.
+ * Set from BpmnDesigner.tsx after fetching from DTDS variables-at endpoint.
+ */
+let processVariableOptions: ProcessVariable[] = []
+
+export function setProcessVariableOptions(vars: ProcessVariable[]) {
+  processVariableOptions = vars
+}
+
+/**
+ * Module-level variable for custody variable group entries.
+ * Set from BpmnDesigner.tsx after fetching from PSS feel-expressions endpoint.
+ */
+let custodyVarGroups: Array<{ key: string; label: string; pattern: string }> = []
+
+export function setCustodyVarGroups(groups: Array<{ key: string; label: string; pattern: string }>) {
+  custodyVarGroups = groups
 }
 
 /**
@@ -174,18 +196,7 @@ class FlowablePropertiesProvider {
               setValue: (value: string) =>
                 modeling.updateProperties(element, { candidateUsers: value || undefined }),
             },
-            {
-              id: 'candidateGroups',
-              element,
-              component: TextFieldEntry,
-              isEdited: isTextFieldEntryEdited,
-              debounce,
-              label: translate('Candidate Groups'),
-              description: translate('Comma-separated group IDs (e.g., DOA_L1,DOA_L2)'),
-              getValue: () => element.businessObject.candidateGroups || '',
-              setValue: (value: string) =>
-                modeling.updateProperties(element, { candidateGroups: value || undefined }),
-            },
+            candidateGroupsEntry(element, modeling, translate, debounce),
           ],
         })
 
@@ -758,7 +769,6 @@ function buildActionBlockEntries(
         setValue: (value: string) =>
           modeling.updateProperties(element, { 'flowable:assignee': value || undefined }),
       },
-      candidateGroupsEntry(element, modeling, translate, debounce),
       {
         id: 'ab-formKey',
         element,
@@ -1001,9 +1011,9 @@ function candidateGroupsEntry(
   element: any, modeling: any, translate: (s: string) => string, _debounce: any
 ): any {
   const isAdmin = currentUserRoles.some(r => ADMIN_ROLES.includes(r))
-  const filtered = isAdmin
+  const filtered: CandidateGroupEntry[] = isAdmin
     ? groupOptions
-    : groupOptions.filter(g => /^DOA_L\d+$/i.test(g.id))
+    : groupOptions.filter(g => /^DOA_L\d+$/i.test(g.key))
 
   return {
     id: 'ab-candidateGroups',
@@ -1011,9 +1021,11 @@ function candidateGroupsEntry(
     component: CandidateGroupsInput,
     label: translate('Candidate Groups'),
     availableGroups: filtered,
-    getValue: () => element.businessObject.get('flowable:candidateGroups') || '',
+    processVariables: processVariableOptions,
+    custodyVarGroups: custodyVarGroups,
+    getValue: () => element.businessObject.candidateGroups || '',
     setValue: (value: string) =>
-      modeling.updateProperties(element, { 'flowable:candidateGroups': value || undefined }),
+      modeling.updateProperties(element, { candidateGroups: value || undefined }),
   }
 }
 

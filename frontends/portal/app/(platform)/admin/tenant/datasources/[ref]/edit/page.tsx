@@ -1,18 +1,15 @@
 'use client'
 
-import { use } from 'react'
+import { useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useQuery } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
 import { DatasourceForm } from '../../_components/DatasourceForm'
 import { getDatasource } from '@/lib/api/datasources'
 
-interface Props {
-  params: Promise<{ ref: string }>
-}
-
-export default function EditDatasourcePage({ params }: Props) {
-  const { ref } = use(params)
+export default function EditDatasourcePage() {
+  const params = useParams<{ ref: string }>()
+  const ref = params.ref ?? ''
   const { data: session, status } = useSession()
   const token = (session?.accessToken as string) ?? ''
 
