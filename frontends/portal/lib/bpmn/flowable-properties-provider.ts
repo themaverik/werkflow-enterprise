@@ -181,26 +181,28 @@ class FlowablePropertiesProvider {
             {
               id: 'priority',
               element,
-              component: TextFieldEntry,
-              isEdited: isTextFieldEntryEdited,
-              debounce,
+              component: VariableComboBoxEntry,
               label: translate('Priority'),
-              description: translate('Task priority (0-100 or expression)'),
+              mode: 'single' as const,
+              sourceKeys: ['priority-constants', 'dtds-variables-number'],
+              processId: element.businessObject?.$parent?.id as string | undefined,
+              activityId: element.businessObject?.id as string | undefined,
               getValue: () => element.businessObject.priority || '',
-              setValue: (value: string) =>
-                modeling.updateProperties(element, { priority: value || undefined }),
+              setValue: (v: string) =>
+                modeling.updateProperties(element, { priority: v || undefined }),
             },
             {
               id: 'dueDate',
               element,
-              component: TextFieldEntry,
-              isEdited: isTextFieldEntryEdited,
-              debounce,
+              component: VariableComboBoxEntry,
               label: translate('Due Date'),
-              description: translate("ISO date or expression (e.g., ${now() + duration('P7D')})"),
+              mode: 'single' as const,
+              sourceKeys: ['sla-constants', 'dtds-variables-date'],
+              processId: element.businessObject?.$parent?.id as string | undefined,
+              activityId: element.businessObject?.id as string | undefined,
               getValue: () => element.businessObject.dueDate || '',
-              setValue: (value: string) =>
-                modeling.updateProperties(element, { dueDate: value || undefined }),
+              setValue: (v: string) =>
+                modeling.updateProperties(element, { dueDate: v || undefined }),
             },
           ],
         })
@@ -770,25 +772,18 @@ function buildActionBlockEntries(
       {
         id: 'ab-formKey',
         element,
-        component: SelectEntry,
-        isEdited: isSelectEntryEdited,
+        component: VariableComboBoxEntry,
         label: translate('Form Key'),
-        description: translate('Select a form definition to link'),
+        mode: 'single' as const,
+        sourceKeys: ['forms-deployed'],
+        processId: element.businessObject?.$parent?.id as string | undefined,
+        activityId: element.businessObject?.id as string | undefined,
         getValue: () =>
           element.businessObject.formKey ||
           element.businessObject.$attrs?.['flowable:formKey'] ||
           '',
-        setValue: (value: string) =>
-          modeling.updateProperties(element, { formKey: value || undefined }),
-        getOptions: () => {
-          const options: Array<{ value: string; label: string }> = [
-            { value: '', label: translate('(none)') },
-          ]
-          for (const schema of formSchemaOptions) {
-            options.push({ value: schema.key, label: schema.name || schema.key })
-          }
-          return options
-        },
+        setValue: (v: string) =>
+          modeling.updateProperties(element, { formKey: v || undefined }),
       },
       // outcomeVariable must be a <flowable:field> extension element (spec 3.2)
       flowableFieldEntry(element, modeling, translate, debounce, 'ab-outcomeVariable',
