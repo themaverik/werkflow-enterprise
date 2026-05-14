@@ -77,14 +77,22 @@ export function VariableComboBoxBpmnAdapter({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getValue])
 
-  const { groups } = useVariableSources(sourceKeys, { processId, activityId })
+  const { groups, loading } = useVariableSources(sourceKeys, { processId, activityId })
   const filteredGroups = filterGroups(groups, query)
 
   const allEmpty = filteredGroups.every((g) => g.items.length === 0)
-  const literalEscape =
-    query.length > 0 && allEmpty && !query.includes(',')
-      ? { value: query, hint: 'Press Enter to use as a literal value' }
-      : null
+  const literalEscape = React.useMemo(() => {
+    if (!allEmpty || loading) return null
+    if (query.length > 0 && !query.includes(',')) {
+      // existing behaviour: show literal escape for any non-empty query when all groups empty
+      return { value: query, hint: `No matches — press Enter to use "${query}" as a literal value` }
+    }
+    if (mode === 'single') {
+      // eager literal escape for single-mode when no data available at all
+      return { value: '', hint: 'No options found — type a value and press Enter' }
+    }
+    return null
+  }, [allEmpty, loading, query, mode])
 
   const onCommit = useCallback(
     (item: GroupItem) => {
@@ -173,6 +181,7 @@ export function VariableComboBoxBpmnAdapter({
         literalEscape={literalEscape}
         sources={sources}
         keys={keys}
+        loading={loading}
       />
     </div>
   )

@@ -45,6 +45,10 @@ export function setNotificationTemplateOptions(options: Array<{ key: string; nam
   notificationTemplateOptions = options
 }
 
+export function getNotificationTemplates(): Array<{ key: string; name: string }> {
+  return notificationTemplateOptions
+}
+
 /**
  * Module-level variable for group options.
  * Set from BpmnDesigner.tsx after fetching from API.
@@ -184,7 +188,7 @@ class FlowablePropertiesProvider {
               component: VariableComboBoxEntry,
               label: translate('Priority'),
               mode: 'single' as const,
-              sourceKeys: ['priority-constants', 'dtds-variables-number'],
+              sourceKeys: ['dtds-variables-number'],
               processId: element.businessObject?.$parent?.id as string | undefined,
               activityId: element.businessObject?.id as string | undefined,
               getValue: () => element.businessObject.priority || '',
@@ -197,7 +201,7 @@ class FlowablePropertiesProvider {
               component: VariableComboBoxEntry,
               label: translate('Due Date'),
               mode: 'single' as const,
-              sourceKeys: ['sla-constants', 'dtds-variables-date'],
+              sourceKeys: ['dtds-variables-date'],
               processId: element.businessObject?.$parent?.id as string | undefined,
               activityId: element.businessObject?.id as string | undefined,
               getValue: () => element.businessObject.dueDate || '',
@@ -668,7 +672,7 @@ function getActionType(element: any): string {
   return element.businessObject.get('flowable:actionType') || ''
 }
 
-function setActionType(element: any, modeling: any, value: string, injector?: any) {
+export function setActionType(element: any, modeling: any, value: string, injector?: any) {
   // Ensure the element is a ServiceTask — delegateExpression is invalid on plain <task>.
   // If the user placed a generic Task and then set an action type, morph it to ServiceTask first.
   let target = element
@@ -725,91 +729,8 @@ function buildActionBlockEntries(
 
   const actionType = getActionType(element)
 
-  if (actionType === 'HUMAN_APPROVAL') {
-    const processId: string | undefined = element.businessObject?.$parent?.id
-    const activityId: string | undefined = element.businessObject?.id
-    entries.push(
-      {
-        id: 'ab-candidateGroups',
-        element,
-        component: VariableComboBoxEntry,
-        label: translate('Candidate Groups'),
-        mode: 'multi',
-        sourceKeys: ['pss-candidate-groups', 'dtds-variables-string', 'custody-feel'],
-        processId,
-        activityId,
-        getValue: () => element.businessObject.candidateGroups || '',
-        setValue: (v: string) =>
-          modeling.updateProperties(element, { candidateGroups: v || undefined }),
-        keys: true,
-      },
-      {
-        id: 'ab-assignee',
-        element,
-        component: VariableComboBoxEntry,
-        label: translate('Assignee'),
-        mode: 'single',
-        sourceKeys: ['dtds-variables-string'],
-        processId,
-        activityId,
-        getValue: () => element.businessObject.assignee || '',
-        setValue: (v: string) =>
-          modeling.updateProperties(element, { assignee: v || undefined }),
-      },
-      {
-        id: 'ab-candidateUsers',
-        element,
-        component: VariableComboBoxEntry,
-        label: translate('Candidate Users'),
-        mode: 'multi',
-        sourceKeys: ['dtds-variables-string'],
-        processId,
-        activityId,
-        getValue: () => element.businessObject.candidateUsers || '',
-        setValue: (v: string) =>
-          modeling.updateProperties(element, { candidateUsers: v || undefined }),
-      },
-      {
-        id: 'ab-formKey',
-        element,
-        component: VariableComboBoxEntry,
-        label: translate('Form Key'),
-        mode: 'single' as const,
-        sourceKeys: ['forms-deployed'],
-        processId: element.businessObject?.$parent?.id as string | undefined,
-        activityId: element.businessObject?.id as string | undefined,
-        getValue: () =>
-          element.businessObject.formKey ||
-          element.businessObject.$attrs?.['flowable:formKey'] ||
-          '',
-        setValue: (v: string) =>
-          modeling.updateProperties(element, { formKey: v || undefined }),
-      },
-      // outcomeVariable must be a <flowable:field> extension element (spec 3.2)
-      flowableFieldEntry(element, modeling, translate, debounce, 'ab-outcomeVariable',
-        translate('Outcome Variable'), 'outcomeVariable'),
-    )
-  }
-
-  if (actionType === 'SEND_NOTIFICATION') {
-    entries.push(
-      channelSelectEntry(element, modeling, translate),
-      {
-        id: 'notif-recipient',
-        element,
-        component: TextFieldEntry,
-        isEdited: isTextFieldEntryEdited,
-        debounce,
-        label: translate('Recipient Expression'),
-        description: translate('Process variable expression e.g. `${initiator}` or email address'),
-        getValue: () => readFlowableField(element, 'recipient'),
-        setValue: (value: string) => writeFlowableField(element, modeling, 'recipient', value),
-      },
-      templateKeySelectEntry(element, modeling, translate),
-      flowableFieldEntry(element, modeling, translate, debounce, 'notif-condition',
-        translate('Condition (optional)'), 'condition'),
-    )
-  }
+  // HUMAN_APPROVAL and SEND_NOTIFICATION are rendered in ServiceTaskPropertiesPanel
+  // (React sidebar) for consistent card-based styling — no entries pushed here.
 
   if (actionType === 'EXTERNAL_API_CALL') {
     entries.push(
@@ -951,7 +872,7 @@ function textField(
 }
 
 // Read/write <flowable:field> by name — shared by flowableFieldEntry and SelectEntry variants
-function readFlowableField(element: any, fieldName: string): string {
+export function readFlowableField(element: any, fieldName: string): string {
   const ext = element.businessObject.extensionElements
   if (!ext) return ''
   const field = ext.get('values')?.find(
@@ -959,7 +880,7 @@ function readFlowableField(element: any, fieldName: string): string {
   return field?.expression ?? field?.string ?? ''
 }
 
-function writeFlowableField(element: any, modeling: any, fieldName: string, value: string) {
+export function writeFlowableField(element: any, modeling: any, fieldName: string, value: string) {
   const bo = element.businessObject
   const moddle = bo.$model
   let ext = bo.extensionElements

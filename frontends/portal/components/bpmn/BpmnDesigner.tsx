@@ -38,6 +38,7 @@ import {
 import FlowablePropertiesProviderModule from '@/lib/bpmn/flowable-properties-module'
 import flowableModdleDescriptor from '@/lib/bpmn/flowable-moddle.json'
 import { setFormSchemaOptions, setNotificationTemplateOptions, setGroupOptions, setProcessDefinitionOptions, setDmnDecisionOptions, setDelegateOptions, setCurrentUserRoles, setConnectorOptions, setProcessVariableOptions, setCustodyVarGroups } from '@/lib/bpmn/flowable-properties-provider'
+import { seedComboboxCache } from '@/lib/bpmn/useVariableSources'
 import { getFormDefinitions, getFormDefinition, getNotificationTemplates, getGroups, getProcessDefinitions, getDelegates } from '@/lib/api/flowable'
 import { listDecisions, getDecisionXml } from '@/lib/api/dmn'
 import { listDtdsConnectors, listProcessVariablesAt } from '@/lib/api/dtds'
@@ -211,6 +212,8 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
   const router = useRouter()
 
   const [selectedElement, setSelectedElement] = useState<{ type: string; businessObject: Record<string, any> } | null>(null)
+  // When true, show the bpmn-js native panel even for custom-panel action types (user clicked back)
+  const [showNativePanel, setShowNativePanel] = useState(false)
   // True when the Expression Builder panel is expanded for the current sequence flow.
   // Auto-opens if the flow already carries a condition expression.
   const [showExprBuilder, setShowExprBuilder] = useState(false)
@@ -345,9 +348,10 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
       const elements: any[] = event.newSelection
       const el = elements.length === 1 ? elements[0] : null
       setSelectedElement(el)
-      // Auto-open Expression Builder only if the flow already has a condition
+      setShowNativePanel(false)
+      // Auto-open Expression Builder whenever a sequence flow is selected
       if (el?.type === 'bpmn:SequenceFlow') {
-        setShowExprBuilder(!!el.businessObject?.conditionExpression?.body)
+        setShowExprBuilder(true)
       } else {
         setShowExprBuilder(false)
       }
@@ -385,6 +389,16 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
         .then((forms) => {
           if (!cancelled) {
             setFormSchemaOptions(forms.map((f) => ({ key: f.key, name: f.name })))
+            // seed combobox cache so VariableComboBoxEntry-based ab-formKey gets data
+            const formComboItems = forms.map((f) => ({
+              id: f.key,
+              name: f.name ?? f.key,
+              sans: true as const,
+              meta: (f as any).version !== undefined ? `v${(f as any).version}` : undefined,
+            }))
+            seedComboboxCache('forms-deployed', formComboItems.length > 0
+              ? [{ key: 'forms', label: 'Deployed Forms', icon: 'literal' as const, items: formComboItems }]
+              : [])
             refreshPropertiesPanel()
           }
         })
@@ -424,6 +438,19 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
         .then((groups: CandidateGroupEntry[]) => {
           if (!cancelled) {
             setGroupOptions(groups)
+            // Seed combobox cache so VariableComboBoxEntry (isolated React root) gets
+            // the same data without requiring its own authenticated fetch.
+            const systemItems = groups
+              .filter((g) => g.kind === 'SYSTEM' || g.tier === 1)
+              .map((g) => ({ id: g.key, name: g.label ?? g.key, sans: true, lock: true, tier: g.isManagerTier ? 'manager-tier' as const : undefined }))
+            const businessItems = groups
+              .filter((g) => !(g.kind === 'SYSTEM' || g.tier === 1))
+              .map((g) => ({ id: g.key, name: g.label ?? g.key, sans: true, tier: g.isManagerTier ? 'manager-tier' as const : undefined }))
+            const comboGroups = [
+              ...(systemItems.length > 0 ? [{ key: 'system', label: 'System · Tier 1 · read-only', icon: 'system' as const, items: systemItems }] : []),
+              ...(businessItems.length > 0 ? [{ key: 'business', label: 'Business · Tier 2', icon: 'business' as const, items: businessItems }] : []),
+            ]
+            seedComboboxCache('pss-candidate-groups', comboGroups)
             refreshPropertiesPanel()
           }
         })
@@ -433,7 +460,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
             getGroups()
               .then((groups) => {
                 if (!cancelled) {
-                  setGroupOptions(groups.map((g) => ({
+                  const mapped = groups.map((g) => ({
                     key: g.id,
                     label: g.name,
                     kind: 'BUSINESS' as const,
@@ -441,7 +468,12 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
                     readOnly: false,
                     isManagerTier: false,
                     mappedFromRoles: [],
-                  })))
+                  }))
+                  setGroupOptions(mapped)
+                  const fallbackItems = mapped.map((g) => ({ id: g.key, name: g.label ?? g.key, sans: true }))
+                  seedComboboxCache('pss-candidate-groups', fallbackItems.length > 0
+                    ? [{ key: 'business', label: 'Business · Tier 2', icon: 'business' as const, items: fallbackItems }]
+                    : [])
                   refreshPropertiesPanel()
                 }
               })
@@ -553,6 +585,15 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
             pattern: 'by variable',
           })
           setCustodyVarGroups(groups)
+          // Seed combobox cache in the Group[] shape expected by useVariableSources
+          const custodyItems = groups.map((g) => ({
+            id: g.key,
+            name: g.label,
+            meta: g.pattern ?? undefined,
+          }))
+          seedComboboxCache('custody-feel', custodyItems.length > 0
+            ? [{ key: 'custody', label: 'Custody Lookups · ADR-004', icon: 'custody' as const, items: custodyItems }]
+            : [])
           refreshPropertiesPanel()
         })
         .catch(() => { /* non-critical */ })
@@ -591,6 +632,19 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
     listProcessVariablesAt(processDefId, activityId)
       .then((vars) => {
         setProcessVariableOptions(vars ?? [])
+        // seed combobox cache so Assignee / Candidate Users entries get DTDS data
+        const resolvedVars = vars ?? []
+        const stringVars = resolvedVars.filter((v) => !v.type || v.type === 'string')
+        const dtdsItems = stringVars.map((v) => ({
+          id: `\${${v.name}}`,
+          name: `\${${v.name}}`,
+          meta: v.setByTask ? `from ${v.setByTask}` : v.setByActivity ? `from ${v.setByActivity}` : undefined,
+        }))
+        // processDefId matches element.businessObject.$parent.id (both are the bare BPMN <process id> attribute)
+        const cacheKey = JSON.stringify(['dtds-variables-string', processDefId, activityId])
+        seedComboboxCache(cacheKey, dtdsItems.length > 0
+          ? [{ key: 'process', label: 'Process Variables · in scope', icon: 'process' as const, items: dtdsItems }]
+          : [])
         // Trigger bpmn-js properties panel refresh so VariableComboBoxEntry re-renders
         try { (modeler as any).get('eventBus').fire('propertiesPanel.updated') } catch (_) {}
       })
@@ -872,7 +926,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
             {/* Native bpmn-js properties panel — hidden when a fully custom panel takes over */}
             <div
               ref={propertiesPanelRef}
-              className={isExternalApiServiceTask(selectedElement) ? 'hidden' : ''}
+              className={!showNativePanel && isCustomPanelServiceTask(selectedElement) ? 'hidden' : ''}
             />
 
             {/* Sequence flow: optional Expression Builder toggle */}
@@ -914,16 +968,15 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
               </div>
             )}
 
-            {/* Service task contract panel */}
-            {isExternalApiServiceTask(selectedElement) && modeler && (
+            {/* Service task custom panel — covers EXTERNAL_API_CALL, HUMAN_APPROVAL, SEND_NOTIFICATION */}
+            {!showNativePanel && isCustomPanelServiceTask(selectedElement) && modeler && (
               <div className="flex-1 overflow-auto">
-                <ServiceTaskPropertiesPanel element={selectedElement} modeler={modeler} />
+                <ServiceTaskPropertiesPanel
+                  element={selectedElement}
+                  modeler={modeler}
+                  onShowNativePanel={() => setShowNativePanel(true)}
+                />
               </div>
-            )}
-
-            {/* Custody Groups reference panel — only relevant for UserTask */}
-            {selectedElement?.type === 'bpmn:UserTask' && (
-              <CustodyGroupsPanel mappings={custodyMappings} />
             )}
 
             {/* Artifact metadata — process-level only; hidden when an element is selected */}
@@ -988,112 +1041,18 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
   )
 }
 
-// ── CustodyGroupsPanel ────────────────────────────────────────────────────────
-// Collapsible reference panel listing custody group candidate-group keys.
-// Uses inline styles to match the ArtifactMetadataPanel visual system.
-function CustodyGroupsPanel({ mappings }: { mappings: CustodyMappingResponse[] }) {
-  const [open, setOpen] = useState(false)
-  const [copiedKey, setCopiedKey] = useState<string | null>(null)
-
-  return (
-    <div style={{ background: 'hsl(var(--card))' }}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          width: '100%',
-          height: '32px',
-          background: 'hsl(var(--card))',
-          borderBottom: '1px solid hsl(225, 10%, 75%)',
-          borderTop: 'none',
-          borderLeft: 'none',
-          borderRight: 'none',
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
-          cursor: 'pointer',
-          padding: 0,
-        }}
-      >
-        <span style={{ fontSize: '14px', fontWeight: open ? 500 : 400, color: 'hsl(225, 10%, 15%)', marginLeft: '12px' }}>
-          Custody Groups
-        </span>
-        <span style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '22px',
-          width: '22px',
-          margin: '5px',
-          transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
-          transition: 'transform 0.15s ease',
-          color: 'hsl(225, 10%, 35%)',
-        }}>
-          <svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14">
-            <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </span>
-      </button>
-      {open && (
-        <div style={{ padding: '4px 12px 12px', display: 'flex', flexDirection: 'column', gap: '8px', background: 'hsl(var(--card))' }}>
-          {mappings.length === 0 && (
-            <p style={{ fontSize: '11px', color: '#a8b9c4', margin: 0 }}>No custody mappings configured.</p>
-          )}
-          {mappings.map((m) => (
-            <div key={m.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <p style={{ fontSize: '11px', fontWeight: 600, color: '#0f1e2a', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>
-                {m.custodyOwner}
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                {m.candidateGroups.map((g) => (
-                  <button
-                    key={g}
-                    type="button"
-                    title="Click to copy"
-                    style={{
-                      fontSize: '10px',
-                      fontFamily: "'JetBrains Mono', monospace",
-                      padding: '2px 6px',
-                      borderRadius: '4px',
-                      border: copiedKey === g ? '1px solid #149ba5' : '1px solid #e2eaee',
-                      background: copiedKey === g ? '#e6f8f8' : '#f5f8fa',
-                      color: copiedKey === g ? '#149ba5' : '#0f1e2a',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                    }}
-                    onClick={() => {
-                      navigator.clipboard.writeText(g)
-                      setCopiedKey(g)
-                      setTimeout(() => setCopiedKey(null), 1500)
-                    }}
-                  >
-                    {copiedKey === g ? '✓ copied' : g}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-          <p style={{ fontSize: '10px', color: '#a8b9c4', margin: '4px 0 0', lineHeight: 1.5 }}>
-            Click any group key to copy it for use in condition expressions.
-          </p>
-        </div>
-      )}
-    </div>
-  )
-}
 
 function isSequenceFlow(element: { type: string; businessObject: Record<string, any> } | null): boolean {
   return element?.type === 'bpmn:SequenceFlow'
 }
 
-function isExternalApiServiceTask(element: { type: string; businessObject: Record<string, any> } | null): boolean {
+function isCustomPanelServiceTask(element: { type: string; businessObject: Record<string, any> } | null): boolean {
+  const actionType = element?.businessObject?.get('flowable:actionType')
   return (
     element?.type === 'bpmn:ServiceTask' &&
-    element?.businessObject?.get('flowable:actionType') === 'EXTERNAL_API_CALL'
+    (actionType === 'EXTERNAL_API_CALL' ||
+     actionType === 'HUMAN_APPROVAL' ||
+     actionType === 'SEND_NOTIFICATION')
   )
 }
 

@@ -152,4 +152,13 @@ public class ProcessDefinitionController {
         String xml = processDefinitionService.getProcessDefinitionXml(id);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(xml);
     }
+
+    @GetMapping("/key/{key}/xml")
+    @Operation(summary = "Get BPMN XML by process key", description = "Retrieve the BPMN XML for the latest deployed version of a process by its key")
+    public ResponseEntity<String> getProcessDefinitionXmlByKey(
+        @Parameter(description = "Process definition key") @PathVariable String key
+    ) {
+        String xml = processDefinitionService.getProcessDefinitionXmlByKey(key);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(xml);
+    }
 }

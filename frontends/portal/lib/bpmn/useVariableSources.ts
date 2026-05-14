@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { adminApiClient } from '@/lib/api/client'
+import { adminApiClient, apiClient } from '@/lib/api/client'
 import type { Group, GroupItem } from '@/components/ui/VariableComboBox'
 
 // ── Cache ─────────────────────────────────────────────────────────────────────
@@ -25,6 +25,15 @@ function getCached(key: string): Group[] | null {
 
 function setCached(key: string, data: Group[]): void {
   cache.set(key, { data, ts: Date.now() })
+}
+
+/**
+ * Pre-populate the module-level cache from an authenticated context (e.g. BpmnDesigner).
+ * This allows BpmnDesigner (which has SessionProvider access) to seed data before
+ * VariableComboBoxEntry mounts its isolated React root outside the provider tree.
+ */
+export function seedComboboxCache(key: string, groups: Group[]): void {
+  setCached(key, groups)
 }
 
 // ── Source fetchers ───────────────────────────────────────────────────────────
@@ -90,6 +99,8 @@ interface ProcessVariableApiItem {
   setByTask?: string
 }
 
+// adminApiClient uses a module-level tokenGetter interceptor (set via setApiClientToken in the
+// client layout). This works even when called from an isolated React root outside SessionProvider.
 async function fetchDtdsVariablesString(processId: string, activityId: string): Promise<Group[]> {
   const cacheKey = JSON.stringify(['dtds-variables-string', processId, activityId])
   const cached = getCached(cacheKey)
@@ -307,7 +318,7 @@ async function fetchFormsDeployed(): Promise<Group[]> {
   if (cached) return cached
 
   try {
-    const res = await adminApiClient.get<unknown>('/api/v1/design/forms')
+    const res = await apiClient.get<unknown>('/api/forms')
     const data = res.data as { forms?: DeployedFormApiItem[] } | DeployedFormApiItem[] | null
     const forms: DeployedFormApiItem[] = Array.isArray(data)
       ? data
