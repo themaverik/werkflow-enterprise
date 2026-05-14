@@ -173,6 +173,12 @@
   border-left: 1px solid var(--sidebar-border) !important;
   font-family: var(--font-dm-sans), sans-serif;
   font-size: 12px;
+  --input-background-color: #ffffff;
+  --input-border-color: #e2eaee;
+  --input-focus-border-color: #149ba5;
+  --input-focus-background-color: #f0fafb;
+  --input-border-color-disabled: #eef2f5;
+  --placeholder-background-color: #f0f4f6;
 }
 .bio-properties-panel-header {
   background: var(--sidebar-bg) !important;
@@ -485,6 +491,7 @@
 
 /* ── Variable typeahead combobox (Pattern D — ADR-010) ─ */
 .wf-combo { display: flex; flex-direction: column; gap: 6px; }
+.bio-properties-panel-entry .wf-combo { padding: 4px 0; }
 .wf-combo-input { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 7px 9px; min-height: 34px; background: #fff; border: 1px solid var(--wf-border); border-radius: 6px; cursor: text; transition: border-color .12s, box-shadow .12s; }
 .wf-combo-input.focused { border-color: var(--wf-accent); box-shadow: 0 0 0 3px rgba(20,155,165,0.14); }
 .wf-combo-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; background: #faece7; color: #712b13; border: 1px solid #f3d3c5; border-radius: 5px; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.4; }

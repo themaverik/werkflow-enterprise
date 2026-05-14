@@ -228,6 +228,38 @@ public class ProcessDefinitionService {
     }
 
     /**
+     * Get BPMN XML by process key (latest deployed version).
+     */
+    public String getProcessDefinitionXmlByKey(String key) {
+        log.debug("Fetching BPMN XML for process key: {}", key);
+
+        ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
+            .processDefinitionKey(key)
+            .latestVersion()
+            .singleResult();
+
+        if (processDefinition == null) {
+            throw new RuntimeException("Process definition not found with key: " + key);
+        }
+
+        try {
+            InputStream resourceStream = repositoryService.getResourceAsStream(
+                processDefinition.getDeploymentId(),
+                processDefinition.getResourceName()
+            );
+
+            if (resourceStream == null) {
+                throw new RuntimeException("Resource not found for process key: " + key);
+            }
+
+            return new String(resourceStream.readAllBytes());
+        } catch (IOException e) {
+            log.error("Error retrieving BPMN XML for process key: {}", key, e);
+            throw new RuntimeException("Failed to retrieve BPMN XML: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Get start form schema for a process definition.
      * Accepts either a full Flowable process definition ID (key:version:hash)
      * or a plain process key — in which case the latest deployed version is used.

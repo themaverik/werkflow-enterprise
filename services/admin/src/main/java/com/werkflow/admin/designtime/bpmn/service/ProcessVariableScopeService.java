@@ -6,6 +6,8 @@ import com.werkflow.admin.designtime.platform.client.EngineClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
@@ -64,8 +66,8 @@ public class ProcessVariableScopeService {
      * @param activityId   BPMN element ID of the target activity
      * @return response with accumulated variables and their provenance
      */
-    public VariableAtActivityResponse variablesAt(String tenantId, String processDefId, String activityId) {
-        String bpmnXml = fetchBpmnXml(tenantId, processDefId);
+    public VariableAtActivityResponse variablesAt(String tenantId, String processDefId, String activityId, String bearerToken) {
+        String bpmnXml = fetchBpmnXml(tenantId, processDefId, bearerToken);
         Document doc = parseBpmnXml(bpmnXml);
         List<ProcessVariableEntry> variables = traverse(doc, activityId);
         return new VariableAtActivityResponse(variables);
@@ -75,11 +77,14 @@ public class ProcessVariableScopeService {
     // XML fetch
     // -------------------------------------------------------------------------
 
-    private String fetchBpmnXml(String tenantId, String processDefId) {
-        String url = engineBaseUrl + "/api/v1/processes/" + processDefId + "/bpmn"
-                + "?tenantId=" + tenantId;
+    private String fetchBpmnXml(String tenantId, String processDefId, String bearerToken) {
+        String url = engineBaseUrl + "/api/process-definitions/key/"
+                + processDefId + "/xml";
         try {
-            String xml = restTemplate.exchange(url, HttpMethod.GET, null, String.class).getBody();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(bearerToken);
+            HttpEntity<?> entity = new HttpEntity<>(headers);
+            String xml = restTemplate.exchange(url, HttpMethod.GET, entity, String.class).getBody();
             if (xml == null || xml.isBlank()) {
                 throw new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND,

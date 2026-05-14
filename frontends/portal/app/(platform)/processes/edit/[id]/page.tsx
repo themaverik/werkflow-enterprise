@@ -39,7 +39,9 @@ export default function EditProcessPage() {
       }
       if (draft?.bpmnXml?.trim()) {
         setDraftXml(draft.bpmnXml)
-        setShowDraftBanner(true)
+        const normalise = (xml: string) => xml.replace(/\s+/g, ' ').trim()
+        const hasDiff = normalise(draft.bpmnXml) !== normalise(deployedXml)
+        setShowDraftBanner(hasDiff)
       }
       setXmlToLoad(deployedXml)
       return deployedXml

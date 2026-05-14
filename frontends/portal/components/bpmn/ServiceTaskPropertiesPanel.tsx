@@ -31,11 +31,19 @@ import { DtdsOperationPicker } from './DtdsOperationPicker'
 import { DtdsFieldTree } from './DtdsFieldTree'
 import { DtdsInputFieldForm } from './DtdsInputFieldForm'
 import type { FieldEntry } from '@/lib/api/dtds'
+import {
+  setActionType,
+  readFlowableField,
+  writeFlowableField,
+  getNotificationTemplates,
+} from '@/lib/bpmn/flowable-properties-provider'
+import { VariableComboBoxBpmnAdapter } from '@/components/bpmn/VariableComboBoxBpmnAdapter'
 
 
 interface ServiceTaskPropertiesPanelProps {
   element: any
   modeler: any
+  onShowNativePanel?: () => void
 }
 
 // ---------------------------------------------------------------------------
@@ -122,6 +130,7 @@ function formatConnectorError(raw: string): string {
 export default function ServiceTaskPropertiesPanel({
   element,
   modeler,
+  onShowNativePanel,
 }: ServiceTaskPropertiesPanelProps) {
   const t = useTranslations('bpmn')
   // ---- Request tab state ----
@@ -172,6 +181,15 @@ export default function ServiceTaskPropertiesPanel({
   const [contractTestError, setContractTestError] = useState<string | null>(null)
   const [contractImportError, setContractImportError] = useState<string | null>(null)
 
+  // ---- Human Approval state ----
+  const [outcomeVar, setOutcomeVar] = useState('')
+
+  // ---- Send Notification state ----
+  const [notifChannel, setNotifChannel] = useState('email')
+  const [notifTemplateKey, setNotifTemplateKey] = useState('')
+  const [notifCondition, setNotifCondition] = useState('')
+  const [notifTemplates, setNotifTemplates] = useState<Array<{ key: string; name: string }>>([])
+
   // ---- Load element values on mount / element change ----
   useEffect(() => {
     if (!element || !modeler) return
@@ -208,7 +226,17 @@ export default function ServiceTaskPropertiesPanel({
     } else {
       setInputMappings([])
     }
+    // Human Approval fields
+    setOutcomeVar(readFlowableField(element, 'outcomeVariable'))
+    // Send Notification fields
+    setNotifChannel(readFlowableField(element, 'channel') || 'email')
+    setNotifTemplateKey(readFlowableField(element, 'templateKey'))
+    setNotifCondition(readFlowableField(element, 'condition'))
   }, [element, modeler])
+
+  useEffect(() => {
+    setNotifTemplates(getNotificationTemplates())
+  }, [])
 
   // ---- Fetch connectors on mount ----
   useEffect(() => {
@@ -414,9 +442,201 @@ export default function ServiceTaskPropertiesPanel({
     return 'secondary'
   }
 
+  const ACTION_TYPES = [
+    { value: '', label: '(none)' },
+    { value: 'HUMAN_APPROVAL',    label: 'Human Approval' },
+    { value: 'SEND_NOTIFICATION', label: 'Send Notification' },
+    { value: 'EXTERNAL_API_CALL', label: 'External API Call' },
+    { value: 'CALL_SUBPROCESS',   label: 'Call Subprocess' },
+    { value: 'DMN_ROUTE',         label: 'DMN Route' },
+    { value: 'GROOVY_SCRIPT',     label: 'Groovy Script (Admin)' },
+    { value: 'MANUAL_STEP',       label: 'Manual Step' },
+  ]
+
+  const currentActionType: string =
+    element.businessObject?.get?.('flowable:actionType') ??
+    element.businessObject?.['flowable:actionType'] ??
+    ''
+
+  const handleActionTypeChange = (value: string) => {
+    const modeling = modeler.get('modeling')
+    setActionType(element, modeling, value)
+  }
+
   return (
-    <div className="space-y-4 p-3">
+    <div className="space-y-4 p-3" style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: 12 }}>
+      {onShowNativePanel && (
+        <button
+          type="button"
+          onClick={onShowNativePanel}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+          General properties
+        </button>
+      )}
+      {/* Action Type selector */}
+      <Card>
+        <CardHeader className="pb-2 pt-3 px-3">
+          <CardTitle className="text-xs font-semibold">Action Type</CardTitle>
+        </CardHeader>
+        <CardContent className="px-3 pb-3">
+          <Select value={currentActionType || '__none__'} onValueChange={v => handleActionTypeChange(v === '__none__' ? '' : v)}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="(none)" />
+            </SelectTrigger>
+            <SelectContent>
+              {ACTION_TYPES.map(t => (
+                <SelectItem key={t.value || '__none__'} value={t.value || '__none__'}>
+                  {t.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      {/* ── HUMAN APPROVAL ────────────────────────────────────────────────── */}
+      {currentActionType === 'HUMAN_APPROVAL' && (
+        <Card>
+          <CardHeader className="pb-2 pt-3 px-3">
+            <CardTitle className="text-xs font-semibold">Assignment</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Candidate Groups</Label>
+              <VariableComboBoxBpmnAdapter
+                key={`cg-${element.id}`}
+                mode="multi"
+                sourceKeys={['pss-candidate-groups', 'dtds-variables-string', 'custody-feel']}
+                processId={element.businessObject?.$parent?.id}
+                activityId={element.businessObject?.id}
+                getValue={() => element.businessObject.candidateGroups || ''}
+                setValue={(v) => modeler.get('modeling').updateProperties(element, { candidateGroups: v || undefined })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Assignee</Label>
+              <VariableComboBoxBpmnAdapter
+                key={`as-${element.id}`}
+                mode="single"
+                sourceKeys={['dtds-variables-string']}
+                processId={element.businessObject?.$parent?.id}
+                activityId={element.businessObject?.id}
+                getValue={() => element.businessObject.assignee || ''}
+                setValue={(v) => modeler.get('modeling').updateProperties(element, { assignee: v || undefined })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Candidate Users</Label>
+              <VariableComboBoxBpmnAdapter
+                key={`cu-${element.id}`}
+                mode="multi"
+                sourceKeys={['dtds-variables-string']}
+                processId={element.businessObject?.$parent?.id}
+                activityId={element.businessObject?.id}
+                getValue={() => element.businessObject.candidateUsers || ''}
+                setValue={(v) => modeler.get('modeling').updateProperties(element, { candidateUsers: v || undefined })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Form Key</Label>
+              <VariableComboBoxBpmnAdapter
+                key={`fk-${element.id}`}
+                mode="single"
+                sourceKeys={['forms-deployed']}
+                processId={element.businessObject?.$parent?.id}
+                activityId={element.businessObject?.id}
+                getValue={() => element.businessObject.formKey || element.businessObject.$attrs?.['flowable:formKey'] || ''}
+                setValue={(v) => modeler.get('modeling').updateProperties(element, { formKey: v || undefined })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Outcome Variable</Label>
+              <Input
+                className="h-8 text-xs"
+                value={outcomeVar}
+                placeholder="approvalOutcome"
+                onChange={e => setOutcomeVar(e.target.value)}
+                onBlur={() => writeFlowableField(element, modeler.get('modeling'), 'outcomeVariable', outcomeVar)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── SEND NOTIFICATION ─────────────────────────────────────────────── */}
+      {currentActionType === 'SEND_NOTIFICATION' && (
+        <Card>
+          <CardHeader className="pb-2 pt-3 px-3">
+            <CardTitle className="text-xs font-semibold">Notification</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Channel</Label>
+              <Select value={notifChannel} onValueChange={v => {
+                setNotifChannel(v)
+                writeFlowableField(element, modeler.get('modeling'), 'channel', v || 'email')
+              }}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="slack">Slack (coming soon)</SelectItem>
+                  <SelectItem value="whatsapp">WhatsApp (coming soon)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Recipient</Label>
+              <VariableComboBoxBpmnAdapter
+                key={`nr-${element.id}`}
+                mode="single"
+                sourceKeys={['dtds-variables-string']}
+                processId={element.businessObject?.$parent?.id}
+                activityId={element.businessObject?.id}
+                placeholder="${initiator} or email@example.com"
+                getValue={() => readFlowableField(element, 'recipient')}
+                setValue={(v) => writeFlowableField(element, modeler.get('modeling'), 'recipient', v)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Template</Label>
+              <Select value={notifTemplateKey || '__none__'} onValueChange={v => {
+                const val = v === '__none__' ? '' : v
+                setNotifTemplateKey(val)
+                writeFlowableField(element, modeler.get('modeling'), 'templateKey', val)
+              }}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="(select template)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">(select template)</SelectItem>
+                  {notifTemplates.map(tmpl => (
+                    <SelectItem key={tmpl.key} value={tmpl.key}>{tmpl.name || tmpl.key}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Condition (optional)</Label>
+              <Input
+                className="h-8 text-xs font-mono"
+                value={notifCondition}
+                placeholder="${status == 'approved'}"
+                onChange={e => setNotifCondition(e.target.value)}
+                onBlur={() => writeFlowableField(element, modeler.get('modeling'), 'condition', notifCondition)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Connector selector — prefers DTDS list, falls back to legacy connector list */}
+      {currentActionType === 'EXTERNAL_API_CALL' && (<>
       <Card>
         <CardHeader className="pb-2 pt-3 px-3">
           <CardTitle className="text-xs font-semibold">{t('connector')}</CardTitle>
@@ -872,6 +1092,7 @@ export default function ServiceTaskPropertiesPanel({
           </TabsContent>
         )}
       </Tabs>
+      </>)}
     </div>
   )
 }
