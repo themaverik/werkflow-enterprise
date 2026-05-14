@@ -91,7 +91,7 @@ interface ProcessVariableApiItem {
 }
 
 async function fetchDtdsVariablesString(processId: string, activityId: string): Promise<Group[]> {
-  const cacheKey = `dtds-variables-string:${processId}:${activityId}`
+  const cacheKey = JSON.stringify(['dtds-variables-string', processId, activityId])
   const cached = getCached(cacheKey)
   if (cached) return cached
 
@@ -168,6 +168,169 @@ async function fetchCustodyFeel(): Promise<Group[]> {
   }
 }
 
+async function fetchDtdsVariablesDate(processId: string, activityId: string): Promise<Group[]> {
+  const cacheKey = JSON.stringify(['dtds-variables-date', processId, activityId])
+  const cached = getCached(cacheKey)
+  if (cached) return cached
+
+  try {
+    const res = await adminApiClient.get<{ variables?: ProcessVariableApiItem[] }>(
+      `/api/v1/design/bpmn/processes/${encodeURIComponent(processId)}/variables-at/${encodeURIComponent(activityId)}`
+    )
+    const variables = res.data.variables ?? []
+    const dateVars = variables.filter((v) => v.type === 'date' || v.type === 'dateTime' || v.type === 'duration')
+
+    const items: GroupItem[] = dateVars.map((v) => ({
+      id: `\${${v.name}}`,
+      name: `\${${v.name}}`,
+      meta: v.setByTask ? `from ${v.setByTask}` : undefined,
+    }))
+
+    const groups: Group[] = items.length > 0
+      ? [{ key: 'process-date', label: 'Process Variables · date/duration', icon: 'process', items }]
+      : []
+
+    setCached(cacheKey, groups)
+    return groups
+  } catch {
+    return []
+  }
+}
+
+async function fetchDtdsVariablesNumber(processId: string, activityId: string): Promise<Group[]> {
+  const cacheKey = JSON.stringify(['dtds-variables-number', processId, activityId])
+  const cached = getCached(cacheKey)
+  if (cached) return cached
+
+  try {
+    const res = await adminApiClient.get<{ variables?: ProcessVariableApiItem[] }>(
+      `/api/v1/design/bpmn/processes/${encodeURIComponent(processId)}/variables-at/${encodeURIComponent(activityId)}`
+    )
+    const variables = res.data.variables ?? []
+    const numberVars = variables.filter((v) => v.type === 'number' || v.type === 'integer' || v.type === 'long')
+
+    const items: GroupItem[] = numberVars.map((v) => ({
+      id: `\${${v.name}}`,
+      name: `\${${v.name}}`,
+      meta: v.setByTask ? `from ${v.setByTask}` : undefined,
+    }))
+
+    const groups: Group[] = items.length > 0
+      ? [{ key: 'process-number', label: 'Process Variables · number', icon: 'process', items }]
+      : []
+
+    setCached(cacheKey, groups)
+    return groups
+  } catch {
+    return []
+  }
+}
+
+interface SlaConstantApiItem {
+  key: string
+  label?: string
+  value?: string
+  description?: string
+}
+
+async function fetchSlaConstants(): Promise<Group[]> {
+  const cacheKey = 'sla-constants'
+  const cached = getCached(cacheKey)
+  if (cached) return cached
+
+  try {
+    const res = await adminApiClient.get<unknown>('/api/v1/platform/sla-constants')
+    const data = res.data as { constants?: SlaConstantApiItem[] } | null
+    const constants: SlaConstantApiItem[] = data?.constants ?? []
+
+    const items: GroupItem[] = constants.map((item) => ({
+      id: item.key,
+      name: item.label ?? item.key,
+      meta: item.value ?? item.description,
+      sans: true,
+    }))
+
+    const groups: Group[] = items.length > 0
+      ? [{ key: 'sla', label: 'SLA Constants', icon: 'feel', items }]
+      : []
+
+    setCached(cacheKey, groups)
+    return groups
+  } catch {
+    return []
+  }
+}
+
+interface PriorityConstantApiItem {
+  key: string
+  label?: string
+  value?: number
+}
+
+async function fetchPriorityConstants(): Promise<Group[]> {
+  const cacheKey = 'priority-constants'
+  const cached = getCached(cacheKey)
+  if (cached) return cached
+
+  try {
+    const res = await adminApiClient.get<unknown>('/api/v1/platform/priorities')
+    const data = res.data as { priorities?: PriorityConstantApiItem[] } | null
+    const priorities: PriorityConstantApiItem[] = data?.priorities ?? []
+
+    const items: GroupItem[] = priorities.map((item) => ({
+      id: String(item.value ?? item.key),
+      name: item.label ?? item.key,
+      meta: item.value !== undefined ? String(item.value) : undefined,
+      sans: true,
+    }))
+
+    const groups: Group[] = items.length > 0
+      ? [{ key: 'priorities', label: 'Priority Constants', icon: 'system', items }]
+      : []
+
+    setCached(cacheKey, groups)
+    return groups
+  } catch {
+    return []
+  }
+}
+
+interface DeployedFormApiItem {
+  key: string
+  name?: string
+  version?: number
+}
+
+async function fetchFormsDeployed(): Promise<Group[]> {
+  const cacheKey = 'forms-deployed'
+  const cached = getCached(cacheKey)
+  if (cached) return cached
+
+  try {
+    const res = await adminApiClient.get<unknown>('/api/v1/design/forms')
+    const data = res.data as { forms?: DeployedFormApiItem[] } | DeployedFormApiItem[] | null
+    const forms: DeployedFormApiItem[] = Array.isArray(data)
+      ? data
+      : (data as { forms?: DeployedFormApiItem[] } | null)?.forms ?? []
+
+    const items: GroupItem[] = forms.map((item) => ({
+      id: item.key,
+      name: item.name ?? item.key,
+      meta: item.version !== undefined ? `v${item.version}` : undefined,
+      sans: true,
+    }))
+
+    const groups: Group[] = items.length > 0
+      ? [{ key: 'forms', label: 'Deployed Forms', icon: 'literal', items }]
+      : []
+
+    setCached(cacheKey, groups)
+    return groups
+  } catch {
+    return []
+  }
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 interface UseVariableSourcesContext {
@@ -206,6 +369,23 @@ export function useVariableSources(
         case 'custody-feel':
           return fetchCustodyFeel()
 
+        case 'dtds-variables-date':
+          if (!context.processId || !context.activityId) return Promise.resolve([])
+          return fetchDtdsVariablesDate(context.processId, context.activityId)
+
+        case 'dtds-variables-number':
+          if (!context.processId || !context.activityId) return Promise.resolve([])
+          return fetchDtdsVariablesNumber(context.processId, context.activityId)
+
+        case 'sla-constants':
+          return fetchSlaConstants()
+
+        case 'priority-constants':
+          return fetchPriorityConstants()
+
+        case 'forms-deployed':
+          return fetchFormsDeployed()
+
         default:
           return Promise.resolve([])
       }
@@ -219,7 +399,7 @@ export function useVariableSources(
       })
       .catch((err: unknown) => {
         if (cancelled) return
-        setError(err instanceof Error ? err.message : 'Failed to load sources')
+        setError('Failed to load variable sources')
         setLoading(false)
       })
 

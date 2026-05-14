@@ -107,6 +107,7 @@ export function VariableComboBoxEntry({
   const commitLiteral = useCallback(() => {
     if (!query.trim()) return
     const val = query.trim()
+    if (val.includes(',')) return
     const newChip: Chip = { id: val, label: val, warn: true }
     const newChips = mode === 'single' ? [newChip] : [...chips, newChip]
     setChips(newChips)
