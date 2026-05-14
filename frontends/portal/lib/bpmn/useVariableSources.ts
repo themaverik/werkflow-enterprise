@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/compat'
+import { useState, useEffect } from 'react'
 import { adminApiClient } from '@/lib/api/client'
 import type { Group, GroupItem } from '@/components/ui/VariableComboBox'
 
