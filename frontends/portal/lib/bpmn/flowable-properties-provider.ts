@@ -17,7 +17,7 @@ import {
   isSelectEntryEdited,
   isTextFieldEntryEdited,
 } from '@bpmn-io/properties-panel'
-import { CandidateGroupsInput } from '@/components/bpmn/CandidateGroupsInput'
+import { VariableComboBoxEntry } from '@/components/bpmn/VariableComboBoxEntry'
 import type { CandidateGroupEntry } from '@/lib/platform/types'
 import type { ProcessVariable } from '@/lib/api/dtds'
 
@@ -169,44 +169,12 @@ class FlowablePropertiesProvider {
       // --- User Task ---
       if (is(element, 'bpmn:UserTask')) {
         groups.splice(generalIdx + 1, 0, {
-          id: 'flowable-assignment',
-          label: 'Assignment',
-          entries: [
-            {
-              id: 'assignee',
-              element,
-              component: TextFieldEntry,
-              isEdited: isTextFieldEntryEdited,
-              debounce,
-              label: translate('Assignee'),
-              description: translate('User ID or expression (e.g., ${initiator})'),
-              getValue: () => element.businessObject.assignee || '',
-              setValue: (value: string) =>
-                modeling.updateProperties(element, { assignee: value || undefined }),
-            },
-            {
-              id: 'candidateUsers',
-              element,
-              component: TextFieldEntry,
-              isEdited: isTextFieldEntryEdited,
-              debounce,
-              label: translate('Candidate Users'),
-              description: translate('Comma-separated user IDs (e.g., user1,user2)'),
-              getValue: () => element.businessObject.candidateUsers || '',
-              setValue: (value: string) =>
-                modeling.updateProperties(element, { candidateUsers: value || undefined }),
-            },
-            candidateGroupsEntry(element, modeling, translate, debounce),
-          ],
-        })
-
-        groups.splice(generalIdx + 2, 0, {
           id: 'flowable-forms',
           label: 'Forms',
           entries: [formKeyEntry(element, modeling, translate)],
         })
 
-        groups.splice(generalIdx + 3, 0, {
+        groups.splice(generalIdx + 2, 0, {
           id: 'flowable-task',
           label: 'Task Configuration',
           entries: [
@@ -756,18 +724,48 @@ function buildActionBlockEntries(
   const actionType = getActionType(element)
 
   if (actionType === 'HUMAN_APPROVAL') {
+    const processId: string | undefined = element.businessObject?.$parent?.id
+    const activityId: string | undefined = element.businessObject?.id
     entries.push(
+      {
+        id: 'ab-candidateGroups',
+        element,
+        component: VariableComboBoxEntry,
+        label: translate('Candidate Groups'),
+        mode: 'multi',
+        sourceKeys: ['pss-candidate-groups', 'dtds-variables-string', 'custody-feel'],
+        processId,
+        activityId,
+        getValue: () => element.businessObject.candidateGroups || '',
+        setValue: (v: string) =>
+          modeling.updateProperties(element, { candidateGroups: v || undefined }),
+        keys: true,
+      },
       {
         id: 'ab-assignee',
         element,
-        component: TextFieldEntry,
-        isEdited: isTextFieldEntryEdited,
-        debounce,
-        label: translate('Assignee Expression'),
-        description: translate('Use `${initiator}` for submitter or `${custodyVars.IT}` for group expression'),
-        getValue: () => element.businessObject.get('flowable:assignee') || '',
-        setValue: (value: string) =>
-          modeling.updateProperties(element, { 'flowable:assignee': value || undefined }),
+        component: VariableComboBoxEntry,
+        label: translate('Assignee'),
+        mode: 'single',
+        sourceKeys: ['dtds-variables-string'],
+        processId,
+        activityId,
+        getValue: () => element.businessObject.assignee || '',
+        setValue: (v: string) =>
+          modeling.updateProperties(element, { assignee: v || undefined }),
+      },
+      {
+        id: 'ab-candidateUsers',
+        element,
+        component: VariableComboBoxEntry,
+        label: translate('Candidate Users'),
+        mode: 'multi',
+        sourceKeys: ['dtds-variables-string'],
+        processId,
+        activityId,
+        getValue: () => element.businessObject.candidateUsers || '',
+        setValue: (v: string) =>
+          modeling.updateProperties(element, { candidateUsers: v || undefined }),
       },
       {
         id: 'ab-formKey',
@@ -1002,30 +1000,6 @@ function flowableFieldEntry(
     label,
     getValue: () => readFlowableField(element, fieldName),
     setValue: (value: string) => writeFlowableField(element, modeling, fieldName, value),
-  }
-}
-
-const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN', 'WORKFLOW_ADMIN']
-
-function candidateGroupsEntry(
-  element: any, modeling: any, translate: (s: string) => string, _debounce: any
-): any {
-  const isAdmin = currentUserRoles.some(r => ADMIN_ROLES.includes(r))
-  const filtered: CandidateGroupEntry[] = isAdmin
-    ? groupOptions
-    : groupOptions.filter(g => /^DOA_L\d+$/i.test(g.key))
-
-  return {
-    id: 'ab-candidateGroups',
-    element,
-    component: CandidateGroupsInput,
-    label: translate('Candidate Groups'),
-    availableGroups: filtered,
-    processVariables: processVariableOptions,
-    custodyVarGroups: custodyVarGroups,
-    getValue: () => element.businessObject.candidateGroups || '',
-    setValue: (value: string) =>
-      modeling.updateProperties(element, { candidateGroups: value || undefined }),
   }
 }
 

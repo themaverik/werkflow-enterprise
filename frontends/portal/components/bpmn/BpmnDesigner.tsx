@@ -175,7 +175,7 @@ function validateActionBlocks(modeler: any): string[] {
       }
 
       if (actionType === 'HUMAN_APPROVAL') {
-        const hasAssignee = !!(bo.get('flowable:assignee') || bo.get('flowable:candidateGroups'))
+        const hasAssignee = !!(bo.get('assignee') || bo.get('candidateGroups'))
         if (!hasAssignee) {
           errors.push(`${label}: User task has no assignee or candidate groups set.`)
         }
@@ -591,7 +591,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
     listProcessVariablesAt(processDefId, activityId)
       .then((vars) => {
         setProcessVariableOptions(vars ?? [])
-        // Trigger bpmn-js properties panel refresh so CandidateGroupsInput re-renders
+        // Trigger bpmn-js properties panel refresh so VariableComboBoxEntry re-renders
         try { (modeler as any).get('eventBus').fire('propertiesPanel.updated') } catch (_) {}
       })
       .catch(() => setProcessVariableOptions([]))
@@ -921,62 +921,66 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
               </div>
             )}
 
-            {/* Custody Groups reference panel */}
-            <CustodyGroupsPanel mappings={custodyMappings} />
+            {/* Custody Groups reference panel — only relevant for UserTask */}
+            {selectedElement?.type === 'bpmn:UserTask' && (
+              <CustodyGroupsPanel mappings={custodyMappings} />
+            )}
 
-            {/* Artifact metadata — collapsible section at bottom */}
-            <div style={{ background: 'hsl(var(--card))' }}>
-              <button
-                type="button"
-                onClick={() => setShowMeta((v) => !v)}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  width: '100%',
-                  height: '32px',
-                  background: 'hsl(var(--card))',
-                  borderBottom: '1px solid hsl(225, 10%, 75%)',
-                  borderTop: 'none',
-                  borderLeft: 'none',
-                  borderRight: 'none',
-                  position: 'sticky',
-                  top: 0,
-                  zIndex: 10,
-                  cursor: 'pointer',
-                  padding: 0,
-                }}
-              >
-                <span style={{ fontSize: '14px', fontWeight: showMeta ? 500 : 400, color: 'hsl(225, 10%, 15%)', marginLeft: '12px' }}>
-                  Artifact Metadata
-                </span>
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '22px',
-                  width: '22px',
-                  margin: '5px',
-                  transform: showMeta ? 'rotate(90deg)' : 'rotate(0deg)',
-                  transition: 'transform 0.15s ease',
-                  color: 'hsl(225, 10%, 35%)',
-                }}>
-                  <svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14">
-                    <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </span>
-              </button>
-              {showMeta && (
-                <div style={{ background: 'hsl(var(--card))' }}>
-                  <ArtifactMetadataPanel
-                    artifactType="process"
-                    value={artifactMetadata}
-                    onChange={(v) => { setArtifactMetadata(v); setHasChanges(true) }}
-                  />
-                </div>
-              )}
-            </div>
+            {/* Artifact metadata — process-level only; hidden when an element is selected */}
+            {!selectedElement && (
+              <div style={{ background: 'hsl(var(--card))' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowMeta((v) => !v)}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    height: '32px',
+                    background: 'hsl(var(--card))',
+                    borderBottom: '1px solid hsl(225, 10%, 75%)',
+                    borderTop: 'none',
+                    borderLeft: 'none',
+                    borderRight: 'none',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 10,
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  <span style={{ fontSize: '14px', fontWeight: showMeta ? 500 : 400, color: 'hsl(225, 10%, 15%)', marginLeft: '12px' }}>
+                    Artifact Metadata
+                  </span>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '22px',
+                    width: '22px',
+                    margin: '5px',
+                    transform: showMeta ? 'rotate(90deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.15s ease',
+                    color: 'hsl(225, 10%, 35%)',
+                  }}>
+                    <svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14">
+                      <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </span>
+                </button>
+                {showMeta && (
+                  <div style={{ background: 'hsl(var(--card))' }}>
+                    <ArtifactMetadataPanel
+                      artifactType="process"
+                      value={artifactMetadata}
+                      onChange={(v) => { setArtifactMetadata(v); setHasChanges(true) }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
