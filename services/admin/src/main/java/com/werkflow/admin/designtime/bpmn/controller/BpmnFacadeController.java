@@ -53,6 +53,6 @@ public class BpmnFacadeController {
             @PathVariable String activityId,
             @AuthenticationPrincipal Jwt jwt) {
         String tenantId = jwtClaimsExtractor.getTenantId(jwt);
-        return ResponseEntity.ok(variableScopeService.variablesAt(tenantId, processDefId, activityId));
+        return ResponseEntity.ok(variableScopeService.variablesAt(tenantId, processDefId, activityId, jwt.getTokenValue()));
     }
 }

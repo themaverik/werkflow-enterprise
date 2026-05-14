@@ -86,7 +86,7 @@ public class DmnFacadeController {
         String tenantId = jwtClaimsExtractor.getTenantId(jwt);
 
         VariableAtActivityResponse scope = variableScopeService.variablesAt(
-                tenantId, processDefId, activityId);
+                tenantId, processDefId, activityId, jwt.getTokenValue());
 
         String dmnXml = engineClient.getDmnDefinitionXml(tenantId, dmnId);
         List<Map<String, String>> inputs = dmnXml != null ? parseDmnInputColumns(dmnXml) : List.of();

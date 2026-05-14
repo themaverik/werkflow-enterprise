@@ -46,6 +46,7 @@ export interface VariableComboBoxProps {
   sources?: Source[]
   keys?: boolean
   contextLine?: React.ReactNode
+  loading?: boolean
 }
 
 // ── SVG icon helpers ────────────────────────────────────────────────────────
@@ -127,6 +128,7 @@ export function VariableComboBox({
   sources = [],
   keys = false,
   contextLine,
+  loading = false,
 }: VariableComboBoxProps) {
   const [focused, setFocused] = React.useState(false)
 
@@ -195,7 +197,7 @@ export function VariableComboBox({
         />
       </div>
 
-      {nonEmpty.length > 0 && !literalEscape && (
+      {nonEmpty.length > 0 && !literalEscape && focused && (
         <div className="wf-combo-dd" id={listboxId} role="listbox">
           {nonEmpty.map((g) => (
             <React.Fragment key={g.key}>
@@ -222,7 +224,7 @@ export function VariableComboBox({
                     className={`wf-combo-itm${isFocused ? ' focus' : ''}`}
                     role="option"
                     aria-selected={isFocused}
-                    onClick={() => onItemClick?.(item)}
+                    onMouseDown={(e) => { e.preventDefault(); onItemClick?.(item) }}
                   >
                     <span className={`ic ${itemKind}`}>
                       <ComboItemIcon kind={itemKind} />
@@ -247,19 +249,29 @@ export function VariableComboBox({
         </div>
       )}
 
-      {literalEscape && (
+      {literalEscape && focused && (
         <div className="wf-combo-dd" id={listboxId} role="listbox">
           <div className="wf-combo-empty">
             <div className="msg">
               {literalEscape.hint || `No matches in PSS or DTDS scope for ${literalEscape.value}.`}
             </div>
-            <div className="esc">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 11l3 3L22 4"/>
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-              </svg>
-              Press <kbd>Enter</kbd> to use as a literal value
-            </div>
+            {literalEscape.value.length > 0 && (
+              <div className="esc">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 11l3 3L22 4"/>
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                Press <kbd>Enter</kbd> to use as a literal value
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {nonEmpty.length === 0 && !literalEscape && !loading && focused && (
+        <div className="wf-combo-dd" id={listboxId} role="listbox">
+          <div className="wf-combo-empty" style={{ padding: '10px 12px', color: 'var(--wf-muted)', fontSize: '11.5px', fontStyle: 'italic' }}>
+            No options found — type a value to use as a literal
           </div>
         </div>
       )}

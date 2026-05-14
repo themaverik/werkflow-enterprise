@@ -67,7 +67,8 @@
       "name": "TaskLike",
       "isAbstract": true,
       "extends": [
-        "bpmn:UserTask"
+        "bpmn:UserTask",
+        "bpmn:ServiceTask"
       ],
       "properties": [
         {
