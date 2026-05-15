@@ -285,12 +285,12 @@ export function VariableComboBox({
       {sources.length > 0 && (
         <div className="wf-combo-sources">
           {sources.map((s, i) => (
-            <span key={i} className={`src ${s.kind}`}>
+            <span key={i} className={`src ${s.kind}`} title={s.path}>
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 8L12 4 3 8l9 4 9-4z"/>
                 <path d="M3 12l9 4 9-4M3 16l9 4 9-4"/>
               </svg>
-              {s.kind.toUpperCase()} · {s.path}
+              {s.kind.toUpperCase()}
             </span>
           ))}
         </div>
