@@ -970,7 +970,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
 
             {/* Service task custom panel — covers EXTERNAL_API_CALL, HUMAN_APPROVAL, SEND_NOTIFICATION */}
             {!showNativePanel && isCustomPanelServiceTask(selectedElement) && modeler && (
-              <div className="flex-1 overflow-auto">
+              <div className="flex-1 overflow-auto wf-panel-custom">
                 <ServiceTaskPropertiesPanel
                   element={selectedElement}
                   modeler={modeler}
