@@ -981,14 +981,39 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
 
             {/* Artifact metadata — process-level only; hidden when an element is selected */}
             {!selectedElement && (
-              <div className="bio-properties-panel-group" style={{ margin: '8px' }}>
-                <button
-                  type="button"
+              <div style={{
+                margin: '8px',
+                border: '1px solid var(--panel-card-border)',
+                borderRadius: 'var(--panel-card-radius)',
+                background: 'var(--panel-card-bg)',
+                overflow: 'hidden',
+                boxShadow: 'var(--panel-card-shadow)',
+              }}>
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setShowMeta((v) => !v)}
-                  className="bio-properties-panel-group-header"
-                  style={{ width: '100%', border: 'none' }}
+                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setShowMeta((v) => !v)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '10px 12px 8px',
+                    background: 'var(--panel-input-disabled-bg)',
+                    borderBottom: '1px solid var(--panel-card-border)',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                  }}
                 >
-                  <span className="bio-properties-panel-group-header-title">Artifact Metadata</span>
+                  <span style={{
+                    fontFamily: 'var(--panel-font)',
+                    fontSize: 'var(--panel-fs-title)',
+                    fontWeight: 600,
+                    color: 'var(--panel-text)',
+                    letterSpacing: '0.01em',
+                  }}>
+                    Artifact Metadata
+                  </span>
                   <span style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -1000,7 +1025,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
                       <path d="M4 6l4 4 4-4"/>
                     </svg>
                   </span>
-                </button>
+                </div>
                 {showMeta && (
                   <ArtifactMetadataPanel
                     artifactType="process"

@@ -90,12 +90,12 @@ export function ArtifactMetadataPanel({ value, onChange }: Props) {
     : undefined
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '8px 12px 12px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '10px 12px 12px', fontFamily: 'var(--panel-font)', fontSize: 'var(--panel-fs)' }}>
       {/* ── Department ── */}
       {showDepartment && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <label
-            style={{ fontSize: '11px', color: '#6b7e8c', fontWeight: 500 }}
+            style={{ fontSize: 'var(--panel-fs-label)', color: 'var(--panel-label-color)', fontWeight: 'var(--panel-label-weight)' as React.CSSProperties['fontWeight'] }}
           >
             Department
           </label>
@@ -194,7 +194,7 @@ export function ArtifactMetadataPanel({ value, onChange }: Props) {
 
       {/* ── Category ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <label style={{ fontSize: '11px', color: '#6b7e8c', fontWeight: 500 }}>
+        <label style={{ fontSize: 'var(--panel-fs-label)', color: 'var(--panel-label-color)', fontWeight: 'var(--panel-label-weight)' as React.CSSProperties['fontWeight'] }}>
           Category
         </label>
         {!hasCategories ? (
@@ -314,7 +314,7 @@ export function ArtifactMetadataPanel({ value, onChange }: Props) {
 
       {/* ── Tags ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <label style={{ fontSize: '11px', color: '#6b7e8c', fontWeight: 500 }}>
+        <label style={{ fontSize: 'var(--panel-fs-label)', color: 'var(--panel-label-color)', fontWeight: 'var(--panel-label-weight)' as React.CSSProperties['fontWeight'] }}>
           Tags
         </label>
         <MetaRow>
