@@ -817,3 +817,24 @@
 .bio-properties-panel-arrow.wf-open .bio-properties-panel-arrow-right {
   transform: rotate(90deg);
 }
+
+/* ── Artifact Metadata dropdown overflow fix ────────────────────────────────
+   The bpmn-js panel root and scroll container clip absolute children by
+   default. Setting overflow to visible here lets the bounded, scrollable
+   dropdown (maxHeight 180px + overflowY auto in ArtifactMetadataPanel.tsx)
+   render on top of the panel without being cut off.
+   The scroll container retains scroll on the Y axis via overflow-y: auto so
+   normal panel scrolling is unaffected; only the X / shorthand is relaxed.  */
+.bio-properties-panel {
+  overflow: visible;
+}
+
+.bio-properties-panel-scroll-container {
+  overflow-x: visible;
+  overflow-y: auto;
+  min-height: 120px;
+}
+
+.bio-properties-panel-group {
+  overflow: visible;
+}
