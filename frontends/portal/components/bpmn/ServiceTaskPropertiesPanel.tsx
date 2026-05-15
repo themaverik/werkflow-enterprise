@@ -464,7 +464,7 @@ export default function ServiceTaskPropertiesPanel({
   }
 
   return (
-    <div className="space-y-4 p-3" style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: 12 }}>
+    <div className="space-y-3 p-2">
       {onShowNativePanel && (
         <button
           type="button"
