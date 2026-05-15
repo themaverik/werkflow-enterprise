@@ -33,6 +33,57 @@
     --wf-info-bg: #eff6ff;
     --wf-purple: #7c3aed;
 
+    /* ── Shared panel design tokens ──────────────────────── */
+    /* Single source of truth for bpmn-js, form-js, dmn-js   */
+    /* native panels AND the React ServiceTaskPropertiesPanel.*/
+    /* Change here → changes everywhere, no !important needed.*/
+    --panel-font:       var(--font-dm-sans), 'DM Sans', system-ui, sans-serif;
+    --panel-fs:         12px;
+    --panel-fs-title:   11px;
+    --panel-fs-label:   12px;
+    --panel-fs-small:   11px;
+
+    --panel-hdr-bg:     #111c27;
+    --panel-hdr-text:   #ffffff;
+    --panel-hdr-border: rgba(255,255,255,0.07);
+    --panel-hdr-icon:   rgba(255,255,255,0.65);
+
+    --panel-card-bg:     #ffffff;
+    --panel-card-border: #e2eaee;
+    --panel-card-sep:    #eef2f5;
+    --panel-card-radius: 8px;
+    --panel-card-shadow: 0 1px 2px rgba(15,30,42,0.05);
+
+    --panel-label-color:  #6b7e8c;
+    --panel-label-weight: 500;
+
+    --panel-input-h:      32px;
+    --panel-input-bg:     #ffffff;
+    --panel-input-border: #e2eaee;
+    --panel-input-radius: 6px;
+    --panel-input-color:  #0f1e2a;
+    --panel-input-ph:     #a8b9c4;
+    --panel-input-fs:     12px;
+
+    --panel-focus-border: #149ba5;
+    --panel-focus-bg:     #f0fafb;
+    --panel-focus-ring:   rgba(20,155,165,0.18);
+
+    --panel-input-disabled-bg:     #f0f4f6;
+    --panel-input-disabled-border: #e2eaee;
+    --panel-input-disabled-color:  #a8b9c4;
+
+    --panel-accent:    #149ba5;
+    --panel-accent-dk: #0e7a83;
+    --panel-accent-lt: #dff4f5;
+    --panel-accent-bg: #f0fafb;
+
+    --panel-danger:    #dc2626;
+    --panel-danger-bg: #fef2f2;
+
+    --panel-text:       #0f1e2a;
+    --panel-text-muted: #6b7e8c;
+
     --wf-radius: 8px;
     --wf-radius-sm: 6px;
     --wf-radius-lg: 12px;
@@ -162,295 +213,479 @@
   fill: transparent;
 }
 
-/* Werkflow properties panel wrapper — provides font cascade into Preact components */
-.werkflow-props-panel {
-  font-family: var(--font-dm-sans), sans-serif;
+/* ── Werkflow properties panel wrapper ──────────────────────────────────────
+   Provides font cascade for Preact components and the React custom panel.     */
+.werkflow-props-panel,
+.wf-panel-custom {
+  font-family: var(--panel-font);
+  font-size:   var(--panel-fs);
+  color:       var(--panel-text);
 }
 
-/* Properties panel chrome */
+/* ════════════════════════════════════════════════════════════════════════════
+   BPMN-JS · FORM-JS · DMN-JS  UNIFIED PROPERTIES PANEL THEME
+   All three editors consume the same --panel-* tokens defined in :root.
+   No !important overrides — we use the libraries' own CSS variable hooks.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Wire ALL official @bpmn-io/properties-panel CSS variables ─────────────
+   This covers every variable the library exposes. Values are referenced from
+   --panel-* tokens so one change propagates to every editor.                  */
 .bio-properties-panel {
-  background: hsl(var(--card)) !important;
-  border-left: 1px solid var(--sidebar-border) !important;
-  font-family: var(--font-dm-sans), sans-serif;
-  font-size: 12px;
-  --input-background-color: #ffffff;
-  --input-border-color: #e2eaee;
-  --input-focus-border-color: #149ba5;
-  --input-focus-background-color: #f0fafb;
-  --input-border-color-disabled: #eef2f5;
-  --placeholder-background-color: #f0f4f6;
+  /* Typography */
+  --font-family:         var(--panel-font);
+  --text-size-base:      var(--panel-fs);
+  --text-size-small:     var(--panel-fs);
+  --text-size-smallest:  var(--panel-fs-small);
+
+  /* Text */
+  --text-base-color:     var(--panel-text);
+  --text-error-color:    var(--panel-danger);
+  --description-color:   var(--panel-text-muted);
+  --placeholder-color:   var(--panel-text-muted);
+
+  /* Header */
+  --header-background-color:    var(--panel-hdr-bg);
+  --header-icon-fill-color:     var(--panel-hdr-icon);
+  --header-bottom-border-color: var(--panel-hdr-border);
+
+  /* Groups / sections */
+  --group-background-color:        var(--panel-card-bg);
+  --group-bottom-border-color:     var(--panel-card-sep);
+  --sticky-group-background-color: var(--panel-input-disabled-bg);
+
+  /* Inputs */
+  --input-background-color:          var(--panel-input-bg);
+  --input-border-color:              var(--panel-input-border);
+  --input-focus-background-color:    var(--panel-focus-bg);
+  --input-focus-border-color:        var(--panel-focus-border);
+  --input-error-background-color:    var(--panel-danger-bg);
+  --input-error-border-color:        var(--panel-danger);
+  --input-disabled-color:            var(--panel-input-disabled-color);
+  --input-disabled-background-color: var(--panel-input-disabled-bg);
+  --input-disabled-border-color:     var(--panel-input-disabled-border);
+  --input-border-color-disabled:     var(--panel-input-disabled-border);
+  --placeholder-background-color:    var(--panel-input-disabled-bg);
+  --focus-outline-color:             var(--panel-focus-ring);
+
+  /* FEEL expression editor */
+  --feel-active-color:               var(--panel-accent);
+  --feel-inactive-color:             var(--panel-text-muted);
+  --feel-hover-color:                var(--panel-accent);
+  --feel-hover-background-color:     var(--panel-accent-bg);
+  --feel-indicator-background-color: var(--panel-accent-bg);
+
+  /* Toggle switch */
+  --toggle-switch-on-background-color:  var(--panel-accent);
+  --toggle-switch-off-background-color: var(--panel-text-muted);
+
+  /* List / add / remove entries */
+  --list-entry-add-entry-background-color: var(--panel-accent-bg);
+  --list-entry-add-entry-fill-color:       var(--panel-accent);
+  --list-entry-dot-background-color:       var(--panel-card-border);
+  --add-entry-hover-background-color:      var(--panel-accent-lt);
+  --remove-entry-fill-color:               var(--panel-danger);
+  --remove-entry-hover-background-color:   var(--panel-danger-bg);
+
+  /* Dropdown */
+  --dropdown-item-background-color:       var(--panel-card-bg);
+  --dropdown-item-hover-background-color: var(--panel-accent-bg);
+
+  /* Base layout */
+  font-family: var(--panel-font);
+  font-size:   var(--panel-fs);
+  background:  var(--panel-card-bg);
+  border-left: 1px solid var(--panel-card-border);
 }
+
+/* Header bar — dark, matches sidebar */
 .bio-properties-panel-header {
-  background: var(--sidebar-bg) !important;
-  color: #fff !important;
+  background:    var(--panel-hdr-bg);
+  color:         var(--panel-hdr-text);
+  border-bottom: 1px solid var(--panel-hdr-border);
+  font-family:   var(--panel-font);
 }
-.bio-properties-panel input,
-.bio-properties-panel select,
+.bio-properties-panel-header .bio-properties-panel-header-label,
+.bio-properties-panel-header .bio-properties-panel-header-type {
+  font-family: var(--panel-font);
+  font-weight: 600;
+  color:       var(--panel-hdr-text);
+}
+
+/* ── Groups as Cards ────────────────────────────────────────────────────────
+   Each group is rendered as a white card with a title bar, matching the
+   shadcn Card + CardHeader + CardContent structure in ServiceTaskPropertiesPanel.
+   This makes native bpmn-js groups visually identical to our React cards.     */
+
+.bio-properties-panel-scroll-container {
+  padding:        8px;
+  display:        flex;
+  flex-direction: column;
+  gap:            12px;
+}
+
+.bio-properties-panel-group {
+  border:        1px solid var(--panel-card-border);
+  border-radius: var(--panel-card-radius);
+  background:    var(--panel-card-bg);
+  overflow:      hidden;
+  box-shadow:    var(--panel-card-shadow);
+}
+
+/* CardHeader equivalent */
+.bio-properties-panel-group-header {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  padding:         10px 12px 8px;
+  background:      var(--panel-card-bg);
+  border-bottom:   1px solid var(--panel-card-sep);
+  cursor:          pointer;
+}
+
+/* CardTitle equivalent */
+.bio-properties-panel-group-header-title {
+  font-family:    var(--panel-font);
+  font-size:      var(--panel-fs-title);
+  font-weight:    600;
+  color:          var(--panel-text);
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+/* CardContent equivalent */
+.bio-properties-panel-group-entries {
+  padding:        10px 12px 12px;
+  display:        flex;
+  flex-direction: column;
+  gap:            10px;
+}
+
+/* Individual entry (label + input pair) */
+.bio-properties-panel-entry {
+  display:        flex;
+  flex-direction: column;
+  gap:            4px;
+}
+
+/* ── Labels ─────────────────────────────────────────────────────────────────*/
+.bio-properties-panel label,
+.bio-properties-panel .bio-properties-panel-label {
+  font-family: var(--panel-font);
+  font-size:   var(--panel-fs-label);
+  font-weight: var(--panel-label-weight);
+  color:       var(--panel-label-color);
+  line-height: 1.4;
+}
+
+/* ── Inputs / Selects / Textareas ───────────────────────────────────────────*/
+.bio-properties-panel input:not([type="checkbox"]),
+.bio-properties-panel select {
+  height:        var(--panel-input-h);
+  font-family:   var(--panel-font);
+  font-size:     var(--panel-fs);
+  color:         var(--panel-input-color);
+  background:    var(--panel-input-bg);
+  border:        1px solid var(--panel-input-border);
+  border-radius: var(--panel-input-radius);
+  padding:       0 8px;
+  width:         100%;
+  box-sizing:    border-box;
+  transition:    border-color 0.12s, box-shadow 0.12s;
+}
+
 .bio-properties-panel textarea {
-  background: hsl(var(--background)) !important;
-  border: 1px solid hsl(var(--border)) !important;
-  color: hsl(var(--foreground)) !important;
-  border-radius: 6px;
-}
-.bio-properties-panel label {
-  color: hsl(var(--muted-foreground)) !important;
-  font-size: 12px;
-}
-.bio-properties-panel-input:focus {
-  border-color: #149ba5 !important;
-  box-shadow: 0 0 0 2px rgba(20,155,165,0.2) !important;
+  font-family:   var(--panel-font);
+  font-size:     var(--panel-fs);
+  color:         var(--panel-input-color);
+  background:    var(--panel-input-bg);
+  border:        1px solid var(--panel-input-border);
+  border-radius: var(--panel-input-radius);
+  padding:       6px 8px;
+  width:         100%;
+  box-sizing:    border-box;
 }
 
-/* ── FORM-JS THEME ────────────────────────────────────────── */
+.bio-properties-panel input:not([type="checkbox"]):focus,
+.bio-properties-panel select:focus,
+.bio-properties-panel textarea:focus,
+.bio-properties-panel .bio-properties-panel-input.focused {
+  border-color: var(--panel-focus-border);
+  background:   var(--panel-focus-bg);
+  box-shadow:   0 0 0 2px var(--panel-focus-ring);
+  outline:      none;
+}
 
-/* Root CSS variables consumed by form-js */
+.bio-properties-panel input::placeholder,
+.bio-properties-panel textarea::placeholder {
+  color: var(--panel-input-ph);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   FORM-JS THEME
+   ════════════════════════════════════════════════════════════════════════════ */
+
 .fjs-container,
 .fjs-editor-container {
-  --font-family: var(--font-dm-sans), sans-serif;
-  --color-accent: #149ba5;
-  --color-accent-light: #dff4f5;
-  --color-accent-dark: #0e7a83;
-  --color-borders: #e2eaee;
-  --color-background: hsl(var(--background));
-  --color-white: #ffffff;
-  --color-text: hsl(var(--foreground));
-  --color-text-light: hsl(var(--muted-foreground));
-  --color-selection: rgba(20,155,165,0.15);
-  font-family: var(--font-dm-sans), sans-serif;
+  /* Official form-js CSS variables wired to shared panel tokens */
+  --font-family:          var(--panel-font);
+  --color-accent:         var(--panel-accent);
+  --color-accent-light:   var(--panel-accent-lt);
+  --color-accent-dark:    var(--panel-accent-dk);
+  --color-borders:        var(--panel-card-border);
+  --color-background:     var(--panel-input-disabled-bg);
+  --color-white:          var(--panel-card-bg);
+  --color-text:           var(--panel-text);
+  --color-text-light:     var(--panel-text-muted);
+  --color-selection:      var(--panel-focus-ring);
+
+  --color-properties-container-background: var(--panel-card-bg);
+  --color-properties-container-border:     var(--panel-card-border);
+
+  --color-palette-container-background:    var(--panel-hdr-bg);
+  --color-palette-container-border:        var(--panel-hdr-border);
+  --color-palette-search-background:       rgba(255,255,255,0.08);
+  --color-palette-search-border:           rgba(255,255,255,0.12);
+  --color-palette-search-focus-border:     var(--panel-accent);
+  --color-palette-field-background:        transparent;
+  --color-palette-field-border:            rgba(255,255,255,0.08);
+  --color-palette-field-focus:             var(--panel-accent);
+  --color-palette-field-hover-background:  rgba(255,255,255,0.06);
+  --color-palette-text:                    rgba(255,255,255,0.65);
+
+  --color-children-selected-border: var(--panel-accent);
+  --color-children-hover-border:    rgba(20,155,165,0.5);
+  --color-dragula-background:       var(--panel-accent-bg);
+  --color-dragula-border:           var(--panel-accent);
+  --color-dragula-error-background: var(--panel-danger-bg);
+
+  --color-resize-handle-background: var(--panel-accent);
+  --color-resize-handle-border:     var(--panel-accent-dk);
+
+  font-family: var(--panel-font);
 }
 
-/* ── Palette sidebar — dark to match Werkflow sidebar ── */
+/* Palette sidebar */
 .fjs-palette-container {
-  background: #111c27 !important;
-  border-color: rgba(255,255,255,0.07) !important;
-  color: rgba(255,255,255,0.6) !important;
+  background:   var(--panel-hdr-bg);
+  border-color: var(--panel-hdr-border);
 }
 
-/* Search input area */
 .fjs-palette-search-container {
-  padding: 8px 10px !important;
-  border-bottom: 1px solid rgba(255,255,255,0.07) !important;
-  background: #111c27 !important;
+  padding:       8px 10px;
+  border-bottom: 1px solid var(--panel-hdr-border);
+  background:    var(--panel-hdr-bg);
 }
 .fjs-palette-search {
-  width: 100% !important;
-  padding: 5px 8px !important;
-  background: rgba(255,255,255,0.08) !important;
-  border: 1px solid rgba(255,255,255,0.1) !important;
-  border-radius: 5px !important;
-  font-size: 11px !important;
-  color: #ffffff !important;
-  outline: none !important;
-  font-family: inherit !important;
+  width:         100%;
+  padding:       0 8px;
+  height:        28px;
+  background:    rgba(255,255,255,0.08);
+  border:        1px solid rgba(255,255,255,0.12);
+  border-radius: var(--panel-input-radius);
+  font-size:     var(--panel-fs);
+  font-family:   var(--panel-font);
+  color:         #ffffff;
+  outline:       none;
 }
-.fjs-palette-search::placeholder {
-  color: rgba(255,255,255,0.3) !important;
-}
+.fjs-palette-search::placeholder { color: rgba(255,255,255,0.35); }
 .fjs-palette-search:focus {
-  border-color: rgba(20,155,165,0.6) !important;
-  box-shadow: 0 0 0 2px rgba(20,155,165,0.15) !important;
+  border-color: var(--panel-accent);
+  box-shadow:   0 0 0 2px var(--panel-focus-ring);
 }
-.fjs-palette-search-icon {
-  color: rgba(255,255,255,0.3) !important;
-}
+.fjs-palette-search-icon { color: rgba(255,255,255,0.3); }
 
-/* Group headers */
 .fjs-palette-group-title {
-  background: rgba(255,255,255,0.05) !important;
-  color: rgba(255,255,255,0.35) !important;
-  font-size: 9px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.07em !important;
-  text-transform: uppercase !important;
-  padding: 6px 10px 3px !important;
+  background:     rgba(255,255,255,0.04);
+  color:          rgba(255,255,255,0.35);
+  font-family:    var(--panel-font);
+  font-size:      9px;
+  font-weight:    700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding:        6px 10px 3px;
 }
 
-/* Tile grid */
 .fjs-palette-fields {
-  display: grid !important;
-  grid-template-columns: 1fr 1fr !important;
-  gap: 2px !important;
-  padding: 4px !important;
+  display:               grid;
+  grid-template-columns: 1fr 1fr;
+  gap:                   2px;
+  padding:               4px;
 }
 
-/* Individual tiles */
 .fjs-palette-field {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 3px !important;
-  padding: 6px 4px !important;
-  background: transparent !important;
-  border: 1px solid rgba(255,255,255,0.07) !important;
-  border-radius: 6px !important;
-  cursor: grab !important;
-  transition: background 120ms ease, border-color 120ms ease !important;
-  min-height: 56px !important;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             3px;
+  padding:         6px 4px;
+  background:      transparent;
+  border:          1px solid rgba(255,255,255,0.07);
+  border-radius:   6px;
+  cursor:          grab;
+  transition:      background 120ms ease, border-color 120ms ease;
+  min-height:      56px;
 }
-
-/* Tile icon container */
 .fjs-palette-field-icon,
-.fjs-palette-field > svg {
-  color: rgba(255,255,255,0.7) !important;
-  width: 22px !important;
-  height: 18px !important;
-  flex-shrink: 0 !important;
-}
-
-/* Tile label */
+.fjs-palette-field > svg     { color: rgba(255,255,255,0.65); width: 22px; height: 18px; flex-shrink: 0; }
 .fjs-palette-field span,
-.fjs-palette-field-text {
-  font-size: 9px !important;
-  font-weight: 500 !important;
-  color: rgba(255,255,255,0.6) !important;
-  text-align: center !important;
-  line-height: 1.2 !important;
-  word-break: break-word !important;
-}
-
-/* Tile hover */
-.fjs-palette-field:hover {
-  background: rgba(255,255,255,0.06) !important;
-  border-color: rgba(20,155,165,0.5) !important;
-}
+.fjs-palette-field-text      { font-family: var(--panel-font); font-size: 9px; font-weight: 500; color: rgba(255,255,255,0.6); text-align: center; line-height: 1.2; word-break: break-word; }
+.fjs-palette-field:hover     { background: rgba(255,255,255,0.06); border-color: rgba(20,155,165,0.5); }
 .fjs-palette-field:hover span,
 .fjs-palette-field:hover .fjs-palette-field-text,
 .fjs-palette-field:hover .fjs-palette-field-icon,
-.fjs-palette-field:hover > svg {
-  color: rgba(255,255,255,0.9) !important;
-}
+.fjs-palette-field:hover > svg { color: rgba(255,255,255,0.9); }
+.fjs-palette-field:active    { cursor: grabbing; background: rgba(20,155,165,0.15); border-color: var(--panel-accent); }
 
-/* Tile active / drag start */
-.fjs-palette-field:active {
-  cursor: grabbing !important;
-  background: rgba(20,155,165,0.15) !important;
-  border-color: #149ba5 !important;
-}
-
-/* Selected field highlight */
+/* Form canvas field selection */
 .fjs-form-field.selected > .fjs-form-field-placeholder {
-  outline: 2px solid #149ba5;
+  outline:       2px solid var(--panel-accent);
   border-radius: 6px;
-  background: rgba(20,155,165,0.06);
+  background:    rgba(20,155,165,0.05);
 }
 .fjs-form-field-placeholder input:focus,
 .fjs-form-field-placeholder textarea:focus {
-  border-color: #149ba5 !important;
-  box-shadow: 0 0 0 3px rgba(20,155,165,0.15) !important;
+  border-color: var(--panel-accent);
+  box-shadow:   0 0 0 3px var(--panel-focus-ring);
 }
 
-/* Form field inputs */
+/* Form canvas inputs (preview) */
 .fjs-form-field input,
 .fjs-form-field select,
 .fjs-form-field textarea {
-  border: 1px solid hsl(var(--border)) !important;
-  border-radius: 6px !important;
-  background: hsl(var(--card)) !important;
+  font-family:   var(--panel-font);
+  font-size:     var(--panel-fs);
+  border:        1px solid var(--panel-card-border);
+  border-radius: var(--panel-input-radius);
+  background:    var(--panel-card-bg);
 }
 .fjs-form-field label {
-  color: hsl(var(--muted-foreground));
-  font-size: 13px;
+  font-family: var(--panel-font);
+  font-size:   13px;
   font-weight: 500;
+  color:       var(--panel-text-muted);
 }
 
-/* Properties panel */
+/* Form-js properties panel (re-uses bio-properties-panel internally) */
 .fjs-properties-panel {
-  font-family: var(--font-dm-sans), sans-serif;
-  font-size: 12px;
+  font-family: var(--panel-font);
+  font-size:   var(--panel-fs);
 }
 .fjs-properties-panel-header {
-  background: var(--sidebar-bg) !important;
-  color: #fff !important;
+  background: var(--panel-hdr-bg);
+  color:      var(--panel-hdr-text);
 }
 .fjs-properties-panel-group-header-title {
-  color: hsl(var(--foreground));
+  font-family: var(--panel-font);
   font-weight: 600;
+  color:       var(--panel-text);
 }
 
-/* ── DMN-JS THEME ─────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════════════════
+   DMN-JS THEME
+   ════════════════════════════════════════════════════════════════════════════ */
 
-/* Table container */
 .dmn-decision-table-container {
-  font-family: var(--font-dm-sans), sans-serif;
-  font-size: 13px;
-  border-color: hsl(var(--border));
+  /* All official dmn-js CSS variables wired to shared panel tokens */
+  --decision-table-font-family:  var(--panel-font);
+  --decision-table-color:        var(--panel-text);
+  --decision-table-background-color: var(--panel-card-bg);
+
+  --table-cell-color:            var(--panel-text);
+  --table-cell-border-color:     var(--panel-card-border);
+  --table-cell-selected-outline-color: var(--panel-accent);
+  --table-row-alternative-background-color: var(--panel-input-disabled-bg);
+
+  --table-head-border-color:     var(--panel-card-border);
+  --table-head-clause-color:     var(--panel-text-muted);
+  --table-head-separator-color:  var(--panel-card-border);
+  --table-head-variable-color:   var(--panel-text);
+
+  --table-foot-add-rule-color:             var(--panel-accent);
+  --table-foot-add-rule-border-color:      var(--panel-accent);
+  --table-foot-add-rule-hover-color:       var(--panel-accent-dk);
+  --table-foot-add-rule-hover-border-color: var(--panel-accent-dk);
+
+  --hit-policy-explanation-color:              var(--panel-text-muted);
+  --dmn-expression-language-background-color:  rgba(20,155,165,0.06);
+  --dmn-expression-language-color:             var(--panel-accent);
+  --dmn-expression-language-hover-background-color: var(--panel-accent-bg);
+
+  --action-icon-color:                 var(--panel-accent);
+  --action-icon-hover-background-color: var(--panel-accent-bg);
+  --action-icon-hover-color:           var(--panel-accent-dk);
+  --add-column-icon-color:             var(--panel-accent);
+  --add-column-icon-background-color:  var(--panel-accent-bg);
+
+  font-family:  var(--panel-font);
+  font-size:    var(--panel-fs);
+  border-color: var(--panel-card-border);
 }
 
 /* Decision name header bar */
 .dmn-decision-table-container .decision-table-properties {
-  background: var(--sidebar-bg) !important;
-  color: #ffffff !important;
-  border-color: rgba(255,255,255,0.08) !important;
+  background:   var(--panel-hdr-bg);
+  color:        var(--panel-hdr-text);
+  border-color: var(--panel-hdr-border);
+  font-family:  var(--panel-font);
 }
-/* Hit policy editor input — white text on dark header */
+
+/* Hit policy input (inside dark header) */
 .dmn-decision-table-container .hit-policy .dms-input {
-  color: #fff !important;
-  background: rgba(255,255,255,0.08) !important;
-  border-color: rgba(255,255,255,0.2) !important;
-  font-weight: 700;
+  font-family:   var(--panel-font);
+  font-weight:   700;
+  color:         var(--panel-hdr-text);
+  background:    rgba(255,255,255,0.08);
+  border-color:  rgba(255,255,255,0.2);
+  border-radius: var(--panel-input-radius);
 }
 .dmn-decision-table-container .hit-policy .dms-input:focus {
-  border-color: #149ba5 !important;
-  box-shadow: 0 0 0 2px rgba(20,155,165,0.2) !important;
+  border-color: var(--panel-accent);
+  box-shadow:   0 0 0 2px var(--panel-focus-ring);
 }
 
 /* Column headers */
 .dmn-decision-table-container thead .input-cell {
-  background: rgba(20,155,165,0.1) !important;
-  color: #149ba5 !important;
-  border-bottom: 2px solid #149ba5 !important;
+  background:    rgba(20,155,165,0.08);
+  color:         var(--panel-accent);
+  border-bottom: 2px solid var(--panel-accent);
 }
 .dmn-decision-table-container thead .output-cell {
-  background: rgba(20,155,165,0.06) !important;
-  color: #0e7a82 !important;
-  border-bottom: 2px solid #0e7a82 !important;
+  background:    rgba(20,155,165,0.05);
+  color:         var(--panel-accent-dk);
+  border-bottom: 2px solid var(--panel-accent-dk);
 }
 
-/* Generic th/td */
+/* Table cells */
 .dmn-decision-table-container .tjs-table th {
-  background: hsl(var(--muted)) !important;
-  color: hsl(var(--foreground)) !important;
+  font-family: var(--panel-font);
+  font-size:   var(--panel-fs);
   font-weight: 600;
-  font-size: 12px;
+  background:  var(--panel-input-disabled-bg);
+  color:       var(--panel-text);
 }
 .dmn-decision-table-container .tjs-table td {
-  border: 1px solid hsl(var(--border)) !important;
+  border: 1px solid var(--panel-card-border);
 }
 
 /* Row hover */
 .dmn-decision-table-container tbody tr:hover td,
 .dmn-decision-table-container .tjs-table tr:hover td {
-  background-color: #f0fafb !important;
+  background-color: var(--panel-accent-bg);
 }
 
 /* Cell focus */
 .dmn-decision-table-container td.focused,
 .dmn-decision-table-container td:focus-within {
-  outline: 2px solid #149ba5 !important;
+  outline:        2px solid var(--panel-accent);
   outline-offset: -2px;
 }
 
-/* Hit policy dropdown options portal */
-.dms-select-options {
-  background-color: #111c27 !important;
-  border-color: rgba(255,255,255,0.1) !important;
-  color: rgba(255,255,255,0.85) !important;
-}
-.dms-select-options .option:hover,
-.dms-select-options .option:focus {
-  background-color: rgba(20,155,165,0.25) !important;
-}
-.dms-select-options .option.active {
-  color: #149ba5 !important;
-}
-
-/* Normalize all column header text — same 13px as Annotations */
+/* Normalized font across all header cells */
 .dmn-decision-table-container thead th,
 .dmn-decision-table-container thead .input-cell,
-.dmn-decision-table-container thead .output-cell {
-  font-size: 13px !important;
-}
+.dmn-decision-table-container thead .output-cell,
 .dmn-decision-table-container thead [contenteditable],
 .dmn-decision-table-container thead .clause,
 .dmn-decision-table-container thead .input-expression,
@@ -459,35 +694,47 @@
 .dmn-decision-table-container thead .output-label,
 .dmn-decision-table-container .cell-value,
 .dmn-decision-table-container .no-content {
-  font-size: 13px !important;
-  font-weight: 600 !important;
+  font-family: var(--panel-font);
+  font-size:   var(--panel-fs);
+  font-weight: 600;
 }
-/* "Click to set Input/Output" placeholder — muted, same size */
+/* Empty / placeholder text — same size, lighter */
 .dmn-decision-table-container .cell-value:empty::before,
 .dmn-decision-table-container td .no-content-message,
 .dmn-decision-table-container .input-cell .cell-header,
 .dmn-decision-table-container .output-cell .cell-header {
-  font-size: 13px !important;
-  font-weight: 400 !important;
-  opacity: 0.65;
+  font-size:   var(--panel-fs);
+  font-weight: 400;
+  opacity:     0.6;
 }
 
-/* Add column/row buttons */
+/* Add column / row buttons */
 .dmn-decision-table-container .add-rule,
 .dmn-decision-table-container .add-input,
 .dmn-decision-table-container .add-output {
-  color: #149ba5;
-  border-color: #149ba5;
-  background-color: rgba(20,155,165,0.08);
+  font-family:      var(--panel-font);
+  color:            var(--panel-accent);
+  border-color:     var(--panel-accent);
+  background-color: var(--panel-accent-bg);
 }
-.dmn-decision-table-container .add-rule:hover {
-  background-color: rgba(20,155,165,0.18);
+.dmn-decision-table-container .add-rule:hover { background-color: var(--panel-accent-lt); }
+
+/* Hit policy / select dropdown portal */
+.dms-select-options {
+  background-color: var(--panel-hdr-bg);
+  border-color:     rgba(255,255,255,0.12);
+  color:            rgba(255,255,255,0.85);
+  font-family:      var(--panel-font);
+  font-size:        var(--panel-fs);
 }
+.dms-select-options .option:hover,
+.dms-select-options .option:focus { background-color: rgba(20,155,165,0.22); }
+.dms-select-options .option.active { color: var(--panel-accent); }
 
 /* Thin scrollbar */
-::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar       { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #c5d2da; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: var(--panel-card-border); border-radius: 4px; }
 
 /* ── Variable typeahead combobox (Pattern D — ADR-010) ─ */
 .wf-combo { display: flex; flex-direction: column; gap: 6px; }
