@@ -673,10 +673,12 @@ function getActionType(element: any): string {
 }
 
 export function setActionType(element: any, modeling: any, value: string, injector?: any) {
-  // Ensure the element is a ServiceTask — delegateExpression is invalid on plain <task>.
-  // If the user placed a generic Task and then set an action type, morph it to ServiceTask first.
+  // HUMAN_APPROVAL stays as UserTask: it has no delegate expression and must retain
+  // UserTask-specific BPMN properties (assignment, candidate groups, forms).
+  // All other action types require a ServiceTask delegate expression — morph if needed.
   let target = element
-  if (value && element.type !== 'bpmn:ServiceTask' && injector) {
+  const needsServiceTask = value && value !== 'HUMAN_APPROVAL'
+  if (needsServiceTask && element.type !== 'bpmn:ServiceTask' && injector) {
     try {
       const bpmnReplace = injector.get('bpmnReplace')
       target = bpmnReplace.replaceElement(element, { type: 'bpmn:ServiceTask' })

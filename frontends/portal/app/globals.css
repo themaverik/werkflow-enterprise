@@ -338,8 +338,8 @@
   align-items:     center;
   justify-content: space-between;
   padding:         10px 12px 8px;
-  background:      var(--panel-card-bg);
-  border-bottom:   1px solid var(--panel-card-sep);
+  background:      var(--panel-input-disabled-bg);
+  border-bottom:   1px solid var(--panel-card-border);
   cursor:          pointer;
 }
 
