@@ -1010,7 +1010,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
             {!selectedElement && scrollContainer && createPortal(
               <div className="bio-properties-panel-group">
                 <div
-                  className={`bio-properties-panel-group-header${showMeta ? ' open' : ''}`}
+                  className="bio-properties-panel-group-header"
                   onClick={() => setShowMeta((v) => !v)}
                 >
                   <span className="bio-properties-panel-group-header-title">Artifact Metadata</span>
@@ -1018,7 +1018,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
                     <button
                       type="button"
                       title="Toggle section"
-                      className="bio-properties-panel-group-header-button bio-properties-panel-arrow"
+                      className={`bio-properties-panel-group-header-button bio-properties-panel-arrow${showMeta ? ' wf-open' : ''}`}
                       onClick={(e) => { e.stopPropagation(); setShowMeta((v) => !v) }}
                     >
                       <svg
