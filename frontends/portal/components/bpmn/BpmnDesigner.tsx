@@ -1048,11 +1048,13 @@ function isSequenceFlow(element: { type: string; businessObject: Record<string, 
 
 function isCustomPanelServiceTask(element: { type: string; businessObject: Record<string, any> } | null): boolean {
   const actionType = element?.businessObject?.get('flowable:actionType')
+  // HUMAN_APPROVAL stays as UserTask, so match both types for it.
+  if (actionType === 'HUMAN_APPROVAL') {
+    return element?.type === 'bpmn:UserTask' || element?.type === 'bpmn:ServiceTask'
+  }
   return (
     element?.type === 'bpmn:ServiceTask' &&
-    (actionType === 'EXTERNAL_API_CALL' ||
-     actionType === 'HUMAN_APPROVAL' ||
-     actionType === 'SEND_NOTIFICATION')
+    (actionType === 'EXTERNAL_API_CALL' || actionType === 'SEND_NOTIFICATION')
   )
 }
 
