@@ -1010,31 +1010,30 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
             {!selectedElement && scrollContainer && createPortal(
               <div className="bio-properties-panel-group">
                 <div
-                  role="button"
-                  tabIndex={0}
+                  className={`bio-properties-panel-group-header${showMeta ? ' open' : ''}`}
                   onClick={() => setShowMeta((v) => !v)}
-                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setShowMeta((v) => !v)}
-                  className="bio-properties-panel-group-header"
                 >
                   <span className="bio-properties-panel-group-header-title">Artifact Metadata</span>
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    color: 'var(--panel-text-muted)',
-                  }}>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      className="bio-properties-panel-arrow-right"
-                      style={{ transform: showMeta ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}
+                  <div className="bio-properties-panel-group-header-buttons">
+                    <button
+                      type="button"
+                      title="Toggle section"
+                      className="bio-properties-panel-group-header-button bio-properties-panel-arrow"
+                      onClick={(e) => { e.stopPropagation(); setShowMeta((v) => !v) }}
                     >
-                      <path
-                        fillRule="evenodd"
-                        d="m11.657 8-4.95 4.95a1 1 0 0 1-1.414-1.414L8.828 8 5.293 4.464A1 1 0 1 1 6.707 3.05L11.657 8Z"
-                      />
-                    </svg>
-                  </span>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        className="bio-properties-panel-arrow-right"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="m11.657 8-4.95 4.95a1 1 0 0 1-1.414-1.414L8.828 8 5.293 4.464A1 1 0 1 1 6.707 3.05L11.657 8Z"
+                        />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
                 {showMeta && (
                   <ArtifactMetadataPanel
