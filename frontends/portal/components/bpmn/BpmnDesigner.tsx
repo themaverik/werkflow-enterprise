@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import BpmnModeler from 'bpmn-js/lib/Modeler'
 import { Button } from '@/components/ui/button'
 import ExpressionBuilder from './ExpressionBuilder'
@@ -218,6 +219,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
   // Auto-opens if the flow already carries a condition expression.
   const [showExprBuilder, setShowExprBuilder] = useState(false)
   const [showMeta, setShowMeta] = useState(true)
+  const [scrollContainer, setScrollContainer] = useState<Element | null>(null)
 
   const [doaLevels, setDoaLevels] = useState<DoaLevel[]>([])
   const [custodyMappings, setCustodyMappings] = useState<CustodyMappingResponse[]>([])
@@ -619,6 +621,28 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
     }
   }, [user?.roles])
 
+  // Track the bpmn-io scroll container so we can portal Artifact Metadata into it.
+  // We observe `propertiesPanelRef` for child mutations because the library renders
+  // asynchronously — the `.bio-properties-panel-scroll-container` element does not
+  // exist in the DOM at mount time.
+  useEffect(() => {
+    const panelRoot = propertiesPanelRef.current
+    if (!panelRoot) return
+
+    const findAndSet = () => {
+      const el = panelRoot.querySelector('.bio-properties-panel-scroll-container')
+      setScrollContainer(el)
+    }
+
+    // Run once in case the panel already rendered
+    findAndSet()
+
+    const observer = new MutationObserver(findAndSet)
+    observer.observe(panelRoot, { childList: true, subtree: true })
+
+    return () => observer.disconnect()
+  }, [modeler])
+
   // Fetch DTDS process variables in scope whenever a UserTask is selected
   useEffect(() => {
     if (!modeler || !processId || !selectedElement || selectedElement.type !== 'bpmn:UserTask') {
@@ -979,11 +1003,12 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
               </div>
             )}
 
-            {/* Artifact metadata — process-level only; hidden when an element is selected.
-                Uses bio-properties-panel-group* class names — they resolve correctly here
-                because .werkflow-props-panel defines the required bpmn-io CSS variables. */}
-            {!selectedElement && (
-              <div className="bio-properties-panel-group" style={{ margin: '8px' }}>
+            {/* Artifact Metadata portal — injected into .bio-properties-panel-scroll-container
+                so it sits inside the same CSS variable scope as "General" and "Documentation".
+                Only rendered when no element is selected (process-level) and after the
+                library has created the scroll container in the DOM. */}
+            {!selectedElement && scrollContainer && createPortal(
+              <div className="bio-properties-panel-group">
                 <div
                   role="button"
                   tabIndex={0}
@@ -996,11 +1021,18 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
                     display: 'inline-flex',
                     alignItems: 'center',
                     color: 'var(--panel-text-muted)',
-                    transform: showMeta ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.15s ease',
                   }}>
-                    <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 6l4 4 4-4"/>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      className="bio-properties-panel-arrow-right"
+                      style={{ transform: showMeta ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="m11.657 8-4.95 4.95a1 1 0 0 1-1.414-1.414L8.828 8 5.293 4.464A1 1 0 1 1 6.707 3.05L11.657 8Z"
+                      />
                     </svg>
                   </span>
                 </div>
@@ -1011,7 +1043,8 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
                     onChange={(v) => { setArtifactMetadata(v); setHasChanges(true) }}
                   />
                 )}
-              </div>
+              </div>,
+              scrollContainer
             )}
           </div>
         )}
