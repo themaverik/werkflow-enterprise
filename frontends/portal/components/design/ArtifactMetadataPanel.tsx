@@ -135,7 +135,8 @@ export function ArtifactMetadataPanel({ value, onChange }: Props) {
                   border: '1px solid #e2eaee',
                   borderRadius: '6px',
                   boxShadow: '0 2px 8px rgba(15,30,42,0.06)',
-                  overflow: 'hidden',
+                  maxHeight: '180px',
+                  overflowY: 'auto',
                 }}
                 role="listbox"
                 aria-label="Select department"
@@ -244,7 +245,8 @@ export function ArtifactMetadataPanel({ value, onChange }: Props) {
                   border: '1px solid #e2eaee',
                   borderRadius: '6px',
                   boxShadow: '0 2px 8px rgba(15,30,42,0.06)',
-                  overflow: 'hidden',
+                  maxHeight: '180px',
+                  overflowY: 'auto',
                 }}
                 role="listbox"
                 aria-label="Select category"
