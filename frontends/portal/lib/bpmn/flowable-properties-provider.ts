@@ -435,58 +435,8 @@ class FlowablePropertiesProvider {
         })
       }
 
-      // --- Service Task ---
-      // Only show low-level Service Configuration (delegate/class) when no Action Type is set.
-      // When an Action Type is configured, setActionType auto-manages the delegate expression.
-      if (is(element, 'bpmn:ServiceTask') && !element.businessObject.get('flowable:actionType')) {
-        groups.splice(generalIdx + 1, 0, {
-          id: 'flowable-service-task',
-          label: 'Service Configuration',
-          entries: [
-            {
-              id: 'delegateExpression',
-              element,
-              component: SelectEntry,
-              isEdited: isSelectEntryEdited,
-              label: translate('Delegate Expression'),
-              getValue: () =>
-                element.businessObject.get('flowable:delegateExpression') ||
-                element.businessObject.delegateExpression ||
-                '',
-              setValue: (value: string) =>
-                modeling.updateProperties(element, {
-                  'flowable:delegateExpression': value || undefined,
-                  delegateExpression: value || undefined,
-                }),
-              getOptions: () => [
-                { value: '', label: translate('(none)') },
-                ...delegateOptions.map(name => ({
-                  value: `\${${name}}`,
-                  label: name,
-                })),
-              ],
-            },
-            {
-              id: 'class',
-              element,
-              component: TextFieldEntry,
-              isEdited: isTextFieldEntryEdited,
-              debounce,
-              label: translate('Java Class'),
-              description: translate('Fully qualified Java class name'),
-              getValue: () =>
-                element.businessObject.get('flowable:class') ||
-                element.businessObject.class ||
-                '',
-              setValue: (value: string) =>
-                modeling.updateProperties(element, {
-                  'flowable:class': value || undefined,
-                  class: value || undefined,
-                }),
-            },
-          ],
-        })
-      }
+      // Service Configuration (delegate expression / Java class) is intentionally omitted.
+      // All ServiceTask wiring is managed by the Action Block — users never set delegates directly.
 
       return groups
     }

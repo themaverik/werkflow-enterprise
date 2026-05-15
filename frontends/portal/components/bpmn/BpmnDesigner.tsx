@@ -981,56 +981,32 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
 
             {/* Artifact metadata — process-level only; hidden when an element is selected */}
             {!selectedElement && (
-              <div style={{ background: 'hsl(var(--card))' }}>
+              <div className="bio-properties-panel-group" style={{ margin: '8px' }}>
                 <button
                   type="button"
                   onClick={() => setShowMeta((v) => !v)}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    width: '100%',
-                    height: '32px',
-                    background: 'hsl(var(--card))',
-                    borderBottom: '1px solid hsl(225, 10%, 75%)',
-                    borderTop: 'none',
-                    borderLeft: 'none',
-                    borderRight: 'none',
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 10,
-                    cursor: 'pointer',
-                    padding: 0,
-                  }}
+                  className="bio-properties-panel-group-header"
+                  style={{ width: '100%', border: 'none' }}
                 >
-                  <span style={{ fontSize: '14px', fontWeight: showMeta ? 500 : 400, color: 'hsl(225, 10%, 15%)', marginLeft: '12px' }}>
-                    Artifact Metadata
-                  </span>
+                  <span className="bio-properties-panel-group-header-title">Artifact Metadata</span>
                   <span style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '22px',
-                    width: '22px',
-                    margin: '5px',
-                    transform: showMeta ? 'rotate(90deg)' : 'rotate(0deg)',
+                    color: 'var(--panel-text-muted)',
+                    transform: showMeta ? 'rotate(180deg)' : 'rotate(0deg)',
                     transition: 'transform 0.15s ease',
-                    color: 'hsl(225, 10%, 35%)',
                   }}>
-                    <svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14">
-                      <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 6l4 4 4-4"/>
                     </svg>
                   </span>
                 </button>
                 {showMeta && (
-                  <div style={{ background: 'hsl(var(--card))' }}>
-                    <ArtifactMetadataPanel
-                      artifactType="process"
-                      value={artifactMetadata}
-                      onChange={(v) => { setArtifactMetadata(v); setHasChanges(true) }}
-                    />
-                  </div>
+                  <ArtifactMetadataPanel
+                    artifactType="process"
+                    value={artifactMetadata}
+                    onChange={(v) => { setArtifactMetadata(v); setHasChanges(true) }}
+                  />
                 )}
               </div>
             )}
