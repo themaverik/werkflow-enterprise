@@ -479,7 +479,7 @@ export default function ServiceTaskPropertiesPanel({
       )}
       {/* Action Type selector */}
       <Card>
-        <CardHeader className="pb-2 pt-3 px-3">
+        <CardHeader className="pb-2 pt-3 px-3 bg-muted border-b">
           <CardTitle className="text-xs font-semibold">Action Type</CardTitle>
         </CardHeader>
         <CardContent className="px-3 pb-3">
@@ -501,7 +501,7 @@ export default function ServiceTaskPropertiesPanel({
       {/* ── HUMAN APPROVAL ────────────────────────────────────────────────── */}
       {currentActionType === 'HUMAN_APPROVAL' && (
         <Card>
-          <CardHeader className="pb-2 pt-3 px-3">
+          <CardHeader className="pb-2 pt-3 px-3 bg-muted border-b">
             <CardTitle className="text-xs font-semibold">Assignment</CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3 space-y-3">
@@ -570,7 +570,7 @@ export default function ServiceTaskPropertiesPanel({
       {/* ── SEND NOTIFICATION ─────────────────────────────────────────────── */}
       {currentActionType === 'SEND_NOTIFICATION' && (
         <Card>
-          <CardHeader className="pb-2 pt-3 px-3">
+          <CardHeader className="pb-2 pt-3 px-3 bg-muted border-b">
             <CardTitle className="text-xs font-semibold">Notification</CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3 space-y-3">
@@ -638,7 +638,7 @@ export default function ServiceTaskPropertiesPanel({
       {/* Connector selector — prefers DTDS list, falls back to legacy connector list */}
       {currentActionType === 'EXTERNAL_API_CALL' && (<>
       <Card>
-        <CardHeader className="pb-2 pt-3 px-3">
+        <CardHeader className="pb-2 pt-3 px-3 bg-muted border-b">
           <CardTitle className="text-xs font-semibold">{t('connector')}</CardTitle>
           <CardDescription className="text-xs">{t('connectorDesc')}</CardDescription>
         </CardHeader>
