@@ -482,7 +482,7 @@ export default function ServiceTaskPropertiesPanel({
         <CardHeader className="pb-2 pt-3 px-3 bg-muted border-b">
           <CardTitle className="text-xs font-semibold">Action Type</CardTitle>
         </CardHeader>
-        <CardContent className="px-3 pb-3">
+        <CardContent className="px-3 pb-3 pt-2">
           <Select value={currentActionType || '__none__'} onValueChange={v => handleActionTypeChange(v === '__none__' ? '' : v)}>
             <SelectTrigger className="h-8 text-xs">
               <SelectValue placeholder="(none)" />
@@ -504,7 +504,7 @@ export default function ServiceTaskPropertiesPanel({
           <CardHeader className="pb-2 pt-3 px-3 bg-muted border-b">
             <CardTitle className="text-xs font-semibold">Assignment</CardTitle>
           </CardHeader>
-          <CardContent className="px-3 pb-3 space-y-3">
+          <CardContent className="px-3 pb-3 pt-2 space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">Candidate Groups</Label>
               <VariableComboBoxBpmnAdapter
