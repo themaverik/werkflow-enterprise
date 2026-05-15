@@ -811,3 +811,9 @@
 .wf-combo-keys { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; font-size: 10.5px; color: var(--wf-muted); padding: 8px 10px; border: 1px solid var(--wf-border-2); border-radius: 5px; background: var(--wf-bg); }
 .wf-combo-keys span { display: inline-flex; align-items: center; gap: 4px; }
 .wf-combo-keys kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 1px 5px; background: #fff; border: 1px solid var(--wf-border); border-bottom-width: 2px; border-radius: 3px; color: var(--wf-text-2); }
+
+/* Artifact Metadata arrow rotation — driven by wf-open on the button, not the
+   library's "open" class on the header (which also triggers font-weight: 500). */
+.bio-properties-panel-arrow.wf-open .bio-properties-panel-arrow-right {
+  transform: rotate(90deg);
+}
