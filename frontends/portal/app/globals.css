@@ -298,18 +298,25 @@
   border-left: 1px solid var(--panel-card-border);
 }
 
-/* Header bar — dark, matches sidebar */
+/* Header bar — dark, matches sidebar.
+   !important required: library sets --header-background-color on .bio-properties-panel
+   at the same specificity level; since library CSS loads after globals.css, source
+   order would normally let the library win. Direct property rules beat variable
+   declarations and !important wins the final tie. */
 .bio-properties-panel-header {
-  background:    var(--panel-hdr-bg);
-  color:         var(--panel-hdr-text);
-  border-bottom: 1px solid var(--panel-hdr-border);
-  font-family:   var(--panel-font);
+  background-color: var(--panel-hdr-bg) !important;
+  border-bottom:    1px solid var(--panel-hdr-border) !important;
+  font-family:      var(--panel-font);
 }
 .bio-properties-panel-header .bio-properties-panel-header-label,
 .bio-properties-panel-header .bio-properties-panel-header-type {
   font-family: var(--panel-font);
   font-weight: 600;
-  color:       var(--panel-hdr-text);
+  color:       var(--panel-hdr-text) !important;
+}
+.bio-properties-panel-header-icon svg,
+.bio-properties-panel-header-icon path {
+  fill: var(--panel-hdr-icon) !important;
 }
 
 /* ── Groups as Cards ────────────────────────────────────────────────────────
