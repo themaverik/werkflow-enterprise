@@ -214,12 +214,22 @@
 }
 
 /* ── Werkflow properties panel wrapper ──────────────────────────────────────
-   Provides font cascade for Preact components and the React custom panel.     */
+   Defines all bpmn-io CSS variable aliases at this scope so that
+   bio-properties-panel-group* class names resolve correctly for any React
+   content rendered alongside the library-managed panel (e.g. ArtifactMetadata).
+   This avoids the need for inline style overrides outside .bio-properties-panel. */
 .werkflow-props-panel,
 .wf-panel-custom {
   font-family: var(--panel-font);
   font-size:   var(--panel-fs);
   color:       var(--panel-text);
+
+  /* bpmn-io group/header variables — mirrors what .bio-properties-panel sets */
+  --text-size-base:          var(--panel-fs);
+  --text-size-small:         var(--panel-fs-small);
+  --group-background-color:  var(--panel-card-bg);
+  --group-bottom-border-color: var(--panel-card-border);
+  --sticky-group-background-color: var(--panel-input-disabled-bg);
 }
 
 /* ════════════════════════════════════════════════════════════════════════════

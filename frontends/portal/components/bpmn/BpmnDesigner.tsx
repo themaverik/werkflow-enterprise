@@ -979,41 +979,19 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
               </div>
             )}
 
-            {/* Artifact metadata — process-level only; hidden when an element is selected */}
+            {/* Artifact metadata — process-level only; hidden when an element is selected.
+                Uses bio-properties-panel-group* class names — they resolve correctly here
+                because .werkflow-props-panel defines the required bpmn-io CSS variables. */}
             {!selectedElement && (
-              <div style={{
-                margin: '8px',
-                border: '1px solid var(--panel-card-border)',
-                borderRadius: 'var(--panel-card-radius)',
-                background: 'var(--panel-card-bg)',
-                overflow: 'hidden',
-                boxShadow: 'var(--panel-card-shadow)',
-              }}>
+              <div className="bio-properties-panel-group" style={{ margin: '8px' }}>
                 <div
                   role="button"
                   tabIndex={0}
                   onClick={() => setShowMeta((v) => !v)}
                   onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setShowMeta((v) => !v)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 12px 8px',
-                    background: 'var(--panel-input-disabled-bg)',
-                    borderBottom: '1px solid var(--panel-card-border)',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                  }}
+                  className="bio-properties-panel-group-header"
                 >
-                  <span style={{
-                    fontFamily: 'var(--panel-font)',
-                    fontSize: 'var(--panel-fs-title)',
-                    fontWeight: 600,
-                    color: 'var(--panel-text)',
-                    letterSpacing: '0.01em',
-                  }}>
-                    Artifact Metadata
-                  </span>
+                  <span className="bio-properties-panel-group-header-title">Artifact Metadata</span>
                   <span style={{
                     display: 'inline-flex',
                     alignItems: 'center',
