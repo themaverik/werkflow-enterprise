@@ -21,6 +21,8 @@ import {
 import { VariableComboBoxEntry } from '@/components/bpmn/VariableComboBoxEntry'
 import type { CandidateGroupEntry } from '@/lib/platform/types'
 import type { ProcessVariable } from '@/lib/api/dtds'
+import { readFlowableField, writeFlowableField } from './extension-elements'
+import { readVarFields, setManualStepConfirmation } from './action-block-logic'
 
 /**
  * Module-level variable for form schema options.
@@ -863,40 +865,7 @@ function buildActionBlockEntries(
         isEdited: isSelectEntryEdited,
         label: translate('Confirmation Required'),
         getValue: () => readFlowableField(element, 'confirmationRequired') || 'false',
-        setValue: (value: string) => {
-          if (injector) {
-            queueMicrotask(() => {
-              try {
-                const bpmnReplace = injector.get('bpmnReplace')
-                if (value === 'true' && element.type === 'bpmn:ManualTask') {
-                  // Morph ManualTask → UserTask; write confirmationRequired on morphed element
-                  const morphed = bpmnReplace.replaceElement(element, { type: 'bpmn:UserTask' })
-                  modeling.updateProperties(morphed, {
-                    'flowable:actionType': 'MANUAL_STEP',
-                    formKey: '__werkflow_confirm_step__',
-                  })
-                  writeFlowableField(morphed, modeling, 'confirmationRequired', value)
-                } else if (value === 'false' && element.type === 'bpmn:UserTask') {
-                  // Morph UserTask → ManualTask; write confirmationRequired on morphed element
-                  const morphed = bpmnReplace.replaceElement(element, { type: 'bpmn:ManualTask' })
-                  modeling.updateProperties(morphed, {
-                    'flowable:actionType': 'MANUAL_STEP',
-                    formKey: undefined,
-                  })
-                  writeFlowableField(morphed, modeling, 'confirmationRequired', value)
-                } else {
-                  // No morph needed — write directly on current element
-                  writeFlowableField(element, modeling, 'confirmationRequired', value)
-                }
-              } catch {
-                // bpmnReplace unavailable — write on current element as fallback
-                writeFlowableField(element, modeling, 'confirmationRequired', value)
-              }
-            })
-          } else {
-            writeFlowableField(element, modeling, 'confirmationRequired', value)
-          }
-        },
+        setValue: (value: string) => setManualStepConfirmation(element, injector, value),
         getOptions: () => [
           { value: 'false', label: translate('No') },
           { value: 'true',  label: translate('Yes') },
@@ -926,34 +895,8 @@ function textField(
   }
 }
 
-// Read/write <flowable:field> by name — shared by flowableFieldEntry and SelectEntry variants
-export function readFlowableField(element: any, fieldName: string): string {
-  const ext = element.businessObject.extensionElements
-  if (!ext) return ''
-  const field = ext.get('values')?.find(
-    (v: any) => v.$type === 'flowable:Field' && v.name === fieldName)
-  return field?.expression ?? field?.string ?? ''
-}
-
-export function writeFlowableField(element: any, modeling: any, fieldName: string, value: string) {
-  const bo = element.businessObject
-  const moddle = bo.$model
-  const existingExt = bo.extensionElements
-  const existingValues: any[] = existingExt?.get('values') ?? []
-  const filtered = existingValues.filter(
-    (v: any) => !(v.$type === 'flowable:Field' && v.name === fieldName))
-  if (value) {
-    const isExpression = /^\$\{.+\}$/.test(value.trim())
-    // @ts-ignore
-    const field = isExpression
-      ? moddle.create('flowable:Field', { name: fieldName, expression: value })
-      : moddle.create('flowable:Field', { name: fieldName, string: value })
-    filtered.push(field)
-  }
-  modeling.updateProperties(element, {
-    extensionElements: moddle.create('bpmn:ExtensionElements', { values: filtered }),
-  })
-}
+// readFlowableField / writeFlowableField now live in ./extension-elements.
+// Consumers should import from there directly; provider no longer re-exports them.
 
 // Writes value as a <flowable:field> extension element (required for fields read by JavaDelegate)
 function flowableFieldEntry(
@@ -1069,16 +1012,8 @@ function buildVarMappingEntries(
 function buildSetVariablesEntries(
   element: any, modeling: any, translate: (s: string) => string, debounce: any
 ): any[] {
-  const getVarFields = (): Array<{ name: string; value: string }> => {
-    const ext = element.businessObject.extensionElements
-    if (!ext?.values) return []
-    return (ext.values as any[])
-      .filter((v: any) => v.$type === 'flowable:Field' && (v.name ?? '').startsWith('var.'))
-      .map((v: any) => ({ name: v.name.slice(4), value: v.expression ?? v.string ?? '' }))
-  }
-
   const entries: any[] = []
-  const vars = getVarFields()
+  const vars = readVarFields(element)
 
   vars.forEach((v, idx) => {
     entries.push({
@@ -1091,7 +1026,7 @@ function buildSetVariablesEntries(
       getValue: () => v.name,
       setValue: (value: string) => {
         // Rename: remove old field, write new field with same value
-        const current = getVarFields()
+        const current = readVarFields(element)
         if (current[idx]) {
           writeFlowableField(element, modeling, `var.${current[idx].name}`, '')
           if (value.trim()) {
@@ -1109,7 +1044,7 @@ function buildSetVariablesEntries(
       label: translate('Value (literal or ${expression})'),
       getValue: () => v.value,
       setValue: (value: string) => {
-        const current = getVarFields()
+        const current = readVarFields(element)
         if (current[idx]) {
           writeFlowableField(element, modeling, `var.${current[idx].name}`, value)
         }
