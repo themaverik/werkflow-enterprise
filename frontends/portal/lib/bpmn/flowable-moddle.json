@@ -33,7 +33,11 @@
         "bpmn:ServiceTask",
         "bpmn:BusinessRuleTask",
         "bpmn:SendTask",
-        "bpmn:MessageEventDefinition"
+        "bpmn:MessageEventDefinition",
+        "bpmn:CallActivity",
+        "bpmn:ManualTask",
+        "bpmn:ScriptTask",
+        "bpmn:UserTask"
       ],
       "properties": [
         {
@@ -101,6 +105,24 @@
           "isAttr": true,
           "type": "String"
         }
+      ]
+    },
+    {
+      "name": "In",
+      "superClass": ["Element"],
+      "properties": [
+        {"name": "source", "isAttr": true, "type": "String"},
+        {"name": "sourceExpression", "isAttr": true, "type": "String"},
+        {"name": "target", "isAttr": true, "type": "String"}
+      ]
+    },
+    {
+      "name": "Out",
+      "superClass": ["Element"],
+      "properties": [
+        {"name": "source", "isAttr": true, "type": "String"},
+        {"name": "sourceExpression", "isAttr": true, "type": "String"},
+        {"name": "target", "isAttr": true, "type": "String"}
       ]
     },
     {

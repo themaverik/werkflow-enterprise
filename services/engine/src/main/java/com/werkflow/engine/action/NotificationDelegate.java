@@ -12,15 +12,39 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
+/**
+ * SEND_NOTIFICATION action block — dispatches a notification via the configured channel.
+ *
+ * <p>Reads the following {@code <flowable:field>} entries from the BPMN element:
+ * <ul>
+ *   <li>{@code recipient} — email address or expression (required)</li>
+ *   <li>{@code templateKey} — notification template key (required)</li>
+ *   <li>{@code channel} — delivery channel: email | slack | whatsapp (optional, default: email)</li>
+ *   <li>{@code condition} — optional boolean expression; delegate no-ops if {@code false}</li>
+ * </ul>
+ *
+ * <p>Delegate-Checklist.md compliance:
+ * <ul>
+ *   <li>Singleton {@code @Component} — no scope override</li>
+ *   <li>Implements {@code JavaDelegate} — single {@code execute()} entry point</li>
+ *   <li>No {@code @Async} — Flowable controls async via {@code flowable:async} on the element</li>
+ *   <li>{@code private final} service fields, constructor-injected via {@code @RequiredArgsConstructor}</li>
+ *   <li>{@code @Setter} Expression fields are framework-managed (Flowable per-execution injection)</li>
+ *   <li>No mutable instance state — Expressions injected by Flowable, resolved inside execute()</li>
+ *   <li>Throws {@code IllegalArgumentException} on invalid email (not swallowed)</li>
+ *   <li>Throws {@code IllegalStateException} on missing required field (not swallowed)</li>
+ *   <li>Logs executionId, processInstanceId, tenantId at INFO; no PII in INFO logs</li>
+ * </ul>
+ */
 @Slf4j
-@Component("emailActionDelegate")
+@Component("notificationDelegate")
 @RequiredArgsConstructor
-public class EmailActionDelegate implements JavaDelegate {
+public class NotificationDelegate implements JavaDelegate {
 
     private final NotificationChannelFactory channelFactory;
     private final NotificationTemplateService templateService;
 
-    // Injected via <flowable:field> — must be instance fields (not constructor-injected)
+    // Injected via <flowable:field> — Flowable sets these per-execution; not mutable instance state
     @Setter private Expression recipient;
     @Setter private Expression templateKey;
     @Setter private Expression channel;
@@ -28,11 +52,14 @@ public class EmailActionDelegate implements JavaDelegate {
 
     @Override
     public void execute(DelegateExecution execution) {
+        log.info("notificationDelegate: executing for processInstance={} execution={} tenant={}",
+                execution.getProcessInstanceId(), execution.getId(), execution.getTenantId());
+
         // Evaluate optional condition
         if (condition != null) {
             Object condValue = condition.getValue(execution);
             if (Boolean.FALSE.equals(condValue)) {
-                log.info("emailActionDelegate: condition evaluated to false — skipping");
+                log.info("notificationDelegate: condition evaluated to false — skipping");
                 return;
             }
         }
@@ -55,7 +82,8 @@ public class EmailActionDelegate implements JavaDelegate {
         );
 
         channelFactory.getChannel(channelValue).send(request);
-        log.info("emailActionDelegate: notification dispatched to channel={}", channelValue);
+        log.info("notificationDelegate: notification dispatched channel={} processInstance={} execution={} tenant={}",
+                channelValue, execution.getProcessInstanceId(), execution.getId(), execution.getTenantId());
     }
 
     private String sanitizeEmail(String raw) {
