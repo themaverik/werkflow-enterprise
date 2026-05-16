@@ -77,11 +77,7 @@ function extractReferencedKeys(modeler: any): { formKeys: string[]; dmnKeys: str
     if (bo.$type === 'bpmn:ServiceTask') {
       const fields: any[] = bo.extensionElements?.values
         ?.filter((v: any) => v.$type === 'flowable:Field') ?? []
-      const actionType = fields.find((f: any) => f.name === 'actionType')?.stringValue
-      if (actionType === 'DMN_ROUTE') {
-        const ref = fields.find((f: any) => f.name === 'decisionRef')?.stringValue
-        if (ref) dmnKeys.add(ref)
-      }
+      // action-type DMN route removed in M4.11 — no longer enriching expression variables from this path
     }
   })
 
@@ -165,8 +161,8 @@ function validateActionBlocks(modeler: any): string[] {
       }
 
       if (actionType === 'CALL_SUBPROCESS') {
-        if (!getFlowableField(bo, 'processKey')) {
-          errors.push(`${label}: Call Subprocess task is missing a process key.`)
+        if (!bo.get('calledElement')) {
+          errors.push(`${label}: Call Subprocess task is missing a process key (calledElement).`)
         }
       }
 
@@ -343,6 +339,30 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
 
     eventBus.on('commandStack.changed', handleChange)
 
+    // Auto-default SEND_NOTIFICATION when a SendTask is placed or morphed onto the canvas
+    const handleElementChanged = (event: any) => {
+      const el = event.element
+      if (!el || el.type !== 'bpmn:SendTask') return
+      const bo = el.businessObject
+      if (!bo) return
+      const existing = bo.get('flowable:actionType')
+      if (existing) return // already has an action type — don't overwrite
+      try {
+        const modeling = bpmnModeler.get('modeling')
+        modeling.updateProperties(el, { 'flowable:actionType': 'SEND_NOTIFICATION' })
+        if (!bo.get('flowable:delegateExpression')) {
+          modeling.updateProperties(el, {
+            'flowable:delegateExpression': '${notificationDelegate}',
+            delegateExpression: '${notificationDelegate}',
+          })
+        }
+        modeling.setColor(el, { fill: '#fff3e0', stroke: '#e65100' })
+      } catch {
+        // modeling unavailable or element removed — skip
+      }
+    }
+    eventBus.on('element.changed', handleElementChanged)
+
     // Initial variable load once modeler is ready
     doRefreshProcessVariables(bpmnModeler)
 
@@ -364,6 +384,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
       cancelled = true
       if (variableRefreshTimer) clearTimeout(variableRefreshTimer)
       eventBus.off('commandStack.changed', handleChange)
+      eventBus.off('element.changed', handleElementChanged)
       eventBus.off('selection.changed', handleSelectionChange)
       setSelectedElement(null)
       bpmnModeler.destroy()
@@ -1059,14 +1080,28 @@ function isSequenceFlow(element: { type: string; businessObject: Record<string, 
 
 function isCustomPanelServiceTask(element: { type: string; businessObject: Record<string, any> } | null): boolean {
   const actionType = element?.businessObject?.get('flowable:actionType')
-  // HUMAN_APPROVAL stays as UserTask, so match both types for it.
+  const type = element?.type
+  // HUMAN_APPROVAL morphs to UserTask; tolerate ServiceTask for legacy/unorphaned elements.
   if (actionType === 'HUMAN_APPROVAL') {
-    return element?.type === 'bpmn:UserTask' || element?.type === 'bpmn:ServiceTask'
+    return type === 'bpmn:UserTask' || type === 'bpmn:ServiceTask'
   }
-  return (
-    element?.type === 'bpmn:ServiceTask' &&
-    (actionType === 'EXTERNAL_API_CALL' || actionType === 'SEND_NOTIFICATION')
-  )
+  // SEND_NOTIFICATION morphs to SendTask (ADR-009); tolerate ServiceTask for legacy.
+  if (actionType === 'SEND_NOTIFICATION') {
+    return type === 'bpmn:SendTask' || type === 'bpmn:ServiceTask'
+  }
+  if (actionType === 'EXTERNAL_API_CALL') {
+    return type === 'bpmn:ServiceTask'
+  }
+  if (actionType === 'SET_VARIABLES') {
+    return type === 'bpmn:ServiceTask'
+  }
+  if (actionType === 'MANUAL_STEP') {
+    return type === 'bpmn:ManualTask' || type === 'bpmn:UserTask'
+  }
+  if (actionType === 'CALL_SUBPROCESS') {
+    return type === 'bpmn:CallActivity'
+  }
+  return false
 }
 
 function readConditionExpression(element: { type: string; businessObject: Record<string, any> } | null): string {
