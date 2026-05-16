@@ -17,7 +17,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class EmailActionDelegateTest {
+class NotificationDelegateTest {
 
     @Mock private NotificationChannelFactory channelFactory;
     @Mock private NotificationTemplateService templateService;
@@ -25,11 +25,11 @@ class EmailActionDelegateTest {
     @Mock private DelegateExecution execution;
     @Mock private Expression recipientExpr, templateKeyExpr, channelExpr, conditionExpr;
 
-    private EmailActionDelegate delegate;
+    private NotificationDelegate delegate;
 
     @BeforeEach
     void setUp() {
-        delegate = new EmailActionDelegate(channelFactory, templateService);
+        delegate = new NotificationDelegate(channelFactory, templateService);
         delegate.setRecipient(recipientExpr);
         delegate.setTemplateKey(templateKeyExpr);
         delegate.setChannel(channelExpr);
