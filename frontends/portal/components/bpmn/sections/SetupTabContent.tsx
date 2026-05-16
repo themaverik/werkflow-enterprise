@@ -1,5 +1,6 @@
 'use client'
 
+import { useCallback, useRef, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,6 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { ConnectorSchemaField } from '@/lib/api/connectors'
 import { useTranslations } from 'next-intl'
 import { DtdsOperationPicker } from '@/components/bpmn/DtdsOperationPicker'
+import { VariableComboBoxBpmnAdapter } from '@/components/bpmn/VariableComboBoxBpmnAdapter'
 import type { FieldEntry } from '@/lib/api/dtds'
 
 interface DtdsOperationsState {
@@ -42,6 +44,8 @@ interface SetupTabContentProps {
   selectedOperationId: string
   dtdsOperations: DtdsOperationsState
   dtdsOutputFields: DtdsFieldsState
+  processId: string
+  activityId: string
   onConnectorPathChange: (value: string) => void
   onBodyTemplateChange: (value: string) => void
   onUrlChange: (value: string) => void
@@ -65,6 +69,8 @@ export default function SetupTabContent({
   selectedOperationId,
   dtdsOperations,
   dtdsOutputFields,
+  processId,
+  activityId,
   onConnectorPathChange,
   onBodyTemplateChange,
   onUrlChange,
@@ -75,6 +81,34 @@ export default function SetupTabContent({
   onOutputFieldClick,
 }: SetupTabContentProps) {
   const t = useTranslations('bpmn')
+  // F6b: ref to the body Textarea for cursor-position insertion
+  const bodyTextareaRef = useRef<HTMLTextAreaElement>(null)
+  // F6b: controls whether the variable insertion picker is visible
+  const [showBodyVarPicker, setShowBodyVarPicker] = useState(false)
+  // HIGH #4: ref for the body variable picker wrapper — used to move focus in on open
+  const bodyPickerWrapperRef = useRef<HTMLDivElement>(null)
+
+  // HIGH #2: memoized callbacks for the Path combobox adapter
+  const getPathValue = useCallback(() => connectorPath, [connectorPath])
+  const setPathValue = useCallback((v: string) => onConnectorPathChange(v), [onConnectorPathChange])
+
+  // HIGH #2: memoized callbacks for the Body variable picker adapter
+  const getBodyPickerValue = useCallback(() => '', [])
+  const setBodyPickerValue = useCallback(
+    (token: string) => {
+      const textarea = bodyTextareaRef.current
+      if (!textarea) {
+        onBodyTemplateChange(bodyTemplate + token)
+        return
+      }
+      const start = textarea.selectionStart ?? bodyTemplate.length
+      const end = textarea.selectionEnd ?? bodyTemplate.length
+      const next = bodyTemplate.slice(0, start) + token + bodyTemplate.slice(end)
+      onBodyTemplateChange(next)
+      setShowBodyVarPicker(false)
+    },
+    [bodyTemplate, onBodyTemplateChange]
+  )
 
   return (
     <Card>
@@ -94,11 +128,18 @@ export default function SetupTabContent({
 
             <div className="space-y-1">
               <Label className="text-xs">{t('path')}</Label>
-              <Input
-                value={connectorPath}
-                onChange={e => onConnectorPathChange(e.target.value)}
-                className="h-8 text-xs font-mono"
+              {/* F6a: VariableComboBoxBpmnAdapter for path with ${varName} token support */}
+              {/* MEDIUM #7: label prop provides accessible label association */}
+              <VariableComboBoxBpmnAdapter
+                key={`path-${activityId}`}
+                mode="single"
+                sourceKeys={['dtds-variables-string']}
+                processId={processId}
+                activityId={activityId}
                 placeholder="/api/resource/${processVar}"
+                label={t('path')}
+                getValue={getPathValue}
+                setValue={setPathValue}
               />
               <p className="text-xs text-muted-foreground">
                 Path appended to connector base URL. Use {'${varName}'} for process variables.
@@ -108,11 +149,47 @@ export default function SetupTabContent({
             <div className="space-y-1">
               <Label className="text-xs">{t('requestBody')}</Label>
               <Textarea
+                ref={bodyTextareaRef}
                 value={bodyTemplate}
                 onChange={e => onBodyTemplateChange(e.target.value)}
                 className="text-xs font-mono min-h-[100px] resize-y"
                 placeholder={'{\n  "requestId": "${requestId}",\n  "amount": ${amount}\n}'}
               />
+              {/* F6b: variable insertion affordance for the body textarea */}
+              <div className="space-y-1">
+                {/* MEDIUM #4: aria-expanded + aria-controls on toggle button */}
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                  aria-expanded={showBodyVarPicker}
+                  aria-controls="body-variable-picker"
+                  onClick={() => {
+                    const next = !showBodyVarPicker
+                    setShowBodyVarPicker(next)
+                    if (next) {
+                      setTimeout(() => {
+                        bodyPickerWrapperRef.current?.querySelector('input')?.focus()
+                      }, 0)
+                    }
+                  }}
+                >
+                  {showBodyVarPicker ? 'Hide variable picker' : 'Insert variable'}
+                </button>
+                {showBodyVarPicker && (
+                  <div id="body-variable-picker" ref={bodyPickerWrapperRef}>
+                    <VariableComboBoxBpmnAdapter
+                      key={`body-var-${activityId}`}
+                      mode="single"
+                      sourceKeys={['dtds-variables-string', 'dtds-variables-number', 'dtds-variables-date']}
+                      processId={processId}
+                      activityId={activityId}
+                      placeholder="Pick a variable to insert…"
+                      getValue={getBodyPickerValue}
+                      setValue={setBodyPickerValue}
+                    />
+                  </div>
+                )}
+              </div>
               {dtdsOutputFields.fields.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   <span className="text-xs text-muted-foreground">{t('schemaFields')}</span>

@@ -23,8 +23,8 @@ import { useTranslations } from 'next-intl'
 interface ContractTabContentProps {
   selectedConnectorKey: string
   initialContractJson: string
-  /** Returns true if the JSON was valid and applied; false if validation failed. */
-  onApplyContract: (jsonSource: string) => boolean
+  /** Returns { ok: true } on success, or { ok: false; error: string } on validation failure. */
+  onApplyContract: (jsonSource: string) => { ok: true } | { ok: false; error: string }
 }
 
 export default function ContractTabContent({
@@ -109,9 +109,9 @@ export default function ContractTabContent({
               size="sm"
               className="w-full h-7 text-xs"
               onClick={() => {
-                const ok = onApplyContract(contractJson)
-                if (!ok) {
-                  setContractImportError('Invalid JSON or not a plain object. Please paste a valid JSON object.')
+                const result = onApplyContract(contractJson)
+                if (!result.ok) {
+                  setContractImportError(result.error)
                 } else {
                   setContractImportError(null)
                 }
@@ -121,7 +121,7 @@ export default function ContractTabContent({
               {t('applyContract')}
             </Button>
             {contractImportError && (
-              <p className="text-xs text-destructive">{contractImportError}</p>
+              <p role="alert" aria-live="polite" className="text-xs text-destructive">{contractImportError}</p>
             )}
           </div>
         )}
@@ -195,7 +195,11 @@ export default function ContractTabContent({
                 <Button
                   size="sm"
                   className="w-full h-7 text-xs"
-                  onClick={() => onApplyContract(contractTestResult.body)}
+                  onClick={() => {
+                    const result = onApplyContract(contractTestResult.body)
+                    if (!result.ok) setContractImportError(result.error)
+                    else setContractImportError(null)
+                  }}
                   disabled={!contractTestResult.body}
                 >
                   {t('applyContract')}
