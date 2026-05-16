@@ -11,6 +11,7 @@
  */
 
 import { is } from 'bpmn-js/lib/util/ModelUtil'
+import { html } from 'htm/preact'
 import {
   SelectEntry,
   TextFieldEntry,
@@ -109,6 +110,10 @@ export function setProcessDefinitionOptions(options: Array<{ key: string; name: 
   processDefinitionOptions = options
 }
 
+export function getProcessDefinitionOptions(): Array<{ key: string; name: string }> {
+  return processDefinitionOptions
+}
+
 /**
  * Module-level variable for DMN decision options (for Business Rule Task decisionRef dropdown).
  * Set from BpmnDesigner.tsx after fetching from API.
@@ -159,9 +164,22 @@ class FlowablePropertiesProvider {
       const moddle = this._injector.get('moddle')
       const generalIdx = groups.findIndex((g: any) => g.id === 'general')
 
-      // --- Action Block group (any Task, including UserTask and ServiceTask) ---
-      const isTask = is(element, 'bpmn:Task')
-      if (isTask) {
+      // --- ReceiveTask deprecation notice ---
+      if (is(element, 'bpmn:ReceiveTask')) {
+        groups.splice(generalIdx + 1, 0, {
+          id: 'deprecated',
+          label: 'Deprecated',
+          entries: [{
+            id: 'receiveTask-deprecated',
+            element,
+            component: DeprecationNoticeEntry,
+          }],
+        })
+      }
+
+      // --- Action Block group — context-aware per element type ---
+      const applicable = getApplicableActionTypes(element)
+      if (applicable.length > 1) {
         const actionBlockEntries = buildActionBlockEntries(element, modeling, translate, debounce, this._injector)
         groups.splice(generalIdx + 1, 0, {
           id: 'action-block',
@@ -446,6 +464,26 @@ class FlowablePropertiesProvider {
 export default FlowablePropertiesProvider
 
 // ---------------------------------------------------------------------------
+// DeprecationNoticeEntry — read-only alert for deprecated BPMN elements.
+// Rendered as a Preact component so it integrates with @bpmn-io/properties-panel
+// without looking like an editable text field.
+// ---------------------------------------------------------------------------
+
+function DeprecationNoticeEntry({ id }: { id: string }) {
+  return html`
+    <div
+      id=${id}
+      role="alert"
+      aria-live="polite"
+      style="border-left: 3px solid #e65100; background: #fff8e1; padding: 8px; border-radius: 2px; font-size: 12px; line-height: 1.5;"
+    >
+      <strong>ReceiveTask is deprecated in Werkflow.</strong><br />
+      Replace with a Message Intermediate Catch Event and a webhook connector.
+    </div>
+  `
+}
+
+// ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
 
@@ -591,47 +629,79 @@ function formKeyEntry(element: any, modeling: any, translate: (s: string) => str
 // Action Block helpers
 // ---------------------------------------------------------------------------
 
-const ACTION_TYPES = [
+export const ACTION_TYPES = [
   { value: '', label: '(none)' },
   { value: 'HUMAN_APPROVAL',    label: 'Human Approval' },
   { value: 'SEND_NOTIFICATION', label: 'Send Notification' },
   { value: 'EXTERNAL_API_CALL', label: 'External API Call' },
+  { value: 'SET_VARIABLES',     label: 'Set Variables' },
   { value: 'CALL_SUBPROCESS',   label: 'Call Subprocess' },
-  { value: 'DMN_ROUTE',         label: 'DMN Route' },
   { value: 'GROOVY_SCRIPT',     label: 'Groovy Script (Admin)' },
   { value: 'MANUAL_STEP',       label: 'Manual Step' },
 ]
+// DMN route action type removed — zero in-flight usage confirmed 2026-05-16; native BusinessRuleTask replaces it
 
 const ACTION_COLOURS: Record<string, { fill: string; stroke: string }> = {
   HUMAN_APPROVAL:    { fill: '#e3f2fd', stroke: '#1565c0' },
   SEND_NOTIFICATION: { fill: '#fff3e0', stroke: '#e65100' },
   EXTERNAL_API_CALL: { fill: '#f3e5f5', stroke: '#6a1b9a' },
+  SET_VARIABLES:     { fill: '#e0f2f1', stroke: '#00695c' },
   CALL_SUBPROCESS:   { fill: '#e8f5e9', stroke: '#2e7d32' },
-  DMN_ROUTE:         { fill: '#e8eaf6', stroke: '#283593' },
   GROOVY_SCRIPT:     { fill: '#fce4ec', stroke: '#c62828' },
   MANUAL_STEP:       { fill: '#f3e5f5', stroke: '#4a148c' },
 }
 
 const DELEGATE_MAP: Record<string, string> = {
-  SEND_NOTIFICATION: '${emailActionDelegate}',
+  SEND_NOTIFICATION: '${notificationDelegate}',
   EXTERNAL_API_CALL: '${externalApiCallDelegate}',
-  CALL_SUBPROCESS:   '${callSubprocessDelegate}',
+  SET_VARIABLES:     '${setVariablesDelegate}',
+}
+// CALL_SUBPROCESS removed — native bpmn:CallActivity needs no delegate
+
+const ACTION_TYPES_BY_ELEMENT: Record<string, string[]> = {
+  'bpmn:UserTask':         ['', 'HUMAN_APPROVAL'],
+  'bpmn:ServiceTask':      ['', 'EXTERNAL_API_CALL', 'SET_VARIABLES'],
+  'bpmn:SendTask':         ['', 'SEND_NOTIFICATION'],
+  'bpmn:ScriptTask':       ['', 'GROOVY_SCRIPT'],
+  'bpmn:ManualTask':       ['', 'MANUAL_STEP'],
+  'bpmn:CallActivity':     ['', 'CALL_SUBPROCESS'],
+  // BusinessRuleTask: action block hidden — native DMN group is the UI
+  'bpmn:Task':             ['', 'HUMAN_APPROVAL', 'SEND_NOTIFICATION', 'EXTERNAL_API_CALL',
+                             'SET_VARIABLES', 'CALL_SUBPROCESS', 'GROOVY_SCRIPT', 'MANUAL_STEP'],
+  // ReceiveTask, SubProcess, all events: not in this map — action block hidden
+}
+
+export function getApplicableActionTypes(element: any): Array<{ value: string; label: string }> {
+  const type = element?.businessObject?.$type ?? element?.type
+  const allowed = ACTION_TYPES_BY_ELEMENT[type]
+  if (!allowed) return []
+  return ACTION_TYPES.filter(t => allowed.includes(t.value))
 }
 
 function getActionType(element: any): string {
   return element.businessObject.get('flowable:actionType') || ''
 }
 
+/** Target BPMN element type for each action type (ADR-009). */
+const MORPH_TARGET: Record<string, string> = {
+  HUMAN_APPROVAL:    'bpmn:UserTask',
+  SEND_NOTIFICATION: 'bpmn:SendTask',
+  EXTERNAL_API_CALL: 'bpmn:ServiceTask',
+  SET_VARIABLES:     'bpmn:ServiceTask',
+  CALL_SUBPROCESS:   'bpmn:CallActivity',
+  GROOVY_SCRIPT:     'bpmn:ScriptTask',
+  MANUAL_STEP:       'bpmn:ManualTask',
+}
+
 export function setActionType(element: any, modeling: any, value: string, injector?: any) {
-  // HUMAN_APPROVAL stays as UserTask: it has no delegate expression and must retain
-  // UserTask-specific BPMN properties (assignment, candidate groups, forms).
-  // All other action types require a ServiceTask delegate expression — morph if needed.
   let target = element
-  const needsServiceTask = value && value !== 'HUMAN_APPROVAL'
-  if (needsServiceTask && element.type !== 'bpmn:ServiceTask' && injector) {
+  const targetType = value ? MORPH_TARGET[value] : undefined
+
+  // Morph the element to the correct BPMN type when a target type is defined and element differs
+  if (targetType && element.type !== targetType && injector) {
     try {
       const bpmnReplace = injector.get('bpmnReplace')
-      target = bpmnReplace.replaceElement(element, { type: 'bpmn:ServiceTask' })
+      target = bpmnReplace.replaceElement(element, { type: targetType })
     } catch {
       // replaceElement unavailable (e.g. read-only viewer) — proceed as-is
     }
@@ -639,17 +709,31 @@ export function setActionType(element: any, modeling: any, value: string, inject
 
   modeling.updateProperties(target, { 'flowable:actionType': value || undefined })
 
+  // Set or clear delegateExpression based on DELEGATE_MAP
   const delegate = DELEGATE_MAP[value] ?? undefined
   modeling.updateProperties(target, {
     'flowable:delegateExpression': delegate,
     delegateExpression: delegate,
   })
 
-  // Seed required defaults so the delegate never throws "Required field not set"
+  // GROOVY_SCRIPT: ScriptTask requires a scriptFormat attribute
+  if (value === 'GROOVY_SCRIPT') {
+    modeling.updateProperties(target, { scriptFormat: 'groovy' })
+  }
+
+  // SEND_NOTIFICATION: seed channel default so delegate never throws "Required field not set"
   if (value === 'SEND_NOTIFICATION') {
     if (!readFlowableField(target, 'channel')) {
       writeFlowableField(target, modeling, 'channel', 'email')
     }
+  }
+
+  // CALL_SUBPROCESS: clear any legacy delegate expression — native CallActivity uses no delegate
+  if (value === 'CALL_SUBPROCESS') {
+    modeling.updateProperties(target, {
+      'flowable:delegateExpression': undefined,
+      delegateExpression: undefined,
+    })
   }
 
   if (value && ACTION_COLOURS[value]) {
@@ -675,7 +759,7 @@ function buildActionBlockEntries(
       label: translate('Action Type'),
       getValue: () => getActionType(element),
       setValue: (value: string) => setActionType(element, modeling, value, injector),
-      getOptions: () => ACTION_TYPES.map(t => ({ value: t.value, label: translate(t.label) })),
+      getOptions: () => getApplicableActionTypes(element).map(t => ({ value: t.value, label: translate(t.label) })),
     },
   ]
 
@@ -706,16 +790,23 @@ function buildActionBlockEntries(
 
   if (actionType === 'CALL_SUBPROCESS') {
     entries.push(
+      // 1) calledElement — native BPMN 2.0 attribute on CallActivity; do NOT use flowable:field
       {
-        id: 'sub-processKey',
+        id: 'sub-calledElement',
         element,
         component: SelectEntry,
         isEdited: isSelectEntryEdited,
-        label: translate('Process Key'),
-        description: translate('Select the subprocess definition to invoke'),
-        getValue: () => readFlowableField(element, 'processKey'),
-        setValue: (value: string) => writeFlowableField(element, modeling, 'processKey', value),
+        label: translate('Process Key (calledElement)'),
+        description: translate('Subprocess definition to invoke'),
+        getValue: () => element.businessObject.get('calledElement') || '',
+        setValue: (value: string) =>
+          modeling.updateProperties(element, { calledElement: value || undefined }),
         getOptions: () => {
+          if (processDefinitionOptions.length === 0) {
+            return [
+              { value: '', label: translate('(no deployed processes — deploy first)') },
+            ]
+          }
           const options: Array<{ value: string; label: string }> = [
             { value: '', label: translate('(select process)') },
           ]
@@ -725,35 +816,10 @@ function buildActionBlockEntries(
           return options
         },
       },
-      flowableFieldEntry(element, modeling, translate, debounce, 'sub-inVariables',
-        translate('In Variables (comma-separated)'), 'inVariables'),
-      flowableFieldEntry(element, modeling, translate, debounce, 'sub-outVariables',
-        translate('Out Variables (comma-separated)'), 'outVariables'),
     )
-  }
-
-  if (actionType === 'DMN_ROUTE') {
-    entries.push(
-      {
-        id: 'dmn-decisionRef',
-        element,
-        component: SelectEntry,
-        isEdited: isSelectEntryEdited,
-        label: translate('Decision Reference'),
-        description: translate('DMN decision key to evaluate for routing'),
-        getValue: () => readFlowableField(element, 'decisionRef'),
-        setValue: (value: string) => writeFlowableField(element, modeling, 'decisionRef', value),
-        getOptions: () => {
-          const options: Array<{ value: string; label: string }> = [
-            { value: '', label: translate('(select decision)') },
-          ]
-          for (const d of dmnDecisionOptions) {
-            options.push({ value: d.key, label: d.name || d.key })
-          }
-          return options
-        },
-      },
-    )
+    // 2) In/Out variable mapping entries (serialize as <flowable:in> / <flowable:out>)
+    entries.push(...buildVarMappingEntries(element, modeling, translate, debounce, 'flowable:In', 'In Mappings (parent → child)'))
+    entries.push(...buildVarMappingEntries(element, modeling, translate, debounce, 'flowable:Out', 'Out Mappings (child → parent)'))
   }
 
   if (actionType === 'GROOVY_SCRIPT') {
@@ -771,6 +837,10 @@ function buildActionBlockEntries(
           modeling.updateProperties(element, { 'flowable:script': value || undefined }),
       },
     )
+  }
+
+  if (actionType === 'SET_VARIABLES') {
+    entries.push(...buildSetVariablesEntries(element, modeling, translate, debounce))
   }
 
   if (actionType === 'MANUAL_STEP') {
@@ -792,11 +862,44 @@ function buildActionBlockEntries(
         component: SelectEntry,
         isEdited: isSelectEntryEdited,
         label: translate('Confirmation Required'),
-        getValue: () => readFlowableField(element, 'confirmationRequired') || 'true',
-        setValue: (value: string) => writeFlowableField(element, modeling, 'confirmationRequired', value),
+        getValue: () => readFlowableField(element, 'confirmationRequired') || 'false',
+        setValue: (value: string) => {
+          if (injector) {
+            queueMicrotask(() => {
+              try {
+                const bpmnReplace = injector.get('bpmnReplace')
+                if (value === 'true' && element.type === 'bpmn:ManualTask') {
+                  // Morph ManualTask → UserTask; write confirmationRequired on morphed element
+                  const morphed = bpmnReplace.replaceElement(element, { type: 'bpmn:UserTask' })
+                  modeling.updateProperties(morphed, {
+                    'flowable:actionType': 'MANUAL_STEP',
+                    formKey: '__werkflow_confirm_step__',
+                  })
+                  writeFlowableField(morphed, modeling, 'confirmationRequired', value)
+                } else if (value === 'false' && element.type === 'bpmn:UserTask') {
+                  // Morph UserTask → ManualTask; write confirmationRequired on morphed element
+                  const morphed = bpmnReplace.replaceElement(element, { type: 'bpmn:ManualTask' })
+                  modeling.updateProperties(morphed, {
+                    'flowable:actionType': 'MANUAL_STEP',
+                    formKey: undefined,
+                  })
+                  writeFlowableField(morphed, modeling, 'confirmationRequired', value)
+                } else {
+                  // No morph needed — write directly on current element
+                  writeFlowableField(element, modeling, 'confirmationRequired', value)
+                }
+              } catch {
+                // bpmnReplace unavailable — write on current element as fallback
+                writeFlowableField(element, modeling, 'confirmationRequired', value)
+              }
+            })
+          } else {
+            writeFlowableField(element, modeling, 'confirmationRequired', value)
+          }
+        },
         getOptions: () => [
-          { value: 'true',  label: translate('Yes') },
           { value: 'false', label: translate('No') },
+          { value: 'true',  label: translate('Yes') },
         ],
       },
     )
@@ -835,13 +938,9 @@ export function readFlowableField(element: any, fieldName: string): string {
 export function writeFlowableField(element: any, modeling: any, fieldName: string, value: string) {
   const bo = element.businessObject
   const moddle = bo.$model
-  let ext = bo.extensionElements
-  if (!ext) {
-    ext = moddle.create('bpmn:ExtensionElements', { values: [] })
-    modeling.updateProperties(element, { extensionElements: ext })
-  }
-  const values: any[] = ext.get('values') ?? []
-  const filtered = values.filter(
+  const existingExt = bo.extensionElements
+  const existingValues: any[] = existingExt?.get('values') ?? []
+  const filtered = existingValues.filter(
     (v: any) => !(v.$type === 'flowable:Field' && v.name === fieldName))
   if (value) {
     const isExpression = /^\$\{.+\}$/.test(value.trim())
@@ -851,7 +950,9 @@ export function writeFlowableField(element: any, modeling: any, fieldName: strin
       : moddle.create('flowable:Field', { name: fieldName, string: value })
     filtered.push(field)
   }
-  ext.set('values', filtered)
+  modeling.updateProperties(element, {
+    extensionElements: moddle.create('bpmn:ExtensionElements', { values: filtered }),
+  })
 }
 
 // Writes value as a <flowable:field> extension element (required for fields read by JavaDelegate)
@@ -869,6 +970,154 @@ function flowableFieldEntry(
     getValue: () => readFlowableField(element, fieldName),
     setValue: (value: string) => writeFlowableField(element, modeling, fieldName, value),
   }
+}
+
+/**
+ * Builds In or Out variable mapping entries for CALL_SUBPROCESS.
+ * Each mapping serializes as <flowable:in source="x" target="y"/> or <flowable:out ...>.
+ *
+ * Simple shape chosen (text fields per row) over a full multi-row table component to
+ * stay within the 50-line guideline and match the properties-panel TextFieldEntry API.
+ * The invariant that matters is BPMN XML serializes as <flowable:in/out> elements,
+ * NOT as <flowable:field> — this is correct because moddle creates 'flowable:In'/'flowable:Out'.
+ */
+function buildVarMappingEntries(
+  element: any, modeling: any, translate: (s: string) => string,
+  debounce: any, moddleType: 'flowable:In' | 'flowable:Out', groupLabel: string
+): any[] {
+  const bo = element.businessObject
+  const moddle = bo.$model
+
+  const getMappings = (): Array<{ source: string; target: string }> => {
+    const ext = bo.extensionElements
+    if (!ext?.values) return []
+    return (ext.values as any[])
+      .filter((v: any) => v.$type === moddleType)
+      .map((v: any) => ({ source: v.source ?? v.sourceExpression ?? '', target: v.target ?? '' }))
+  }
+
+  const writeMappings = (mappings: Array<{ source: string; target: string }>) => {
+    const existingExt = bo.extensionElements
+    const others = (existingExt?.values ?? []).filter((v: any) => v.$type !== moddleType)
+    const newItems = mappings
+      .filter(m => m.source.trim() || m.target.trim())
+      .map(m => {
+        const isExpr = /^\$\{.+\}$/.test(m.source.trim())
+        return isExpr
+          ? moddle.create(moddleType, { sourceExpression: m.source, target: m.target })
+          : moddle.create(moddleType, { source: m.source, target: m.target })
+      })
+    modeling.updateProperties(element, {
+      extensionElements: moddle.create('bpmn:ExtensionElements', { values: [...others, ...newItems] }),
+    })
+  }
+
+  const currentMappings = getMappings()
+  const entries: any[] = []
+
+  // Label header as a read-only text entry
+  entries.push({
+    id: `${moddleType}-label`,
+    element,
+    component: TextFieldEntry,
+    isEdited: () => false,
+    label: translate(groupLabel),
+    getValue: () => '',
+    setValue: () => {},
+  })
+
+  // One row per existing mapping
+  currentMappings.forEach((mapping, idx) => {
+    entries.push({
+      id: `${moddleType}-source-${idx}`,
+      element,
+      component: TextFieldEntry,
+      isEdited: isTextFieldEntryEdited,
+      debounce,
+      label: translate('Source'),
+      getValue: () => mapping.source,
+      setValue: (value: string) => {
+        const updated = getMappings()
+        if (updated[idx]) { updated[idx] = { ...updated[idx], source: value } }
+        writeMappings(updated)
+      },
+    })
+    entries.push({
+      id: `${moddleType}-target-${idx}`,
+      element,
+      component: TextFieldEntry,
+      isEdited: isTextFieldEntryEdited,
+      debounce,
+      label: translate('Target'),
+      getValue: () => mapping.target,
+      setValue: (value: string) => {
+        const updated = getMappings()
+        if (updated[idx]) { updated[idx] = { ...updated[idx], target: value } }
+        writeMappings(updated)
+      },
+    })
+  })
+
+  return entries
+}
+
+/**
+ * Builds SET_VARIABLES panel entries.
+ * Each variable assignment serializes as <flowable:field name="var.<name>">.
+ * Variable name and value are editable; value may be a literal or ${expression}.
+ */
+function buildSetVariablesEntries(
+  element: any, modeling: any, translate: (s: string) => string, debounce: any
+): any[] {
+  const getVarFields = (): Array<{ name: string; value: string }> => {
+    const ext = element.businessObject.extensionElements
+    if (!ext?.values) return []
+    return (ext.values as any[])
+      .filter((v: any) => v.$type === 'flowable:Field' && (v.name ?? '').startsWith('var.'))
+      .map((v: any) => ({ name: v.name.slice(4), value: v.expression ?? v.string ?? '' }))
+  }
+
+  const entries: any[] = []
+  const vars = getVarFields()
+
+  vars.forEach((v, idx) => {
+    entries.push({
+      id: `sv-name-${idx}`,
+      element,
+      component: TextFieldEntry,
+      isEdited: isTextFieldEntryEdited,
+      debounce,
+      label: translate('Variable Name'),
+      getValue: () => v.name,
+      setValue: (value: string) => {
+        // Rename: remove old field, write new field with same value
+        const current = getVarFields()
+        if (current[idx]) {
+          writeFlowableField(element, modeling, `var.${current[idx].name}`, '')
+          if (value.trim()) {
+            writeFlowableField(element, modeling, `var.${value.trim()}`, current[idx].value)
+          }
+        }
+      },
+    })
+    entries.push({
+      id: `sv-value-${idx}`,
+      element,
+      component: TextFieldEntry,
+      isEdited: isTextFieldEntryEdited,
+      debounce,
+      label: translate('Value (literal or ${expression})'),
+      getValue: () => v.value,
+      setValue: (value: string) => {
+        const current = getVarFields()
+        if (current[idx]) {
+          writeFlowableField(element, modeling, `var.${current[idx].name}`, value)
+        }
+      },
+    })
+  })
+
+  return entries
 }
 
 function templateKeySelectEntry(element: any, modeling: any, translate: (s: string) => string): any {
@@ -910,8 +1159,10 @@ function channelSelectEntry(element: any, modeling: any, translate: (s: string) 
     setValue: (value: string) => writeFlowableField(element, modeling, 'channel', value || 'email'),
     getOptions: () => [
       { value: 'email',    label: translate('Email') },
-      { value: 'slack',    label: translate('Slack (coming soon)') },
-      { value: 'whatsapp', label: translate('WhatsApp (coming soon)') },
+      // Coming-soon channels are included for discoverability but marked disabled
+      // so they cannot be selected and written to the BPMN.
+      { value: 'slack',    label: translate('Slack (coming soon)'),    disabled: true },
+      { value: 'whatsapp', label: translate('WhatsApp (coming soon)'), disabled: true },
     ],
   }
 }
