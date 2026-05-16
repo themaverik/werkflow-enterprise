@@ -57,7 +57,7 @@
     <!-- Final notification: welcome email to new hire -->
     <serviceTask id="sendWelcomeEmail" name="Send Welcome Email"
                  flowable:actionType="NOTIFICATION"
-                 flowable:delegateExpression="${emailActionDelegate}">
+                 flowable:delegateExpression="${notificationDelegate}">
       <extensionElements>
         <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
         <flowable:field name="recipient"><flowable:string>${employeeEmail}</flowable:string></flowable:field>

@@ -111,7 +111,7 @@
     <!-- Action Block: Send Approval Notification -->
     <serviceTask id="sendApprovalNotification" name="Send Approval Notification"
                  flowable:actionType="NOTIFICATION"
-                 flowable:delegateExpression="${emailActionDelegate}">
+                 flowable:delegateExpression="${notificationDelegate}">
       <extensionElements>
         <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
         <flowable:field name="recipient"><flowable:string>${initiator}</flowable:string></flowable:field>
@@ -135,7 +135,7 @@
     <!-- Action Block: Send Rejection Notification -->
     <serviceTask id="sendRejectionNotification" name="Send Rejection Notification"
                  flowable:actionType="NOTIFICATION"
-                 flowable:delegateExpression="${emailActionDelegate}">
+                 flowable:delegateExpression="${notificationDelegate}">
       <extensionElements>
         <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
         <flowable:field name="recipient"><flowable:string>${initiator}</flowable:string></flowable:field>

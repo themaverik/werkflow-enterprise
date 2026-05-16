@@ -6,7 +6,7 @@
  *
  * BPMN structure (deployed via API with inline XML):
  *   Start Event (form: event-ticket-form)
- *   → Service Task "Route by Ticket Type" [dmnRouteDelegate: ticket-routing, outputVariables]
+ *   → Business Rule Task "Route by Ticket Type" [DMN: ticket-routing, outputVariables]
  *   → Exclusive Gateway "Ticket Route?"
  *       → [approvalRequired == false] → Service Task "Log Booking" [EXTERNAL_API_CALL: mock-api /post]
  *                                     → End "Ticket Confirmed"
@@ -62,13 +62,9 @@ const EVENT_TICKET_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
                 flowable:initiator="initiator"
                 flowable:formKey="event-ticket-form" />
 
-    <serviceTask id="routeByTicketType" name="Route by Ticket Type"
-               flowable:delegateExpression="\${dmnRouteDelegate}">
-      <extensionElements>
-        <flowable:field name="decisionRef"><flowable:string>ticket-routing</flowable:string></flowable:field>
-        <flowable:field name="mapDecisionResult"><flowable:string>outputVariables</flowable:string></flowable:field>
-      </extensionElements>
-    </serviceTask>
+    <businessRuleTask id="routeByTicketType" name="Route by Ticket Type"
+                      flowable:decisionRef="ticket-routing"
+                      flowable:mapDecisionResult="outputVariables" />
 
     <exclusiveGateway id="ticketRouteGateway" name="Ticket Route?" />
 
@@ -78,7 +74,7 @@ const EVENT_TICKET_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
     </scriptTask>
 
     <serviceTask id="notifyFree" name="Send Ticket Confirmation"
-                 flowable:delegateExpression="\${emailActionDelegate}">
+                 flowable:delegateExpression="\${notificationDelegate}">
       <extensionElements>
         <flowable:field name="recipient"><flowable:expression>\${email}</flowable:expression></flowable:field>
         <flowable:field name="templateKey"><flowable:string>event-ticket-request</flowable:string></flowable:field>
@@ -93,7 +89,7 @@ const EVENT_TICKET_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
               flowable:candidateGroups="DOA_L1,DOA_L2,SUPER_ADMIN" />
 
     <serviceTask id="notifyPaid" name="Send Ticket Decision"
-                 flowable:delegateExpression="\${emailActionDelegate}">
+                 flowable:delegateExpression="\${notificationDelegate}">
       <extensionElements>
         <flowable:field name="recipient"><flowable:expression>\${email}</flowable:expression></flowable:field>
         <flowable:field name="templateKey"><flowable:string>event-ticket-request</flowable:string></flowable:field>
@@ -652,7 +648,7 @@ test.describe('25 — Event Ticket Request', () => {
     // Ensure event-ticket-form schema exists (created by spec 24; pre-create here if missing)
     await ensureFormExists(adminToken, 'event-ticket-form', EVENT_TICKET_FORM_SCHEMA, 'Event Ticket Request Form')
 
-    // Ensure ticket-routing DMN is deployed (required by dmnRouteDelegate in the BPMN)
+    // Ensure ticket-routing DMN is deployed (referenced by businessRuleTask decisionRef in the BPMN)
     await ensureDmnDeployed(adminToken, 'ticket-routing', TICKET_ROUTING_DMN, 'Ticket Routing')
 
     // Deploy idempotently — always redeploy to pick up latest BPMN structure
