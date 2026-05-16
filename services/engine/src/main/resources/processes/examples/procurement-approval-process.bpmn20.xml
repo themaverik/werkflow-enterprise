@@ -262,7 +262,7 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
 
     <serviceTask id="sendApprovalNotification" name="Send Approval Notification"
                  flowable:actionType="NOTIFICATION"
-                 flowable:delegateExpression="${emailActionDelegate}">
+                 flowable:delegateExpression="${notificationDelegate}">
       <extensionElements>
         <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
         <flowable:field name="recipient"><flowable:string>${initiator}</flowable:string></flowable:field>
@@ -283,7 +283,7 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
 
     <serviceTask id="sendRejectionNotification" name="Send Rejection Notification"
                  flowable:actionType="NOTIFICATION"
-                 flowable:delegateExpression="${emailActionDelegate}">
+                 flowable:delegateExpression="${notificationDelegate}">
       <extensionElements>
         <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
         <flowable:field name="recipient"><flowable:string>${initiator}</flowable:string></flowable:field>

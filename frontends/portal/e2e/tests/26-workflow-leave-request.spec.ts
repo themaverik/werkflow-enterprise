@@ -6,7 +6,7 @@
  *
  * BPMN structure (deployed via API with inline XML):
  *   Start Event (form: leave-request-form)
- *   → Service Task "Route Leave" [dmnRouteDelegate: leave-routing, singleEntry → approverLevel]
+ *   → Business Rule Task "Route Leave" [DMN: leave-routing, singleEntry → approverLevel]
  *   → Exclusive Gateway "Leave Route?"
  *       → [approverLevel == 'auto']     → End "Leave Auto-Approved"
  *       → [approverLevel == 'manager']  → User Task "Manager Approval" [DOA_L1,DOA_L2,SUPER_ADMIN]
@@ -63,14 +63,10 @@ const LEAVE_REQUEST_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
                 flowable:initiator="initiator"
                 flowable:formKey="leave-request-form" />
 
-    <serviceTask id="routeLeave" name="Route Leave"
-               flowable:delegateExpression="\${dmnRouteDelegate}">
-      <extensionElements>
-        <flowable:field name="decisionRef"><flowable:string>leave-routing</flowable:string></flowable:field>
-        <flowable:field name="mapDecisionResult"><flowable:string>singleEntry</flowable:string></flowable:field>
-        <flowable:field name="resultVariable"><flowable:string>approverLevel</flowable:string></flowable:field>
-      </extensionElements>
-    </serviceTask>
+    <businessRuleTask id="routeLeave" name="Route Leave"
+                      flowable:decisionRef="leave-routing"
+                      flowable:mapDecisionResult="singleEntry"
+                      flowable:resultVariable="approverLevel" />
 
     <exclusiveGateway id="leaveRouteGateway" name="Leave Route?" />
 
@@ -677,12 +673,12 @@ test.describe('26 — Leave Request', () => {
     // Ensure leave-request-form schema exists (created by spec 24; pre-create here if missing)
     await ensureFormExists(adminToken, 'leave-request-form', LEAVE_REQUEST_FORM_SCHEMA, 'Leave Request Form')
 
-    // Ensure leave-routing DMN is deployed (required by dmnRouteDelegate in the BPMN)
+    // Ensure leave-routing DMN is deployed (referenced by businessRuleTask decisionRef in the BPMN)
     await ensureDmnDeployed(adminToken, 'leave-routing', LEAVE_ROUTING_DMN, 'Leave Routing')
 
-    // Always redeploy — ensures latest BPMN (with dmnRouteDelegate referencing leave-routing DMN) is active
+    // Always redeploy — ensures latest BPMN (businessRuleTask + native decisionRef) is active
     await deployProcessApi(adminToken)
-    test.info().annotations.push({ type: 'note', description: `${PROCESS_KEY} deployed with leave-routing dmnRouteDelegate` })
+    test.info().annotations.push({ type: 'note', description: `${PROCESS_KEY} deployed with native businessRuleTask + leave-routing DMN` })
   })
 
   test.afterAll(async () => {
