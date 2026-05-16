@@ -8,6 +8,42 @@ Format: `[Unreleased]` for in-progress work. Releases follow [Semantic Versionin
 
 ## [Unreleased]
 
+### M4.11 — BPMN/DMN Native Coverage + Panel Decomposition (2026-05-16)
+
+#### Added
+- `SET_VARIABLES` action block + `SetVariablesDelegate` (constructor-injected `ExpressionManager`; satisfies `Delegate-Checklist.md`)
+- Context-aware action-type dropdown filter per BPMN element type (`ACTION_TYPES_BY_ELEMENT`)
+- `DeprecationNoticeEntry` Preact component for `bpmn:receiveTask` (rendered with `role="alert"`)
+- Auto-default `flowable:actionType="SEND_NOTIFICATION"` on `bpmn:sendTask` placement
+- Shared modules: `lib/bpmn/extension-elements.ts` (low-level read/write helpers), `lib/bpmn/action-block-logic.ts` (`readVarFields`, `setManualStepConfirmation`)
+- `flowable:In` / `flowable:Out` moddle types for `bpmn:callActivity` `<flowable:in>` / `<flowable:out>` serialization
+- Co-located panel sections under `components/bpmn/sections/`: `HumanApprovalSection`, `SendNotificationSection`, `ExternalApiCallSection` (+ tab content), `CallSubprocessSection`, `SetVariablesSection`, `ManualStepSection`
+- `e2e/tests/27-bpmn-designer-m411-smoke.spec.ts` smoke test
+
+#### Changed
+- `CALL_SUBPROCESS` morphs to `bpmn:callActivity` (was ServiceTask); native `calledElement` + `<flowable:in>` / `<flowable:out>` (no delegate)
+- `SEND_NOTIFICATION` morphs to `bpmn:sendTask` (was ServiceTask); delegate bean renamed `emailActionDelegate` → `notificationDelegate`; class renamed `EmailActionDelegate` → `NotificationDelegate`
+- `MANUAL_STEP` without confirmation morphs to `bpmn:manualTask`; with confirmation morphs to `bpmn:userTask` with synthesized `formKey="__werkflow_confirm_step__"`
+- `ServiceTaskPropertiesPanel.tsx` reduced from 1322 LOC to 109 LOC (thin dispatcher)
+- `ServiceTaskLike` moddle type extended to cover `bpmn:CallActivity`, `bpmn:ManualTask`, `bpmn:ScriptTask`, `bpmn:UserTask` so `flowable:actionType` survives XML roundtrip
+- All `<flowable:field>` / `<flowable:in>` / `<flowable:out>` writes now route through `modeling.updateProperties` for commandStack integrity (undo/redo + `hasChanges` flag)
+- Element morphs deferred via `queueMicrotask` so React state updates settle before bpmn-js mutates the canvas; post-morph writes operate on the `bpmnReplace` return value
+- React sidebar imports `setActionType` + `getApplicableActionTypes` from the Preact provider and passes `modeler` as injector (CRITICAL fix — previously the morph branch never fired from the sidebar)
+- Example BPMNs migrated: `emailActionDelegate` → `notificationDelegate` in `onboarding-checklist.bpmn20.xml`, `procurement-approval-process.bpmn20.xml`, `capex-approval-process.bpmn20.xml`
+- E2E specs `25-workflow-event-ticket.spec.ts` and `26-workflow-leave-request.spec.ts`: replaced `serviceTask + ${dmnRouteDelegate}` with native `bpmn:businessRuleTask + flowable:decisionRef`
+
+#### Removed
+- `DMN_ROUTE` action type (zero in-flight usage); `DmnRouteDelegate.java` deleted. BusinessRuleTask + native `decisionRef` is the canonical DMN-evaluation surface
+- `CallSubprocessDelegate.java` (replaced by native CallActivity)
+
+#### Fixed
+- `NotificationDelegateTest` class body rename (file rename in commit `e472d2a` did not include the in-file class rename)
+
+#### Refs
+ADR-009, ADR-011 (werkflow-platform/docs/adr/). See M4.11 entry in master Roadmap.
+
+---
+
 ### M4.6 Post-Merge Bugfixes (2026-05-10)
 
 #### Fixed
