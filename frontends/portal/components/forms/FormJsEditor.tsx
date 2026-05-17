@@ -50,6 +50,11 @@ export default function FormJsEditor({
   // remount the editor).
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
+  // Keep latest schema in a ref so the async mount effect imports the most
+  // recent prop value even if it arrived AFTER mount started — fixes the
+  // race where the parent's API fetch resolves before editor creation.
+  const schemaRef = useRef(schema);
+  schemaRef.current = schema;
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -96,7 +101,9 @@ export default function FormJsEditor({
 
       // Import initial schema — serialize object/array property values to strings
       // so the form-js-editor properties panel can display them in text inputs.
-      const initialSchema = serializeSchemaProperties(schema || {
+      // Read schemaRef.current (not the closure-captured `schema`) so a prop
+      // update that landed between mount start and now is honoured.
+      const initialSchema = serializeSchemaProperties(schemaRef.current || {
         type: 'default',
         components: [],
         schemaVersion: 9
@@ -161,8 +168,12 @@ export default function FormJsEditor({
 
   // Update editor schema when props change — serialize before importing.
   // Stringify the schema to avoid re-running on every render due to referential inequality.
+  // Depends on `isReady` so the effect re-fires once the editor finishes
+  // mounting — covers the race where a new schema prop arrives BEFORE the
+  // async mount effect has set editorRef.current.
   const schemaJson = JSON.stringify(schema);
   useEffect(() => {
+    if (!isReady) return;
     if (isInternalChangeRef.current) {
       isInternalChangeRef.current = false;
       return;
@@ -173,7 +184,7 @@ export default function FormJsEditor({
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schemaJson]);
+  }, [schemaJson, isReady]);
 
   return (
     <div className={`form-js-editor-wrapper relative ${className}`} style={{ height: '100%' }}>
