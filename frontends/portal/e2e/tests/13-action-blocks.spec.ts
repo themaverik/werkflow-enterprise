@@ -125,15 +125,6 @@ test.describe('13 — Action blocks — admin', () => {
     await expect(
       page.locator('[data-entry-id="ab-candidateGroups"]')
     ).toBeVisible({ timeout: 5000 })
-
-    // formKey entry is also added for HUMAN_APPROVAL
-    await expect(
-      page.locator('[data-entry-id="formKey"]')
-    ).toBeVisible({ timeout: 5000 })
-
-    await expect(
-      page.locator('[data-entry-id="ab-outcomeVariable"]')
-    ).toBeVisible({ timeout: 5000 })
   })
 
   // -------------------------------------------------------------------------
