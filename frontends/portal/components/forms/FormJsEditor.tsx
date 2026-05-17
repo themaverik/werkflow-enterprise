@@ -5,6 +5,10 @@ import { FormEditor } from '@bpmn-io/form-js-editor';
 import { Loader2 } from 'lucide-react';
 import '@bpmn-io/form-js/dist/assets/form-js.css';
 import '@bpmn-io/form-js/dist/assets/form-js-editor.css';
+// Werkflow theme — MUST stay after the library CSS imports above so our
+// --panel-* mappings beat the library's local CSS variable declarations
+// on .fjs-palette-container / .fjs-properties-container in source order.
+import './formjs-theme.css';
 import { serializeSchemaProperties, deserializeSchemaProperties } from '@/lib/forms/propertyValueSerializer';
 import { injectPaletteFilter } from '@/lib/forms/createPaletteFilterModule';
 
