@@ -219,7 +219,13 @@
    ════════════════════════════════════════════════════════════════════════════ */
 
 /* Palette tile content — text + icons. Library defaults use dark colour
-   (--cds-text-primary) on a light bg; we want light text on our dark bg. */
+   (--cds-text-primary) on a light bg; we want light text on our dark bg.
+   Tile height is FIXED (not min-height) so 2-line labels don't grow the
+   tile and break the grid's visual uniformity. */
+.fjs-editor-container .fjs-palette-group {
+  padding-bottom: 6px;
+}
+
 .fjs-editor-container .fjs-palette-group-title {
   background:     rgba(255, 255, 255, 0.04);
   color:          rgba(255, 255, 255, 0.35);
@@ -228,14 +234,16 @@
   font-weight:    700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  padding:        6px 10px 3px;
+  padding:        8px 10px 6px;
+  margin:         0;
 }
 
 .fjs-editor-container .fjs-palette-fields {
   display:               grid;
   grid-template-columns: 1fr 1fr;
-  gap:                   2px;
-  padding:               4px;
+  gap:                   6px;
+  padding:               6px 10px;
+  margin:                0;
 }
 
 .fjs-editor-container .fjs-palette-field {
@@ -243,32 +251,40 @@
   flex-direction:  column;
   align-items:     center;
   justify-content: center;
-  gap:             3px;
+  gap:             4px;
   padding:         6px 4px;
   background:      transparent;
-  border:          1px solid rgba(255, 255, 255, 0.07);
+  border:          1px solid rgba(255, 255, 255, 0.08);
   border-radius:   6px;
   cursor:          grab;
   transition:      background 120ms ease, border-color 120ms ease;
-  min-height:      56px;
+  height:          60px;
+  box-sizing:      border-box;
+  overflow:        hidden;
 }
 .fjs-editor-container .fjs-palette-field-icon,
 .fjs-editor-container .fjs-palette-field > svg {
   color:       rgba(255, 255, 255, 0.65);
   fill:        rgba(255, 255, 255, 0.65);
-  width:       22px;
-  height:      18px;
+  width:       20px;
+  height:      20px;
   flex-shrink: 0;
 }
 .fjs-editor-container .fjs-palette-field span,
 .fjs-editor-container .fjs-palette-field-text {
-  font-family: var(--panel-font);
-  font-size:   9px;
-  font-weight: 500;
-  color:       rgba(255, 255, 255, 0.6);
-  text-align:  center;
-  line-height: 1.2;
-  word-break:  break-word;
+  font-family:   var(--panel-font);
+  font-size:     10px;
+  font-weight:   500;
+  color:         rgba(255, 255, 255, 0.65);
+  text-align:    center;
+  line-height:   1.2;
+  word-break:    break-word;
+  /* Cap labels at 2 lines with ellipsis — keeps tile heights uniform */
+  display:       -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow:      hidden;
+  max-width:     100%;
 }
 .fjs-editor-container .fjs-palette-field:hover {
   background:   rgba(255, 255, 255, 0.06);
