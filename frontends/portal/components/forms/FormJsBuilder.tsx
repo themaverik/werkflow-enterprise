@@ -7,6 +7,7 @@ import { createForm, updateForm } from '@/lib/api/flowable'
 import { Save, Download, Upload, CheckCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { toast } from 'sonner'
 import FormJsEditor from './FormJsEditor'
 
 const DEPARTMENTS = ['HR', 'Finance', 'Procurement', 'Inventory', 'IT', 'Operations', 'Legal', 'Executive']
@@ -46,11 +47,11 @@ export default function FormJsBuilder({
         } else {
           setFormSchema(parsed)
         }
-      } catch (err) {
-        console.error('Error parsing initial form:', err)
+      } catch {
+        toast.error(t('invalidInitialForm'))
       }
     }
-  }, [initialForm])
+  }, [initialForm, t])
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -110,14 +111,15 @@ export default function FormJsBuilder({
       try {
         const json = JSON.parse(e.target?.result as string)
         if (!json.type || !json.components) {
-          alert('Invalid form-js schema. Please ensure the file contains a valid form-js form definition.')
+          toast.error(t('uploadInvalidSchema'))
           return
         }
         setFormSchema(json)
         if (json.id) setFormKey(json.id)
         setHasChanges(true)
-      } catch (err) {
-        alert('Invalid JSON file')
+        toast.success(t('uploadSuccess'))
+      } catch {
+        toast.error(t('uploadInvalidJson'))
       }
     }
     reader.readAsText(file)
@@ -125,25 +127,35 @@ export default function FormJsBuilder({
 
   return (
     <div className="flex flex-col h-screen">
-      {/* Dark header matching design spec */}
+      {/* Dark header — uses --panel-* tokens for cross-editor uniformity */}
       <div
-        className="flex items-center justify-between px-4 py-2 shrink-0"
-        style={{ background: '#111c27', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+        className="form-designer-dark-toolbar flex items-center justify-between px-4 py-2 shrink-0"
+        style={{
+          background:   'var(--panel-hdr-bg)',
+          borderBottom: '1px solid var(--panel-hdr-border)',
+          fontFamily:   'var(--panel-font)',
+        }}
       >
         <div className="flex items-center gap-3 flex-1">
-          <span className="text-sm font-semibold text-white">Form Editor</span>
+          <span
+            className="text-sm font-semibold"
+            style={{ color: 'var(--panel-hdr-text)' }}
+          >
+            Form Editor
+          </span>
           <input
             type="text"
             value={formKey}
             onChange={(e) => setFormKey(e.target.value)}
             placeholder={t('formKeyPlaceholder')}
             disabled={isEditMode}
-            className="rounded px-3 py-1.5 text-xs w-48"
+            className="rounded px-3 py-1.5 text-xs w-48 disabled:opacity-60 disabled:cursor-not-allowed"
             style={{
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              color: '#fff',
-              outline: 'none',
+              background:   'rgba(255,255,255,0.08)',
+              border:       '1px solid rgba(255,255,255,0.15)',
+              color:        'var(--panel-hdr-text)',
+              outline:      'none',
+              fontFamily:   'var(--panel-font)',
             }}
           />
           {!isEditMode && (
@@ -153,18 +165,21 @@ export default function FormJsBuilder({
               aria-label="Owning department"
               className="rounded px-3 py-1.5 text-xs"
               style={{
-                background: 'rgba(255,255,255,0.08)',
-                border: '1px solid rgba(255,255,255,0.15)',
-                color: '#fff',
-                outline: 'none',
+                background:   'rgba(255,255,255,0.08)',
+                border:       '1px solid rgba(255,255,255,0.15)',
+                color:        'var(--panel-hdr-text)',
+                outline:      'none',
+                fontFamily:   'var(--panel-font)',
               }}
             >
-              <option value="" style={{ background: '#111c27' }}>Select department</option>
-              {DEPARTMENTS.map(d => <option key={d} value={d} style={{ background: '#111c27' }}>{d}</option>)}
+              <option value="" style={{ background: 'var(--panel-hdr-bg)' }}>Select department</option>
+              {DEPARTMENTS.map(d => (
+                <option key={d} value={d} style={{ background: 'var(--panel-hdr-bg)' }}>{d}</option>
+              ))}
             </select>
           )}
           {hasChanges && !saveSuccess && !saveError && (
-            <span className="text-xs" style={{ color: 'rgba(255,200,80,0.85)' }}>{t('unsavedChanges')}</span>
+            <span className="text-xs font-medium text-amber-300">{t('unsavedChanges')}</span>
           )}
           {saveSuccess && (
             <span className="text-xs text-emerald-400 flex items-center gap-1">
@@ -200,7 +215,11 @@ export default function FormJsBuilder({
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending || !formKey}
             className="h-7 px-4 rounded-md text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            style={{ background: '#149ba5', color: '#fff' }}
+            style={{
+              background: 'var(--panel-accent)',
+              color:      'var(--panel-hdr-text)',
+              fontFamily: 'var(--panel-font)',
+            }}
           >
             <Save className="h-3.5 w-3.5 mr-1.5 inline" />
             {saveMutation.isPending ? t('saving') : t('save')}
@@ -213,6 +232,10 @@ export default function FormJsBuilder({
           schema={formSchema}
           onSchemaChange={handleSchemaChange}
           onSave={handleEditorSave}
+          onError={(err) => {
+            const message = err instanceof Error ? err.message : String(err)
+            toast.error(t('editorError', { error: message }))
+          }}
           className="h-full"
         />
       </div>

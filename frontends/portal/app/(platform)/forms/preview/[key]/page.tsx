@@ -3,6 +3,7 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useQuery } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { getFormDefinition } from '@/lib/api/flowable'
 import FormJsViewer from '@/components/forms/FormJsViewer'
 import { Button } from '@/components/ui/button'
@@ -68,9 +69,8 @@ export default function PreviewFormPage() {
         <CardContent className="pt-6">
           <FormJsViewer
             schema={schema}
-            onSubmit={(data) => {
-              console.log('Form submitted:', data)
-              alert('Form submitted! Check console for data.')
+            onSubmit={() => {
+              toast.success('Form submitted (preview only — no data sent).')
             }}
           />
         </CardContent>
