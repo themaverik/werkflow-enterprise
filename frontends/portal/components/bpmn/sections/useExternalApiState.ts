@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   ConnectorResponse,
   ConnectorSchemaField,
@@ -11,6 +11,7 @@ import { useDtdsFields } from '@/hooks/useDtdsFields'
 import type { FieldEntry } from '@/lib/api/dtds'
 import {
   extractFieldsFromJson,
+  tryExtractFieldsFromJson,
   readExtractFields,
   writeExtractFields,
 } from './externalApiHelpers'
@@ -39,6 +40,12 @@ export function useExternalApiState(element: any, modeler: any) {
   const dtdsOperations = useDtdsOperations(connectorKey || null)
   const dtdsOutputFields = useDtdsFields(connectorKey || null, selectedOperationId || null, 'output')
   const dtdsInputFields = useDtdsFields(connectorKey || null, selectedOperationId || null, 'input')
+
+  // F3: AbortController ref for the connector health-check fetch
+  const healthAbortRef = useRef<AbortController | null>(null)
+
+  // HIGH #1: abort any in-flight health check when the hook unmounts
+  useEffect(() => () => { healthAbortRef.current?.abort() }, [])
 
   useEffect(() => {
     if (!element || !modeler) return
@@ -138,21 +145,42 @@ export function useExternalApiState(element: any, modeler: any) {
     setSelectedConnectorKey(key)
     setConnectorKey(key)
     setConnectorHealthy(null)
+    // F5: clear stale contractJson immediately before fetching the new connector's schema
+    setContractJson('')
     modeler.get('modeling').updateProperties(element, { 'ab:connector': key || undefined })
 
     if (!key) {
       setSchemaFields([])
-      setContractJson('')
       return
     }
 
-    fetch(`/api/proxy/admin/connectors/${encodeURIComponent(key)}/health`)
-      .then(res => setConnectorHealthy(res.ok))
-      .catch(() => setConnectorHealthy(false))
+    // F3: abort any in-flight health check before starting a new one
+    if (healthAbortRef.current) {
+      healthAbortRef.current.abort()
+    }
+    const controller = new AbortController()
+    healthAbortRef.current = controller
+
+    // Combine the controller signal with a 5-second timeout signal
+    const timeoutSignal = AbortSignal.timeout(5000)
+    const signal = AbortSignal.any
+      ? AbortSignal.any([controller.signal, timeoutSignal])
+      : controller.signal
+
+    fetch(`/api/proxy/admin/connectors/${encodeURIComponent(key)}/health`, { signal })
+      .then(res => {
+        if (!controller.signal.aborted) setConnectorHealthy(res.ok)
+      })
+      .catch((err: unknown) => {
+        // F3: AbortError means the fetch was cancelled — do NOT mark as unhealthy
+        if (err instanceof Error && err.name === 'AbortError') return
+        if (!controller.signal.aborted) setConnectorHealthy(false)
+      })
 
     setUrl('')
     modeler.get('modeling').updateProperties(element, { 'ab:url': undefined })
 
+    // F5: only set contractJson in the success path after the connector is found
     const connector = connectors.find(c => c.connectorKey === key)
     if (connector?.sampleSchema) {
       setContractJson(connector.sampleSchema)
@@ -207,13 +235,17 @@ export function useExternalApiState(element: any, modeler: any) {
     handleBodyTemplateChange(bodyTemplate + `\${${varName}}`)
   }
 
-  const handleApplyContract = (jsonSource: string): boolean => {
-    const rows = extractFieldsFromJson(jsonSource)
-    if (rows.length === 0) return false
-    setExtractFields(rows)
-    writeExtractFields(element, modeler, rows)
-    return true
+  const handleApplyContract = (jsonSource: string): { ok: true } | { ok: false; error: string } => {
+    const result = tryExtractFieldsFromJson(jsonSource)
+    if (!result.ok) return result
+    if (result.rows.length === 0) return { ok: false, error: 'JSON object has no top-level keys.' }
+    setExtractFields(result.rows)
+    writeExtractFields(element, modeler, result.rows)
+    return { ok: true }
   }
+
+  const processId: string = element?.businessObject?.$parent?.id ?? ''
+  const activityId: string = element?.businessObject?.id ?? ''
 
   return {
     url, method, secretRef, responseVariable,
@@ -221,6 +253,7 @@ export function useExternalApiState(element: any, modeler: any) {
     extractFields, connectors, selectedConnectorKey,
     connectorLoadError, connectorFieldDirty, connectorHealthy,
     selectedOperationId, inputMappings, contractJson,
+    processId, activityId,
     dtdsConnectors, dtdsOperations, dtdsOutputFields, dtdsInputFields,
     handleUrlChange, handleMethodChange, handleSecretRefChange, handleResponseVariableChange,
     handleConnectorPathChange, handleBodyTemplateChange,

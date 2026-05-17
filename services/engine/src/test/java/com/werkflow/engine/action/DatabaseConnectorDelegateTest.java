@@ -10,6 +10,8 @@ import com.werkflow.engine.client.AdminServiceClient;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +41,7 @@ class DatabaseConnectorDelegateTest {
     @Mock private ResponseMasker responseMasker;
     @Mock private SecretsResolver secretsResolver;
     @Mock private ProcessAuditLogRepository auditLogRepository;
+    private final MeterRegistry meterRegistry = new SimpleMeterRegistry();
     @Mock private AdminServiceClient adminServiceClient;
     @Mock private DatasourceRegistry datasourceRegistry;
     @Mock private NamedQueryExecutor queryExecutor;
@@ -83,7 +86,7 @@ class DatabaseConnectorDelegateTest {
     @BeforeEach
     void setUp() {
         delegate = new DatabaseConnectorDelegate(
-            responseMasker, secretsResolver, auditLogRepository,
+            responseMasker, secretsResolver, auditLogRepository, meterRegistry,
             adminServiceClient, datasourceRegistry, queryExecutor, keysetPaginator);
 
         delegate.setConnector(connectorExpr);
