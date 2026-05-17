@@ -1,13 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  readFlowableField,
-  writeFlowableField,
-} from '@/lib/bpmn/extension-elements'
 import { VariableComboBoxBpmnAdapter } from '@/components/bpmn/VariableComboBoxBpmnAdapter'
 
 interface HumanApprovalSectionProps {
@@ -16,13 +10,6 @@ interface HumanApprovalSectionProps {
 }
 
 export default function HumanApprovalSection({ element, modeler }: HumanApprovalSectionProps) {
-  const [outcomeVar, setOutcomeVar] = useState('')
-
-  useEffect(() => {
-    if (!element || !modeler) return
-    setOutcomeVar(readFlowableField(element, 'outcomeVariable'))
-  }, [element, modeler])
-
   return (
     <Card>
       <CardHeader className="pb-2 pt-3 px-3 bg-muted border-b">
@@ -75,16 +62,6 @@ export default function HumanApprovalSection({ element, modeler }: HumanApproval
             activityId={element.businessObject?.id}
             getValue={() => element.businessObject.formKey || element.businessObject.$attrs?.['flowable:formKey'] || ''}
             setValue={(v) => modeler.get('modeling').updateProperties(element, { formKey: v || undefined })}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Outcome Variable</Label>
-          <Input
-            className="h-8 text-xs"
-            value={outcomeVar}
-            placeholder="approvalOutcome"
-            onChange={e => setOutcomeVar(e.target.value)}
-            onBlur={() => writeFlowableField(element, modeler.get('modeling'), 'outcomeVariable', outcomeVar)}
           />
         </div>
       </CardContent>
