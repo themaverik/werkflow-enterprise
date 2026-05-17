@@ -19,7 +19,7 @@ import com.werkflow.engine.workflow.FlowableGroupProperties;
  * - Event handling and messaging
  * - Workflow monitoring and history
  */
-@SpringBootApplication(scanBasePackages = {"com.werkflow.engine", "com.werkflow.delegates", "com.werkflow.common"})
+@SpringBootApplication(scanBasePackages = {"com.werkflow.engine", "com.werkflow.common"})
 @EnableConfigurationProperties(FlowableGroupProperties.class)
 public class EngineServiceApplication {
 
