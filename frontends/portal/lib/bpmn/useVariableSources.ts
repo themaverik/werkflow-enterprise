@@ -306,6 +306,74 @@ async function fetchPriorityConstants(): Promise<Group[]> {
   }
 }
 
+interface RoleMappingTier1ApiItem {
+  role: string
+  groups: string[]
+}
+
+interface RoleMappingTier2ApiItem {
+  id: string
+  roleName: string
+  groupName: string
+  tier: 2
+  isManagerTier?: boolean
+}
+
+async function fetchRoleMappings(): Promise<Group[]> {
+  const cacheKey = 'role-mappings'
+  const cached = getCached(cacheKey)
+  if (cached) return cached
+
+  try {
+    const [tier1Raw, tier2Raw] = await Promise.all([
+      apiClient.get<{ mappings?: RoleMappingTier1ApiItem[] }>('/api/v1/config/flowable-role-mappings')
+        .then((r) => r.data.mappings ?? [])
+        .catch((): RoleMappingTier1ApiItem[] => []),
+      adminApiClient.get<RoleMappingTier2ApiItem[]>('/api/v1/config/role-mappings')
+        .then((r) => (Array.isArray(r.data) ? r.data : []).filter((m) => m.tier === 2))
+        .catch((): RoleMappingTier2ApiItem[] => []),
+    ])
+
+    const seen = new Set<string>()
+    const tier1Items: GroupItem[] = []
+    for (const m of tier1Raw) {
+      seen.add(m.role)
+      tier1Items.push({
+        id: m.role,
+        name: m.role,
+        meta: m.groups.join(', '),
+        sans: true,
+        lock: true,
+      })
+    }
+
+    const tier2Items: GroupItem[] = []
+    for (const m of tier2Raw) {
+      if (seen.has(m.roleName)) continue
+      tier2Items.push({
+        id: m.roleName,
+        name: m.roleName,
+        meta: m.groupName,
+        sans: true,
+        tier: m.isManagerTier ? 'manager-tier' : undefined,
+      })
+    }
+
+    const groups: Group[] = []
+    if (tier1Items.length > 0) {
+      groups.push({ key: 'role-tier1', label: 'Roles · Tier 1 · system', icon: 'system', items: tier1Items })
+    }
+    if (tier2Items.length > 0) {
+      groups.push({ key: 'role-tier2', label: 'Roles · Tier 2 · business', icon: 'business', items: tier2Items })
+    }
+
+    setCached(cacheKey, groups)
+    return groups
+  } catch {
+    return []
+  }
+}
+
 interface DeployedFormApiItem {
   key: string
   name?: string
@@ -396,6 +464,9 @@ export function useVariableSources(
 
         case 'forms-deployed':
           return fetchFormsDeployed()
+
+        case 'role-mappings':
+          return fetchRoleMappings()
 
         default:
           return Promise.resolve([])
