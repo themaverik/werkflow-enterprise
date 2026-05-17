@@ -7,6 +7,7 @@ import com.jayway.jsonpath.Option;
 import com.werkflow.common.security.SecretsResolver;
 import com.werkflow.engine.audit.ProcessAuditLog;
 import com.werkflow.engine.audit.ProcessAuditLogRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -40,6 +41,7 @@ public abstract class ConnectorDelegateBase implements JavaDelegate {
     protected final ResponseMasker responseMasker;
     protected final SecretsResolver secretsResolver;
     protected final ProcessAuditLogRepository auditLogRepository;
+    protected final MeterRegistry meterRegistry;
 
     // -------------------------------------------------------------------------
     // BPMN expression fields common to all connector delegates
@@ -81,10 +83,12 @@ public abstract class ConnectorDelegateBase implements JavaDelegate {
 
     protected ConnectorDelegateBase(ResponseMasker responseMasker,
                                     SecretsResolver secretsResolver,
-                                    ProcessAuditLogRepository auditLogRepository) {
+                                    ProcessAuditLogRepository auditLogRepository,
+                                    MeterRegistry meterRegistry) {
         this.responseMasker = responseMasker;
         this.secretsResolver = secretsResolver;
         this.auditLogRepository = auditLogRepository;
+        this.meterRegistry = meterRegistry;
     }
 
     // -------------------------------------------------------------------------
@@ -183,7 +187,16 @@ public abstract class ConnectorDelegateBase implements JavaDelegate {
                 .build();
             auditLogRepository.save(entry);
         } catch (Exception ex) {
-            log.warn("Failed to write audit log for {}: {}", getClass().getSimpleName(), ex.getMessage());
+            // F2: audit failure is NOT a business failure — workflow continues.
+            // Operators MUST see this: log at ERROR with full trace context + alert via counter.
+            log.error("Audit log write failed for actionType={} executionId={} processInstanceId={} activityInstanceId={}: {}",
+                resolveActionType(),
+                execution.getId(),
+                execution.getProcessInstanceId(),
+                execution.getCurrentActivityId(),
+                ex.getMessage(),
+                ex);
+            meterRegistry.counter("werkflow.connector.audit_failure", "actionType", resolveActionType()).increment();
         }
     }
 

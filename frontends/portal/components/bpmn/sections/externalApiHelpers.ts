@@ -17,6 +17,27 @@ export function extractFieldsFromJson(jsonString: string): Array<{ variable: str
   }
 }
 
+type ExtractFieldRow = { variable: string; path: string }
+
+/** F4: Discriminated-union version of extractFieldsFromJson that surfaces parse errors. */
+export function tryExtractFieldsFromJson(
+  jsonString: string
+): { ok: true; rows: ExtractFieldRow[] } | { ok: false; error: string } {
+  try {
+    const parsed = JSON.parse(jsonString)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return { ok: false, error: 'JSON must be a plain object (e.g. { "key": "value" }).' }
+    }
+    const rows: ExtractFieldRow[] = Object.keys(parsed).map(key => ({
+      variable: key.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()),
+      path: `$.${key}`,
+    }))
+    return { ok: true, rows }
+  } catch {
+    return { ok: false, error: 'Invalid JSON — please paste a valid JSON object.' }
+  }
+}
+
 export function readExtractFields(element: any): Array<{ variable: string; path: string }> {
   const raw: string = element.businessObject.get('ab:extractFields') || ''
   if (!raw.trim()) return []

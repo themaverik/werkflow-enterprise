@@ -1,8 +1,9 @@
 'use client'
 
+import { useCallback } from 'react'
 import { RefreshCw } from 'lucide-react'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { VariableComboBoxBpmnAdapter } from '@/components/bpmn/VariableComboBoxBpmnAdapter'
 import type { FieldEntry } from '@/lib/api/dtds'
 
 interface InputMapping {
@@ -15,6 +16,8 @@ interface DtdsInputFieldFormProps {
   isLoading: boolean
   error: Error | null
   mappings: InputMapping[]
+  processId: string
+  activityId: string
   onMappingChange: (path: string, processVariable: string) => void
 }
 
@@ -23,6 +26,8 @@ export function DtdsInputFieldForm({
   isLoading,
   error,
   mappings,
+  processId,
+  activityId,
   onMappingChange,
 }: DtdsInputFieldFormProps) {
   if (isLoading) {
@@ -55,26 +60,66 @@ export function DtdsInputFieldForm({
       {leafFields.map((field) => {
         const mapping = mappings.find(m => m.path === field.path)
         return (
-          <div key={field.path} className="grid grid-cols-2 gap-1 items-center">
-            <Label
-              className="text-xs font-mono truncate"
-              title={field.path}
-            >
-              {field.path}
-              {field.required && (
-                <span className="ml-1 text-destructive text-[10px]">*</span>
-              )}
-            </Label>
-            <Input
-              className="h-7 text-xs"
-              placeholder={`\${${toCamelCase(field.path)}}`}
-              value={mapping?.processVariable ?? ''}
-              onChange={(e) => onMappingChange(field.path, e.target.value)}
-              aria-label={`Map process variable to ${field.path}`}
-            />
-          </div>
+          <InputMappingRow
+            key={field.path}
+            field={field}
+            processVariable={mapping?.processVariable ?? ''}
+            processId={processId}
+            activityId={activityId}
+            onMappingChange={onMappingChange}
+          />
         )
       })}
+    </div>
+  )
+}
+
+// HIGH #2 + MEDIUM #6: isolated row component so useCallback is stable per-row
+interface InputMappingRowProps {
+  field: FieldEntry
+  processVariable: string
+  processId: string
+  activityId: string
+  onMappingChange: (path: string, processVariable: string) => void
+}
+
+function InputMappingRow({
+  field,
+  processVariable,
+  processId,
+  activityId,
+  onMappingChange,
+}: InputMappingRowProps) {
+  const getValue = useCallback(() => processVariable, [processVariable])
+  const setValue = useCallback(
+    (v: string) => onMappingChange(field.path, v),
+    [field.path, onMappingChange]
+  )
+  const ariaLabel = `Map process variable to ${field.path}`
+
+  return (
+    <div className="grid grid-cols-2 gap-1 items-center">
+      <Label
+        className="text-xs font-mono truncate"
+        title={field.path}
+      >
+        {field.path}
+        {field.required && (
+          <span className="ml-1 text-destructive text-[10px]">*</span>
+        )}
+      </Label>
+      {/* F6c: variable picker for the process variable mapping side */}
+      <VariableComboBoxBpmnAdapter
+        key={`input-${activityId}-${field.path}`}
+        mode="single"
+        sourceKeys={['dtds-variables-string', 'dtds-variables-number', 'dtds-variables-date']}
+        processId={processId}
+        activityId={activityId}
+        placeholder={`\${${toCamelCase(field.path)}}`}
+        label={ariaLabel}
+        getValue={getValue}
+        setValue={setValue}
+      />
     </div>
   )
 }

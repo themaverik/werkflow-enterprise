@@ -112,6 +112,8 @@ export default function ExternalApiCallSection({ element, modeler }: ExternalApi
             selectedOperationId={s.selectedOperationId}
             dtdsOperations={s.dtdsOperations}
             dtdsOutputFields={s.dtdsOutputFields}
+            processId={s.processId}
+            activityId={s.activityId}
             onConnectorPathChange={s.handleConnectorPathChange}
             onBodyTemplateChange={s.handleBodyTemplateChange}
             onUrlChange={s.handleUrlChange}
@@ -155,6 +157,8 @@ export default function ExternalApiCallSection({ element, modeler }: ExternalApi
                     isLoading={s.dtdsInputFields.isLoading}
                     error={s.dtdsInputFields.error}
                     mappings={s.inputMappings}
+                    processId={s.processId}
+                    activityId={s.activityId}
                     onMappingChange={s.handleInputMappingChange}
                   />
                 )}

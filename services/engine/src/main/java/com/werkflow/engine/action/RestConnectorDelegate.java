@@ -3,17 +3,21 @@ package com.werkflow.engine.action;
 import com.werkflow.common.security.SecretsResolver;
 import com.werkflow.common.security.SsrfGuard;
 import com.werkflow.engine.audit.ProcessAuditLogRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
 
+import java.io.IOException;
+import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -36,7 +40,7 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
     private static final Pattern BODY_TOKEN = Pattern.compile("\\$\\{([^}]+)\\}");
 
     private final SsrfGuard ssrfGuard;
-    private final RestClient restClient;
+    private final HttpClient httpClient;
     private final TenantEndpointResolver endpointResolver;
 
     // -------------------------------------------------------------------------
@@ -50,20 +54,23 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
     @Setter private Expression method;
     @Setter private Expression secretRef;
 
+    /** Optional per-request timeout in seconds. Defaults to 30. Configure via {@code ab:timeoutSeconds}. */
+    @Setter private Expression timeoutSeconds;
+
+    private static final int DEFAULT_TIMEOUT_SECONDS = 30;
+
     public RestConnectorDelegate(SsrfGuard ssrfGuard,
                                  ResponseMasker responseMasker,
                                  SecretsResolver secretsResolver,
                                  ProcessAuditLogRepository auditLogRepository,
-                                 RestClient.Builder restClientBuilder,
+                                 MeterRegistry meterRegistry,
                                  TenantEndpointResolver endpointResolver) {
-        super(responseMasker, secretsResolver, auditLogRepository);
+        super(responseMasker, secretsResolver, auditLogRepository, meterRegistry);
         this.ssrfGuard = ssrfGuard;
         this.endpointResolver = endpointResolver;
-        HttpClient httpClient = HttpClient.newBuilder()
+        this.httpClient = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NEVER)
-            .build();
-        this.restClient = restClientBuilder
-            .requestFactory(new JdkClientHttpRequestFactory(httpClient))
+            .connectTimeout(Duration.ofSeconds(5))
             .build();
     }
 
@@ -91,7 +98,9 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
                 methodValue = "GET";
             }
 
-            // URL resolution: connector+path mode (preferred) or legacy direct url
+            // URL resolution: connector+path mode (preferred) or legacy direct url.
+            // Note: getString() evaluates Flowable EL expressions before returning the string.
+            // SSRF guard is applied AFTER full URL resolution (F7: guard must see the final URL).
             String connectorKey = getString(connector, execution, null);
             if (connectorKey != null && !connectorKey.isBlank()) {
                 String tenantCode = execution.getTenantId();
@@ -102,7 +111,6 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
                 String pathValue = getString(path, execution, "");
                 String baseUrl = endpointResolver.resolve(tenantCode, connectorKey);
                 resolvedUrl = joinUrl(baseUrl, pathValue);
-                ssrfGuard.validateExternal(resolvedUrl);
             } else {
                 resolvedUrl = getString(url, execution, null);
                 if (resolvedUrl == null || resolvedUrl.isBlank()) {
@@ -112,7 +120,6 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
                 }
                 log.warn("restConnectorDelegate: using deprecated 'url' field on task '{}'. " +
                          "Migrate to 'connector'+'path' fields.", execution.getCurrentActivityId());
-                ssrfGuard.validate(resolvedUrl);
             }
 
             // Resolve bearer secret
@@ -126,8 +133,28 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
                 resolvedBody = resolveBodyTemplate(bodyTemplate, execution);
             }
 
+            // F7: SSRF guard runs here — after full URL resolution and EL evaluation,
+            // immediately before HTTP dispatch. resolvedUrl is the exact string sent on the wire.
+            if (connectorKey != null && !connectorKey.isBlank()) {
+                ssrfGuard.validateExternal(resolvedUrl);
+            } else {
+                ssrfGuard.validate(resolvedUrl);
+            }
+
+            // F1: resolve per-request timeout (default 30s, overridable via ab:timeoutSeconds)
+            int timeoutSecs = DEFAULT_TIMEOUT_SECONDS;
+            String timeoutStr = getString(timeoutSeconds, execution, null);
+            if (timeoutStr != null && !timeoutStr.isBlank()) {
+                try {
+                    timeoutSecs = Integer.parseInt(timeoutStr.trim());
+                } catch (NumberFormatException nfe) {
+                    log.warn("restConnectorDelegate: invalid timeoutSeconds '{}', using default {}s",
+                             timeoutStr, DEFAULT_TIMEOUT_SECONDS);
+                }
+            }
+
             long startTime = System.currentTimeMillis();
-            HttpResult httpResult = makeHttpCall(resolvedUrl, methodValue, secretValue, resolvedBody);
+            HttpResult httpResult = makeHttpCall(resolvedUrl, methodValue, secretValue, resolvedBody, timeoutSecs);
             long durationMs = System.currentTimeMillis() - startTime;
 
             // Truncate at 100KB
@@ -145,6 +172,10 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
 
             storeResult(rawBody, execution);
 
+        } catch (HttpTimeoutException e) {
+            // F1: surface timeout as a named delegate failure so onError mode applies
+            String msg = "HTTP timeout after " + (resolvedUrl != null ? getString(timeoutSeconds, execution, String.valueOf(DEFAULT_TIMEOUT_SECONDS)) : DEFAULT_TIMEOUT_SECONDS) + "s calling " + resolvedUrl;
+            handleError(new RuntimeException(msg, e), onErrorMode, responseVar, execution, resolvedUrl + " " + methodValue);
         } catch (Exception e) {
             handleError(e, onErrorMode, responseVar, execution, resolvedUrl + " " + methodValue);
         }
@@ -156,22 +187,32 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
 
     private record HttpResult(String body, int status) {}
 
-    private HttpResult makeHttpCall(String urlStr, String methodStr, String secret, String bodyContent) {
-        var spec = restClient.method(HttpMethod.valueOf(methodStr)).uri(urlStr);
+    private HttpResult makeHttpCall(String urlStr, String methodStr, String secret,
+                                    String bodyContent, int timeoutSecs)
+            throws IOException, InterruptedException {
+        HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
+            .uri(URI.create(urlStr))
+            .timeout(Duration.ofSeconds(timeoutSecs))
+            .header("Accept", "application/json");
+
         if (secret != null) {
-            spec = spec.header("Authorization", "Bearer " + secret);
+            reqBuilder.header("Authorization", "Bearer " + secret);
         }
+
+        HttpRequest.BodyPublisher publisher = bodyContent != null
+            ? HttpRequest.BodyPublishers.ofString(bodyContent, StandardCharsets.UTF_8)
+            : HttpRequest.BodyPublishers.noBody();
+
         if (bodyContent != null) {
-            spec = spec.contentType(org.springframework.http.MediaType.APPLICATION_JSON).body(bodyContent);
+            reqBuilder.header("Content-Type", "application/json");
         }
-        return spec.exchange((req, res) -> {
-            int status = res.getStatusCode().value();
-            String responseBody;
-            try (var is = res.getBody()) {
-                responseBody = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-            }
-            return new HttpResult(responseBody, status);
-        });
+
+        reqBuilder.method(methodStr, publisher);
+
+        HttpResponse<String> response = httpClient.send(reqBuilder.build(),
+            HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+
+        return new HttpResult(response.body(), response.statusCode());
     }
 
     // Package-private for testing
