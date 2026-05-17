@@ -38,13 +38,51 @@ class FormSchemaValidatorTest {
     @Test
     void displayTypes_containsExpectedTypes() {
         assertThat(FormSchemaValidator.DISPLAY_TYPES).containsExactlyInAnyOrder(
-                "html", "text", "button", "image", "spacer"
+                "html", "text", "button", "image", "spacer", "separator"
         );
     }
 
     @Test
     void serviceTypes_containsDynamiclist() {
         assertThat(FormSchemaValidator.SERVICE_TYPES).contains("dynamiclist");
+    }
+
+    @Test
+    void pathedTypes_containsContainerAndDynamiclist() {
+        assertThat(FormSchemaValidator.PATHED_TYPES).containsExactlyInAnyOrder(
+                "group", "columns", "dynamiclist"
+        );
+    }
+
+    @Test
+    void validateFormSchema_acceptsGroupWithoutKey() throws Exception {
+        JsonNode schema = mapper.readTree("""
+            {"type":"default","components":[
+                {"type":"group","label":"My Group","components":[
+                    {"type":"textfield","key":"name"}
+                ]}
+            ]}""");
+        assertThatNoException().isThrownBy(() -> validator.validateFormSchema(schema));
+    }
+
+    @Test
+    void validateFormSchema_acceptsDynamiclistWithPathNotKey() throws Exception {
+        JsonNode schema = mapper.readTree("""
+            {"type":"default","components":[
+                {"type":"dynamiclist","path":"items","components":[
+                    {"type":"textfield","key":"name"}
+                ]}
+            ]}""");
+        assertThatNoException().isThrownBy(() -> validator.validateFormSchema(schema));
+    }
+
+    @Test
+    void validateFormSchema_acceptsSeparatorWithoutKey() throws Exception {
+        JsonNode schema = mapper.readTree("""
+            {"type":"default","components":[
+                {"type":"separator"}
+            ]}""");
+        assertThatNoException().isThrownBy(() -> validator.validateFormSchema(schema));
     }
 
     // --- validateFormSchema ---
