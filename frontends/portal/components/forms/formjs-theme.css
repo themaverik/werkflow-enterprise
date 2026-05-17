@@ -259,13 +259,14 @@
   align-items:     center;
   justify-content: center;
   gap:             6px;
-  padding:         8px 4px;
+  padding:         10px 6px;
   background:      var(--panel-card-bg);
   border:          1px solid var(--panel-card-border);
   border-radius:   8px;
   cursor:          grab;
   transition:      background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
-  height:          68px;
+  /* Height fits a 22px icon + 6px gap + two 14px label lines + 20px padding */
+  height:          78px;
   box-sizing:      border-box;
   overflow:        hidden;
   box-shadow:      var(--panel-card-shadow);
@@ -312,30 +313,88 @@
   border-color: var(--panel-accent);
 }
 
-/* Palette search field — light theme */
+/* Palette search field — the LIBRARY renders the styled "search input"
+   as the container (.fjs-palette-search-container) with the icon and
+   the bare <input> inside it. We style the container as the input
+   shell and leave the inner <input> transparent + flex-grow so it
+   fills the remaining width. */
 .fjs-editor-container .fjs-palette-search-container {
-  padding:       10px 12px;
-  border-bottom: 1px solid var(--panel-card-border);
-  background:    var(--panel-card-bg);
-}
-.fjs-editor-container .fjs-palette-search {
-  width:         100%;
-  padding:       0 10px 0 30px;
+  display:       flex;
+  align-items:   center;
+  gap:           8px;
+  margin:        12px;
+  padding:       0 10px;
   height:        32px;
   background:    var(--panel-card-bg);
   border:        1px solid var(--panel-card-border);
   border-radius: var(--panel-input-radius);
-  font-size:     var(--panel-fs);
-  font-family:   var(--panel-font);
-  color:         var(--panel-text);
-  outline:       none;
+  transition:    border-color 120ms, box-shadow 120ms;
 }
-.fjs-editor-container .fjs-palette-search::placeholder { color: var(--panel-input-ph); }
-.fjs-editor-container .fjs-palette-search:focus {
+.fjs-editor-container .fjs-palette-search-container:focus-within {
   border-color: var(--panel-accent);
+  background:   var(--panel-card-bg);
   box-shadow:   0 0 0 2px var(--panel-focus-ring);
 }
-.fjs-editor-container .fjs-palette-search-icon { color: var(--panel-text-muted); }
+.fjs-editor-container .fjs-palette-search-icon {
+  flex-shrink: 0;
+  display:     flex;
+  align-items: center;
+  color:       var(--panel-text-muted);
+  width:       16px;
+  height:      16px;
+}
+.fjs-editor-container .fjs-palette-search-icon svg {
+  width: 16px; height: 16px;
+}
+.fjs-editor-container .fjs-palette-search {
+  flex:        1 1 auto;
+  min-width:   0;
+  padding:     0;
+  margin:      0;
+  height:      100%;
+  background:  transparent;
+  border:      none;
+  outline:     none;
+  font-size:   var(--panel-fs);
+  font-family: var(--panel-font);
+  color:       var(--panel-text);
+}
+.fjs-editor-container .fjs-palette-search::placeholder { color: var(--panel-input-ph); }
+.fjs-editor-container .fjs-palette-search-clear {
+  flex-shrink:  0;
+  background:   transparent;
+  border:       none;
+  color:        var(--panel-text-muted);
+  cursor:       pointer;
+  padding:      2px;
+  display:      flex;
+  align-items:  center;
+}
+.fjs-editor-container .fjs-palette-search-clear:hover { color: var(--panel-text); }
+
+/* bpmn.io attribution (LGPL license requirement). The form-js editor
+   does not ship a default PoweredBy in the editor canvas (only the
+   viewer does), so we inject a clickable link into `.fjs-palette-footer`
+   from FormJsEditor.tsx after mount and style it here. */
+.fjs-editor-container .fjs-palette-footer {
+  margin-top:    auto;
+  padding:       10px 12px;
+  border-top:    1px solid var(--panel-card-border);
+  background:    var(--panel-card-bg);
+  text-align:    center;
+}
+.fjs-editor-container .fjs-palette-footer .werkflow-powered-by {
+  font-family:    var(--panel-font);
+  font-size:      10px;
+  color:          var(--panel-text-muted);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  transition:     color 120ms;
+}
+.fjs-editor-container .fjs-palette-footer .werkflow-powered-by:hover {
+  color:           var(--panel-accent);
+  text-decoration: underline;
+}
 
 /* Editor canvas input parity — the library scopes input styling under
    `.fjs-container` (viewer). In the editor the canvas form preview is
