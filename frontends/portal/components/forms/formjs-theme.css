@@ -204,7 +204,10 @@
   --color-palette-group-title:               var(--panel-text-muted);
   --color-palette-text:                      var(--panel-text);
   --cursor-palette-field:                    grab;
-  --palette-width:                           224px;
+  /* Wider palette so two tiles fit "Radio group" / "Date time" labels
+     on a single line at 11px DM Sans. (224 → 268 = ~118px usable per
+     tile after 20px container padding + 8px grid gap.) */
+  --palette-width:                           268px;
 }
 
 /* ── Properties container vars — library declares these on
@@ -259,14 +262,15 @@
   align-items:     center;
   justify-content: center;
   gap:             6px;
-  padding:         10px 6px;
+  padding:         10px 8px;
   background:      var(--panel-card-bg);
   border:          1px solid var(--panel-card-border);
   border-radius:   8px;
   cursor:          grab;
   transition:      background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
-  /* Height fits a 22px icon + 6px gap + two 14px label lines + 20px padding */
-  height:          78px;
+  /* Single-line label thanks to the wider palette — height fits a 22px
+     icon + 6px gap + 14px label + 20px padding = 62px content area. */
+  height:          68px;
   box-sizing:      border-box;
   overflow:        hidden;
   box-shadow:      var(--panel-card-shadow);
@@ -287,12 +291,12 @@
   color:         var(--panel-text);
   text-align:    center;
   line-height:   1.2;
-  word-break:    break-word;
-  /* Cap labels at 2 lines with ellipsis — keeps tile heights uniform */
-  display:       -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  /* Single-line label — the palette is wide enough to accommodate the
+     longest stock label ("Radio group", "Date time"). Truncate with
+     ellipsis if a future field type has a longer name. */
+  white-space:   nowrap;
   overflow:      hidden;
+  text-overflow: ellipsis;
   max-width:     100%;
 }
 .fjs-editor-container .fjs-palette-field:hover {
