@@ -12,6 +12,21 @@ import FormJsEditor from './FormJsEditor'
 
 const DEPARTMENTS = ['HR', 'Finance', 'Procurement', 'Inventory', 'IT', 'Operations', 'Legal', 'Executive']
 
+/**
+ * Structural guard for a form-js schema. Mirrors the minimum shape
+ * `FormEditor.importSchema` will accept without throwing — top-level
+ * `type` string, `components` array, optional `schemaVersion` number,
+ * and every component carrying a string `type`.
+ */
+function isValidFormJsSchema(value: unknown): value is { type: string; components: unknown[]; id?: string; schemaVersion?: number } {
+  if (!value || typeof value !== 'object') return false
+  const obj = value as Record<string, unknown>
+  if (typeof obj.type !== 'string') return false
+  if (!Array.isArray(obj.components)) return false
+  if (obj.schemaVersion !== undefined && typeof obj.schemaVersion !== 'number') return false
+  return obj.components.every((c) => c && typeof c === 'object' && typeof (c as Record<string, unknown>).type === 'string')
+}
+
 interface FormJsBuilderProps {
   initialForm?: string
   formKey?: string
@@ -110,12 +125,12 @@ export default function FormJsBuilder({
     reader.onload = (e) => {
       try {
         const json = JSON.parse(e.target?.result as string)
-        if (!json.type || !json.components) {
+        if (!isValidFormJsSchema(json)) {
           toast.error(t('uploadInvalidSchema'))
           return
         }
         setFormSchema(json)
-        if (json.id) setFormKey(json.id)
+        if (typeof json.id === 'string') setFormKey(json.id)
         setHasChanges(true)
         toast.success(t('uploadSuccess'))
       } catch {
