@@ -28,7 +28,7 @@ public class FormSchemaValidator {
     );
 
     static final Set<String> DISPLAY_TYPES = Set.of(
-            "html", "text", "button", "image", "spacer"
+            "html", "text", "button", "image", "spacer", "separator"
     );
 
     static final Set<String> SERVICE_TYPES = Set.of(

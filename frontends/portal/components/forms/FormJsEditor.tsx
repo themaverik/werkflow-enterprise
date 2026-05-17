@@ -92,7 +92,7 @@ export default function FormJsEditor({
         'date', 'time', 'datetime', 'email',
         'group', 'columns',
         // DISPLAY_TYPES — presentational, no key required
-        'html', 'text', 'button', 'image', 'spacer',
+        'html', 'text', 'button', 'image', 'spacer', 'separator',
         // SERVICE_TYPES
         'dynamiclist',
       ];

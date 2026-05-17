@@ -38,7 +38,7 @@ class FormSchemaValidatorTest {
     @Test
     void displayTypes_containsExpectedTypes() {
         assertThat(FormSchemaValidator.DISPLAY_TYPES).containsExactlyInAnyOrder(
-                "html", "text", "button", "image", "spacer"
+                "html", "text", "button", "image", "spacer", "separator"
         );
     }
 
