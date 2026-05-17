@@ -6,7 +6,7 @@
 # ================================================================
 
 # ================================================================
-# STAGE 1: Backend Base - Build werkflow-delegates first
+# STAGE 1: Backend Base - Build shared modules first
 # ================================================================
 FROM maven:3.9-eclipse-temurin-21 AS backend-base
 
@@ -19,19 +19,11 @@ COPY shared/common/src shared/common/src
 RUN --mount=type=cache,target=/root/.m2 \
     cd shared/common && mvn clean install -DskipTests -B
 
-# Copy and build werkflow-delegates (required by other services)
-COPY shared/delegates/pom.xml shared/delegates/pom.xml
-COPY shared/delegates/src shared/delegates/src
-
-# Build and install werkflow-delegates to local maven repo
-RUN --mount=type=cache,target=/root/.m2 \
-    cd shared/delegates && mvn clean install -DskipTests -B
-
 # Now copy service poms
 COPY services/engine/pom.xml services/engine/pom.xml
 COPY services/admin/pom.xml services/admin/pom.xml
 
-# Download dependencies for all services (werkflow-common and werkflow-delegates now available locally)
+# Download dependencies for all services (werkflow-common now available locally)
 RUN --mount=type=cache,target=/root/.m2 \
     cd services/engine && mvn dependency:go-offline -B
 RUN --mount=type=cache,target=/root/.m2 \
