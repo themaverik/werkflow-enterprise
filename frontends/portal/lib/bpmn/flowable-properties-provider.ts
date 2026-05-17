@@ -193,12 +193,6 @@ class FlowablePropertiesProvider {
       // --- User Task ---
       if (is(element, 'bpmn:UserTask')) {
         groups.splice(generalIdx + 1, 0, {
-          id: 'flowable-forms',
-          label: 'Forms',
-          entries: [formKeyEntry(element, modeling, translate)],
-        })
-
-        groups.splice(generalIdx + 2, 0, {
           id: 'flowable-task',
           label: 'Task Configuration',
           entries: [
