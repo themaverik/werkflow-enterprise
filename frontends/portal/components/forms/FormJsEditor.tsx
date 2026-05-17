@@ -55,6 +55,10 @@ export default function FormJsEditor({
   // race where the parent's API fetch resolves before editor creation.
   const schemaRef = useRef(schema);
   schemaRef.current = schema;
+  // Snapshot the schemaJson last imported by the mount effect so the
+  // schemaJson-on-isReady useEffect can skip a redundant cold-mount
+  // re-import (the schema imported by mount IS the one in the prop).
+  const lastImportedSchemaJsonRef = useRef<string | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -103,11 +107,13 @@ export default function FormJsEditor({
       // so the form-js-editor properties panel can display them in text inputs.
       // Read schemaRef.current (not the closure-captured `schema`) so a prop
       // update that landed between mount start and now is honoured.
-      const initialSchema = serializeSchemaProperties(schemaRef.current || {
+      const initialSchemaInput = schemaRef.current || {
         type: 'default',
         components: [],
         schemaVersion: 9
-      });
+      };
+      const initialSchema = serializeSchemaProperties(initialSchemaInput);
+      lastImportedSchemaJsonRef.current = JSON.stringify(initialSchemaInput);
 
       const importResult = await editor.importSchema(initialSchema).catch((err: unknown) => ({ __error: err }));
       if (cancelled) return;
@@ -116,16 +122,12 @@ export default function FormJsEditor({
         setIsReady(true);
         return;
       }
-      const componentCount = Array.isArray((initialSchema as { components?: unknown }).components)
-        ? (initialSchema as { components: unknown[] }).components.length
-        : 0;
       // Surface warnings on successful import — silent component drops are
       // a common cause of "empty canvas" reports.
       const warnings = (importResult as { warnings?: unknown[] })?.warnings ?? [];
-      if (componentCount > 0 || warnings.length > 0) {
-        console.warn('[FormJsEditor] importSchema OK — components:', componentCount, 'warnings:', warnings);
-      } else {
-        console.warn('[FormJsEditor] importSchema OK but schema has 0 components — verify formJson payload');
+      if (warnings.length > 0) {
+        onErrorRef.current?.(new Error(`Form imported with ${warnings.length} warning(s) — see browser console`));
+        console.warn('[FormJsEditor] importSchema warnings:', warnings);
       }
 
       // Inject palette CSS filter now that the editor DOM is fully rendered.
@@ -190,6 +192,11 @@ export default function FormJsEditor({
         editorRef.current.destroy();
         editorRef.current = null;
       }
+      // Drop any DOM the editor (or our attribution injection) left behind
+      // so detached nodes don't linger on the page after final unmount.
+      if (containerRef.current) {
+        containerRef.current.innerHTML = '';
+      }
     };
   }, []);
 
@@ -201,20 +208,18 @@ export default function FormJsEditor({
   const schemaJson = JSON.stringify(schema);
   useEffect(() => {
     if (!isReady) return;
+    // Skip the redundant cold-mount re-import: the schema imported by
+    // the mount effect is recorded in lastImportedSchemaJsonRef. If the
+    // current schemaJson matches, the editor already has this schema.
+    if (lastImportedSchemaJsonRef.current === schemaJson) return;
     if (isInternalChangeRef.current) {
       isInternalChangeRef.current = false;
       return;
     }
     if (editorRef.current && schema) {
       const serialized = serializeSchemaProperties(schema);
-      const cc = Array.isArray((serialized as { components?: unknown }).components)
-        ? (serialized as { components: unknown[] }).components.length
-        : 0;
-      console.warn('[FormJsEditor] re-importing schema on prop change — components:', cc);
-      editorRef.current.importSchema(serialized).then((result) => {
-        const w = (result as { warnings?: unknown[] })?.warnings ?? [];
-        if (w.length) console.warn('[FormJsEditor] re-import warnings:', w);
-      }).catch((err) => {
+      lastImportedSchemaJsonRef.current = schemaJson;
+      editorRef.current.importSchema(serialized).catch((err) => {
         onErrorRef.current?.(err);
       });
     }
