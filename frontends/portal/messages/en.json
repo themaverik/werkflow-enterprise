@@ -361,7 +361,12 @@
     "formKey": "Form Key",
     "formName": "Form Name",
     "formKeyPlaceholder": "e.g. leave-request-form",
-    "submit": "Submit"
+    "submit": "Submit",
+    "invalidInitialForm": "Failed to parse stored form schema",
+    "uploadInvalidSchema": "Invalid form-js schema. File must contain a valid form-js form definition.",
+    "uploadInvalidJson": "File is not valid JSON",
+    "uploadSuccess": "Form schema loaded",
+    "editorError": "Form editor error: {error}"
   },
   "common": {
     "edit": "Edit",

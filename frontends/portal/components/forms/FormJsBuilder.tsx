@@ -1,15 +1,35 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createForm, updateForm } from '@/lib/api/flowable'
+import { getDepartments } from '@/lib/api/adminTenantApi'
 import { Save, Download, Upload, CheckCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import FormJsEditor from './FormJsEditor'
+import { toast } from 'sonner'
 
-const DEPARTMENTS = ['HR', 'Finance', 'Procurement', 'Inventory', 'IT', 'Operations', 'Legal', 'Executive']
+// @bpmn-io/form-js-editor references browser-only globals (KeyboardEvent
+// etc.) at module load. Loading it via next/dynamic with ssr:false keeps
+// it out of the server bundle compilation step.
+const FormJsEditor = dynamic(() => import('./FormJsEditor'), { ssr: false })
+
+/**
+ * Structural guard for a form-js schema. Mirrors the minimum shape
+ * `FormEditor.importSchema` will accept without throwing — top-level
+ * `type` string, `components` array, optional `schemaVersion` number,
+ * and every component carrying a string `type`.
+ */
+function isValidFormJsSchema(value: unknown): value is { type: string; components: unknown[]; id?: string; schemaVersion?: number } {
+  if (!value || typeof value !== 'object') return false
+  const obj = value as Record<string, unknown>
+  if (typeof obj.type !== 'string') return false
+  if (!Array.isArray(obj.components)) return false
+  if (obj.schemaVersion !== undefined && typeof obj.schemaVersion !== 'number') return false
+  return obj.components.every((c) => c && typeof c === 'object' && typeof (c as Record<string, unknown>).type === 'string')
+}
 
 interface FormJsBuilderProps {
   initialForm?: string
@@ -37,20 +57,33 @@ export default function FormJsBuilder({
   const router = useRouter()
   const isEditMode = !!initialFormKey
 
+  // Fetch tenant departments for the owning-department dropdown.
+  // Replaces the previous hardcoded DEPARTMENTS array; the source of
+  // truth is /api/v1/departments (managed in /admin/tenant/departments).
+  const { data: departments = [], isLoading: departmentsLoading } = useQuery({
+    queryKey: ['departments'],
+    queryFn: () => getDepartments(),
+    staleTime: 5 * 60 * 1000,
+    enabled: !isEditMode, // dropdown only shows when creating a new form
+  })
+
   useEffect(() => {
     if (initialForm) {
       try {
         const parsed = JSON.parse(initialForm)
-        if (parsed.components && !parsed.type) {
-          setFormSchema({ type: 'default', components: [], schemaVersion: 9 })
-        } else {
+        // Older stored schemas may have `components` but be missing the
+        // top-level `type` field. Fill in a sensible default rather than
+        // discarding the stored components.
+        if (Array.isArray(parsed?.components) && typeof parsed.type !== 'string') {
+          setFormSchema({ type: 'default', schemaVersion: 9, ...parsed })
+        } else if (parsed && typeof parsed === 'object') {
           setFormSchema(parsed)
         }
-      } catch (err) {
-        console.error('Error parsing initial form:', err)
+      } catch {
+        toast.error(t('invalidInitialForm'))
       }
     }
-  }, [initialForm])
+  }, [initialForm, t])
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -109,15 +142,16 @@ export default function FormJsBuilder({
     reader.onload = (e) => {
       try {
         const json = JSON.parse(e.target?.result as string)
-        if (!json.type || !json.components) {
-          alert('Invalid form-js schema. Please ensure the file contains a valid form-js form definition.')
+        if (!isValidFormJsSchema(json)) {
+          toast.error(t('uploadInvalidSchema'))
           return
         }
         setFormSchema(json)
-        if (json.id) setFormKey(json.id)
+        if (typeof json.id === 'string') setFormKey(json.id)
         setHasChanges(true)
-      } catch (err) {
-        alert('Invalid JSON file')
+        toast.success(t('uploadSuccess'))
+      } catch {
+        toast.error(t('uploadInvalidJson'))
       }
     }
     reader.readAsText(file)
@@ -125,25 +159,35 @@ export default function FormJsBuilder({
 
   return (
     <div className="flex flex-col h-screen">
-      {/* Dark header matching design spec */}
+      {/* Dark header — uses --panel-* tokens for cross-editor uniformity */}
       <div
-        className="flex items-center justify-between px-4 py-2 shrink-0"
-        style={{ background: '#111c27', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+        className="form-designer-dark-toolbar flex items-center justify-between px-4 py-2 shrink-0"
+        style={{
+          background:   'var(--panel-hdr-bg)',
+          borderBottom: '1px solid var(--panel-hdr-border)',
+          fontFamily:   'var(--panel-font)',
+        }}
       >
         <div className="flex items-center gap-3 flex-1">
-          <span className="text-sm font-semibold text-white">Form Editor</span>
+          <span
+            className="text-sm font-semibold"
+            style={{ color: 'var(--panel-hdr-text)' }}
+          >
+            Form Editor
+          </span>
           <input
             type="text"
             value={formKey}
             onChange={(e) => setFormKey(e.target.value)}
             placeholder={t('formKeyPlaceholder')}
             disabled={isEditMode}
-            className="rounded px-3 py-1.5 text-xs w-48"
+            className="rounded px-3 py-1.5 text-xs w-48 disabled:opacity-60 disabled:cursor-not-allowed"
             style={{
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              color: '#fff',
-              outline: 'none',
+              background:   'rgba(255,255,255,0.08)',
+              border:       '1px solid rgba(255,255,255,0.15)',
+              color:        'var(--panel-hdr-text)',
+              outline:      'none',
+              fontFamily:   'var(--panel-font)',
             }}
           />
           {!isEditMode && (
@@ -151,20 +195,28 @@ export default function FormJsBuilder({
               value={owningDepartment}
               onChange={(e) => setOwningDepartment(e.target.value)}
               aria-label="Owning department"
-              className="rounded px-3 py-1.5 text-xs"
+              disabled={departmentsLoading}
+              className="rounded px-3 py-1.5 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
               style={{
-                background: 'rgba(255,255,255,0.08)',
-                border: '1px solid rgba(255,255,255,0.15)',
-                color: '#fff',
-                outline: 'none',
+                background:   'rgba(255,255,255,0.08)',
+                border:       '1px solid rgba(255,255,255,0.15)',
+                color:        'var(--panel-hdr-text)',
+                outline:      'none',
+                fontFamily:   'var(--panel-font)',
               }}
             >
-              <option value="" style={{ background: '#111c27' }}>Select department</option>
-              {DEPARTMENTS.map(d => <option key={d} value={d} style={{ background: '#111c27' }}>{d}</option>)}
+              <option value="" style={{ background: 'var(--panel-hdr-bg)' }}>
+                {departmentsLoading ? 'Loading departments…' : departments.length === 0 ? 'No departments configured' : 'Select department'}
+              </option>
+              {departments.map(d => (
+                <option key={d.code} value={d.code} style={{ background: 'var(--panel-hdr-bg)' }}>
+                  {d.name}
+                </option>
+              ))}
             </select>
           )}
           {hasChanges && !saveSuccess && !saveError && (
-            <span className="text-xs" style={{ color: 'rgba(255,200,80,0.85)' }}>{t('unsavedChanges')}</span>
+            <span className="text-xs font-medium text-amber-300">{t('unsavedChanges')}</span>
           )}
           {saveSuccess && (
             <span className="text-xs text-emerald-400 flex items-center gap-1">
@@ -200,7 +252,11 @@ export default function FormJsBuilder({
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending || !formKey}
             className="h-7 px-4 rounded-md text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            style={{ background: '#149ba5', color: '#fff' }}
+            style={{
+              background: 'var(--panel-accent)',
+              color:      'var(--panel-hdr-text)',
+              fontFamily: 'var(--panel-font)',
+            }}
           >
             <Save className="h-3.5 w-3.5 mr-1.5 inline" />
             {saveMutation.isPending ? t('saving') : t('save')}
@@ -213,6 +269,10 @@ export default function FormJsBuilder({
           schema={formSchema}
           onSchemaChange={handleSchemaChange}
           onSave={handleEditorSave}
+          onError={(err) => {
+            const message = err instanceof Error ? err.message : String(err)
+            toast.error(t('editorError', { error: message }))
+          }}
           className="h-full"
         />
       </div>

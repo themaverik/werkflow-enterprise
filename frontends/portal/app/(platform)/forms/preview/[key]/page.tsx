@@ -3,12 +3,17 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useQuery } from '@tanstack/react-query'
+import dynamic from 'next/dynamic'
+import { toast } from 'sonner'
 import { getFormDefinition } from '@/lib/api/flowable'
-import FormJsViewer from '@/components/forms/FormJsViewer'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+
+// @bpmn-io/form-js references browser-only globals at module load —
+// dynamic-import with ssr:false keeps it out of the server bundle.
+const FormJsViewer = dynamic(() => import('@/components/forms/FormJsViewer'), { ssr: false })
 
 export default function PreviewFormPage() {
   const { status } = useSession()
@@ -68,9 +73,8 @@ export default function PreviewFormPage() {
         <CardContent className="pt-6">
           <FormJsViewer
             schema={schema}
-            onSubmit={(data) => {
-              console.log('Form submitted:', data)
-              alert('Form submitted! Check console for data.')
+            onSubmit={() => {
+              toast.success('Form submitted (preview only — no data sent).')
             }}
           />
         </CardContent>

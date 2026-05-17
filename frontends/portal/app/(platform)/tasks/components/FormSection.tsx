@@ -3,8 +3,12 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
-import FormJsViewer from '@/components/forms/FormJsViewer'
+import dynamic from 'next/dynamic'
 import type { TaskFormData } from '@/lib/types/task'
+
+// Browser-only globals (KeyboardEvent etc.) referenced at form-js module
+// load — dynamic-import keeps it out of the SSR bundle.
+const FormJsViewer = dynamic(() => import('@/components/forms/FormJsViewer'), { ssr: false })
 
 interface FormSectionProps {
   formData: TaskFormData | undefined
