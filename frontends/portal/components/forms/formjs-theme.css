@@ -179,31 +179,32 @@
 }
 
 /* ── Palette vars — library declares these on .fjs-palette-container
-   itself. Higher specificity required to beat the local declaration. ── */
+   itself. Higher specificity required to beat the local declaration.
+   Light theme: subtle off-white surface, white tiles, dark icons/text. ── */
 .fjs-editor-container .fjs-palette-container {
-  --color-palette-container-background:      var(--panel-hdr-bg);
-  --color-palette-container-border:          var(--panel-hdr-border);
-  --color-palette-header-background:         var(--panel-hdr-bg);
-  --color-palette-header-border:             var(--panel-hdr-border);
-  --color-palette-header:                    var(--panel-hdr-text);
-  --color-palette-search-background:         rgba(255, 255, 255, 0.08);
-  --color-palette-search-border:             rgba(255, 255, 255, 0.12);
-  --color-palette-search-focus-background:   rgba(255, 255, 255, 0.10);
+  --color-palette-container-background:      var(--panel-input-disabled-bg);
+  --color-palette-container-border:          var(--panel-card-border);
+  --color-palette-header-background:         var(--panel-card-bg);
+  --color-palette-header-border:             var(--panel-card-border);
+  --color-palette-header:                    var(--panel-text);
+  --color-palette-search-background:         var(--panel-card-bg);
+  --color-palette-search-border:             var(--panel-card-border);
+  --color-palette-search-focus-background:   var(--panel-card-bg);
   --color-palette-search-focus-border:       var(--panel-accent);
   --color-palette-search-clear-focus-border: var(--panel-accent);
-  --color-palette-search-icon:               rgba(255, 255, 255, 0.35);
-  --color-palette-search-icon-hover:         rgba(255, 255, 255, 0.65);
-  --color-palette-search:                    #ffffff;
-  --color-palette-field-background:          transparent;
-  --color-palette-field-border:              rgba(255, 255, 255, 0.08);
+  --color-palette-search-icon:               var(--panel-text-muted);
+  --color-palette-search-icon-hover:         var(--panel-text);
+  --color-palette-search:                    var(--panel-text);
+  --color-palette-field-background:          var(--panel-card-bg);
+  --color-palette-field-border:              var(--panel-card-border);
   --color-palette-field-focus:               var(--panel-accent);
-  --color-palette-field-hover-background:    rgba(255, 255, 255, 0.06);
-  --color-palette-field-hover-border:        rgba(20, 155, 165, 0.5);
-  --color-palette-field:                     rgba(255, 255, 255, 0.65);
-  --color-palette-group-title:               rgba(255, 255, 255, 0.35);
-  --color-palette-text:                      rgba(255, 255, 255, 0.65);
+  --color-palette-field-hover-background:    var(--panel-accent-bg);
+  --color-palette-field-hover-border:        var(--panel-accent);
+  --color-palette-field:                     var(--panel-text);
+  --color-palette-group-title:               var(--panel-text-muted);
+  --color-palette-text:                      var(--panel-text);
   --cursor-palette-field:                    grab;
-  --palette-width:                           220px;
+  --palette-width:                           224px;
 }
 
 /* ── Properties container vars — library declares these on
@@ -218,31 +219,37 @@
    Explicit rules (typography, palette tile content, canvas parity)
    ════════════════════════════════════════════════════════════════════════════ */
 
-/* Palette tile content — text + icons. Library defaults use dark colour
-   (--cds-text-primary) on a light bg; we want light text on our dark bg.
-   Tile height is FIXED (not min-height) so 2-line labels don't grow the
-   tile and break the grid's visual uniformity. */
+/* Palette tile content — light theme. Tile height is FIXED (not
+   min-height) so 2-line labels don't grow the tile and break grid
+   alignment. Labels line-clamp to 2 lines with ellipsis. */
+.fjs-editor-container .fjs-palette-container {
+  background:     var(--panel-input-disabled-bg);
+  border-right:   1px solid var(--panel-card-border);
+  display:        flex;
+  flex-direction: column;
+}
+
 .fjs-editor-container .fjs-palette-group {
-  padding-bottom: 6px;
+  padding-bottom: 10px;
 }
 
 .fjs-editor-container .fjs-palette-group-title {
-  background:     rgba(255, 255, 255, 0.04);
-  color:          rgba(255, 255, 255, 0.35);
+  background:     transparent;
+  color:          var(--panel-text-muted);
   font-family:    var(--panel-font);
-  font-size:      9px;
-  font-weight:    700;
-  letter-spacing: 0.07em;
+  font-size:      10px;
+  font-weight:    600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding:        8px 10px 6px;
+  padding:        14px 12px 6px;
   margin:         0;
 }
 
 .fjs-editor-container .fjs-palette-fields {
   display:               grid;
   grid-template-columns: 1fr 1fr;
-  gap:                   6px;
-  padding:               6px 10px;
+  gap:                   8px;
+  padding:               2px 10px 4px;
   margin:                0;
 }
 
@@ -251,31 +258,32 @@
   flex-direction:  column;
   align-items:     center;
   justify-content: center;
-  gap:             4px;
-  padding:         6px 4px;
-  background:      transparent;
-  border:          1px solid rgba(255, 255, 255, 0.08);
-  border-radius:   6px;
+  gap:             6px;
+  padding:         8px 4px;
+  background:      var(--panel-card-bg);
+  border:          1px solid var(--panel-card-border);
+  border-radius:   8px;
   cursor:          grab;
-  transition:      background 120ms ease, border-color 120ms ease;
-  height:          60px;
+  transition:      background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  height:          68px;
   box-sizing:      border-box;
   overflow:        hidden;
+  box-shadow:      var(--panel-card-shadow);
 }
 .fjs-editor-container .fjs-palette-field-icon,
 .fjs-editor-container .fjs-palette-field > svg {
-  color:       rgba(255, 255, 255, 0.65);
-  fill:        rgba(255, 255, 255, 0.65);
-  width:       20px;
-  height:      20px;
+  color:       var(--panel-text);
+  fill:        var(--panel-text);
+  width:       22px;
+  height:      22px;
   flex-shrink: 0;
 }
 .fjs-editor-container .fjs-palette-field span,
 .fjs-editor-container .fjs-palette-field-text {
   font-family:   var(--panel-font);
-  font-size:     10px;
+  font-size:     11px;
   font-weight:   500;
-  color:         rgba(255, 255, 255, 0.65);
+  color:         var(--panel-text);
   text-align:    center;
   line-height:   1.2;
   word-break:    break-word;
@@ -287,46 +295,47 @@
   max-width:     100%;
 }
 .fjs-editor-container .fjs-palette-field:hover {
-  background:   rgba(255, 255, 255, 0.06);
-  border-color: rgba(20, 155, 165, 0.5);
+  background:   var(--panel-accent-bg);
+  border-color: var(--panel-accent);
+  box-shadow:   0 1px 4px rgba(20, 155, 165, 0.12);
 }
 .fjs-editor-container .fjs-palette-field:hover span,
 .fjs-editor-container .fjs-palette-field:hover .fjs-palette-field-text,
 .fjs-editor-container .fjs-palette-field:hover .fjs-palette-field-icon,
 .fjs-editor-container .fjs-palette-field:hover > svg {
-  color: rgba(255, 255, 255, 0.9);
-  fill:  rgba(255, 255, 255, 0.9);
+  color: var(--panel-accent-dk);
+  fill:  var(--panel-accent-dk);
 }
 .fjs-editor-container .fjs-palette-field:active {
   cursor:       grabbing;
-  background:   rgba(20, 155, 165, 0.15);
+  background:   var(--panel-accent-lt);
   border-color: var(--panel-accent);
 }
 
-/* Palette search field */
+/* Palette search field — light theme */
 .fjs-editor-container .fjs-palette-search-container {
-  padding:       8px 10px;
-  border-bottom: 1px solid var(--panel-hdr-border);
-  background:    var(--panel-hdr-bg);
+  padding:       10px 12px;
+  border-bottom: 1px solid var(--panel-card-border);
+  background:    var(--panel-card-bg);
 }
 .fjs-editor-container .fjs-palette-search {
   width:         100%;
-  padding:       0 8px;
-  height:        28px;
-  background:    rgba(255, 255, 255, 0.08);
-  border:        1px solid rgba(255, 255, 255, 0.12);
+  padding:       0 10px 0 30px;
+  height:        32px;
+  background:    var(--panel-card-bg);
+  border:        1px solid var(--panel-card-border);
   border-radius: var(--panel-input-radius);
   font-size:     var(--panel-fs);
   font-family:   var(--panel-font);
-  color:         #ffffff;
+  color:         var(--panel-text);
   outline:       none;
 }
-.fjs-editor-container .fjs-palette-search::placeholder { color: rgba(255, 255, 255, 0.35); }
+.fjs-editor-container .fjs-palette-search::placeholder { color: var(--panel-input-ph); }
 .fjs-editor-container .fjs-palette-search:focus {
   border-color: var(--panel-accent);
   box-shadow:   0 0 0 2px var(--panel-focus-ring);
 }
-.fjs-editor-container .fjs-palette-search-icon { color: rgba(255, 255, 255, 0.3); }
+.fjs-editor-container .fjs-palette-search-icon { color: var(--panel-text-muted); }
 
 /* Editor canvas input parity — the library scopes input styling under
    `.fjs-container` (viewer). In the editor the canvas form preview is
