@@ -1,16 +1,20 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createForm, updateForm } from '@/lib/api/flowable'
+import { getDepartments } from '@/lib/api/adminTenantApi'
 import { Save, Download, Upload, CheckCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import FormJsEditor from './FormJsEditor'
 
-const DEPARTMENTS = ['HR', 'Finance', 'Procurement', 'Inventory', 'IT', 'Operations', 'Legal', 'Executive']
+// @bpmn-io/form-js-editor references browser-only globals (KeyboardEvent
+// etc.) at module load. Loading it via next/dynamic with ssr:false keeps
+// it out of the server bundle compilation step.
+const FormJsEditor = dynamic(() => import('./FormJsEditor'), { ssr: false })
 
 /**
  * Structural guard for a form-js schema. Mirrors the minimum shape
@@ -52,6 +56,16 @@ export default function FormJsBuilder({
   const queryClient = useQueryClient()
   const router = useRouter()
   const isEditMode = !!initialFormKey
+
+  // Fetch tenant departments for the owning-department dropdown.
+  // Replaces the previous hardcoded DEPARTMENTS array; the source of
+  // truth is /api/v1/departments (managed in /admin/tenant/departments).
+  const { data: departments = [], isLoading: departmentsLoading } = useQuery({
+    queryKey: ['departments'],
+    queryFn: () => getDepartments(),
+    staleTime: 5 * 60 * 1000,
+    enabled: !isEditMode, // dropdown only shows when creating a new form
+  })
 
   useEffect(() => {
     if (initialForm) {
@@ -181,7 +195,8 @@ export default function FormJsBuilder({
               value={owningDepartment}
               onChange={(e) => setOwningDepartment(e.target.value)}
               aria-label="Owning department"
-              className="rounded px-3 py-1.5 text-xs"
+              disabled={departmentsLoading}
+              className="rounded px-3 py-1.5 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
               style={{
                 background:   'rgba(255,255,255,0.08)',
                 border:       '1px solid rgba(255,255,255,0.15)',
@@ -190,9 +205,13 @@ export default function FormJsBuilder({
                 fontFamily:   'var(--panel-font)',
               }}
             >
-              <option value="" style={{ background: 'var(--panel-hdr-bg)' }}>Select department</option>
-              {DEPARTMENTS.map(d => (
-                <option key={d} value={d} style={{ background: 'var(--panel-hdr-bg)' }}>{d}</option>
+              <option value="" style={{ background: 'var(--panel-hdr-bg)' }}>
+                {departmentsLoading ? 'Loading departments…' : departments.length === 0 ? 'No departments configured' : 'Select department'}
+              </option>
+              {departments.map(d => (
+                <option key={d.code} value={d.code} style={{ background: 'var(--panel-hdr-bg)' }}>
+                  {d.name}
+                </option>
               ))}
             </select>
           )}

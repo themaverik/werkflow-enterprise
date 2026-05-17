@@ -1,8 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import FormJsViewer from '@/components/forms/FormJsViewer';
-import FormJsEditor from '@/components/forms/FormJsEditor';
+import dynamic from 'next/dynamic';
+
+// Browser-only globals at form-js module load — dynamic-import with
+// ssr:false keeps them out of the server bundle.
+const FormJsViewer = dynamic(() => import('@/components/forms/FormJsViewer'), { ssr: false });
+const FormJsEditor = dynamic(() => import('@/components/forms/FormJsEditor'), { ssr: false });
 
 /**
  * Form.js Demo Page
