@@ -39,6 +39,9 @@ function buildHideCss(allowedTypes: string[]): string {
     .join('')
 
   // Matches a tile that IS in the allowlist (for the :has() group check).
+  // Single-level :has() — nested :has(.fjs-palette-fields :has(...)) was
+  // unreliable across browsers; a flat descendant query works everywhere
+  // that supports :has() (Chrome 105+, Firefox 121+, Safari 15.4+).
   const visibleTileSelector = allowedTypes
     .map((t) => `[data-field-type="${t}"]`)
     .join(', ')
@@ -46,8 +49,8 @@ function buildHideCss(allowedTypes: string[]): string {
   return [
     '/* werkflow palette filter — generated */',
     `.fjs-palette-field${hiddenTileSelector} { display: none !important; }`,
-    // Hide entire group when it contains no visible tiles.
-    `.fjs-palette-group:not(:has(.fjs-palette-fields:has(${visibleTileSelector}))) { display: none !important; }`,
+    // Hide entire group when it has no descendant visible tile.
+    `.fjs-palette-group:not(:has(${visibleTileSelector})) { display: none !important; }`,
   ].join('\n')
 }
 
