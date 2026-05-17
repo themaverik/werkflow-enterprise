@@ -46,7 +46,7 @@ export default function HumanApprovalSection({ element, modeler }: HumanApproval
           <VariableComboBoxBpmnAdapter
             key={`as-${element.id}`}
             mode="single"
-            sourceKeys={['dtds-variables-string']}
+            sourceKeys={['role-mappings', 'dtds-variables-string']}
             processId={element.businessObject?.$parent?.id}
             activityId={element.businessObject?.id}
             getValue={() => element.businessObject.assignee || ''}
