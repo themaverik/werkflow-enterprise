@@ -55,10 +55,6 @@ export default function FormJsEditor({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // accessToken: this component has no session/auth context; using empty string as fallback.
-    // Replace with a real token source (e.g. useSession) if auth is added to this component.
-    const accessToken = '';
-
     // StrictMode double-invoke guard — mirrors the pattern in BpmnDesigner.tsx.
     // Without this, Effect 1's async tail overwrites editorRef.current back to a
     // destroyed editor after Effect 2 has already mounted a fresh one, leaving the
@@ -72,26 +68,19 @@ export default function FormJsEditor({
       // a new editor instance in the same container element.
       containerRef.current.innerHTML = '';
 
-      // Fetch allowlist — fall back to safe defaults if unavailable
-      const allowlistRes = await fetch('/api/proxy/admin/config/form-components', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      }).catch(() => null)
-      if (cancelled) return;
+      // Static allowlist — tenant-specific component allowlists will be wired
+      // to /api/v1/config/vars?type=FORM_COMPONENT_ALLOWLIST in a future
+      // sprint. Until that endpoint exists, hardcode the safe defaults.
+      const allowedTypes: string[] = ['textfield', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'button'];
 
-      const allowedTypes: string[] = allowlistRes?.ok
-        ? (await allowlistRes.json().catch(() => null) as string[] | null) ?? ['textfield', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'button']
-        : ['textfield', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'button']
-      if (cancelled) return;
-
-      // Fetch tenant CSS theme vars — no-op if empty
-      const cssRes = await fetch('/api/proxy/admin/config/vars?type=CSS_THEME', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      }).catch(() => null)
+      // Fetch tenant CSS theme vars — no-op if empty. Auth comes from the
+      // NextAuth session cookie which the proxy reads server-side.
+      const cssRes = await fetch('/api/proxy/admin/config/vars?type=CSS_THEME').catch(() => null)
       if (cancelled) return;
 
       const cssVars: Array<{ varKey: string; varValue: string }> = cssRes?.ok
         ? (await cssRes.json().catch(() => null) as Array<{ varKey: string; varValue: string }> | null) ?? []
-        : []
+        : [];
       if (cancelled) return;
 
       // Initialize form-js editor — no additionalModules.
