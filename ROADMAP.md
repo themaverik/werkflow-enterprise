@@ -128,9 +128,21 @@ S27 — Community Launch
 ### UI Polish — Cross-Editor Toolbar Uniformity (In Progress)
 
 - BPMN, Form, and DMN designer toolbars must share the same dark-header token contract (`--panel-hdr-bg`, `--panel-hdr-border`, `--panel-hdr-text`)
-- Form designer toolbar already migrated (2026-05-17, branch `feature/form-designer-polish`)
+- Form designer toolbar migrated (2026-05-17, branch `feature/form-designer-polish` merged to main)
 - BPMN designer toolbar currently uses a shadcn `Card` (white) — pending migration
 - Goal: changing a single `--panel-hdr-*` token propagates across all three editors with no per-editor overrides
+
+### Form Designer Polish — Completed 2026-05-17
+
+- Full form-js CSS variable theming wired against `--panel-*` tokens (~600-line `components/forms/formjs-theme.css`)
+- Light palette: white-card tiles with dark icons/text, teal hover, pinned bpmn.io footer (LGPL §4 compliance)
+- Editor canvas parity with runtime viewer (mirrored `.fjs-container` rules onto `.fjs-editor-container`)
+- Schema-import race condition fixed via `schemaRef` + `isReady` + `lastImportedSchemaJsonRef`
+- `onError` callback ref pattern on FormJsEditor / FormJsViewer; SSR safety via `next/dynamic`
+- Backend `FormSchemaValidator`: added `separator` to `DISPLAY_TYPES`, new `PATHED_TYPES` exempting `group`/`columns`/`dynamiclist` from `requiresKey()`
+- Hardcoded `DEPARTMENTS` array replaced with `getDepartments()` query against `/api/v1/departments`
+- Unified `.form-designer-aside` shell for Data Sources + Version History side panels
+- Branch: 19 commits on `feature/form-designer-polish` → main
 
 ### S26 — CI/CD Pipeline (Completed 2026-04-21)
 
