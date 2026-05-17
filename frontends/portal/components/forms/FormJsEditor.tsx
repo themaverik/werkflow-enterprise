@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { FormEditor } from '@bpmn-io/form-js-editor';
 import '@bpmn-io/form-js/dist/assets/form-js.css';
 import '@bpmn-io/form-js/dist/assets/form-js-editor.css';
-import '@bpmn-io/form-js-editor/dist/assets/form-js-editor.css';
 import { serializeSchemaProperties, deserializeSchemaProperties } from '@/lib/forms/propertyValueSerializer';
 import { injectPaletteFilter } from '@/lib/forms/createPaletteFilterModule';
 
@@ -12,6 +11,7 @@ interface FormJsEditorProps {
   schema?: any;
   onSchemaChange?: (schema: any) => void;
   onSave?: (schema: any) => void;
+  onError?: (err: unknown) => void;
   className?: string;
 }
 
@@ -34,11 +34,17 @@ export default function FormJsEditor({
   schema,
   onSchemaChange,
   onSave,
+  onError,
   className = ''
 }: FormJsEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<FormEditor | null>(null);
   const isInternalChangeRef = useRef(false);
+  // Keep onError in a ref so closures inside the mount effect always see the
+  // latest callback identity without re-running the effect (which would
+  // remount the editor).
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -102,12 +108,13 @@ export default function FormJsEditor({
         schemaVersion: 9
       });
 
-      const importErr = await editor.importSchema(initialSchema).then(() => null).catch((err: unknown) => {
-        console.error('Failed to import form schema:', err);
-        return err;
-      });
+      const importErr = await editor.importSchema(initialSchema).then(() => null).catch((err: unknown) => err);
       if (cancelled) return;
-      if (importErr) return;
+      if (importErr) {
+        onErrorRef.current?.(importErr);
+        setIsReady(true);
+        return;
+      }
 
       // Inject palette CSS filter now that the editor DOM is fully rendered.
       // Done here (not via additionalModules) to avoid any DI token issues
@@ -138,13 +145,13 @@ export default function FormJsEditor({
             onSchemaChange(deserializedSchema);
           }
         } catch (err) {
-          console.error('Failed to save schema:', err);
+          onErrorRef.current?.(err);
         }
       });
     };
 
     init().catch((err) => {
-      console.error('Failed to initialise form editor:', err);
+      onErrorRef.current?.(err);
     });
 
     // Cleanup — set cancelled BEFORE destroy so the async tail of init()
@@ -168,7 +175,7 @@ export default function FormJsEditor({
     }
     if (editorRef.current && schema) {
       editorRef.current.importSchema(serializeSchemaProperties(schema)).catch((err) => {
-        console.error('Failed to update editor schema:', err);
+        onErrorRef.current?.(err);
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

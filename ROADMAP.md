@@ -125,6 +125,13 @@ S27 — Community Launch
 
 ## Upcoming
 
+### UI Polish — Cross-Editor Toolbar Uniformity (In Progress)
+
+- BPMN, Form, and DMN designer toolbars must share the same dark-header token contract (`--panel-hdr-bg`, `--panel-hdr-border`, `--panel-hdr-text`)
+- Form designer toolbar already migrated (2026-05-17, branch `feature/form-designer-polish`)
+- BPMN designer toolbar currently uses a shadcn `Card` (white) — pending migration
+- Goal: changing a single `--panel-hdr-*` token propagates across all three editors with no per-editor overrides
+
 ### S26 — CI/CD Pipeline (Completed 2026-04-21)
 
 - `ci.yml` — builds and tests engine, admin, and portal on every PR and push to main
