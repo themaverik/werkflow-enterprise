@@ -133,6 +133,22 @@ export default function FormJsEditor({
       // that would silently break editor bootstrapping.
       if (containerRef.current) {
         injectPaletteFilter(containerRef.current, allowedTypes);
+
+        // bpmn.io attribution — LGPL license requirement. The editor
+        // canvas does not include a default PoweredBy (only the viewer
+        // does); inject a clickable link into the library-rendered
+        // palette footer.
+        const footer = containerRef.current.querySelector('.fjs-palette-footer');
+        if (footer && !footer.querySelector('.werkflow-powered-by')) {
+          const link = document.createElement('a');
+          link.className = 'werkflow-powered-by';
+          link.href = 'https://bpmn.io';
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.title = 'Powered by bpmn.io';
+          link.textContent = 'Powered by bpmn.io';
+          footer.appendChild(link);
+        }
       }
 
       setIsReady(true);
