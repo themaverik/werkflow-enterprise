@@ -4,6 +4,8 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Form } from '@bpmn-io/form-js';
 import '@bpmn-io/form-js/dist/assets/form-js.css';
+// Werkflow theme — must stay after the library CSS import above.
+import './formjs-theme.css';
 
 interface FormJsViewerProps {
   schema: any;

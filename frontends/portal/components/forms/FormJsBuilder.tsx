@@ -57,9 +57,12 @@ export default function FormJsBuilder({
     if (initialForm) {
       try {
         const parsed = JSON.parse(initialForm)
-        if (parsed.components && !parsed.type) {
-          setFormSchema({ type: 'default', components: [], schemaVersion: 9 })
-        } else {
+        // Older stored schemas may have `components` but be missing the
+        // top-level `type` field. Fill in a sensible default rather than
+        // discarding the stored components.
+        if (Array.isArray(parsed?.components) && typeof parsed.type !== 'string') {
+          setFormSchema({ type: 'default', schemaVersion: 9, ...parsed })
+        } else if (parsed && typeof parsed === 'object') {
           setFormSchema(parsed)
         }
       } catch {
