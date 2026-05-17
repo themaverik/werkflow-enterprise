@@ -28,11 +28,22 @@ public class FormSchemaValidator {
     );
 
     static final Set<String> DISPLAY_TYPES = Set.of(
-            "html", "text", "button", "image", "spacer"
+            "html", "text", "button", "image", "spacer", "separator"
     );
 
     static final Set<String> SERVICE_TYPES = Set.of(
             "dynamiclist"
+    );
+
+    /**
+     * Pathed/container types that do NOT require a top-level `key` —
+     * form-js identifies their data shape via either nested children
+     * (group, columns: inline grouping; children's own keys are the
+     * data properties) or a `path` field (dynamiclist: array root).
+     * Mirrors form-js's `config.keyed` vs `config.pathed` distinction.
+     */
+    static final Set<String> PATHED_TYPES = Set.of(
+            "group", "columns", "dynamiclist"
     );
 
     private static final Set<String> VALID_FIELD_TYPES;
@@ -136,10 +147,12 @@ public class FormSchemaValidator {
     }
 
     /**
-     * Check if component type requires a key
+     * Check if component type requires a top-level `key`. Display types
+     * (presentational, no submitted data) and pathed types (containers
+     * grouping nested fields, or dynamiclist with a `path`) are exempt.
      */
     private boolean requiresKey(String type) {
-        return !DISPLAY_TYPES.contains(type);
+        return !DISPLAY_TYPES.contains(type) && !PATHED_TYPES.contains(type);
     }
 
     /**

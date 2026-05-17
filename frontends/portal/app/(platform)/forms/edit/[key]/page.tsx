@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getFormDefinition, getFormVersions, rollbackForm } from '@/lib/api/flowable'
 import { listConnectors, ConnectorResponse } from '@/lib/api/connectors'
 import FormJsBuilder from '@/components/forms/FormJsBuilder'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, History, RotateCcw, ChevronRight, ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
@@ -119,46 +119,50 @@ export default function EditFormPage() {
 
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Data Sources reference panel */}
+        {/* Data Sources reference panel — matches the form-js palette panel
+            aesthetic: white surface, --panel-card-border separator, uppercase
+            small-caps section title. */}
         {showDataSources && (
-          <div className="w-72 border-r bg-muted/30 overflow-auto p-3 flex-shrink-0">
-            <p className="text-xs font-semibold mb-3">Connector Data Sources</p>
-            {connectors.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No connectors registered.</p>
-            ) : (
-              connectors.map((c) => {
-                const fields: Array<{ key: string; type: string }> = (() => {
-                  try {
-                    return c.sampleSchema ? JSON.parse(c.sampleSchema) : []
-                  } catch {
-                    return []
-                  }
-                })()
+          <aside
+            className="w-72 overflow-auto flex-shrink-0 form-designer-aside"
+            aria-label="Connector data sources"
+          >
+            <div className="form-designer-aside-header">Connector Data Sources</div>
+            <div className="form-designer-aside-body">
+              {connectors.length === 0 ? (
+                <p className="form-designer-aside-muted">No connectors registered.</p>
+              ) : (
+                connectors.map((c) => {
+                  const fields: Array<{ key: string; type: string }> = (() => {
+                    try {
+                      return c.sampleSchema ? JSON.parse(c.sampleSchema) : []
+                    } catch {
+                      return []
+                    }
+                  })()
 
-                return (
-                  <div key={c.connectorKey} className="mb-4">
-                    <p className="text-xs font-medium">{c.displayName}</p>
-                    <code className="block text-xs bg-background border rounded px-1 py-0.5 mb-1 font-mono">
-                      {c.connectorKey}
-                    </code>
-                    {fields.length > 0 && (
-                      <ul className="text-xs text-muted-foreground space-y-0.5 ml-2">
-                        {fields.map((f) => (
-                          <li key={f.key} className="font-mono">
-                            {f.key}
-                            {f.type ? ` (${f.type})` : ''}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    {fields.length === 0 && (
-                      <p className="text-xs text-muted-foreground ml-2">No schema defined</p>
-                    )}
-                  </div>
-                )
-              })
-            )}
-          </div>
+                  return (
+                    <div key={c.connectorKey} className="form-designer-aside-item">
+                      <p className="form-designer-aside-item-title">{c.displayName}</p>
+                      <code className="form-designer-aside-code">{c.connectorKey}</code>
+                      {fields.length > 0 ? (
+                        <ul className="form-designer-aside-fieldlist">
+                          {fields.map((f) => (
+                            <li key={f.key}>
+                              <span className="font-mono">{f.key}</span>
+                              {f.type ? <span className="form-designer-aside-fieldtype"> {f.type}</span> : null}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="form-designer-aside-muted">No schema defined</p>
+                      )}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </aside>
         )}
 
         {/* Existing content: FormJsBuilder + version history */}
@@ -171,63 +175,61 @@ export default function EditFormPage() {
             />
           </div>
 
-          {/* Version history sidebar */}
+          {/* Version history sidebar — same shell pattern as the Data
+              Sources aside above so both right-side panels look uniform. */}
           {historyOpen && (
-            <div className="w-72 border-l bg-background overflow-y-auto flex-shrink-0">
-              <Card className="border-0 rounded-none h-full">
-                <CardHeader className="pb-3 border-b">
-                  <CardTitle className="text-sm font-semibold">Version History</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  {!versions ? (
-                    <p className="text-sm text-muted-foreground p-4">Loading...</p>
-                  ) : versions.length === 0 ? (
-                    <p className="text-sm text-muted-foreground p-4">No version history found.</p>
-                  ) : (
-                    <ul className="divide-y">
-                      {versions.map((v) => (
-                        <li key={v.id} className="p-3 flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">v{v.version}</span>
-                              {v.isActive && (
-                                <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
-                                  Active
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                              {v.createdBy}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(v.createdAt).toLocaleString()}
-                            </p>
+            <aside
+              className="w-72 overflow-y-auto flex-shrink-0 form-designer-aside form-designer-aside--right"
+              aria-label="Version history"
+            >
+              <div className="form-designer-aside-header">Version History</div>
+              <div className="form-designer-aside-body form-designer-aside-body--flush">
+                {!versions ? (
+                  <p className="form-designer-aside-muted form-designer-aside-muted--padded">Loading...</p>
+                ) : versions.length === 0 ? (
+                  <p className="form-designer-aside-muted form-designer-aside-muted--padded">No version history found.</p>
+                ) : (
+                  <ul className="form-designer-aside-list">
+                    {versions.map((v) => (
+                      <li key={v.id} className="form-designer-aside-listitem">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">v{v.version}</span>
+                            {v.isActive && (
+                              <span className="form-designer-aside-badge form-designer-aside-badge--active">
+                                Active
+                              </span>
+                            )}
                           </div>
-                          {!v.isActive && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="flex-shrink-0 h-7 px-2"
-                              disabled={rollbackMutation.isPending}
-                              onClick={() => {
-                                setPendingConfirm({
-                                  title: 'Restore Version',
-                                  description: `Restore form to version ${v.version}? The current version will be replaced.`,
-                                  onConfirm: () => rollbackMutation.mutate(v.version),
-                                })
-                              }}
-                            >
-                              <RotateCcw className="h-3 w-3 mr-1" />
-                              Restore
-                            </Button>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                          <p className="form-designer-aside-meta truncate">{v.createdBy}</p>
+                          <p className="form-designer-aside-meta">
+                            {new Date(v.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        {!v.isActive && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="flex-shrink-0 h-7 px-2"
+                            disabled={rollbackMutation.isPending}
+                            onClick={() => {
+                              setPendingConfirm({
+                                title: 'Restore Version',
+                                description: `Restore form to version ${v.version}? The current version will be replaced.`,
+                                onConfirm: () => rollbackMutation.mutate(v.version),
+                              })
+                            }}
+                          >
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                            Restore
+                          </Button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </aside>
           )}
         </div>
       </div>

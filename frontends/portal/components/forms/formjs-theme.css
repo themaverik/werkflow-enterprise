@@ -1,0 +1,827 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   form-js theme — Werkflow brand alignment
+
+   Import order matters: this file MUST be imported AFTER the @bpmn-io/form-js
+   library CSS so our rules win source-order ties at equal specificity.
+
+   The library re-declares its CSS custom properties on element scopes that
+   ANCESTOR overrides cannot reach via inheritance — specifically:
+     • .fjs-palette-container    declares all --color-palette-* vars
+     • .fjs-properties-container declares --color-properties-container-* vars
+
+   CSS cascade rule: a custom property declared on an element itself wins
+   over a property inherited from an ancestor, regardless of source order.
+   We therefore target those exact element scopes with higher-specificity
+   selectors (e.g. `.fjs-editor-container .fjs-palette-container`).
+
+   Reference: official form-js base CSS files
+     packages/form-js-viewer/assets/form-js-base.css
+     packages/form-js-editor/assets/form-js-editor-base.css
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Top-level vars (apply where library declares vars on the root
+   `.fjs-container` / `.fjs-editor-container`). Equal specificity →
+   source order decides → this file loaded after library wins. ── */
+.fjs-container,
+.fjs-editor-container {
+  /* Typography */
+  --font-family:          var(--panel-font);
+  --font-size-base:       var(--panel-fs);
+  --font-size-input:      var(--panel-input-fs);
+  --font-size-label:      var(--panel-fs-label);
+  --font-size-group:      var(--panel-fs-title);
+  --form-field-height:    var(--panel-input-h);
+  --letter-spacing-base:  0;
+  --letter-spacing-input: 0;
+  --letter-spacing-label: 0.02em;
+  --line-height-base:     1.45;
+  --line-height-input:    1.45;
+  --line-height-label:    1.35;
+
+  /* Accent / brand */
+  --color-accent:          var(--panel-accent);
+  --color-accent-light:    var(--panel-accent-lt);
+  --color-accent-dark:     var(--panel-accent-dk);
+  --color-accent-readonly: var(--panel-text-muted);
+  --color-selection:       var(--panel-focus-ring);
+
+  /* Surface / background */
+  --color-background:                var(--panel-input-bg);
+  --color-background-active:         var(--panel-accent-bg);
+  --color-background-adornment:      var(--panel-input-disabled-bg);
+  --color-background-disabled:       var(--panel-input-disabled-bg);
+  --color-background-inverted:       var(--panel-hdr-bg);
+  --color-background-inverted-hover: var(--wf-brand-2);
+  --color-background-pre:            var(--panel-input-disabled-bg);
+  --color-background-readonly:       var(--panel-input-disabled-bg);
+  --color-white:                     var(--panel-card-bg);
+  --color-black:                     var(--panel-text);
+  --color-layer:                     var(--panel-card-bg);
+  --color-layer-accent:              var(--panel-input-disabled-bg);
+  --color-shadow:                    var(--panel-card-border);
+
+  /* Borders */
+  --color-borders:                 var(--panel-card-border);
+  --color-borders-adornment:       var(--panel-card-border);
+  --color-borders-disabled:        var(--panel-input-disabled-border);
+  --color-borders-documentPreview: var(--panel-card-border);
+  --color-borders-group:           var(--panel-card-border);
+  --color-borders-inverted:        var(--panel-hdr-border);
+  --color-borders-pre:             var(--panel-card-border);
+  --color-borders-readonly:        var(--panel-input-disabled-border);
+  --color-borders-table:           var(--panel-card-border);
+
+  /* Text */
+  --color-text:          var(--panel-text);
+  --color-text-disabled: var(--panel-input-disabled-color);
+  --color-text-inverted: var(--panel-hdr-text);
+  --color-text-light:    var(--panel-text-muted);
+  --color-text-lighter:  var(--panel-text-muted);
+  --color-text-lightest: var(--wf-light);
+
+  /* Icon */
+  --color-icon-base:              var(--panel-text);
+  --color-icon-inverted:          var(--panel-hdr-text);
+  --color-warning:                var(--panel-danger);
+  --color-warning-light:          var(--panel-danger-bg);
+  --color-datepicker-focused-day: var(--panel-accent);
+
+  /* Inputs */
+  --input-background-color:          var(--panel-input-bg);
+  --input-border-color:              var(--panel-input-border);
+  --input-focus-background-color:    var(--panel-focus-bg);
+  --input-focus-border-color:        var(--panel-focus-border);
+  --input-disabled-background-color: var(--panel-input-disabled-bg);
+  --input-disabled-border-color:     var(--panel-input-disabled-border);
+  --input-disabled-color:            var(--panel-input-disabled-color);
+  --input-error-background-color:    var(--panel-danger-bg);
+  --input-error-border-color:        var(--panel-danger);
+  --input-error-focus-border-color:  var(--panel-danger);
+  --placeholder-color:               var(--panel-input-ph);
+  --placeholder-background-color:    var(--panel-input-disabled-bg);
+
+  --text-base-color:                   var(--panel-text);
+  --text-error-color:                  var(--panel-danger);
+  --link-color:                        var(--panel-accent);
+  --description-color:                 var(--panel-text-muted);
+  --description-code-background-color: var(--panel-input-disabled-bg);
+  --description-code-border-color:     var(--panel-card-border);
+  --description-list-item-color:       var(--panel-text-muted);
+
+  /* Header / groups (properties panel uses these) */
+  --header-background-color:          var(--panel-hdr-bg);
+  --header-bottom-border-color:       var(--panel-hdr-border);
+  --header-icon-fill-color:           var(--panel-hdr-icon);
+  --group-background-color:           var(--panel-card-bg);
+  --group-bottom-border-color:        var(--panel-card-sep);
+  --sticky-group-background-color:    var(--panel-input-disabled-bg);
+  --sticky-group-bottom-border-color: var(--panel-card-border);
+
+  /* FEEL expression editor */
+  --feel-active-color:               var(--panel-accent);
+  --feel-active-background-color:    transparent;
+  --feel-background-color:           transparent;
+  --feel-hover-color:                var(--panel-accent);
+  --feel-hover-background-color:     var(--panel-accent-bg);
+  --feel-inactive-color:             var(--panel-text-muted);
+  --feel-indicator-background-color: var(--panel-accent-bg);
+  --feel-required-color:             var(--panel-input-disabled-color);
+
+  /* List / add / remove entries */
+  --list-entry-add-entry-background-color:             var(--panel-accent);
+  --list-entry-add-entry-empty-background-color:       var(--panel-accent);
+  --list-entry-add-entry-empty-hover-background-color: var(--panel-accent-dk);
+  --list-entry-add-entry-fill-color:                   var(--panel-card-bg);
+  --list-entry-add-entry-label-color:                  var(--panel-card-bg);
+  --list-entry-dot-background-color:                   var(--panel-text-muted);
+  --list-entry-header-button-fill-color:               var(--panel-text-muted);
+  --list-badge-background-color:                       var(--panel-text-muted);
+  --list-badge-color:                                  var(--panel-card-bg);
+  --add-entry-fill-color:                              var(--panel-text-muted);
+  --add-entry-hover-background-color:                  var(--panel-accent);
+  --add-entry-hover-fill-color:                        var(--panel-card-bg);
+  --add-entry-label-color:                             var(--panel-card-bg);
+  --remove-entry-fill-color:                           var(--panel-danger);
+  --remove-entry-hover-background-color:               var(--panel-danger-bg);
+
+  /* Decorative */
+  --arrow-fill-color:                     var(--panel-text-muted);
+  --arrow-hover-background-color:         var(--panel-input-disabled-bg);
+  --dot-color:                            var(--panel-text-muted);
+  --side-line-background-color:           var(--panel-card-border);
+  --side-line-extension-background-color: var(--panel-card-border);
+
+  /* Toggle switch */
+  --toggle-switch-on-background-color:       var(--panel-accent);
+  --toggle-switch-off-background-color:      var(--panel-text-muted);
+  --toggle-switch-switcher-background-color: var(--panel-card-bg);
+
+  font-family: var(--panel-font);
+}
+
+/* ── Editor-only vars (library declares these on .fjs-editor-container).
+   Equal specificity → file imported after library wins. ── */
+.fjs-editor-container {
+  --color-children-selected-border:     var(--panel-accent);
+  --color-children-selected-background: transparent;
+  --color-children-hover-border:        rgba(20, 155, 165, 0.5);
+  --color-context-pad-item-background:  transparent;
+  --color-context-pad-item-fill:        var(--panel-text);
+  --color-context-pad-item-hover-fill:  var(--panel-danger);
+  --color-resize-handle-background:     var(--panel-accent);
+  --color-resize-handle-border:         var(--panel-accent-dk);
+  --color-dragula-background:           var(--panel-accent-bg);
+  --color-dragula-border:               var(--panel-accent);
+  --color-dragula-error-background:     var(--panel-danger-bg);
+  --color-dragula-error-border:         var(--panel-danger);
+  --color-dragula-mirror-background:    var(--panel-card-bg);
+  --color-dragula-mirror-border:        var(--panel-card-border);
+}
+
+/* ── Palette vars — library declares these on .fjs-palette-container
+   itself. Higher specificity required to beat the local declaration.
+   Light theme: subtle off-white surface, white tiles, dark icons/text. ── */
+.fjs-editor-container .fjs-palette-container {
+  --color-palette-container-background:      var(--panel-card-bg);
+  --color-palette-container-border:          var(--panel-card-border);
+  --color-palette-header-background:         var(--panel-card-bg);
+  --color-palette-header-border:             var(--panel-card-border);
+  --color-palette-header:                    var(--panel-text);
+  --color-palette-search-background:         var(--panel-card-bg);
+  --color-palette-search-border:             var(--panel-card-border);
+  --color-palette-search-focus-background:   var(--panel-card-bg);
+  --color-palette-search-focus-border:       var(--panel-accent);
+  --color-palette-search-clear-focus-border: var(--panel-accent);
+  --color-palette-search-icon:               var(--panel-text-muted);
+  --color-palette-search-icon-hover:         var(--panel-text);
+  --color-palette-search:                    var(--panel-text);
+  --color-palette-field-background:          var(--panel-card-bg);
+  --color-palette-field-border:              var(--panel-card-border);
+  --color-palette-field-focus:               var(--panel-accent);
+  --color-palette-field-hover-background:    var(--panel-accent-bg);
+  --color-palette-field-hover-border:        var(--panel-accent);
+  --color-palette-field:                     var(--panel-text);
+  --color-palette-group-title:               var(--panel-text-muted);
+  --color-palette-text:                      var(--panel-text);
+  --cursor-palette-field:                    grab;
+  /* Wider palette so two tiles fit "Radio group" / "Date time" labels
+     on a single line at 11px DM Sans. (224 → 268 = ~118px usable per
+     tile after 20px container padding + 8px grid gap.) */
+  --palette-width:                           268px;
+}
+
+/* ── Properties container vars — library declares these on
+   .fjs-properties-container itself. Higher specificity required. ── */
+.fjs-editor-container .fjs-properties-container {
+  --color-properties-container-background: var(--panel-card-bg);
+  --color-properties-container-border:     var(--panel-card-border);
+  --properties-panel-width:                300px;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Explicit rules (typography, palette tile content, canvas parity)
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* Palette tile content — light theme. Tile height is FIXED (not
+   min-height) so 2-line labels don't grow the tile and break grid
+   alignment. Labels line-clamp to 2 lines with ellipsis. */
+.fjs-editor-container .fjs-palette-container {
+  background:     var(--panel-card-bg);
+  border-right:   1px solid var(--panel-card-border);
+  display:        flex;
+  flex-direction: column;
+  height:         100%;
+  min-height:     0;
+}
+
+/* Inner wrapper that holds header + entries + footer. Force flex column
+   layout with a constrained height so the entries section can scroll
+   independently and the bpmn.io footer stays pinned at the visible
+   bottom of the palette. */
+.fjs-editor-container .fjs-palette-container .fjs-palette {
+  display:        flex;
+  flex-direction: column;
+  height:         100%;
+  min-height:     0;
+}
+.fjs-editor-container .fjs-palette-container .fjs-palette-entries {
+  flex:       1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.fjs-editor-container .fjs-palette-group,
+.fjs-palette-container .fjs-palette-group {
+  /* Override library's hardcoded `width: 236px; margin: auto` which
+     fixed the group column to 236px centered, defeating the grid
+     layout on .fjs-palette-fields. */
+  width:          auto;
+  margin:         0;
+  padding-bottom: 10px;
+}
+
+.fjs-editor-container .fjs-palette-group-title {
+  background:     transparent;
+  color:          var(--panel-text-muted);
+  font-family:    var(--panel-font);
+  font-size:      10px;
+  font-weight:    600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding:        14px 12px 6px;
+  margin:         0;
+}
+
+.fjs-editor-container .fjs-palette-fields {
+  display:               grid;
+  grid-template-columns: 1fr 1fr;
+  gap:                   10px;
+  padding:               2px 10px 4px;
+  margin:                0;
+}
+
+.fjs-editor-container .fjs-palette-field {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             6px;
+  padding:         10px 8px;
+  background:      var(--panel-card-bg);
+  border:          1px solid var(--panel-card-border);
+  border-radius:   8px;
+  cursor:          grab;
+  transition:      background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  /* Single-line label thanks to the wider palette — height fits a 22px
+     icon + 6px gap + 14px label + 20px padding = 62px content area. */
+  height:          68px;
+  /* Library hardcodes width: 72px on .fjs-palette-container .fjs-palette-field;
+     override so the grid track (1fr) governs width and tiles fill the
+     wider palette panel. */
+  width:           auto;
+  box-sizing:      border-box;
+  overflow:        hidden;
+  box-shadow:      var(--panel-card-shadow);
+}
+.fjs-editor-container .fjs-palette-field-icon,
+.fjs-editor-container .fjs-palette-field > svg {
+  color:       var(--panel-text);
+  fill:        var(--panel-text);
+  width:       22px;
+  height:      22px;
+  flex-shrink: 0;
+}
+.fjs-editor-container .fjs-palette-field span,
+.fjs-editor-container .fjs-palette-field-text {
+  font-family:   var(--panel-font);
+  font-size:     11px;
+  font-weight:   500;
+  color:         var(--panel-text);
+  text-align:    center;
+  line-height:   1.2;
+  /* Single-line label — the palette is wide enough to accommodate the
+     longest stock label ("Radio group", "Date time"). Truncate with
+     ellipsis if a future field type has a longer name. */
+  white-space:   nowrap;
+  overflow:      hidden;
+  text-overflow: ellipsis;
+  max-width:     100%;
+}
+.fjs-editor-container .fjs-palette-field:hover {
+  background:   var(--panel-accent-bg);
+  border-color: var(--panel-accent);
+  box-shadow:   0 1px 4px rgba(20, 155, 165, 0.12);
+}
+.fjs-editor-container .fjs-palette-field:hover span,
+.fjs-editor-container .fjs-palette-field:hover .fjs-palette-field-text,
+.fjs-editor-container .fjs-palette-field:hover .fjs-palette-field-icon,
+.fjs-editor-container .fjs-palette-field:hover > svg {
+  color: var(--panel-accent-dk);
+  fill:  var(--panel-accent-dk);
+}
+.fjs-editor-container .fjs-palette-field:active {
+  cursor:       grabbing;
+  background:   var(--panel-accent-lt);
+  border-color: var(--panel-accent);
+}
+
+/* Palette search field — the LIBRARY renders the styled "search input"
+   as the container (.fjs-palette-search-container) with the icon and
+   the bare <input> inside it. We style the container as the input
+   shell and leave the inner <input> transparent + flex-grow so it
+   fills the remaining width. */
+.fjs-editor-container .fjs-palette-search-container {
+  display:       flex;
+  align-items:   center;
+  gap:           8px;
+  margin:        12px;
+  padding:       0 10px;
+  height:        48px;
+  background:    var(--panel-card-bg);
+  border:        1px solid var(--panel-card-border);
+  border-radius: var(--panel-input-radius);
+  transition:    border-color 120ms, box-shadow 120ms;
+}
+.fjs-editor-container .fjs-palette-search-container:focus-within {
+  border-color: var(--panel-accent);
+  background:   var(--panel-card-bg);
+  box-shadow:   0 0 0 2px var(--panel-focus-ring);
+}
+.fjs-editor-container .fjs-palette-search-icon {
+  flex-shrink: 0;
+  display:     flex;
+  align-items: center;
+  color:       var(--panel-text-muted);
+  width:       16px;
+  height:      16px;
+}
+.fjs-editor-container .fjs-palette-search-icon svg {
+  width: 16px; height: 16px;
+}
+.fjs-editor-container .fjs-palette-search {
+  flex:        1 1 auto;
+  min-width:   0;
+  padding:     0;
+  margin:      0;
+  height:      100%;
+  background:  transparent;
+  border:      none;
+  outline:     none;
+  font-size:   var(--panel-fs);
+  font-family: var(--panel-font);
+  color:       var(--panel-text);
+}
+.fjs-editor-container .fjs-palette-search::placeholder { color: var(--panel-input-ph); }
+.fjs-editor-container .fjs-palette-search-clear {
+  flex-shrink:  0;
+  background:   transparent;
+  border:       none;
+  color:        var(--panel-text-muted);
+  cursor:       pointer;
+  padding:      2px;
+  display:      flex;
+  align-items:  center;
+}
+.fjs-editor-container .fjs-palette-search-clear:hover { color: var(--panel-text); }
+
+/* bpmn.io attribution (LGPL license requirement). The form-js editor
+   does not ship a default PoweredBy in the editor canvas (only the
+   viewer does), so we inject a clickable link into `.fjs-palette-footer`
+   from FormJsEditor.tsx after mount and style it here. */
+.fjs-editor-container .fjs-palette-footer {
+  flex-shrink:   0;
+  padding:       10px 12px;
+  border-top:    1px solid var(--panel-card-border);
+  background:    var(--panel-card-bg);
+  text-align:    center;
+}
+.fjs-editor-container .fjs-palette-footer .fjs-powered-by {
+  /* Library convention class — also used in the runtime viewer. */
+  display:    block;
+  text-align: center;
+}
+.fjs-editor-container .fjs-palette-footer .werkflow-powered-by {
+  /* LGPL §4 — bumped to 11px + 600 weight + stronger colour for an
+     unambiguously "prominent" notice. */
+  font-family:     var(--panel-font);
+  font-size:       11px;
+  font-weight:     600;
+  color:           var(--panel-text);
+  text-decoration: none;
+  letter-spacing:  0.02em;
+  transition:      color 120ms;
+}
+.fjs-editor-container .fjs-palette-footer .werkflow-powered-by:hover {
+  color:           var(--panel-accent);
+  text-decoration: underline;
+}
+
+/* Editor canvas input parity — the library scopes input styling under
+   `.fjs-container` (viewer). In the editor the canvas form preview is
+   wrapped in `.fjs-form-container .fjs-form`, NOT `.fjs-container`, so
+   library rules never match. Mirror the visible rules here. */
+/* Scope-narrowed to exclude radio/checkbox so width:100% does not push
+   sibling labels to the far right of the option's flex row. */
+.fjs-editor-container .fjs-input:not([type="radio"]):not([type="checkbox"]),
+.fjs-editor-container .fjs-textarea,
+.fjs-editor-container .fjs-select,
+.fjs-editor-container .fjs-taglist-input {
+  font-family:      var(--panel-font);
+  font-size:        var(--panel-fs);
+  color:            var(--panel-text);
+  background-color: var(--panel-input-bg);
+  border:           1px solid var(--panel-input-border);
+  border-radius:    var(--panel-input-radius);
+  height:           var(--panel-input-h);
+  padding:          0 8px;
+  box-sizing:       border-box;
+  width:            100%;
+  transition:       border-color 120ms, background-color 120ms, box-shadow 120ms;
+}
+
+.fjs-editor-container .fjs-textarea {
+  height:     auto;
+  padding:    6px 8px;
+  min-height: 64px;
+}
+
+.fjs-editor-container .fjs-input:focus,
+.fjs-editor-container .fjs-textarea:focus,
+.fjs-editor-container .fjs-select:focus,
+.fjs-editor-container .fjs-taglist-input:focus {
+  outline:      none;
+  border-color: var(--panel-focus-border);
+  background:   var(--panel-focus-bg);
+  box-shadow:   0 0 0 2px var(--panel-focus-ring);
+}
+
+.fjs-editor-container .fjs-input::placeholder,
+.fjs-editor-container .fjs-textarea::placeholder {
+  color: var(--panel-input-ph);
+}
+
+.fjs-editor-container .fjs-input:disabled,
+.fjs-editor-container .fjs-textarea:disabled,
+.fjs-editor-container .fjs-select:disabled {
+  background-color: var(--panel-input-disabled-bg);
+  border-color:     var(--panel-input-disabled-border);
+  color:            var(--panel-input-disabled-color);
+}
+
+.fjs-editor-container .fjs-form-field-label {
+  font-family: var(--panel-font);
+  font-size:   var(--panel-fs-label);
+  font-weight: var(--panel-label-weight);
+  color:       var(--panel-label-color);
+}
+
+.fjs-editor-container .fjs-form-field-description {
+  font-family: var(--panel-font);
+  font-size:   var(--panel-fs-small);
+  color:       var(--description-color);
+}
+
+.fjs-editor-container .fjs-button {
+  font-family:   var(--panel-font);
+  font-size:     var(--panel-fs);
+  font-weight:   600;
+  border-radius: var(--panel-input-radius);
+  padding:       0 12px;
+  height:        var(--panel-input-h);
+}
+
+.fjs-editor-container .fjs-button[type="submit"] {
+  background: var(--panel-accent);
+  color:      var(--panel-card-bg);
+  border:     1px solid var(--panel-accent);
+}
+
+.fjs-editor-container .fjs-button[type="submit"]:hover:not(:disabled) {
+  background:   var(--panel-accent-dk);
+  border-color: var(--panel-accent-dk);
+}
+
+/* Editor canvas surface — white. The library doesn't set a background on
+   .fjs-form-container, so without this the canvas inherits the page's
+   bg-background (light grey). */
+.fjs-editor-container .fjs-form-container,
+.fjs-editor-container .fjs-form {
+  background: var(--panel-card-bg);
+}
+
+/* Canvas field selection (editor) */
+.fjs-editor-container .fjs-form-field.selected > .fjs-form-field-placeholder {
+  outline:       2px solid var(--panel-accent);
+  border-radius: 6px;
+  background:    rgba(20, 155, 165, 0.05);
+}
+.fjs-editor-container .fjs-form-field-placeholder input:focus,
+.fjs-editor-container .fjs-form-field-placeholder textarea:focus {
+  border-color: var(--panel-accent);
+  box-shadow:   0 0 0 3px var(--panel-focus-ring);
+}
+
+/* Properties panel typography (right-side panel uses bio-properties-panel
+   internally; these are decorative overrides scoped to form-js). */
+.fjs-editor-container .fjs-properties-panel {
+  font-family: var(--panel-font);
+  font-size:   var(--panel-fs);
+}
+.fjs-editor-container .fjs-properties-panel-header {
+  background: var(--panel-hdr-bg);
+  color:      var(--panel-hdr-text);
+}
+.fjs-editor-container .fjs-properties-panel-group-header-title {
+  font-family: var(--panel-font);
+  font-weight: 600;
+  color:       var(--panel-text);
+}
+
+/* ── Text-view component prose styling ──
+   The form-js text component renders the markdown/HTML payload via
+   dangerouslySetInnerHTML. Tailwind's preflight resets all heading
+   defaults (h1-h6 inherit parent font-size + font-weight), so a
+   stored `<h2>Asset Request</h2>` would otherwise render as plain
+   inline text. Restore prose defaults INSIDE the form-js text field
+   without affecting other Tailwind-scoped UI. */
+.fjs-container .fjs-form-field-text,
+.fjs-editor-container .fjs-form-field-text {
+  font-family: var(--panel-font);
+  font-size:   var(--panel-fs);
+  color:       var(--panel-text);
+  line-height: 1.5;
+}
+.fjs-container .fjs-form-field-text h1,
+.fjs-editor-container .fjs-form-field-text h1 {
+  font-size:   24px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin:      0 0 12px;
+  color:       var(--panel-text);
+}
+.fjs-container .fjs-form-field-text h2,
+.fjs-editor-container .fjs-form-field-text h2 {
+  font-size:   20px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin:      0 0 10px;
+  color:       var(--panel-text);
+}
+.fjs-container .fjs-form-field-text h3,
+.fjs-editor-container .fjs-form-field-text h3 {
+  font-size:   17px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin:      0 0 8px;
+  color:       var(--panel-text);
+}
+.fjs-container .fjs-form-field-text h4,
+.fjs-editor-container .fjs-form-field-text h4 {
+  font-size:   15px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin:      0 0 6px;
+  color:       var(--panel-text);
+}
+.fjs-container .fjs-form-field-text h5,
+.fjs-editor-container .fjs-form-field-text h5,
+.fjs-container .fjs-form-field-text h6,
+.fjs-editor-container .fjs-form-field-text h6 {
+  font-size:   13px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin:      0 0 4px;
+  color:       var(--panel-text);
+}
+.fjs-container .fjs-form-field-text p,
+.fjs-editor-container .fjs-form-field-text p {
+  font-size:   13px;
+  line-height: 1.5;
+  margin:      0 0 8px;
+  color:       var(--panel-text);
+}
+.fjs-container .fjs-form-field-text p:last-child,
+.fjs-editor-container .fjs-form-field-text p:last-child,
+.fjs-container .fjs-form-field-text h1:last-child,
+.fjs-container .fjs-form-field-text h2:last-child,
+.fjs-container .fjs-form-field-text h3:last-child,
+.fjs-container .fjs-form-field-text h4:last-child,
+.fjs-container .fjs-form-field-text h5:last-child,
+.fjs-container .fjs-form-field-text h6:last-child,
+.fjs-editor-container .fjs-form-field-text h1:last-child,
+.fjs-editor-container .fjs-form-field-text h2:last-child,
+.fjs-editor-container .fjs-form-field-text h3:last-child,
+.fjs-editor-container .fjs-form-field-text h4:last-child,
+.fjs-editor-container .fjs-form-field-text h5:last-child,
+.fjs-editor-container .fjs-form-field-text h6:last-child {
+  margin-bottom: 0;
+}
+.fjs-container .fjs-form-field-text ul,
+.fjs-editor-container .fjs-form-field-text ul,
+.fjs-container .fjs-form-field-text ol,
+.fjs-editor-container .fjs-form-field-text ol {
+  margin:        0 0 8px;
+  padding-left:  20px;
+  list-style:    revert;
+}
+.fjs-container .fjs-form-field-text li,
+.fjs-editor-container .fjs-form-field-text li {
+  margin-bottom: 2px;
+  list-style:    revert;
+}
+.fjs-container .fjs-form-field-text strong,
+.fjs-editor-container .fjs-form-field-text strong { font-weight: 700; }
+.fjs-container .fjs-form-field-text em,
+.fjs-editor-container .fjs-form-field-text em { font-style: italic; }
+.fjs-container .fjs-form-field-text a,
+.fjs-editor-container .fjs-form-field-text a {
+  color: var(--panel-accent);
+  text-decoration: underline;
+}
+.fjs-container .fjs-form-field-text code,
+.fjs-editor-container .fjs-form-field-text code {
+  font-family:   var(--font-jetbrains-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size:     12px;
+  background:    var(--panel-input-disabled-bg);
+  padding:       1px 5px;
+  border-radius: 3px;
+}
+
+/* ── Viewer-only canvas (runtime form rendering) ──
+   Scope rules so they do NOT match radio/checkbox <input> elements —
+   width:100% on those pushes the sibling label to the far right of
+   the flex row that the library uses to lay out radio/checkbox options. */
+.fjs-container .fjs-form-field input:not([type="radio"]):not([type="checkbox"]):not([type="file"]),
+.fjs-container .fjs-form-field select,
+.fjs-container .fjs-form-field textarea {
+  font-family:   var(--panel-font);
+  font-size:     var(--panel-fs);
+  border:        1px solid var(--panel-card-border);
+  border-radius: var(--panel-input-radius);
+  background:    var(--panel-card-bg);
+  width:         100%;
+}
+.fjs-container .fjs-form-field input[type="radio"],
+.fjs-container .fjs-form-field input[type="checkbox"],
+.fjs-editor-container .fjs-form-field input[type="radio"],
+.fjs-editor-container .fjs-form-field input[type="checkbox"] {
+  width: auto;
+  flex:  0 0 auto;
+}
+.fjs-container .fjs-form-field label {
+  font-family: var(--panel-font);
+  font-size:   13px;
+  font-weight: 500;
+  color:       var(--panel-text-muted);
+}
+
+/* Form Editor dark toolbar — input placeholder visibility on dark surface.
+   Inline element styles cannot target ::placeholder, so we scope it here. */
+.form-designer-dark-toolbar input::placeholder,
+.form-designer-dark-toolbar select::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Form Designer side panels (Data Sources, Version History)
+   Shared shell so both right-side asides look uniform and match the
+   palette's white-card aesthetic.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.form-designer-aside {
+  background:   var(--panel-card-bg);
+  border-right: 1px solid var(--panel-card-border);
+  font-family:  var(--panel-font);
+  color:        var(--panel-text);
+}
+.form-designer-aside--right {
+  border-right: none;
+  border-left:  1px solid var(--panel-card-border);
+}
+
+.form-designer-aside-header {
+  padding:        14px 16px 12px;
+  border-bottom:  1px solid var(--panel-card-border);
+  background:    var(--panel-card-bg);
+  font-family:   var(--panel-font);
+  font-size:     11px;
+  font-weight:   600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color:         var(--panel-text-muted);
+  position:      sticky;
+  top:           0;
+  z-index:       1;
+}
+
+.form-designer-aside-body { padding: 12px 14px 16px; }
+.form-designer-aside-body--flush { padding: 0; }
+
+.form-designer-aside-muted {
+  font-family: var(--panel-font);
+  font-size:   12px;
+  color:       var(--panel-text-muted);
+}
+.form-designer-aside-muted--padded { padding: 14px 16px; }
+
+.form-designer-aside-item {
+  margin-bottom: 14px;
+}
+.form-designer-aside-item:last-child { margin-bottom: 0; }
+
+.form-designer-aside-item-title {
+  font-family: var(--panel-font);
+  font-size:   12px;
+  font-weight: 600;
+  color:       var(--panel-text);
+  margin:      0 0 4px;
+}
+
+.form-designer-aside-code {
+  display:       block;
+  font-family:   var(--font-jetbrains-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size:     11px;
+  color:         var(--panel-text);
+  background:    var(--panel-input-disabled-bg);
+  border:        1px solid var(--panel-card-border);
+  border-radius: 4px;
+  padding:       2px 6px;
+  margin:        0 0 6px;
+  word-break:    break-all;
+}
+
+.form-designer-aside-fieldlist {
+  list-style: none;
+  margin:     6px 0 0;
+  padding:    0;
+  font-size:  11px;
+  color:      var(--panel-text-muted);
+}
+.form-designer-aside-fieldlist li {
+  padding: 2px 0 2px 8px;
+  border-left: 2px solid var(--panel-card-border);
+  margin-bottom: 2px;
+}
+.form-designer-aside-fieldtype {
+  color: var(--panel-accent-dk);
+  font-family: var(--font-jetbrains-mono, 'JetBrains Mono', monospace);
+}
+
+.form-designer-aside-list {
+  list-style: none;
+  margin:     0;
+  padding:    0;
+}
+.form-designer-aside-listitem {
+  display:        flex;
+  align-items:    flex-start;
+  justify-content: space-between;
+  gap:            8px;
+  padding:        12px 16px;
+  border-bottom:  1px solid var(--panel-card-sep);
+}
+.form-designer-aside-listitem:hover { background: var(--panel-input-disabled-bg); }
+.form-designer-aside-listitem:last-child { border-bottom: none; }
+
+.form-designer-aside-meta {
+  font-family: var(--panel-font);
+  font-size:   11px;
+  color:       var(--panel-text-muted);
+  margin:      2px 0 0;
+}
+
+.form-designer-aside-badge {
+  display:       inline-block;
+  padding:       1px 6px;
+  border-radius: 999px;
+  font-size:     10px;
+  font-weight:   600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family:   var(--panel-font);
+}
+.form-designer-aside-badge--active {
+  color:      var(--badge-success);
+  background: var(--badge-success-bg);
+  border:     1px solid var(--badge-success-border);
+}

@@ -4,13 +4,15 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Form } from '@bpmn-io/form-js';
 import '@bpmn-io/form-js/dist/assets/form-js.css';
-import '@bpmn-io/form-js/dist/assets/form-js-editor.css';
+// Werkflow theme — must stay after the library CSS import above.
+import './formjs-theme.css';
 
 interface FormJsViewerProps {
   schema: any;
   data?: Record<string, any>;
   onSubmit?: (data: Record<string, any>) => void;
   onChange?: (data: Record<string, any>) => void;
+  onError?: (err: unknown) => void;
   readonly?: boolean;
   className?: string;
 }
@@ -20,6 +22,7 @@ export default function FormJsViewer({
   data = {},
   onSubmit,
   onChange,
+  onError,
   readonly = false,
   className = ''
 }: FormJsViewerProps) {
@@ -28,11 +31,13 @@ export default function FormJsViewer({
   const formRef = useRef<Form | null>(null);
   const onSubmitRef = useRef(onSubmit);
   const onChangeRef = useRef(onChange);
+  const onErrorRef = useRef(onError);
   const isSettingDataRef = useRef(false);
 
   // Keep refs in sync without triggering re-renders
   onSubmitRef.current = onSubmit;
   onChangeRef.current = onChange;
+  onErrorRef.current = onError;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -44,7 +49,7 @@ export default function FormJsViewer({
     formRef.current = form;
 
     form.importSchema(schema, data).catch((err) => {
-      console.error('Failed to import form schema:', err);
+      onErrorRef.current?.(err);
     });
 
     if (readonly && containerRef.current) {
