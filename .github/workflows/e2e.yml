@@ -39,10 +39,6 @@ jobs:
           chmod +x infrastructure/keycloak/setup-ci-realm.sh
           infrastructure/keycloak/setup-ci-realm.sh
 
-      - name: Install shared delegates module
-        working-directory: shared/delegates
-        run: mvn -q install -DskipTests
-
       - name: Install shared common module
         working-directory: shared/common
         run: mvn -q install -DskipTests
