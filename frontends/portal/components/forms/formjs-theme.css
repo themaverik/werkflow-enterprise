@@ -252,9 +252,11 @@
 
 .fjs-editor-container .fjs-palette-group,
 .fjs-palette-container .fjs-palette-group {
-  display:        flex;
-  flex-direction: column;
+  /* Override library's hardcoded `width: 236px; margin: auto` which
+     fixed the group column to 236px centered, defeating the grid
+     layout on .fjs-palette-fields. */
   width:          auto;
+  margin:         0;
   padding-bottom: 10px;
 }
 
