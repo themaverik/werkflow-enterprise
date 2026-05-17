@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { FormEditor } from '@bpmn-io/form-js-editor';
+import { Loader2 } from 'lucide-react';
 import '@bpmn-io/form-js/dist/assets/form-js.css';
 import '@bpmn-io/form-js/dist/assets/form-js-editor.css';
 import { serializeSchemaProperties, deserializeSchemaProperties } from '@/lib/forms/propertyValueSerializer';
@@ -185,7 +186,8 @@ export default function FormJsEditor({
     <div className={`form-js-editor-wrapper relative ${className}`} style={{ height: '100%' }}>
       {/* Loading overlay — prevents interaction before importSchema resolves */}
       {!isReady && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/80">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden="true" />
           <p className="text-sm text-muted-foreground">Loading editor…</p>
         </div>
       )}

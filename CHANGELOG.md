@@ -8,6 +8,43 @@ Format: `[Unreleased]` for in-progress work. Releases follow [Semantic Versionin
 
 ## [Unreleased]
 
+### Form Designer Polish — Full Form-js Theming + Viewer/Designer Parity (2026-05-17)
+
+Branch `feature/form-designer-polish`. Addresses DISCOVERY.md HIGH polish targets, the user-reported viewer-vs-designer canvas rendering drift, and the full `bpmn-io/form-js` CSS variable audit. Reviewers: `staff-engineer` + `frontend-developer` (parallel); all flagged issues addressed before commit.
+
+#### Added
+- 50+ form-js CSS variables wired to shared `--panel-*` tokens in `globals.css` §FORM-JS THEME — covers inputs, FEEL editor, list/add/remove entries, toggle switches, palette, dragula, header, group, description, etc.
+- `.fjs-editor-container .fjs-input/.fjs-textarea/.fjs-select/.fjs-taglist-input/.fjs-button` parity rules in `globals.css` so the editor canvas renders identically to the runtime viewer
+- `onError?: (err: unknown) => void` prop on `FormJsEditor` and `FormJsViewer` — surfaces import/schema failures to the parent (ref-backed to avoid stale closure across re-renders)
+- `isValidFormJsSchema()` structural guard for upload validation in `FormJsBuilder` — checks top-level `type` string, `components` array, each component carries a string `type`, optional `schemaVersion` number
+- `Loader2` spinner icon on the FormJsEditor loading overlay (replaces text-only state)
+- Five new `formBuilder.*` i18n keys: `invalidInitialForm`, `uploadInvalidSchema`, `uploadInvalidJson`, `uploadSuccess`, `editorError`
+- `.form-designer-dark-toolbar input::placeholder` rule for placeholder visibility on the dark Form Editor header
+- ROADMAP follow-up: cross-editor toolbar uniformity (BPMN designer header still uses shadcn Card, not `--panel-hdr-bg`)
+
+#### Changed
+- `--color-background` mapping (was `--panel-input-disabled-bg`, now `--panel-input-bg`) — canvas form inputs no longer render grey-tinted
+- FormJsBuilder dark toolbar: hardcoded `#111c27` / `rgba(255,255,255,0.08)` / `rgba(255,255,255,0.15)` / `#149ba5` / `#fff` replaced with `var(--panel-hdr-bg|hdr-border|hdr-text|accent)` tokens
+- Unsaved-changes badge color: hardcoded `rgba(255,200,80,0.85)` replaced with `text-amber-300` (8.3:1 contrast on dark bg, WCAG AA)
+- `alert()` calls in `FormJsBuilder.tsx:113,120` and demo `alert()`+`console.log` in `preview/[key]/page.tsx:72-73` replaced with sonner toasts
+- `console.error` paths in `FormJsEditor.tsx` (4 sites) and `FormJsViewer.tsx` (1 site) now propagate via `onErrorRef.current?.(err)` instead of writing to console
+- FormJsEditor loading overlay now also clears (`setIsReady(true)`) on import failure so the spinner does not hang indefinitely
+
+#### Fixed
+- HIGH: Editor canvas form fields rendered with unstyled browser defaults — root cause was that form-js library scopes input styling under `.fjs-container` (viewer only), but the editor wraps the canvas in `.fjs-form-container .fjs-form`, so library rules never matched. Fixed by mirroring the rules onto `.fjs-editor-container` using `--panel-*` tokens directly.
+- MEDIUM: `t('key', { default: '...' })` is not a valid next-intl v3 API — would have rendered `[missing formBuilder.uploadInvalidSchema]` at runtime. Replaced with proper en.json keys.
+- MEDIUM: Duplicate `form-js-editor.css` import in `FormJsEditor.tsx` (line 7 was redundant with line 6)
+- MEDIUM: `FormJsViewer.tsx` imported `form-js-editor.css` — the viewer should not pull editor styles. Removed.
+- MEDIUM: `onError` closure captured at mount time would silently use a stale reference on parent re-render. Converted to ref pattern matching the existing `onSubmitRef` / `onChangeRef` convention.
+- MEDIUM: Upload schema check (`!json.type || !json.components`) accepted malformed inputs (e.g. `components` as object instead of array). Replaced with `isValidFormJsSchema()` structural guard.
+
+#### Companion Reviews
+- `staff-engineer` agent — flagged 1 HIGH (stale closure), 3 MEDIUM (next-intl `default`, BpmnDesigner token gap, duplicate CSS import), 2 LOW
+- `frontend-developer` agent — flagged 1 MEDIUM (placeholder visibility), 3 LOW (palette rgba hardcodes, amber-300 WCAG, selector specificity, `--wf-brand-2` reference)
+- All actionable findings addressed before commit; BpmnDesigner toolbar uniformity logged as M4.9 follow-up in ROADMAP
+
+---
+
 ### M4.11 P3 — External-Api-Call Audit + CRITICAL/HIGH Fixes (2026-05-17)
 
 First per-element P3 audit run under the expanded 5-point scope (Flowable native capability, Action Block mapping, Assignment mapping with context-aware variable combobox, Delegate compliance, Panel-section visibility). Audit doc committed in werkflow-platform `feature/m4.11-p3-external-api-call-audit`; 7 CRITICAL/HIGH findings fixed here.
