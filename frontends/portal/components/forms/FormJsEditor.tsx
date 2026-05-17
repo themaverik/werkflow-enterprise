@@ -77,22 +77,24 @@ export default function FormJsEditor({
       // a new editor instance in the same container element.
       containerRef.current.innerHTML = '';
 
-      // Static allowlist — tenant-specific component allowlists will be wired
-      // to /api/v1/config/vars?type=FORM_COMPONENT_ALLOWLIST in a future
-      // sprint. Until that endpoint exists, hardcode the safe defaults.
-      // Note: 'datetime' is the correct form-js type for date/time inputs
-      // ('date' alone is not a registered field type and never matched).
+      // Static allowlist — synced with `FormSchemaValidator.VALID_FIELD_TYPES`
+      // on the engine (VARIABLE_TYPES + DISPLAY_TYPES + SERVICE_TYPES). Adding
+      // anything here that the backend doesn't accept results in a 400
+      // FormValidationException on save. Tenant-specific allowlists will be
+      // wired to /api/v1/config/vars?type=FORM_COMPONENT_ALLOWLIST later.
+      //
+      // Notably excluded (would require backend `VALID_FIELD_TYPES` extension):
+      //   filepicker, iframe, documentPreview, separator
       const allowedTypes: string[] = [
-        // Inputs
-        'textfield', 'textarea', 'number', 'datetime',
-        // Selection
+        // VARIABLE_TYPES — produce process variables on submit
+        'textfield', 'textarea', 'number',
         'checkbox', 'radio', 'select', 'checklist', 'taglist',
-        // Media / files
-        'filepicker', 'image', 'iframe', 'documentPreview',
-        // Presentation
-        'text', 'html', 'spacer', 'separator',
-        // Action
-        'button',
+        'date', 'time', 'datetime', 'email',
+        'group', 'columns',
+        // DISPLAY_TYPES — presentational, no key required
+        'html', 'text', 'button', 'image', 'spacer',
+        // SERVICE_TYPES
+        'dynamiclist',
       ];
 
       // Fetch tenant CSS theme vars — no-op if empty. Auth comes from the
@@ -152,17 +154,22 @@ export default function FormJsEditor({
         // bpmn.io attribution — LGPL license requirement. The editor
         // canvas does not include a default PoweredBy (only the viewer
         // does); inject a clickable link into the library-rendered
-        // palette footer.
+        // palette footer. Uses the library's own class convention
+        // (`fjs-powered-by fjs-form-field`) so it inherits any
+        // library theming applied to the viewer's PoweredBy element.
         const footer = containerRef.current.querySelector('.fjs-palette-footer');
-        if (footer && !footer.querySelector('.werkflow-powered-by')) {
+        if (footer && !footer.querySelector('.fjs-powered-by')) {
+          const wrap = document.createElement('div');
+          wrap.className = 'fjs-powered-by fjs-form-field';
           const link = document.createElement('a');
-          link.className = 'werkflow-powered-by';
+          link.className = 'fjs-powered-by-link werkflow-powered-by';
           link.href = 'https://bpmn.io';
           link.target = '_blank';
           link.rel = 'noopener noreferrer';
           link.title = 'Powered by bpmn.io';
           link.textContent = 'Powered by bpmn.io';
-          footer.appendChild(link);
+          wrap.appendChild(link);
+          footer.appendChild(wrap);
         }
       }
 
@@ -249,11 +256,17 @@ export default function FormJsEditor({
         </div>
       )}
 
-      {/* Editor container — pointer-events blocked until importSchema resolves */}
+      {/* Editor container — pointer-events blocked until importSchema resolves.
+          NO minHeight: when the parent (FormJsBuilder under
+          flex-1 overflow-hidden) allocates less than the hardcoded
+          minimum, the container would overflow and the bottom of the
+          palette (including the bpmn.io footer) would render below the
+          parent's clipped region. Letting height:100% govern alone
+          keeps the footer pinned to the visible bottom. */}
       <div
         ref={containerRef}
         className="form-js-editor-container"
-        style={{ height: '100%', minHeight: '600px', pointerEvents: isReady ? 'auto' : 'none' }}
+        style={{ height: '100%', pointerEvents: isReady ? 'auto' : 'none' }}
       />
     </div>
   );
