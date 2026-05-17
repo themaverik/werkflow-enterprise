@@ -528,6 +528,116 @@
   color:       var(--panel-text);
 }
 
+/* ── Text-view component prose styling ──
+   The form-js text component renders the markdown/HTML payload via
+   dangerouslySetInnerHTML. Tailwind's preflight resets all heading
+   defaults (h1-h6 inherit parent font-size + font-weight), so a
+   stored `<h2>Asset Request</h2>` would otherwise render as plain
+   inline text. Restore prose defaults INSIDE the form-js text field
+   without affecting other Tailwind-scoped UI. */
+.fjs-container .fjs-form-field-text,
+.fjs-editor-container .fjs-form-field-text {
+  font-family: var(--panel-font);
+  font-size:   var(--panel-fs);
+  color:       var(--panel-text);
+  line-height: 1.5;
+}
+.fjs-container .fjs-form-field-text h1,
+.fjs-editor-container .fjs-form-field-text h1 {
+  font-size:   24px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin:      0 0 12px;
+  color:       var(--panel-text);
+}
+.fjs-container .fjs-form-field-text h2,
+.fjs-editor-container .fjs-form-field-text h2 {
+  font-size:   20px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin:      0 0 10px;
+  color:       var(--panel-text);
+}
+.fjs-container .fjs-form-field-text h3,
+.fjs-editor-container .fjs-form-field-text h3 {
+  font-size:   17px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin:      0 0 8px;
+  color:       var(--panel-text);
+}
+.fjs-container .fjs-form-field-text h4,
+.fjs-editor-container .fjs-form-field-text h4 {
+  font-size:   15px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin:      0 0 6px;
+  color:       var(--panel-text);
+}
+.fjs-container .fjs-form-field-text h5,
+.fjs-editor-container .fjs-form-field-text h5,
+.fjs-container .fjs-form-field-text h6,
+.fjs-editor-container .fjs-form-field-text h6 {
+  font-size:   13px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin:      0 0 4px;
+  color:       var(--panel-text);
+}
+.fjs-container .fjs-form-field-text p,
+.fjs-editor-container .fjs-form-field-text p {
+  font-size:   13px;
+  line-height: 1.5;
+  margin:      0 0 8px;
+  color:       var(--panel-text);
+}
+.fjs-container .fjs-form-field-text p:last-child,
+.fjs-editor-container .fjs-form-field-text p:last-child,
+.fjs-container .fjs-form-field-text h1:last-child,
+.fjs-container .fjs-form-field-text h2:last-child,
+.fjs-container .fjs-form-field-text h3:last-child,
+.fjs-container .fjs-form-field-text h4:last-child,
+.fjs-container .fjs-form-field-text h5:last-child,
+.fjs-container .fjs-form-field-text h6:last-child,
+.fjs-editor-container .fjs-form-field-text h1:last-child,
+.fjs-editor-container .fjs-form-field-text h2:last-child,
+.fjs-editor-container .fjs-form-field-text h3:last-child,
+.fjs-editor-container .fjs-form-field-text h4:last-child,
+.fjs-editor-container .fjs-form-field-text h5:last-child,
+.fjs-editor-container .fjs-form-field-text h6:last-child {
+  margin-bottom: 0;
+}
+.fjs-container .fjs-form-field-text ul,
+.fjs-editor-container .fjs-form-field-text ul,
+.fjs-container .fjs-form-field-text ol,
+.fjs-editor-container .fjs-form-field-text ol {
+  margin:        0 0 8px;
+  padding-left:  20px;
+  list-style:    revert;
+}
+.fjs-container .fjs-form-field-text li,
+.fjs-editor-container .fjs-form-field-text li {
+  margin-bottom: 2px;
+  list-style:    revert;
+}
+.fjs-container .fjs-form-field-text strong,
+.fjs-editor-container .fjs-form-field-text strong { font-weight: 700; }
+.fjs-container .fjs-form-field-text em,
+.fjs-editor-container .fjs-form-field-text em { font-style: italic; }
+.fjs-container .fjs-form-field-text a,
+.fjs-editor-container .fjs-form-field-text a {
+  color: var(--panel-accent);
+  text-decoration: underline;
+}
+.fjs-container .fjs-form-field-text code,
+.fjs-editor-container .fjs-form-field-text code {
+  font-family:   var(--font-jetbrains-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size:     12px;
+  background:    var(--panel-input-disabled-bg);
+  padding:       1px 5px;
+  border-radius: 3px;
+}
+
 /* ── Viewer-only canvas (runtime form rendering) ──
    Scope rules so they do NOT match radio/checkbox <input> elements —
    width:100% on those pushes the sibling label to the far right of
