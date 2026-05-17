@@ -8,40 +8,66 @@ Format: `[Unreleased]` for in-progress work. Releases follow [Semantic Versionin
 
 ## [Unreleased]
 
-### Form Designer Polish — Full Form-js Theming + Viewer/Designer Parity (2026-05-17)
+### Form Designer Polish — Full Form-js Theming, Light Palette, Backend Validator Fixes (2026-05-17)
 
-Branch `feature/form-designer-polish`. Addresses DISCOVERY.md HIGH polish targets, the user-reported viewer-vs-designer canvas rendering drift, and the full `bpmn-io/form-js` CSS variable audit. Reviewers: `staff-engineer` + `frontend-developer` (parallel); all flagged issues addressed before commit.
+Branch `feature/form-designer-polish` (19 commits). Addresses DISCOVERY.md HIGH polish targets, viewer-vs-designer canvas rendering drift, the full `bpmn-io/form-js` CSS variable audit, multiple form-js library overrides surfaced during iterative smoke testing, and three backend validator gaps blocking standard form-js components. Reviewers: `staff-engineer` + `frontend-developer` (parallel); all flagged issues addressed before merge.
 
 #### Added
-- 50+ form-js CSS variables wired to shared `--panel-*` tokens in `globals.css` §FORM-JS THEME — covers inputs, FEEL editor, list/add/remove entries, toggle switches, palette, dragula, header, group, description, etc.
-- `.fjs-editor-container .fjs-input/.fjs-textarea/.fjs-select/.fjs-taglist-input/.fjs-button` parity rules in `globals.css` so the editor canvas renders identically to the runtime viewer
-- `onError?: (err: unknown) => void` prop on `FormJsEditor` and `FormJsViewer` — surfaces import/schema failures to the parent (ref-backed to avoid stale closure across re-renders)
-- `isValidFormJsSchema()` structural guard for upload validation in `FormJsBuilder` — checks top-level `type` string, `components` array, each component carries a string `type`, optional `schemaVersion` number
-- `Loader2` spinner icon on the FormJsEditor loading overlay (replaces text-only state)
-- Five new `formBuilder.*` i18n keys: `invalidInitialForm`, `uploadInvalidSchema`, `uploadInvalidJson`, `uploadSuccess`, `editorError`
-- `.form-designer-dark-toolbar input::placeholder` rule for placeholder visibility on the dark Form Editor header
-- ROADMAP follow-up: cross-editor toolbar uniformity (BPMN designer header still uses shadcn Card, not `--panel-hdr-bg`)
+- `frontends/portal/components/forms/formjs-theme.css` — new file (~600 lines). Full form-js variable wiring against `--panel-*` design tokens (typography, accent, surface, borders, text, inputs, FEEL editor, list/add/remove, toggle, palette, dragula, header, group, description). Higher-specificity selectors (`.fjs-editor-container .fjs-palette-container`, `.fjs-editor-container .fjs-properties-container`) to win over the library's local variable declarations. Imported AFTER the library CSS in `FormJsEditor.tsx` and `FormJsViewer.tsx` so source order keeps our overrides winning.
+- Editor canvas parity rules — mirror `.fjs-container .fjs-input` library rules onto `.fjs-editor-container` since the editor wraps the canvas in `.fjs-form-container .fjs-form`, not `.fjs-container`.
+- Prose typography inside `.fjs-form-field-text` — restores Tailwind-reset h1-h6, p, ul/ol, strong/em/a/code so stored `<h2>` etc. renders as actual headings.
+- `onError?: (err: unknown) => void` prop on `FormJsEditor` and `FormJsViewer` — surfaces import/schema failures via toast; ref-backed (`onErrorRef`) to avoid stale closures.
+- `schemaRef` + `lastImportedSchemaJsonRef` + `isReady` dep on schema-change useEffect — fixes a race where API-resolved schema arriving mid-mount was never imported.
+- `isValidFormJsSchema()` structural guard for upload validation.
+- `Loader2` spinner overlay (replaces text-only loading state).
+- bpmn.io attribution (LGPL §4 compliance) — clickable `<a>` injected into `.fjs-palette-footer` (which is now pinned at the visible bottom via `display: flex; flex-direction: column` on `.fjs-palette` + `flex: 1; overflow-y: auto` on `.fjs-palette-entries`). Uses library convention class `fjs-powered-by fjs-form-field`.
+- Unified `.form-designer-aside` shell replacing the inconsistent shadcn-Card-vs-bg-muted-div mix between Version History and Data Sources sidebars.
+- Five `formBuilder.*` i18n keys (uploadInvalidSchema, uploadInvalidJson, uploadSuccess, invalidInitialForm, editorError).
+- Backend: `PATHED_TYPES = {"group", "columns", "dynamiclist"}` in `FormSchemaValidator.java` so container/pathed types are exempted from `requiresKey()` — mirrors form-js's own `config.keyed` vs `config.pathed` distinction. Plus 4 new tests (`pathedTypes_containsContainerAndDynamiclist`, `validateFormSchema_acceptsGroupWithoutKey`, `validateFormSchema_acceptsDynamiclistWithPathNotKey`, `validateFormSchema_acceptsSeparatorWithoutKey`).
+- Backend: `"separator"` added to `DISPLAY_TYPES` — form-js renders `<hr>` via the Separator component, registered alongside Spacer.
 
 #### Changed
-- `--color-background` mapping (was `--panel-input-disabled-bg`, now `--panel-input-bg`) — canvas form inputs no longer render grey-tinted
-- FormJsBuilder dark toolbar: hardcoded `#111c27` / `rgba(255,255,255,0.08)` / `rgba(255,255,255,0.15)` / `#149ba5` / `#fff` replaced with `var(--panel-hdr-bg|hdr-border|hdr-text|accent)` tokens
-- Unsaved-changes badge color: hardcoded `rgba(255,200,80,0.85)` replaced with `text-amber-300` (8.3:1 contrast on dark bg, WCAG AA)
-- `alert()` calls in `FormJsBuilder.tsx:113,120` and demo `alert()`+`console.log` in `preview/[key]/page.tsx:72-73` replaced with sonner toasts
-- `console.error` paths in `FormJsEditor.tsx` (4 sites) and `FormJsViewer.tsx` (1 site) now propagate via `onErrorRef.current?.(err)` instead of writing to console
-- FormJsEditor loading overlay now also clears (`setIsReady(true)`) on import failure so the spinner does not hang indefinitely
+- Palette switched from dark to light theme — light-grey container, white tiles with `--panel-card-border` + soft shadow, dark icons/text, teal hover with subtle glow. Aligns with the rest of the portal's light-card aesthetic.
+- Palette width 224 → 268px so two tiles fit the longest stock label ("Radio group", "Date time") on a single line; tile height 68px; grid gap 10px; library's hardcoded `width: 72px; margin: auto` on `.fjs-palette-container .fjs-palette-group` overridden with `width: auto; margin: 0` so the grid track governs width.
+- `DEPARTMENTS` hardcoded array removed from FormJsBuilder — now fetched via `useQuery(getDepartments)` from the existing `/api/v1/departments` (ERP service) with loading + empty states. Was a real data bug, not cosmetic — `owningDepartment` is persisted with the form.
+- Palette allowlist synced with `FormSchemaValidator.VALID_FIELD_TYPES` (was using invalid `'date'` and rejected types `filepicker/iframe/documentPreview/separator`); now: textfield, textarea, number, checkbox, radio, select, checklist, taglist, date, time, datetime, email, group, columns, html, text, button, image, spacer, separator, dynamiclist.
+- `--color-background` mapping (was `--panel-input-disabled-bg`, now `--panel-input-bg`) so canvas form inputs render white not grey-tinted.
+- FormJsBuilder dark toolbar uses `--panel-*` tokens instead of hardcoded colours.
+- Unsaved-changes badge uses `text-amber-300` (8.3:1 WCAG AA on dark bg) instead of `rgba(255,200,80,0.85)`.
+- `alert()` → sonner toasts in `FormJsBuilder.tsx` upload handlers and `preview/[key]/page.tsx` submit handler; `console.*` paths now propagate via `onErrorRef`.
+- FormJsEditor wrapper `minHeight: 600px` removed — was causing the inner container to overflow the parent's `flex-1 overflow-hidden` when the viewport was shorter than 600px, clipping the bpmn.io footer below the visible region.
+- All four form-js import sites converted to `next/dynamic({ ssr: false })` (FormJsBuilder, preview page, tasks FormSection, formjs-demo page) — fixes SSR `ReferenceError: KeyboardEvent is not defined` because `@bpmn-io/form-js[-editor]` references browser-only globals at module load.
+- FormJsEditor loading overlay clears on import failure (`setIsReady(true)`) so the spinner does not hang indefinitely.
+- `FormJsViewer.tsx` no longer imports `form-js-editor.css` (was wrong — viewer doesn't need editor styles).
+- Duplicate `form-js-editor.css` import removed from `FormJsEditor.tsx`.
 
 #### Fixed
-- HIGH: Editor canvas form fields rendered with unstyled browser defaults — root cause was that form-js library scopes input styling under `.fjs-container` (viewer only), but the editor wraps the canvas in `.fjs-form-container .fjs-form`, so library rules never matched. Fixed by mirroring the rules onto `.fjs-editor-container` using `--panel-*` tokens directly.
-- MEDIUM: `t('key', { default: '...' })` is not a valid next-intl v3 API — would have rendered `[missing formBuilder.uploadInvalidSchema]` at runtime. Replaced with proper en.json keys.
-- MEDIUM: Duplicate `form-js-editor.css` import in `FormJsEditor.tsx` (line 7 was redundant with line 6)
-- MEDIUM: `FormJsViewer.tsx` imported `form-js-editor.css` — the viewer should not pull editor styles. Removed.
-- MEDIUM: `onError` closure captured at mount time would silently use a stale reference on parent re-render. Converted to ref pattern matching the existing `onSubmitRef` / `onChangeRef` convention.
-- MEDIUM: Upload schema check (`!json.type || !json.components`) accepted malformed inputs (e.g. `components` as object instead of array). Replaced with `isValidFormJsSchema()` structural guard.
+- CRITICAL (engine, requires service restart to take effect): `requiresKey()` was rejecting standard form-js schemas for `group`, `columns`, `dynamiclist` (which use either inline child grouping or `path` instead of `key`) and for `separator` (which was not in `VALID_FIELD_TYPES` at all). All four now save cleanly.
+- CRITICAL (frontend): canvas-empty bug on `/forms/edit/<key>` — race condition where API-resolved schema arrived after `editorRef.current` was null at second useEffect's first run, never re-imported.
+- HIGH: radio/checkbox `<input>` width:100% from the canvas-input rule pushed sibling labels to the far right of the flex row. Scoped via `:not([type="radio"]):not([type="checkbox"])` and explicit `width: auto; flex: 0 0 auto` for radio/checkbox.
+- HIGH: library's hardcoded `width: 72px` on `.fjs-palette-container .fjs-palette-field` defeated the grid layout. Overridden with `width: auto`.
+- HIGH: bpmn.io attribution DOM leak on final unmount — `containerRef.current.innerHTML = ''` added to mount-effect cleanup.
+- HIGH: `editor.importSchema(serializeSchemaProperties(schema))` was being called twice on cold mount (mount effect + `isReady` useEffect re-fire). Guarded with `lastImportedSchemaJsonRef`.
+- HIGH: PRESENTATION/CONTAINERS palette groups stayed visible as empty cards because the previous nested `:has(.fjs-palette-fields:has(...))` selector was unreliable. Collapsed to single-level `:has(...)`.
+- HIGH: text-view component rendered HTML as plain inline text because Tailwind preflight stripped h1-h6 defaults. Restored prose typography scoped to `.fjs-form-field-text`.
+- MEDIUM: `t('key', { default: '...' })` is not valid next-intl v3 API — replaced with proper en.json keys.
+- MEDIUM: schema-load logic in `FormJsBuilder` had a destructive `if (components && !type) reset to empty default` branch that discarded valid schemas missing only the top-level `type` field. Now spreads `{ type: 'default', schemaVersion: 9, ...parsed }`.
+- MEDIUM: `/api/proxy/admin/config/form-components` returned 500 on every mount (endpoint doesn't exist on the backend). Removed the dead fetch; defaults inline.
+- MEDIUM: schema upload accepted malformed inputs — replaced loose `!json.type || !json.components` with `isValidFormJsSchema()` structural guard.
+- MEDIUM: LGPL "prominent notice" — bpmn.io attribution bumped from 10px muted to 11px / weight 600 / `--panel-text`.
+- MEDIUM: data sources and version history sidebars looked completely different (one shadcn Card, one bg-muted div). Unified.
+- LOW: search input was visually detached from its magnifying-glass icon because we were styling the inner `<input>` instead of the library's intended `.fjs-palette-search-container` shell. Fixed to match library convention.
 
 #### Companion Reviews
-- `staff-engineer` agent — flagged 1 HIGH (stale closure), 3 MEDIUM (next-intl `default`, BpmnDesigner token gap, duplicate CSS import), 2 LOW
-- `frontend-developer` agent — flagged 1 MEDIUM (placeholder visibility), 3 LOW (palette rgba hardcodes, amber-300 WCAG, selector specificity, `--wf-brand-2` reference)
-- All actionable findings addressed before commit; BpmnDesigner toolbar uniformity logged as M4.9 follow-up in ROADMAP
+- `staff-engineer` review iteration 1 — flagged 1 HIGH (stale closure), 3 MEDIUM (next-intl `default`, BpmnDesigner token gap, duplicate CSS import), 2 LOW. All addressed before commit.
+- `staff-engineer` review iteration 2 — flagged 1 CRITICAL (radio width:100% pushing labels right), 1 HIGH (DOM cleanup leak), 2 MEDIUM (cold-mount double-import, LGPL prominence), 3 LOW. All addressed.
+- `frontend-developer` review — flagged 1 MEDIUM (placeholder visibility), 3 LOW. All addressed.
+
+#### Follow-ups Tracked in ROADMAP
+- Cross-editor toolbar uniformity (BPMN designer header still uses shadcn Card, not `--panel-hdr-bg` — keeps the three editors visually inconsistent).
+- Tenant-specific component allowlist via `/api/v1/config/vars?type=FORM_COMPONENT_ALLOWLIST` (deferred — backend endpoint doesn't exist yet).
+- Backend extensions for `filepicker`, `iframe`, `documentPreview` if these become required (form-js ships them but engine `VALID_FIELD_TYPES` doesn't accept them).
+- "Image upload with preview" combined component (form-js has `filepicker` for upload and `image` for URL display but no combined widget).
 
 ---
 
