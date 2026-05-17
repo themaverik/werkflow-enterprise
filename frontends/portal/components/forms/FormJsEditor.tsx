@@ -109,12 +109,23 @@ export default function FormJsEditor({
         schemaVersion: 9
       });
 
-      const importErr = await editor.importSchema(initialSchema).then(() => null).catch((err: unknown) => err);
+      const importResult = await editor.importSchema(initialSchema).catch((err: unknown) => ({ __error: err }));
       if (cancelled) return;
-      if (importErr) {
-        onErrorRef.current?.(importErr);
+      if (importResult && '__error' in importResult) {
+        onErrorRef.current?.(importResult.__error);
         setIsReady(true);
         return;
+      }
+      const componentCount = Array.isArray((initialSchema as { components?: unknown }).components)
+        ? (initialSchema as { components: unknown[] }).components.length
+        : 0;
+      // Surface warnings on successful import — silent component drops are
+      // a common cause of "empty canvas" reports.
+      const warnings = (importResult as { warnings?: unknown[] })?.warnings ?? [];
+      if (componentCount > 0 || warnings.length > 0) {
+        console.warn('[FormJsEditor] importSchema OK — components:', componentCount, 'warnings:', warnings);
+      } else {
+        console.warn('[FormJsEditor] importSchema OK but schema has 0 components — verify formJson payload');
       }
 
       // Inject palette CSS filter now that the editor DOM is fully rendered.
@@ -179,7 +190,15 @@ export default function FormJsEditor({
       return;
     }
     if (editorRef.current && schema) {
-      editorRef.current.importSchema(serializeSchemaProperties(schema)).catch((err) => {
+      const serialized = serializeSchemaProperties(schema);
+      const cc = Array.isArray((serialized as { components?: unknown }).components)
+        ? (serialized as { components: unknown[] }).components.length
+        : 0;
+      console.warn('[FormJsEditor] re-importing schema on prop change — components:', cc);
+      editorRef.current.importSchema(serialized).then((result) => {
+        const w = (result as { warnings?: unknown[] })?.warnings ?? [];
+        if (w.length) console.warn('[FormJsEditor] re-import warnings:', w);
+      }).catch((err) => {
         onErrorRef.current?.(err);
       });
     }
