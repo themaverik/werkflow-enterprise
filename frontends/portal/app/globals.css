@@ -439,47 +439,291 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
-   FORM-JS THEME
+   FORM-JS THEME — full library variable coverage
+   Wires every CSS custom property exposed by @bpmn-io/form-js (viewer) and
+   @bpmn-io/form-js-editor against the shared --panel-* design tokens, plus
+   parity rules so the editor canvas (.fjs-form-container) renders inputs
+   identically to the viewer (.fjs-container).
    ════════════════════════════════════════════════════════════════════════════ */
 
 .fjs-container,
 .fjs-editor-container {
-  /* Official form-js CSS variables wired to shared panel tokens */
+  /* ── Typography ──────────────────────────────────────────────────── */
   --font-family:          var(--panel-font);
-  --color-accent:         var(--panel-accent);
-  --color-accent-light:   var(--panel-accent-lt);
-  --color-accent-dark:    var(--panel-accent-dk);
-  --color-borders:        var(--panel-card-border);
-  --color-background:     var(--panel-input-disabled-bg);
-  --color-white:          var(--panel-card-bg);
-  --color-text:           var(--panel-text);
-  --color-text-light:     var(--panel-text-muted);
-  --color-selection:      var(--panel-focus-ring);
+  --font-size-base:       var(--panel-fs);
+  --font-size-input:      var(--panel-input-fs);
+  --font-size-label:      var(--panel-fs-label);
+  --font-size-group:      var(--panel-fs-title);
+  --form-field-height:    var(--panel-input-h);
+  --letter-spacing-base:  0;
+  --letter-spacing-input: 0;
+  --letter-spacing-label: 0.02em;
+  --line-height-base:     1.45;
+  --line-height-input:    1.45;
+  --line-height-label:    1.35;
 
+  /* ── Accent / brand colours ──────────────────────────────────────── */
+  --color-accent:           var(--panel-accent);
+  --color-accent-light:     var(--panel-accent-lt);
+  --color-accent-dark:      var(--panel-accent-dk);
+  --color-accent-readonly:  var(--panel-text-muted);
+  --color-selection:        var(--panel-focus-ring);
+
+  /* ── Surface / background ────────────────────────────────────────── */
+  --color-background:               var(--panel-input-bg);
+  --color-background-active:        var(--panel-accent-bg);
+  --color-background-adornment:     var(--panel-input-disabled-bg);
+  --color-background-disabled:      var(--panel-input-disabled-bg);
+  --color-background-inverted:      var(--panel-hdr-bg);
+  --color-background-inverted-hover: var(--wf-brand-2);
+  --color-background-pre:           var(--panel-input-disabled-bg);
+  --color-background-readonly:      var(--panel-input-disabled-bg);
+  --color-white:                    var(--panel-card-bg);
+  --color-black:                    var(--panel-text);
+  --color-layer:                    var(--panel-card-bg);
+  --color-layer-accent:             var(--panel-input-disabled-bg);
+  --color-shadow:                   var(--panel-card-border);
+
+  /* ── Borders ─────────────────────────────────────────────────────── */
+  --color-borders:                 var(--panel-card-border);
+  --color-borders-adornment:       var(--panel-card-border);
+  --color-borders-disabled:        var(--panel-input-disabled-border);
+  --color-borders-documentPreview: var(--panel-card-border);
+  --color-borders-group:           var(--panel-card-border);
+  --color-borders-inverted:        var(--panel-hdr-border);
+  --color-borders-pre:             var(--panel-card-border);
+  --color-borders-readonly:        var(--panel-input-disabled-border);
+  --color-borders-table:           var(--panel-card-border);
+
+  /* ── Text colours ────────────────────────────────────────────────── */
+  --color-text:           var(--panel-text);
+  --color-text-disabled:  var(--panel-input-disabled-color);
+  --color-text-inverted:  var(--panel-hdr-text);
+  --color-text-light:     var(--panel-text-muted);
+  --color-text-lighter:   var(--panel-text-muted);
+  --color-text-lightest:  var(--wf-light);
+
+  /* ── Icon / decorative ───────────────────────────────────────────── */
+  --color-icon-base:     var(--panel-text);
+  --color-icon-inverted: var(--panel-hdr-text);
+  --color-warning:       var(--panel-danger);
+  --color-warning-light: var(--panel-danger-bg);
+  --color-datepicker-focused-day: var(--panel-accent);
+
+  /* ── Inputs (canvas + properties panel) ──────────────────────────── */
+  --input-background-color:          var(--panel-input-bg);
+  --input-border-color:              var(--panel-input-border);
+  --input-focus-background-color:    var(--panel-focus-bg);
+  --input-focus-border-color:        var(--panel-focus-border);
+  --input-disabled-background-color: var(--panel-input-disabled-bg);
+  --input-disabled-border-color:     var(--panel-input-disabled-border);
+  --input-disabled-color:            var(--panel-input-disabled-color);
+  --input-error-background-color:    var(--panel-danger-bg);
+  --input-error-border-color:        var(--panel-danger);
+  --input-error-focus-border-color:  var(--panel-danger);
+  --placeholder-color:               var(--panel-input-ph);
+  --placeholder-background-color:    var(--panel-input-disabled-bg);
+
+  --text-base-color:  var(--panel-text);
+  --text-error-color: var(--panel-danger);
+  --link-color:       var(--panel-accent);
+  --description-color: var(--panel-text-muted);
+  --description-code-background-color: var(--panel-input-disabled-bg);
+  --description-code-border-color:     var(--panel-card-border);
+  --description-list-item-color:       var(--panel-text-muted);
+
+  /* ── Properties panel (right side, library default) ──────────────── */
   --color-properties-container-background: var(--panel-card-bg);
   --color-properties-container-border:     var(--panel-card-border);
+  --header-background-color:               var(--panel-hdr-bg);
+  --header-bottom-border-color:            var(--panel-hdr-border);
+  --header-icon-fill-color:                var(--panel-hdr-icon);
+  --group-background-color:                var(--panel-card-bg);
+  --group-bottom-border-color:             var(--panel-card-sep);
+  --sticky-group-background-color:         var(--panel-input-disabled-bg);
+  --sticky-group-bottom-border-color:      var(--panel-card-border);
 
-  --color-palette-container-background:    var(--panel-hdr-bg);
-  --color-palette-container-border:        var(--panel-hdr-border);
-  --color-palette-search-background:       rgba(255,255,255,0.08);
-  --color-palette-search-border:           rgba(255,255,255,0.12);
-  --color-palette-search-focus-border:     var(--panel-accent);
-  --color-palette-field-background:        transparent;
-  --color-palette-field-border:            rgba(255,255,255,0.08);
-  --color-palette-field-focus:             var(--panel-accent);
-  --color-palette-field-hover-background:  rgba(255,255,255,0.06);
-  --color-palette-text:                    rgba(255,255,255,0.65);
+  /* ── Palette (left side — dark, matches Werkflow sidebar) ────────── */
+  --color-palette-container-background:        var(--panel-hdr-bg);
+  --color-palette-container-border:            var(--panel-hdr-border);
+  --color-palette-header-background:           var(--panel-hdr-bg);
+  --color-palette-header-border:               var(--panel-hdr-border);
+  --color-palette-header:                      var(--panel-hdr-text);
+  --color-palette-search-background:           rgba(255,255,255,0.08);
+  --color-palette-search-border:               rgba(255,255,255,0.12);
+  --color-palette-search-focus-background:     rgba(255,255,255,0.10);
+  --color-palette-search-focus-border:         var(--panel-accent);
+  --color-palette-search-clear-focus-border:   var(--panel-accent);
+  --color-palette-search-icon:                 rgba(255,255,255,0.35);
+  --color-palette-search-icon-hover:           rgba(255,255,255,0.65);
+  --color-palette-search:                      #ffffff;
+  --color-palette-field-background:            transparent;
+  --color-palette-field-border:                rgba(255,255,255,0.08);
+  --color-palette-field-focus:                 var(--panel-accent);
+  --color-palette-field-hover-background:      rgba(255,255,255,0.06);
+  --color-palette-field-hover-border:          rgba(20,155,165,0.5);
+  --color-palette-field:                       rgba(255,255,255,0.65);
+  --color-palette-group-title:                 rgba(255,255,255,0.35);
+  --color-palette-text:                        rgba(255,255,255,0.65);
+  --cursor-palette-field:                      grab;
 
-  --color-children-selected-border: var(--panel-accent);
-  --color-children-hover-border:    rgba(20,155,165,0.5);
-  --color-dragula-background:       var(--panel-accent-bg);
-  --color-dragula-border:           var(--panel-accent);
-  --color-dragula-error-background: var(--panel-danger-bg);
+  /* ── Drag-drop indicators ────────────────────────────────────────── */
+  --color-children-selected-border:     var(--panel-accent);
+  --color-children-selected-background: transparent;
+  --color-children-hover-border:        rgba(20,155,165,0.5);
+  --color-dragula-background:           var(--panel-accent-bg);
+  --color-dragula-border:               var(--panel-accent);
+  --color-dragula-error-background:     var(--panel-danger-bg);
+  --color-dragula-error-border:         var(--panel-danger);
+  --color-dragula-mirror-background:    var(--panel-card-bg);
+  --color-dragula-mirror-border:        var(--panel-card-border);
 
+  /* ── Resize handles ──────────────────────────────────────────────── */
   --color-resize-handle-background: var(--panel-accent);
   --color-resize-handle-border:     var(--panel-accent-dk);
 
+  /* ── Context pad (custom palettes, not used here but kept aligned) ─ */
+  --color-context-pad-item-background: transparent;
+  --color-context-pad-item-fill:       var(--panel-text);
+  --color-context-pad-item-hover-fill: var(--panel-danger);
+
+  /* ── FEEL expression editor ──────────────────────────────────────── */
+  --feel-active-color:               var(--panel-accent);
+  --feel-active-background-color:    transparent;
+  --feel-background-color:           transparent;
+  --feel-hover-color:                var(--panel-accent);
+  --feel-hover-background-color:     var(--panel-accent-bg);
+  --feel-inactive-color:             var(--panel-text-muted);
+  --feel-indicator-background-color: var(--panel-accent-bg);
+  --feel-required-color:             var(--panel-input-disabled-color);
+
+  /* ── List entries / add / remove ─────────────────────────────────── */
+  --list-entry-add-entry-background-color:           var(--panel-accent);
+  --list-entry-add-entry-empty-background-color:     var(--panel-accent);
+  --list-entry-add-entry-empty-hover-background-color: var(--panel-accent-dk);
+  --list-entry-add-entry-fill-color:                 var(--panel-card-bg);
+  --list-entry-add-entry-label-color:                var(--panel-card-bg);
+  --list-entry-dot-background-color:                 var(--panel-text-muted);
+  --list-entry-header-button-fill-color:             var(--panel-text-muted);
+  --list-badge-background-color:                     var(--panel-text-muted);
+  --list-badge-color:                                var(--panel-card-bg);
+  --add-entry-fill-color:                            var(--panel-text-muted);
+  --add-entry-hover-background-color:                var(--panel-accent);
+  --add-entry-hover-fill-color:                      var(--panel-card-bg);
+  --add-entry-label-color:                           var(--panel-card-bg);
+  --remove-entry-fill-color:                         var(--panel-danger);
+  --remove-entry-hover-background-color:             var(--panel-danger-bg);
+
+  /* ── Misc decorative ─────────────────────────────────────────────── */
+  --arrow-fill-color:                  var(--panel-text-muted);
+  --arrow-hover-background-color:      var(--panel-input-disabled-bg);
+  --dot-color:                         var(--panel-text-muted);
+  --side-line-background-color:        var(--panel-card-border);
+  --side-line-extension-background-color: var(--panel-card-border);
+
+  /* ── Toggle switch ───────────────────────────────────────────────── */
+  --toggle-switch-on-background-color:       var(--panel-accent);
+  --toggle-switch-off-background-color:      var(--panel-text-muted);
+  --toggle-switch-switcher-background-color: var(--panel-card-bg);
+
+  /* ── Layout dimensions ───────────────────────────────────────────── */
+  --palette-width:          220px;
+  --properties-panel-width: 300px;
+
   font-family: var(--panel-font);
+}
+
+/* ── Editor canvas input parity ────────────────────────────────────────────
+   The form-js library scopes input styling under `.fjs-container` (viewer
+   only). In the editor the canvas form preview is inside `.fjs-form-container
+   .fjs-form`, NOT `.fjs-container`, so those rules never match — canvas
+   inputs fall back to unstyled browser defaults. We mirror the visible rules
+   here so the editor canvas renders identically to the runtime viewer.       */
+
+.fjs-editor-container .fjs-input,
+.fjs-editor-container .fjs-textarea,
+.fjs-editor-container .fjs-select,
+.fjs-editor-container .fjs-taglist-input {
+  font-family:   var(--panel-font);
+  font-size:     var(--panel-fs);
+  color:         var(--panel-text);
+  background-color: var(--panel-input-bg);
+  border:        1px solid var(--panel-input-border);
+  border-radius: var(--panel-input-radius);
+  height:        var(--panel-input-h);
+  padding:       0 8px;
+  box-sizing:    border-box;
+  width:         100%;
+  transition:    border-color 120ms, background-color 120ms, box-shadow 120ms;
+}
+
+.fjs-editor-container .fjs-textarea {
+  height:  auto;
+  padding: 6px 8px;
+  min-height: 64px;
+}
+
+.fjs-editor-container .fjs-input:focus,
+.fjs-editor-container .fjs-textarea:focus,
+.fjs-editor-container .fjs-select:focus,
+.fjs-editor-container .fjs-taglist-input:focus {
+  outline:      none;
+  border-color: var(--panel-focus-border);
+  background:   var(--panel-focus-bg);
+  box-shadow:   0 0 0 2px var(--panel-focus-ring);
+}
+
+.fjs-editor-container .fjs-input::placeholder,
+.fjs-editor-container .fjs-textarea::placeholder {
+  color: var(--panel-input-ph);
+}
+
+.fjs-editor-container .fjs-input:disabled,
+.fjs-editor-container .fjs-textarea:disabled,
+.fjs-editor-container .fjs-select:disabled {
+  background-color: var(--panel-input-disabled-bg);
+  border-color:     var(--panel-input-disabled-border);
+  color:            var(--panel-input-disabled-color);
+}
+
+.fjs-editor-container .fjs-form-field-label {
+  font-family: var(--panel-font);
+  font-size:   var(--panel-fs-label);
+  font-weight: var(--panel-label-weight);
+  color:       var(--panel-label-color);
+}
+
+.fjs-editor-container .fjs-form-field-description {
+  font-family: var(--panel-font);
+  font-size:   var(--panel-fs-small);
+  color:       var(--description-color);
+}
+
+.fjs-editor-container .fjs-button {
+  font-family:   var(--panel-font);
+  font-size:     var(--panel-fs);
+  font-weight:   600;
+  border-radius: var(--panel-input-radius);
+  padding:       0 12px;
+  height:        var(--panel-input-h);
+}
+
+.fjs-editor-container .fjs-button[type="submit"] {
+  background: var(--panel-accent);
+  color:      var(--panel-card-bg);
+  border:     1px solid var(--panel-accent);
+}
+
+.fjs-editor-container .fjs-button[type="submit"]:hover:not(:disabled) {
+  background: var(--panel-accent-dk);
+  border-color: var(--panel-accent-dk);
+}
+
+/* Form Editor dark toolbar — input placeholder visibility on dark surface.
+   Inline element styles cannot target ::placeholder, so we scope it here.   */
+.form-designer-dark-toolbar input::placeholder,
+.form-designer-dark-toolbar select::placeholder {
+  color: rgba(255, 255, 255, 0.35);
 }
 
 /* Palette sidebar */
