@@ -80,7 +80,20 @@ export default function FormJsEditor({
       // Static allowlist — tenant-specific component allowlists will be wired
       // to /api/v1/config/vars?type=FORM_COMPONENT_ALLOWLIST in a future
       // sprint. Until that endpoint exists, hardcode the safe defaults.
-      const allowedTypes: string[] = ['textfield', 'textarea', 'number', 'select', 'radio', 'checkbox', 'date', 'button'];
+      // Note: 'datetime' is the correct form-js type for date/time inputs
+      // ('date' alone is not a registered field type and never matched).
+      const allowedTypes: string[] = [
+        // Inputs
+        'textfield', 'textarea', 'number', 'datetime',
+        // Selection
+        'checkbox', 'radio', 'select', 'checklist', 'taglist',
+        // Media / files
+        'filepicker', 'image', 'iframe', 'documentPreview',
+        // Presentation
+        'text', 'html', 'spacer', 'separator',
+        // Action
+        'button',
+      ];
 
       // Fetch tenant CSS theme vars — no-op if empty. Auth comes from the
       // NextAuth session cookie which the proxy reads server-side.
