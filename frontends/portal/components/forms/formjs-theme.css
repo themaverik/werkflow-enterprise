@@ -415,9 +415,14 @@
   background:    var(--panel-card-bg);
   text-align:    center;
 }
+.fjs-editor-container .fjs-palette-footer .fjs-powered-by {
+  /* Library convention class — also used in the runtime viewer. */
+  display:    block;
+  text-align: center;
+}
 .fjs-editor-container .fjs-palette-footer .werkflow-powered-by {
-  /* LGPL §4 — bumped to 11px + 600 weight + slightly stronger colour
-     so the notice is unambiguously "prominent". */
+  /* LGPL §4 — bumped to 11px + 600 weight + stronger colour for an
+     unambiguously "prominent" notice. */
   font-family:     var(--panel-font);
   font-size:       11px;
   font-weight:     600;
