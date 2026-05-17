@@ -420,6 +420,14 @@
   border-color: var(--panel-accent-dk);
 }
 
+/* Editor canvas surface — white. The library doesn't set a background on
+   .fjs-form-container, so without this the canvas inherits the page's
+   bg-background (light grey). */
+.fjs-editor-container .fjs-form-container,
+.fjs-editor-container .fjs-form {
+  background: var(--panel-card-bg);
+}
+
 /* Canvas field selection (editor) */
 .fjs-editor-container .fjs-form-field.selected > .fjs-form-field-placeholder {
   outline:       2px solid var(--panel-accent);
