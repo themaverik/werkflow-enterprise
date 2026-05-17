@@ -182,7 +182,7 @@
    itself. Higher specificity required to beat the local declaration.
    Light theme: subtle off-white surface, white tiles, dark icons/text. ── */
 .fjs-editor-container .fjs-palette-container {
-  --color-palette-container-background:      var(--panel-input-disabled-bg);
+  --color-palette-container-background:      var(--panel-card-bg);
   --color-palette-container-border:          var(--panel-card-border);
   --color-palette-header-background:         var(--panel-card-bg);
   --color-palette-header-border:             var(--panel-card-border);
@@ -223,7 +223,7 @@
    min-height) so 2-line labels don't grow the tile and break grid
    alignment. Labels line-clamp to 2 lines with ellipsis. */
 .fjs-editor-container .fjs-palette-container {
-  background:     var(--panel-input-disabled-bg);
+  background:     var(--panel-card-bg);
   border-right:   1px solid var(--panel-card-border);
   display:        flex;
   flex-direction: column;
@@ -470,4 +470,128 @@
 .form-designer-dark-toolbar input::placeholder,
 .form-designer-dark-toolbar select::placeholder {
   color: rgba(255, 255, 255, 0.35);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Form Designer side panels (Data Sources, Version History)
+   Shared shell so both right-side asides look uniform and match the
+   palette's white-card aesthetic.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.form-designer-aside {
+  background:   var(--panel-card-bg);
+  border-right: 1px solid var(--panel-card-border);
+  font-family:  var(--panel-font);
+  color:        var(--panel-text);
+}
+.form-designer-aside--right {
+  border-right: none;
+  border-left:  1px solid var(--panel-card-border);
+}
+
+.form-designer-aside-header {
+  padding:        14px 16px 12px;
+  border-bottom:  1px solid var(--panel-card-border);
+  background:    var(--panel-card-bg);
+  font-family:   var(--panel-font);
+  font-size:     11px;
+  font-weight:   600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color:         var(--panel-text-muted);
+  position:      sticky;
+  top:           0;
+  z-index:       1;
+}
+
+.form-designer-aside-body { padding: 12px 14px 16px; }
+.form-designer-aside-body--flush { padding: 0; }
+
+.form-designer-aside-muted {
+  font-family: var(--panel-font);
+  font-size:   12px;
+  color:       var(--panel-text-muted);
+}
+.form-designer-aside-muted--padded { padding: 14px 16px; }
+
+.form-designer-aside-item {
+  margin-bottom: 14px;
+}
+.form-designer-aside-item:last-child { margin-bottom: 0; }
+
+.form-designer-aside-item-title {
+  font-family: var(--panel-font);
+  font-size:   12px;
+  font-weight: 600;
+  color:       var(--panel-text);
+  margin:      0 0 4px;
+}
+
+.form-designer-aside-code {
+  display:       block;
+  font-family:   var(--font-jetbrains-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size:     11px;
+  color:         var(--panel-text);
+  background:    var(--panel-input-disabled-bg);
+  border:        1px solid var(--panel-card-border);
+  border-radius: 4px;
+  padding:       2px 6px;
+  margin:        0 0 6px;
+  word-break:    break-all;
+}
+
+.form-designer-aside-fieldlist {
+  list-style: none;
+  margin:     6px 0 0;
+  padding:    0;
+  font-size:  11px;
+  color:      var(--panel-text-muted);
+}
+.form-designer-aside-fieldlist li {
+  padding: 2px 0 2px 8px;
+  border-left: 2px solid var(--panel-card-border);
+  margin-bottom: 2px;
+}
+.form-designer-aside-fieldtype {
+  color: var(--panel-accent-dk);
+  font-family: var(--font-jetbrains-mono, 'JetBrains Mono', monospace);
+}
+
+.form-designer-aside-list {
+  list-style: none;
+  margin:     0;
+  padding:    0;
+}
+.form-designer-aside-listitem {
+  display:        flex;
+  align-items:    flex-start;
+  justify-content: space-between;
+  gap:            8px;
+  padding:        12px 16px;
+  border-bottom:  1px solid var(--panel-card-sep);
+}
+.form-designer-aside-listitem:hover { background: var(--panel-input-disabled-bg); }
+.form-designer-aside-listitem:last-child { border-bottom: none; }
+
+.form-designer-aside-meta {
+  font-family: var(--panel-font);
+  font-size:   11px;
+  color:       var(--panel-text-muted);
+  margin:      2px 0 0;
+}
+
+.form-designer-aside-badge {
+  display:       inline-block;
+  padding:       1px 6px;
+  border-radius: 999px;
+  font-size:     10px;
+  font-weight:   600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family:   var(--panel-font);
+}
+.form-designer-aside-badge--active {
+  color:      var(--badge-success);
+  background: var(--badge-success-bg);
+  border:     1px solid var(--badge-success-border);
 }
