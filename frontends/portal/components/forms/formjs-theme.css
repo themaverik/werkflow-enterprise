@@ -250,7 +250,11 @@
   overflow-y: auto;
 }
 
-.fjs-editor-container .fjs-palette-group {
+.fjs-editor-container .fjs-palette-group,
+.fjs-palette-container .fjs-palette-group {
+  display:        flex;
+  flex-direction: column;
+  width:          auto;
   padding-bottom: 10px;
 }
 
@@ -269,7 +273,7 @@
 .fjs-editor-container .fjs-palette-fields {
   display:               grid;
   grid-template-columns: 1fr 1fr;
-  gap:                   8px;
+  gap:                   10px;
   padding:               2px 10px 4px;
   margin:                0;
 }
@@ -350,7 +354,7 @@
   gap:           8px;
   margin:        12px;
   padding:       0 10px;
-  height:        32px;
+  height:        48px;
   background:    var(--panel-card-bg);
   border:        1px solid var(--panel-card-border);
   border-radius: var(--panel-input-radius);
