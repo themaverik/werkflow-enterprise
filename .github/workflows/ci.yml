@@ -41,10 +41,6 @@ jobs:
         working-directory: shared/common
         run: mvn -q clean install -DskipTests -B
 
-      - name: Build shared/delegates
-        working-directory: shared/delegates
-        run: mvn -q clean install -DskipTests -B
-
       - name: Build & test engine service
         working-directory: services/engine
         run: mvn clean verify -B
@@ -74,10 +70,6 @@ jobs:
 
       - name: Build shared/common
         working-directory: shared/common
-        run: mvn -q clean install -DskipTests -B
-
-      - name: Build shared/delegates
-        working-directory: shared/delegates
         run: mvn -q clean install -DskipTests -B
 
       - name: Build & test admin service
