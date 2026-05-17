@@ -12,6 +12,7 @@ import com.werkflow.engine.audit.ProcessAuditLogRepository;
 import com.werkflow.engine.client.AdminServiceClient;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -79,11 +80,12 @@ public class DatabaseConnectorDelegate extends ConnectorDelegateBase {
     public DatabaseConnectorDelegate(ResponseMasker responseMasker,
                                      SecretsResolver secretsResolver,
                                      ProcessAuditLogRepository auditLogRepository,
+                                     MeterRegistry meterRegistry,
                                      AdminServiceClient adminServiceClient,
                                      DatasourceRegistry datasourceRegistry,
                                      NamedQueryExecutor queryExecutor,
                                      KeysetPaginator keysetPaginator) {
-        super(responseMasker, secretsResolver, auditLogRepository);
+        super(responseMasker, secretsResolver, auditLogRepository, meterRegistry);
         this.adminServiceClient = adminServiceClient;
         this.datasourceRegistry = datasourceRegistry;
         this.queryExecutor = queryExecutor;

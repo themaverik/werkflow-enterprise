@@ -2,18 +2,17 @@ package com.werkflow.engine.action;
 
 import com.werkflow.common.security.SecretsResolver;
 import com.werkflow.common.security.SsrfGuard;
-import com.werkflow.engine.audit.ProcessAuditLog;
 import com.werkflow.engine.audit.ProcessAuditLogRepository;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.web.client.RestClient;
 
 import java.util.Map;
 
@@ -28,23 +27,19 @@ class RestConnectorDelegateTest {
     @Mock private ResponseMasker responseMasker;
     @Mock private SecretsResolver secretsResolver;
     @Mock private ProcessAuditLogRepository auditLogRepository;
-    @Mock private RestClient.Builder restClientBuilder;
-    @Mock private RestClient restClient;
     @Mock private TenantEndpointResolver endpointResolver;
     @Mock private DelegateExecution execution;
     @Mock private Expression urlExpr, methodExpr, secretRefExpr, responseVarExpr,
                              extractFieldsExpr, maskFieldsExpr, onErrorExpr,
                              connectorExpr, pathExpr, bodyExpr;
 
+    private final MeterRegistry meterRegistry = new SimpleMeterRegistry();
     private RestConnectorDelegate delegate;
 
     @BeforeEach
     void setUp() {
-        when(restClientBuilder.requestFactory(any())).thenReturn(restClientBuilder);
-        when(restClientBuilder.build()).thenReturn(restClient);
-
         delegate = new RestConnectorDelegate(
-            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, restClientBuilder, endpointResolver);
+            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, meterRegistry, endpointResolver);
 
         delegate.setUrl(urlExpr);
         delegate.setMethod(methodExpr);
@@ -108,7 +103,7 @@ class RestConnectorDelegateTest {
     @Test
     void parseExtractFields_parsesValidEntries() {
         RestConnectorDelegate d = new RestConnectorDelegate(
-            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, restClientBuilder, endpointResolver);
+            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, meterRegistry, endpointResolver);
         Map<String, String> parsed = d.parseExtractFields("count:$.stock.count,available:$.stock.available");
         assertThat(parsed).containsEntry("count", "$.stock.count")
                           .containsEntry("available", "$.stock.available");
@@ -154,7 +149,7 @@ class RestConnectorDelegateTest {
     @Test
     void resolveBodyTemplate_substitutesVariables() {
         RestConnectorDelegate d = new RestConnectorDelegate(
-            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, restClientBuilder, endpointResolver);
+            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, meterRegistry, endpointResolver);
 
         when(execution.getVariable("requestId")).thenReturn("REQ-001");
         when(execution.getVariable("amount")).thenReturn(5000);
@@ -167,7 +162,7 @@ class RestConnectorDelegateTest {
     @Test
     void resolveBodyTemplate_jsonEscapesStringValues() {
         RestConnectorDelegate d = new RestConnectorDelegate(
-            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, restClientBuilder, endpointResolver);
+            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, meterRegistry, endpointResolver);
 
         when(execution.getVariable("description")).thenReturn("Laptop, 16\" screen");
 
@@ -179,7 +174,7 @@ class RestConnectorDelegateTest {
     @Test
     void resolveBodyTemplate_handlesNullVariable() {
         RestConnectorDelegate d = new RestConnectorDelegate(
-            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, restClientBuilder, endpointResolver);
+            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, meterRegistry, endpointResolver);
 
         when(execution.getVariable("missingVar")).thenReturn(null);
 
@@ -219,7 +214,7 @@ class RestConnectorDelegateTest {
     @Test
     void resolveBodyTemplate_escapesControlCharacters() {
         RestConnectorDelegate d = new RestConnectorDelegate(
-            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, restClientBuilder, endpointResolver);
+            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, meterRegistry, endpointResolver);
 
         when(execution.getVariable("data")).thenReturn("line1\nline2\ttabbed");
 

@@ -8,6 +8,49 @@ Format: `[Unreleased]` for in-progress work. Releases follow [Semantic Versionin
 
 ## [Unreleased]
 
+### M4.11 P3 — External-Api-Call Audit + CRITICAL/HIGH Fixes (2026-05-17)
+
+First per-element P3 audit run under the expanded 5-point scope (Flowable native capability, Action Block mapping, Assignment mapping with context-aware variable combobox, Delegate compliance, Panel-section visibility). Audit doc committed in werkflow-platform `feature/m4.11-p3-external-api-call-audit`; 7 CRITICAL/HIGH findings fixed here.
+
+#### Added
+- `ab:timeoutSeconds` extension element on EXTERNAL_API_CALL action block — per-request HTTP timeout, default 30s, overridable per task
+- `werkflow.connector.audit_failure` Micrometer counter (tagged by `actionType`) for alerting on audit-log write failures
+- `tryExtractFieldsFromJson()` helper in `externalApiHelpers.ts` returning discriminated union `{ ok: true; rows } | { ok: false; error }` — surfaces JSON parse failures instead of swallowing
+- Guided variable insertion affordance on the Request Body textarea in `ExternalApiCallSection` — toggle button reveals `VariableComboBoxBpmnAdapter`; selection inserts `${varName}` at cursor (sources: `dtds-variables-string|number|date`)
+- `InputMappingRow` sub-component extracted from `DtdsInputFieldForm` so `useCallback` memoization works per-row
+
+#### Changed
+- `RestConnectorDelegate` now uses JDK `HttpClient.send()` directly (5s connect timeout + per-request timeout) — Spring `RestClient` wrapper removed because per-request timeout could not be exposed through it
+- `ConnectorDelegateBase` constructor now takes `MeterRegistry`; cascade applied to `DatabaseConnectorDelegate` constructor
+- Audit-log save failure no longer swallowed — logs at error level with full context (`actionType`, `executionId`, `processInstanceId`, `activityInstanceId`); failure still does not abort workflow execution
+- SSRF guard moved to run AFTER expression substitution on the final URL string, just before HTTP dispatch — closes the bypass where `${expr}` in path was not validated
+- Connector health-check fetch in `useExternalApiState` wrapped in `AbortController` with 5s timeout via `AbortSignal.any` (runtime-guarded); aborted on connector change, on unmount (dedicated cleanup effect), and on timeout
+- Stale `contractJson` cleared synchronously on connector change; sample schema is set only in the success path
+- Path field in `SetupTabContent` replaced plain `Input` with `VariableComboBoxBpmnAdapter` (`mode="single"`, source `dtds-variables-string`)
+- Input mapping rows in `DtdsInputFieldForm` right-hand side replaced plain `Input` with `VariableComboBoxBpmnAdapter` (sources: `dtds-variables-string|number|date`)
+- All `VariableComboBoxBpmnAdapter` `getValue` / `setValue` closures wrapped in `useCallback` at call sites — prevents the adapter's `[getValue]` effect from looping under parent re-renders
+- Contract-import error display has `role="alert"` + `aria-live="polite"`; raw V8 `SyntaxError.message` replaced with a user-friendly normalized message
+- Body picker toggle button has `aria-expanded` + `aria-controls`; focus moves into the picker on open
+
+#### Fixed
+- CRITICAL: `RestConnectorDelegate` had no HTTP timeout — engine threads could hang indefinitely on slow/dead endpoints, risking thread-pool starvation and stuck workflow instances
+- HIGH: `ConnectorDelegateBase` swallowed audit-log save failures silently — compliance gap; operators had no signal when audit writes were failing
+- HIGH: connector health-check fetch fired without `AbortController` — stale fetches resolved on unmounted components, causing setState warnings and stale state corruption
+- HIGH: `extractFieldsFromJson` returned an empty array on JSON parse failure with no user-visible error — silent contract-import failure
+- HIGH: connector change did not clear `contractJson` — switching connectors could leave the previous connector's schema in the textarea
+- HIGH: `ExternalApiCallSection` had zero `VariableComboBoxBpmnAdapter` coverage — Path / Body / input mapping fields all relied on manual `${varName}` typing with no completion, no validation, no error surfacing
+- HIGH: SSRF guard ran on the pre-substitution URL template — bypass risk where `${expr}` in path could resolve to internal-network or metadata endpoints at runtime
+
+#### Deferred to Polish Pass / Subsequent P3 Audits
+- 12 MEDIUM/LOW findings rolled into the Service-Task.md P3 audit (status code patterns, JSON response parsing, retry policy, async non-blocking via `FutureJavaDelegate`, multi-header support, body-template JSON validation, JSONPath silent skips, audit-log idempotency under retry)
+- D1 implementation (admin tenant flag to gate raw URL mode) — decision locked, implementation deferred to admin-settings work
+- Cosmetic duplicate visible labels on `VariableComboBox` call sites (outer `<Label>` plus adapter's internal label) — needs `ariaLabel` prop added to the adapter in a polish session
+
+#### Companion Audit Doc
+- `werkflow-platform` commit `992b536` — `docs/flowable-7.2/External-Api-Call.md` (354 lines, full 5-point audit + punch list + decisions D1–D4)
+
+---
+
 ### M4.11 — BPMN/DMN Native Coverage + Panel Decomposition (2026-05-16)
 
 #### Added
