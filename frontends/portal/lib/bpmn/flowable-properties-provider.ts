@@ -22,7 +22,7 @@ import { VariableComboBoxEntry } from '@/components/bpmn/VariableComboBoxEntry'
 import type { CandidateGroupEntry } from '@/lib/platform/types'
 import type { ProcessVariable } from '@/lib/api/dtds'
 import { readFlowableField, writeFlowableField } from './extension-elements'
-import { readVarFields, setManualStepConfirmation } from './action-block-logic'
+import { setManualStepConfirmation } from './action-block-logic'
 
 /**
  * Module-level variable for form schema options.
@@ -835,10 +835,6 @@ function buildActionBlockEntries(
     )
   }
 
-  if (actionType === 'SET_VARIABLES') {
-    entries.push(...buildSetVariablesEntries(element, modeling, translate, debounce))
-  }
-
   if (actionType === 'MANUAL_STEP') {
     entries.push(
       {
@@ -991,57 +987,6 @@ function buildVarMappingEntries(
         const updated = getMappings()
         if (updated[idx]) { updated[idx] = { ...updated[idx], target: value } }
         writeMappings(updated)
-      },
-    })
-  })
-
-  return entries
-}
-
-/**
- * Builds SET_VARIABLES panel entries.
- * Each variable assignment serializes as <flowable:field name="var.<name>">.
- * Variable name and value are editable; value may be a literal or ${expression}.
- */
-function buildSetVariablesEntries(
-  element: any, modeling: any, translate: (s: string) => string, debounce: any
-): any[] {
-  const entries: any[] = []
-  const vars = readVarFields(element)
-
-  vars.forEach((v, idx) => {
-    entries.push({
-      id: `sv-name-${idx}`,
-      element,
-      component: TextFieldEntry,
-      isEdited: isTextFieldEntryEdited,
-      debounce,
-      label: translate('Variable Name'),
-      getValue: () => v.name,
-      setValue: (value: string) => {
-        // Rename: remove old field, write new field with same value
-        const current = readVarFields(element)
-        if (current[idx]) {
-          writeFlowableField(element, modeling, `var.${current[idx].name}`, '')
-          if (value.trim()) {
-            writeFlowableField(element, modeling, `var.${value.trim()}`, current[idx].value)
-          }
-        }
-      },
-    })
-    entries.push({
-      id: `sv-value-${idx}`,
-      element,
-      component: TextFieldEntry,
-      isEdited: isTextFieldEntryEdited,
-      debounce,
-      label: translate('Value (literal or ${expression})'),
-      getValue: () => v.value,
-      setValue: (value: string) => {
-        const current = readVarFields(element)
-        if (current[idx]) {
-          writeFlowableField(element, modeling, `var.${current[idx].name}`, value)
-        }
       },
     })
   })
