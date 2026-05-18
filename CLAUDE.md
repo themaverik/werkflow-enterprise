@@ -72,6 +72,17 @@ Write code → npm run build → ecc:typescript-review (changed files) → brows
 
 ---
 
+## Coding Behavior (Karpathy Principles)
+
+> Full guidelines in `karpathy-guidelines` skill. These bias toward caution over speed.
+
+* **Think before coding:** State assumptions explicitly. Surface ambiguity. Ask before guessing.
+* **Simplicity first:** Minimum code that solves the problem. No speculative features or abstractions.
+* **Surgical changes:** Touch only what the task requires. Don't improve adjacent code. Match existing style.
+* **Goal-driven execution:** Define verifiable success criteria before starting. Loop until verified.
+
+---
+
 ## Graphify
 
 Knowledge graph at `graphify-out/`.
