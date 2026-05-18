@@ -71,6 +71,45 @@ Branch `feature/form-designer-polish` (19 commits). Addresses DISCOVERY.md HIGH 
 
 ---
 
+### M4.11 P3 — Service-Task Audit + CRITICAL Availability Fix + 4 HIGH/MEDIUM Fixes (2026-05-18)
+
+Third per-element P3 audit under the 5-point scope (Flowable native capability, Action Block mapping, Assignment mapping, Delegate compliance, Panel-section visibility). Focus element: bpmn:ServiceTask and the SET_VARIABLES action block. Audit doc shipped on werkflow-platform `feature/m4.11-p3-service-task-audit` (commits `1346284` + `0f4f341`); 5 of 6 fixes shipped here on `feature/m4.11-p3-service-task-fixes`, F4 closed as no-op (audit misread).
+
+Reviewer protocol (`frontend-developer` + `staff-engineer`) caught 3 BLOCK-level issues before commit: H1 boolean coercion silently losing user intent on save (F1); H2 stale-closure thrash on `.map`-bound inline arrows (F3); H3 bare `save()` inside Flowable JPA tx allowing flush-deferred exceptions to bypass the audit-isolation catch and roll back variable writes (F5). All three fixed.
+
+#### Added
+- Advanced Execution card on `ServiceTaskPropertiesPanel` exposing three Flowable engine controls: `flowable:async` (Yes/No), `flowable:exclusive` (gated when async=false, default true), `flowable:failedJobRetryTimeCycle` (ISO 8601 expression, e.g. `R3/PT1M`)
+- `flowable-moddle.json` extended with two attrs on `ServiceTaskLike` (`async`, `exclusive`) and a new `FailedJobRetryTimeCycle` extension element type with `isBody` body property
+- `VariableComboBoxBpmnAdapter` (`mode="single"`, sources `dtds-variables-string|number|date`) on the SET_VARIABLES value field — users now pick existing process variables instead of hand-typing `${expr}`
+- `SetVariableRow` sub-component extracted from `SetVariablesSection` to scope `useCallback` per row (stabilises `getValue`/`setValue` identity so the adapter's `useEffect([getValue])` no longer fires on every parent render)
+- `ProcessAuditLog` write on every `SetVariablesDelegate.execute()` — records variable NAMES (not values; values may be sensitive) in `responseBody` JSONB as `{"variables":[...]}`; uses `saveAndFlush` (NOT bare `save`) to force synchronous flush inside the catch block
+- `werkflow.engine.audit_failure` Micrometer counter (tag `actionType=SET_VARIABLES`) for alerting on audit-log write failures
+
+#### Changed
+- `flowable-properties-provider.ts` no longer carries the bpmn-js fallback `buildSetVariablesEntries` (50 lines + 3-line call site removed). React `SetVariablesSection` is now the single source of truth for the SET_VARIABLES panel surface; both surfaces serialized identically via `var.<name>` flowable:field convention, so no XML migration needed.
+- `SetVariablesDelegate` constructor now takes `ProcessAuditLogRepository` + `MeterRegistry` (alongside existing `ProcessEngineConfiguration`)
+- `SetVariablesDelegate` class Javadoc explicitly contrasts `ab:*` (action-block kind-specific configuration) vs `var.*` (generic process-variable assignments) — formalises the convention that was implicit across action-block delegates
+- F1 `Select` `setValue` for `flowable:exclusive` uses `next === false ? false : undefined` (explicit) instead of `next || undefined` (which silently collapsed `false → undefined → engine default true`, overwriting user intent on every save)
+
+#### Fixed
+- CRITICAL: ServiceTask family had NO panel surface for `flowable:async` — engine threads blocked on slow connector execution would saturate the job executor pool, hanging all workflow instances under load. F1 closes this by exposing async/exclusive/retry cycle at the BPMN-design layer.
+- HIGH: `SetVariablesDelegate` wrote process variables silently with no audit trail — operators had no record of which executions wrote which variables. F5 closes this with one `ProcessAuditLog` per execution (names only).
+- HIGH: `buildSetVariablesEntries` bpmn-js fallback path was a dead end with no add-row UI — users on the legacy bpmn-js properties panel could not add variable assignments, only edit existing ones. F2 removes the broken fallback.
+- HIGH: SET_VARIABLES value field was a plain `<Input>` with no variable picker — users had to hand-type `${varName}` references with no completion or validation. F3 wires the adapter (same UX as External-Api-Call Path/Body fields).
+
+#### Deferred / Carry-forward to Future Sessions
+- HIGH (latent) — `ConnectorDelegateBase.writeAuditLog` (`ConnectorDelegateBase.java:188`) has the same flush-deferral defect F5 just fixed. Bare `save()` inside Flowable's JPA tx → flush failure bypasses the catch block → Flowable rolls back the connector's variable writes silently. Minimal fix: `save → saveAndFlush` (1-line). Schedule for connector polish pass.
+- MEDIUM (cross-cutting a11y) — `VariableComboBoxBpmnAdapter.tsx:169` renders `<label className="bio-properties-panel-label">{label}</label>` with no `htmlFor` binding. Every in-row adapter consumer inherits the screen-reader gap (HumanApprovalSection, SetupTabContent, ExternalApiCall, now SetVariablesSection). Fix needs an `inputId` prop on the adapter — cross-cutting a11y pass.
+- LOW — `SetVariablesDelegate.OBJECT_MAPPER` is a bare `new ObjectMapper()` static field; bypasses any project-wide Jackson config. Safe for the current `Map.of("variables", List<String>)` serialization but inconsistent with `FormSchemaDataLoader` which injects the configured bean. Tidy-up.
+- POLICY — F5 records variable names but not values, on the rationale that values are sensitive. Variable names themselves can leak schema info (e.g. `creditCardNumber`). Compliance call: should known-sensitive name patterns be redacted at write time? Separate compliance review.
+- F4 (D6) — closed as no-op. D6 prescribed removing `SET_VARIABLES` from the `bpmn:UserTask` applicable list at `flowable-properties-provider.ts:666`, but the actual line 666 references the `bpmn:Task` (generic untyped) entry — UserTask was already minimal since M4.9 (commit `b37261b`). Touching `bpmn:Task` would break the morph onboarding flow (undecided Task → ServiceTask on action-type pick). Intent satisfied; no code change.
+- D3 (External-Worker.md) and D8 (EL-Expression-Security.md) audit slots reserved on Roadmap. D8 is cross-cutting CRITICAL — every `${...}` evaluation site in Werkflow is exposed (SET_VARIABLES value expressions, HTTP body templating, sequence-flow conditions, DMN FEEL). Likely outcome: restricted `ExpressionManager` whitelisting allowed bean accessors. Schedule before further P3 audits.
+
+#### Companion Audit Doc
+- `werkflow-platform` commits `1346284` + `0f4f341` → merged `0ce5685` — `docs/flowable-7.2/Service-Task.md` (~545 lines, full 5-point audit + decisions D1–D8 + §9 Session Outcomes with reviewer findings)
+
+---
+
 ### M4.11 P3 — External-Api-Call Audit + CRITICAL/HIGH Fixes (2026-05-17)
 
 First per-element P3 audit run under the expanded 5-point scope (Flowable native capability, Action Block mapping, Assignment mapping with context-aware variable combobox, Delegate compliance, Panel-section visibility). Audit doc committed in werkflow-platform `feature/m4.11-p3-external-api-call-audit`; 7 CRITICAL/HIGH findings fixed here.
