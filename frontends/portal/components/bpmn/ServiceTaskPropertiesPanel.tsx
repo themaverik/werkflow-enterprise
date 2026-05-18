@@ -18,6 +18,7 @@ import ExternalApiCallSection from './sections/ExternalApiCallSection'
 import CallSubprocessSection from './sections/CallSubprocessSection'
 import SetVariablesSection from './sections/SetVariablesSection'
 import ManualStepSection from './sections/ManualStepSection'
+import AdvancedExecutionSection from './sections/AdvancedExecutionSection'
 
 interface ServiceTaskPropertiesPanelProps {
   element: any
@@ -104,6 +105,8 @@ export default function ServiceTaskPropertiesPanel({
       {currentActionType === 'MANUAL_STEP' && (
         <ManualStepSection element={element} modeler={modeler} />
       )}
+
+      <AdvancedExecutionSection element={element} modeler={modeler} />
     </div>
   )
 }
