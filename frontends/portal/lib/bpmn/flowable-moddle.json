@@ -64,6 +64,16 @@
           "name": "resultVariable",
           "isAttr": true,
           "type": "String"
+        },
+        {
+          "name": "async",
+          "isAttr": true,
+          "type": "Boolean"
+        },
+        {
+          "name": "exclusive",
+          "isAttr": true,
+          "type": "Boolean"
         }
       ]
     },
@@ -142,6 +152,13 @@
           "isAttr": true,
           "type": "String"
         }
+      ]
+    },
+    {
+      "name": "FailedJobRetryTimeCycle",
+      "superClass": ["Element"],
+      "properties": [
+        { "name": "body", "isBody": true, "type": "String" }
       ]
     }
   ]
