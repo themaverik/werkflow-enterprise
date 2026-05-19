@@ -14,10 +14,11 @@
 | Item | Status |
 |------|--------|
 | E2E quality gate | 7/7 specs passing |
-| ADRs | ADR-001 through ADR-010 written |
-| Active milestone | M4.9 — UI Polish (in progress) |
-| Next session | M4.9 — resolve open questions on BPMN designer assignment panel architecture |
-| Branch | feature/m4-9-ui-polish |
+| ADRs | ADR-001 through ADR-014 written |
+| Active milestone | M4.11 — BPMN/DMN Native Coverage & Element Correctness (P3 per-element audit pass) |
+| P3 audits done | External-Api-Call, User-Task, Service-Task, EL-Expression-Security, Database-And-Connector |
+| Next session | M4.11 P3 — Send-Task.md audit |
+| Branch | main (M4.11 P3 work merged) |
 
 ---
 
