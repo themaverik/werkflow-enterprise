@@ -3,6 +3,8 @@ package com.werkflow.engine.action;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.werkflow.engine.audit.ProcessAuditLog;
 import com.werkflow.engine.audit.ProcessAuditLogRepository;
+import com.werkflow.engine.security.el.FunctionRegistry;
+import com.werkflow.engine.security.el.RestrictedExpressionManager;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.FieldExtension;
@@ -181,11 +183,24 @@ public class SetVariablesDelegate implements JavaDelegate {
 
     /**
      * Resolves a {@link FieldExtension} to a value. If the field has an expression, it is
-     * evaluated against the current execution context. Otherwise the string value is returned as-is.
+     * evaluated against the current execution context using the full DATE_STRING_MATH function
+     * bundle so SET_VARIABLES expressions can call {@code dateUtil.*}, {@code stringUtil.*},
+     * and {@code mathUtil.*} helpers. Otherwise the string value is returned as-is.
+     *
+     * <p>Task C guarantees the engine ExpressionManager is always a
+     * {@link RestrictedExpressionManager}. The {@code instanceof} guard is defensive: if
+     * (unexpectedly) it is not, we fall back to plain {@code createExpression} so the delegate
+     * never throws a ClassCastException.
      */
     private Object resolveField(FieldExtension field, DelegateExecution execution) {
         if (field.getExpression() != null && !field.getExpression().isBlank()) {
-            Expression expr = expressionManager.createExpression(field.getExpression());
+            Expression expr;
+            if (expressionManager instanceof RestrictedExpressionManager rem) {
+                expr = rem.compileWithFunctions(field.getExpression(), FunctionRegistry.DATE_STRING_MATH);
+            } else {
+                // fallback — preserves delegate behaviour if manager is unexpectedly replaced
+                expr = expressionManager.createExpression(field.getExpression());
+            }
             return expr.getValue(execution);
         }
         return field.getStringValue();
