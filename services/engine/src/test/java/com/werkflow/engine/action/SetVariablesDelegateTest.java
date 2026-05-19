@@ -1,5 +1,7 @@
 package com.werkflow.engine.action;
 
+import com.werkflow.engine.audit.ProcessAuditLogRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.flowable.bpmn.model.FieldExtension;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.common.engine.impl.el.ExpressionManager;
@@ -30,13 +32,16 @@ class SetVariablesDelegateTest {
     @Mock private Expression firstExpr;
     @Mock private Expression secondExpr;
     @Mock private DelegateExecution execution;
+    // Added in Service-Task audit (F1): SetVariablesDelegate now requires audit + metrics dependencies.
+    @Mock private ProcessAuditLogRepository auditLogRepository;
+    @Mock private MeterRegistry meterRegistry;
 
     private SetVariablesDelegate delegate;
 
     @BeforeEach
     void setUp() {
         when(engineConfig.getExpressionManager()).thenReturn(expressionManager);
-        delegate = new SetVariablesDelegate(engineConfig);
+        delegate = new SetVariablesDelegate(engineConfig, auditLogRepository, meterRegistry);
     }
 
     private FieldExtension literalField(String name, String value) {
