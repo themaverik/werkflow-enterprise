@@ -1,10 +1,10 @@
 package com.werkflow.engine.action;
 
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
+import org.flowable.engine.delegate.DelegateHelper;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,11 +36,6 @@ public class ConnectorWebhookDelegate implements JavaDelegate {
     private final RestTemplate serviceRestTemplate;
     private final String adminServiceUrl;
 
-    @Setter private Expression connectorKey;
-    @Setter private Expression path;
-    @Setter private Expression body;
-    @Setter private Expression onError;
-
     public ConnectorWebhookDelegate(
             @Qualifier("serviceRestTemplate") RestTemplate serviceRestTemplate,
             @Value("${app.admin-service.url}") String adminServiceUrl) {
@@ -50,18 +45,18 @@ public class ConnectorWebhookDelegate implements JavaDelegate {
 
     @Override
     public void execute(DelegateExecution execution) {
-        String onErrorMode = getString(onError, execution, "FAIL");
+        String onErrorMode = getFieldString(execution, "onError", "FAIL");
 
         try {
-            String key = getString(connectorKey, execution, null);
+            String key = getFieldString(execution, "connectorKey", null);
             if (key == null || key.isBlank()) {
                 throw new IllegalArgumentException("connectorWebhookDelegate: 'connectorKey' field is required");
             }
-            String webhookPath = getString(path, execution, null);
+            String webhookPath = getFieldString(execution, "path", null);
             if (webhookPath == null || webhookPath.isBlank()) {
                 throw new IllegalArgumentException("connectorWebhookDelegate: 'path' field is required");
             }
-            String payload = getString(body, execution, null);
+            String payload = getFieldString(execution, "body", null);
             String tenantCode = execution.getTenantId();
             if (tenantCode == null || tenantCode.isBlank()) {
                 throw new IllegalStateException(
@@ -104,6 +99,15 @@ public class ConnectorWebhookDelegate implements JavaDelegate {
                 throw new RuntimeException("connectorWebhookDelegate failed: " + e.getMessage(), e);
             }
         }
+    }
+
+    /**
+     * Reads a named {@code <flowable:field>} per-execution via {@link DelegateHelper#getFieldExpression}.
+     * Thread-safe replacement for {@code @Setter Expression} instance fields: this delegate is a
+     * Spring singleton, so injected fields would be shared mutable state across concurrent executions.
+     */
+    private String getFieldString(DelegateExecution execution, String fieldName, String defaultValue) {
+        return getString(DelegateHelper.getFieldExpression(execution, fieldName), execution, defaultValue);
     }
 
     private String getString(Expression expr, DelegateExecution execution, String defaultValue) {
