@@ -170,14 +170,14 @@ test.describe('13 — Action blocks — admin', () => {
   })
 
   // -------------------------------------------------------------------------
-  // 13.3  External API Call
+  // 13.3  Connector Operation
   // -------------------------------------------------------------------------
-  test('13.3 — EXTERNAL_API_CALL action type shows correct sub-fields', async ({ page }) => {
+  test('13.3 — CONNECTOR_OPERATION action type shows ConnectorOperationSection cards', async ({ page }) => {
     const ready = await openEditorAndAppendTask(page)
     if (!ready) {
       test.info().annotations.push({
         type: 'note',
-        description: 'BPMN stack not reachable — skipping EXTERNAL_API_CALL field assertions',
+        description: 'BPMN stack not reachable — skipping CONNECTOR_OPERATION field assertions',
       })
       test.skip()
       return
@@ -192,34 +192,29 @@ test.describe('13 — Action blocks — admin', () => {
       .first()
 
     await expect(actionTypeSelect).toBeVisible({ timeout: 8000 })
-    await actionTypeSelect.selectOption('EXTERNAL_API_CALL')
+    await actionTypeSelect.selectOption('CONNECTOR_OPERATION')
 
+    // ConnectorOperationSection renders three cards: Connector, Operation, Output & Error Handling
     await expect(
-      page.locator('[data-entry-id="ab-url"]')
+      page.getByText('Connector', { exact: true }).first()
     ).toBeVisible({ timeout: 5000 })
 
     await expect(
-      page.locator('[data-entry-id="ab-method"]')
+      page.getByText('Operation', { exact: true }).first()
     ).toBeVisible({ timeout: 5000 })
 
     await expect(
-      page.locator('[data-entry-id="ab-secretRef"]')
+      page.getByText('Output & Error Handling', { exact: true }).first()
     ).toBeVisible({ timeout: 5000 })
 
+    // Response variable input is present
     await expect(
-      page.locator('[data-entry-id="ab-responseVariable"]')
+      page.locator('#co-response-variable')
     ).toBeVisible({ timeout: 5000 })
 
+    // On-error select trigger is present
     await expect(
-      page.locator('[data-entry-id="ab-extractFields"]')
-    ).toBeVisible({ timeout: 5000 })
-
-    await expect(
-      page.locator('[data-entry-id="ab-maskFields"]')
-    ).toBeVisible({ timeout: 5000 })
-
-    await expect(
-      page.locator('[data-entry-id="ab-onError"]')
+      page.locator('#co-on-error')
     ).toBeVisible({ timeout: 5000 })
   })
 })
