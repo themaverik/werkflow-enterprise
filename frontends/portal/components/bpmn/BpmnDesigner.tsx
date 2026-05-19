@@ -152,11 +152,9 @@ function validateActionBlocks(modeler: any): string[] {
         }
       }
 
-      if (actionType === 'EXTERNAL_API_CALL') {
-        const hasUrl = !!bo.get('ab:url')
-        const hasConnector = !!bo.get('ab:connector')
-        if (!hasUrl && !hasConnector) {
-          errors.push(`${label}: External API task requires either a connector or a URL.`)
+      if (actionType === 'CONNECTOR_OPERATION') {
+        if (!getFlowableField(bo, 'connector')) {
+          errors.push(`${label}: Connector Operation task requires a connector to be selected.`)
         }
       }
 
@@ -1013,7 +1011,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
               </div>
             )}
 
-            {/* Service task custom panel — covers EXTERNAL_API_CALL, HUMAN_APPROVAL, SEND_NOTIFICATION */}
+            {/* Service task custom panel — covers CONNECTOR_OPERATION, HUMAN_APPROVAL, SEND_NOTIFICATION */}
             {!showNativePanel && isCustomPanelServiceTask(selectedElement) && modeler && (
               <div className="flex-1 overflow-auto wf-panel-custom">
                 <ServiceTaskPropertiesPanel
@@ -1089,7 +1087,7 @@ function isCustomPanelServiceTask(element: { type: string; businessObject: Recor
   if (actionType === 'SEND_NOTIFICATION') {
     return type === 'bpmn:SendTask' || type === 'bpmn:ServiceTask'
   }
-  if (actionType === 'EXTERNAL_API_CALL') {
+  if (actionType === 'CONNECTOR_OPERATION') {
     return type === 'bpmn:ServiceTask'
   }
   if (actionType === 'SET_VARIABLES') {

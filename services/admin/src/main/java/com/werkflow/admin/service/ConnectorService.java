@@ -229,7 +229,7 @@ public class ConnectorService {
     }
 
     /**
-     * Outbound proxy used by the portal server-side route and engine ConnectorCallDelegate.
+     * Outbound proxy used by the portal server-side route and the engine connector delegates.
      * Decrypts stored credential, enforces SSRF guard, and forwards the call to the external connector.
      */
     public ConnectorTestResponse callConnector(String tenantCode, String connectorKey,

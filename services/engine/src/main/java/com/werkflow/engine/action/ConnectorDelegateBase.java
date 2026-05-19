@@ -8,11 +8,11 @@ import com.werkflow.common.security.SecretsResolver;
 import com.werkflow.engine.audit.ProcessAuditLog;
 import com.werkflow.engine.audit.ProcessAuditLogRepository;
 import io.micrometer.core.instrument.MeterRegistry;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
+import org.flowable.engine.delegate.DelegateHelper;
 import org.flowable.engine.delegate.JavaDelegate;
 
 import java.nio.charset.StandardCharsets;
@@ -43,44 +43,6 @@ public abstract class ConnectorDelegateBase implements JavaDelegate {
     protected final ProcessAuditLogRepository auditLogRepository;
     protected final MeterRegistry meterRegistry;
 
-    // -------------------------------------------------------------------------
-    // BPMN expression fields common to all connector delegates
-    // -------------------------------------------------------------------------
-
-    /** Process variable name to store the connector response into. Default: "response". */
-    @Setter protected Expression responseVariable;
-
-    /**
-     * Comma-separated list of {@code varName:$.jsonpath} pairs to extract
-     * from the response and store as individual process variables.
-     */
-    @Setter protected Expression extractFields;
-
-    /**
-     * Comma-separated list of field names to mask in the stored response.
-     * Delegated to {@link ResponseMasker}.
-     */
-    @Setter protected Expression maskFields;
-
-    /**
-     * Error handling mode: {@code FAIL} (default), {@code CONTINUE}, or
-     * {@code THROW_BPMN_ERROR}. Determines what happens when the connector
-     * call raises an exception.
-     */
-    @Setter protected Expression onError;
-
-    /**
-     * When {@code true}, stores the raw (pre-mask) response body as a transient
-     * variable named {@code <responseVar>Raw}. Not persisted to history.
-     */
-    @Setter protected Expression storeRawResponse;
-
-    /**
-     * When {@code true}, stores the result as a task-local variable (isolated to
-     * the current parallel execution branch) rather than a global process variable.
-     */
-    @Setter protected Expression useLocalVariables;
-
     protected ConnectorDelegateBase(ResponseMasker responseMasker,
                                     SecretsResolver secretsResolver,
                                     ProcessAuditLogRepository auditLogRepository,
@@ -106,26 +68,26 @@ public abstract class ConnectorDelegateBase implements JavaDelegate {
      * @param execution   current BPMN execution context
      */
     protected void storeResult(String rawBody, DelegateExecution execution) {
-        String responseVar = getString(responseVariable, execution, "response");
-        List<String> designerMaskFields = parseMaskFields(getString(maskFields, execution, null));
+        String responseVar = getFieldString(execution, "responseVariable", "response");
+        List<String> designerMaskFields = parseMaskFields(getFieldString(execution, "maskFields", null));
 
         String maskedBody = responseMasker.mask(rawBody, designerMaskFields);
 
         // Optionally keep pre-mask body as a transient (non-historical) variable
-        boolean shouldStoreRaw = "true".equalsIgnoreCase(getString(storeRawResponse, execution, "false"));
+        boolean shouldStoreRaw = "true".equalsIgnoreCase(getFieldString(execution, "storeRawResponse", "false"));
         if (shouldStoreRaw) {
             execution.setTransientVariable(responseVar + "Raw", rawBody);
         }
 
         // Extract named fields via JSONPath before writing the final variable
-        String extractSpec = getString(extractFields, execution, null);
+        String extractSpec = getFieldString(execution, "extractFields", null);
         if (extractSpec != null && !extractSpec.isBlank()) {
             Map<String, String> extractions = parseExtractFields(extractSpec);
             applyExtractions(maskedBody, extractions, execution);
         }
 
         // Honour local-variable scope for parallel branch isolation
-        boolean shouldUseLocal = "true".equalsIgnoreCase(getString(useLocalVariables, execution, "false"));
+        boolean shouldUseLocal = "true".equalsIgnoreCase(getFieldString(execution, "useLocalVariables", "false"));
         if (shouldUseLocal) {
             execution.setVariableLocal(responseVar, maskedBody);
         } else {
@@ -185,7 +147,7 @@ public abstract class ConnectorDelegateBase implements JavaDelegate {
                 .durationMs(durationMs)
                 .errorMessage(errorMessage)
                 .build();
-            auditLogRepository.save(entry);
+            auditLogRepository.saveAndFlush(entry);
         } catch (Exception ex) {
             // F2: audit failure is NOT a business failure — workflow continues.
             // Operators MUST see this: log at ERROR with full trace context + alert via counter.
@@ -274,6 +236,20 @@ public abstract class ConnectorDelegateBase implements JavaDelegate {
         if (expr == null) return defaultValue;
         Object val = expr.getValue(execution);
         return val != null ? val.toString() : defaultValue;
+    }
+
+    /**
+     * Reads a named {@code <flowable:field>} from the current BPMN element per-execution via
+     * {@link DelegateHelper#getFieldExpression}, then evaluates it. This is the thread-safe
+     * replacement for {@code @Setter Expression} instance fields: each call resolves the field
+     * from the execution context, so concurrent executions never share field state.
+     *
+     * @param execution    current BPMN execution context
+     * @param fieldName    name of the {@code <flowable:field>} element
+     * @param defaultValue returned when the field is absent or evaluates to null
+     */
+    protected String getFieldString(DelegateExecution execution, String fieldName, String defaultValue) {
+        return getString(DelegateHelper.getFieldExpression(execution, fieldName), execution, defaultValue);
     }
 
     // -------------------------------------------------------------------------

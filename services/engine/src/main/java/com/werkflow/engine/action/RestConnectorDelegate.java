@@ -4,10 +4,9 @@ import com.werkflow.common.security.SecretsResolver;
 import com.werkflow.common.security.SsrfGuard;
 import com.werkflow.engine.audit.ProcessAuditLogRepository;
 import io.micrometer.core.instrument.MeterRegistry;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
+import org.flowable.engine.delegate.DelegateHelper;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -43,20 +42,6 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
     private final HttpClient httpClient;
     private final TenantEndpointResolver endpointResolver;
 
-    // -------------------------------------------------------------------------
-    // REST-specific BPMN expression fields
-    // -------------------------------------------------------------------------
-
-    @Setter private Expression url;
-    @Setter private Expression connector;
-    @Setter private Expression path;
-    @Setter private Expression body;
-    @Setter private Expression method;
-    @Setter private Expression secretRef;
-
-    /** Optional per-request timeout in seconds. Defaults to 30. Configure via {@code ab:timeoutSeconds}. */
-    @Setter private Expression timeoutSeconds;
-
     private static final int DEFAULT_TIMEOUT_SECONDS = 30;
 
     public RestConnectorDelegate(SsrfGuard ssrfGuard,
@@ -81,17 +66,18 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
 
     @Override
     public void execute(DelegateExecution execution) {
-        String onErrorMode = getString(onError, execution, "FAIL");
-        String responseVar = getString(responseVariable, execution, "response");
+        String onErrorMode = getFieldString(execution, "onError", "FAIL");
+        String responseVar = getFieldString(execution, "responseVariable", "response");
         String resolvedUrl = null;
         String methodValue = null;
 
         try {
-            methodValue = getString(method, execution, "GET").toUpperCase();
-            String bodyTemplate = getString(body, execution, null);
+            methodValue = getFieldString(execution, "method", "GET").toUpperCase();
+            String bodyTemplate = getFieldString(execution, "body", null);
 
             // Default to POST when body is present and no explicit method field
-            if (bodyTemplate != null && !bodyTemplate.isBlank() && method == null) {
+            if (bodyTemplate != null && !bodyTemplate.isBlank()
+                    && DelegateHelper.getFieldExpression(execution, "method") == null) {
                 methodValue = "POST";
             }
             if (methodValue == null || methodValue.isBlank()) {
@@ -99,20 +85,20 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
             }
 
             // URL resolution: connector+path mode (preferred) or legacy direct url.
-            // Note: getString() evaluates Flowable EL expressions before returning the string.
+            // Note: getFieldString() evaluates Flowable EL expressions before returning the string.
             // SSRF guard is applied AFTER full URL resolution (F7: guard must see the final URL).
-            String connectorKey = getString(connector, execution, null);
+            String connectorKey = getFieldString(execution, "connector", null);
             if (connectorKey != null && !connectorKey.isBlank()) {
                 String tenantCode = execution.getTenantId();
                 if (tenantCode == null || tenantCode.isBlank()) {
                     throw new IllegalStateException(
                         "restConnectorDelegate: execution has no tenantId — connector mode requires a tenant-scoped process");
                 }
-                String pathValue = getString(path, execution, "");
+                String pathValue = getFieldString(execution, "path", "");
                 String baseUrl = endpointResolver.resolve(tenantCode, connectorKey);
                 resolvedUrl = joinUrl(baseUrl, pathValue);
             } else {
-                resolvedUrl = getString(url, execution, null);
+                resolvedUrl = getFieldString(execution, "url", null);
                 if (resolvedUrl == null || resolvedUrl.isBlank()) {
                     throw new IllegalArgumentException(
                         "restConnectorDelegate: no 'connector' or 'url' configured on task '"
@@ -123,7 +109,7 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
             }
 
             // Resolve bearer secret
-            String secretKey = getString(secretRef, execution, null);
+            String secretKey = getFieldString(execution, "secretRef", null);
             String secretValue = secretKey != null && !secretKey.isBlank()
                 ? secretsResolver.resolve(secretKey) : null;
 
@@ -143,7 +129,7 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
 
             // F1: resolve per-request timeout (default 30s, overridable via ab:timeoutSeconds)
             int timeoutSecs = DEFAULT_TIMEOUT_SECONDS;
-            String timeoutStr = getString(timeoutSeconds, execution, null);
+            String timeoutStr = getFieldString(execution, "timeoutSeconds", null);
             if (timeoutStr != null && !timeoutStr.isBlank()) {
                 try {
                     timeoutSecs = Integer.parseInt(timeoutStr.trim());
@@ -165,7 +151,7 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
                 truncated = true;
             }
 
-            List<String> designerMaskFields = parseMaskFields(getString(maskFields, execution, null));
+            List<String> designerMaskFields = parseMaskFields(getFieldString(execution, "maskFields", null));
             writeAuditLog(execution, resolvedUrl, methodValue,
                           responseMasker.mask(rawBody, designerMaskFields),
                           httpResult.status(), durationMs, truncated, designerMaskFields, null);
@@ -174,7 +160,7 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
 
         } catch (HttpTimeoutException e) {
             // F1: surface timeout as a named delegate failure so onError mode applies
-            String msg = "HTTP timeout after " + (resolvedUrl != null ? getString(timeoutSeconds, execution, String.valueOf(DEFAULT_TIMEOUT_SECONDS)) : DEFAULT_TIMEOUT_SECONDS) + "s calling " + resolvedUrl;
+            String msg = "HTTP timeout after " + (resolvedUrl != null ? getFieldString(execution, "timeoutSeconds", String.valueOf(DEFAULT_TIMEOUT_SECONDS)) : DEFAULT_TIMEOUT_SECONDS) + "s calling " + resolvedUrl;
             handleError(new RuntimeException(msg, e), onErrorMode, responseVar, execution, resolvedUrl + " " + methodValue);
         } catch (Exception e) {
             handleError(e, onErrorMode, responseVar, execution, resolvedUrl + " " + methodValue);
