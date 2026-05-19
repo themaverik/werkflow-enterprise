@@ -14,7 +14,7 @@ import {
 } from '@/lib/bpmn/flowable-properties-provider'
 import HumanApprovalSection from './sections/HumanApprovalSection'
 import SendNotificationSection from './sections/SendNotificationSection'
-import ExternalApiCallSection from './sections/ExternalApiCallSection'
+import ConnectorOperationSection from './sections/ConnectorOperationSection'
 import CallSubprocessSection from './sections/CallSubprocessSection'
 import SetVariablesSection from './sections/SetVariablesSection'
 import ManualStepSection from './sections/ManualStepSection'
@@ -90,8 +90,8 @@ export default function ServiceTaskPropertiesPanel({
         <SendNotificationSection element={element} modeler={modeler} />
       )}
 
-      {currentActionType === 'EXTERNAL_API_CALL' && (
-        <ExternalApiCallSection element={element} modeler={modeler} />
+      {currentActionType === 'CONNECTOR_OPERATION' && (
+        <ConnectorOperationSection element={element} modeler={modeler} />
       )}
 
       {currentActionType === 'CALL_SUBPROCESS' && (
