@@ -3,11 +3,14 @@ package com.werkflow.engine.action;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
+import org.flowable.engine.delegate.DelegateHelper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
@@ -18,6 +21,13 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Unit tests for {@link ConnectorWebhookDelegate}.
+ *
+ * <p>Fields are driven via {@code MockedStatic<DelegateHelper>} rather than {@code @Setter}
+ * setters — matching the thread-safe, per-execution field resolution introduced by the
+ * connector-delegate field-injection-race fix (audit Database-And-Connector.md §2).
+ */
 @ExtendWith(MockitoExtension.class)
 class ConnectorWebhookDelegateTest {
 
@@ -26,19 +36,33 @@ class ConnectorWebhookDelegateTest {
     @Mock Expression connectorKeyExpr, pathExpr, bodyExpr, onErrorExpr;
 
     ConnectorWebhookDelegate delegate;
+    MockedStatic<DelegateHelper> delegateHelper;
 
     @BeforeEach
     void setUp() {
         delegate = new ConnectorWebhookDelegate(serviceRestTemplate, "http://admin:8083");
+        delegateHelper = mockStatic(DelegateHelper.class);
 
-        delegate.setConnectorKey(connectorKeyExpr);
-        delegate.setPath(pathExpr);
-        delegate.setOnError(onErrorExpr);
+        // Default <flowable:field> stubs; the body field is absent by default.
+        stubField("connectorKey", connectorKeyExpr);
+        stubField("path", pathExpr);
+        stubField("onError", onErrorExpr);
+        lenient().when(DelegateHelper.getFieldExpression(execution, "body")).thenReturn(null);
 
         lenient().when(execution.getTenantId()).thenReturn("acme");
         lenient().when(connectorKeyExpr.getValue(execution)).thenReturn("erp-connector");
         lenient().when(pathExpr.getValue(execution)).thenReturn("/events/order-created");
         lenient().when(onErrorExpr.getValue(execution)).thenReturn("FAIL");
+    }
+
+    @AfterEach
+    void tearDown() {
+        delegateHelper.close();
+    }
+
+    /** Stubs {@code DelegateHelper.getFieldExpression(execution, name)} to return the given expression. */
+    private void stubField(String name, Expression expr) {
+        lenient().when(DelegateHelper.getFieldExpression(execution, name)).thenReturn(expr);
     }
 
     // --- URL construction ---
@@ -77,7 +101,7 @@ class ConnectorWebhookDelegateTest {
 
     @Test
     void execute_sendsCustomBodyWhenBodyExpressionSet() {
-        delegate.setBody(bodyExpr);
+        stubField("body", bodyExpr);
         when(bodyExpr.getValue(execution)).thenReturn("{\"orderId\":\"ORD-001\"}");
         when(serviceRestTemplate.postForEntity(anyString(), any(), eq(Map.class)))
             .thenReturn(ResponseEntity.ok(Map.of("statusCode", 200, "body", "")));
