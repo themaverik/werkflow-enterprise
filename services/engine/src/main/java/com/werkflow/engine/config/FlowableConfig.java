@@ -1,10 +1,16 @@
 package com.werkflow.engine.config;
 
 import com.werkflow.engine.listener.GlobalTaskNotificationListener;
+import com.werkflow.engine.security.el.ExpressionAuditLogger;
+import com.werkflow.engine.security.el.ExpressionLimitsConfig;
+import com.werkflow.engine.security.el.RestrictedExpressionManager;
 import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.common.engine.api.delegate.event.FlowableEventListener;
+import org.flowable.common.engine.impl.cfg.SpringBeanFactoryProxyMap;
 import org.flowable.spring.SpringProcessEngineConfiguration;
 import org.flowable.spring.boot.EngineConfigurationConfigurer;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -26,14 +32,25 @@ import java.util.Map;
  *   <li>{@code setTypedEventListeners} — registers {@link GlobalTaskNotificationListener}
  *       globally so every task assignment and completion fires an email automatically,
  *       eliminating the need for explicit NOTIFICATION service task nodes in BPMN.</li>
+ *   <li>{@code setExpressionManager} — installs {@link RestrictedExpressionManager} to
+ *       enforce parse-time hard limits (length, depth, function-call count) and audit
+ *       denied expressions. Per EL-Expression-Security audit D-EL-8. The manager
+ *       receives the {@link SpringBeanFactoryProxyMap} so that {@code ${beanName}}
+ *       delegate-expression lookups continue to resolve Spring beans correctly —
+ *       Flowable's {@code initExpressionManager()} does not inject the beans map into
+ *       a user-supplied manager.</li>
  * </ul>
  */
 @Configuration
+@EnableConfigurationProperties(ExpressionLimitsConfig.class)
 public class FlowableConfig {
 
     @Bean
     public EngineConfigurationConfigurer<SpringProcessEngineConfiguration> processEngineConfigurer(
-        GlobalTaskNotificationListener globalTaskNotificationListener
+        GlobalTaskNotificationListener globalTaskNotificationListener,
+        ExpressionLimitsConfig expressionLimitsConfig,
+        ExpressionAuditLogger expressionAuditLogger,
+        ApplicationContext applicationContext
     ) {
         return engineConfiguration -> {
             engineConfiguration.setCreateDiagramOnDeploy(false);
@@ -49,6 +66,14 @@ public class FlowableConfig {
                 FlowableEngineEventType.TASK_COMPLETED.name(), List.of(globalTaskNotificationListener)
             );
             engineConfiguration.setTypedEventListeners(typedListeners);
+
+            // Install hardened EL expression manager (EL-Expression-Security audit, task C).
+            // SpringBeanFactoryProxyMap mirrors what SpringProcessEngineConfiguration.initBeans()
+            // would install, preserving ${delegateBean} resolution for all service tasks.
+            Map<Object, Object> beans = new SpringBeanFactoryProxyMap(applicationContext);
+            engineConfiguration.setExpressionManager(
+                new RestrictedExpressionManager(expressionLimitsConfig, expressionAuditLogger, beans)
+            );
         };
     }
 }
