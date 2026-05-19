@@ -627,42 +627,45 @@ function formKeyEntry(element: any, modeling: any, translate: (s: string) => str
 
 export const ACTION_TYPES = [
   { value: '', label: '(none)' },
-  { value: 'HUMAN_APPROVAL',    label: 'Human Approval' },
-  { value: 'SEND_NOTIFICATION', label: 'Send Notification' },
-  { value: 'EXTERNAL_API_CALL', label: 'External API Call' },
-  { value: 'SET_VARIABLES',     label: 'Set Variables' },
-  { value: 'CALL_SUBPROCESS',   label: 'Call Subprocess' },
-  { value: 'GROOVY_SCRIPT',     label: 'Groovy Script (Admin)' },
-  { value: 'MANUAL_STEP',       label: 'Manual Step' },
+  { value: 'HUMAN_APPROVAL',      label: 'Human Approval' },
+  { value: 'SEND_NOTIFICATION',   label: 'Send Notification' },
+  { value: 'CONNECTOR_OPERATION', label: 'Connector Operation' },
+  { value: 'SET_VARIABLES',       label: 'Set Variables' },
+  { value: 'CALL_SUBPROCESS',     label: 'Call Subprocess' },
+  { value: 'GROOVY_SCRIPT',       label: 'Groovy Script (Admin)' },
+  { value: 'MANUAL_STEP',         label: 'Manual Step' },
 ]
 // DMN route action type removed — zero in-flight usage confirmed 2026-05-16; native BusinessRuleTask replaces it
 
 const ACTION_COLOURS: Record<string, { fill: string; stroke: string }> = {
-  HUMAN_APPROVAL:    { fill: '#e3f2fd', stroke: '#1565c0' },
-  SEND_NOTIFICATION: { fill: '#fff3e0', stroke: '#e65100' },
-  EXTERNAL_API_CALL: { fill: '#f3e5f5', stroke: '#6a1b9a' },
-  SET_VARIABLES:     { fill: '#e0f2f1', stroke: '#00695c' },
-  CALL_SUBPROCESS:   { fill: '#e8f5e9', stroke: '#2e7d32' },
-  GROOVY_SCRIPT:     { fill: '#fce4ec', stroke: '#c62828' },
-  MANUAL_STEP:       { fill: '#f3e5f5', stroke: '#4a148c' },
+  HUMAN_APPROVAL:      { fill: '#e3f2fd', stroke: '#1565c0' },
+  SEND_NOTIFICATION:   { fill: '#fff3e0', stroke: '#e65100' },
+  CONNECTOR_OPERATION: { fill: '#f3e5f5', stroke: '#6a1b9a' },
+  SET_VARIABLES:       { fill: '#e0f2f1', stroke: '#00695c' },
+  CALL_SUBPROCESS:     { fill: '#e8f5e9', stroke: '#2e7d32' },
+  GROOVY_SCRIPT:       { fill: '#fce4ec', stroke: '#c62828' },
+  MANUAL_STEP:         { fill: '#f3e5f5', stroke: '#4a148c' },
 }
 
 const DELEGATE_MAP: Record<string, string> = {
   SEND_NOTIFICATION: '${notificationDelegate}',
-  EXTERNAL_API_CALL: '${externalApiCallDelegate}',
   SET_VARIABLES:     '${setVariablesDelegate}',
 }
 // CALL_SUBPROCESS removed — native bpmn:CallActivity needs no delegate
+// CONNECTOR_OPERATION has NO static delegate — transport is resolved when the connector
+// is chosen in ConnectorOperationSection (rest → ${externalApiCallDelegate},
+// database → ${databaseConnectorDelegate}). setActionType() clears the delegate
+// expression so it is never left with a stale value.
 
 const ACTION_TYPES_BY_ELEMENT: Record<string, string[]> = {
   'bpmn:UserTask':         ['', 'HUMAN_APPROVAL'],
-  'bpmn:ServiceTask':      ['', 'EXTERNAL_API_CALL', 'SET_VARIABLES'],
+  'bpmn:ServiceTask':      ['', 'CONNECTOR_OPERATION', 'SET_VARIABLES'],
   'bpmn:SendTask':         ['', 'SEND_NOTIFICATION'],
   'bpmn:ScriptTask':       ['', 'GROOVY_SCRIPT'],
   'bpmn:ManualTask':       ['', 'MANUAL_STEP'],
   'bpmn:CallActivity':     ['', 'CALL_SUBPROCESS'],
   // BusinessRuleTask: action block hidden — native DMN group is the UI
-  'bpmn:Task':             ['', 'HUMAN_APPROVAL', 'SEND_NOTIFICATION', 'EXTERNAL_API_CALL',
+  'bpmn:Task':             ['', 'HUMAN_APPROVAL', 'SEND_NOTIFICATION', 'CONNECTOR_OPERATION',
                              'SET_VARIABLES', 'CALL_SUBPROCESS', 'GROOVY_SCRIPT', 'MANUAL_STEP'],
   // ReceiveTask, SubProcess, all events: not in this map — action block hidden
 }
@@ -680,13 +683,13 @@ function getActionType(element: any): string {
 
 /** Target BPMN element type for each action type (ADR-009). */
 const MORPH_TARGET: Record<string, string> = {
-  HUMAN_APPROVAL:    'bpmn:UserTask',
-  SEND_NOTIFICATION: 'bpmn:SendTask',
-  EXTERNAL_API_CALL: 'bpmn:ServiceTask',
-  SET_VARIABLES:     'bpmn:ServiceTask',
-  CALL_SUBPROCESS:   'bpmn:CallActivity',
-  GROOVY_SCRIPT:     'bpmn:ScriptTask',
-  MANUAL_STEP:       'bpmn:ManualTask',
+  HUMAN_APPROVAL:      'bpmn:UserTask',
+  SEND_NOTIFICATION:   'bpmn:SendTask',
+  CONNECTOR_OPERATION: 'bpmn:ServiceTask',
+  SET_VARIABLES:       'bpmn:ServiceTask',
+  CALL_SUBPROCESS:     'bpmn:CallActivity',
+  GROOVY_SCRIPT:       'bpmn:ScriptTask',
+  MANUAL_STEP:         'bpmn:ManualTask',
 }
 
 export function setActionType(element: any, modeling: any, value: string, injector?: any) {
@@ -705,7 +708,9 @@ export function setActionType(element: any, modeling: any, value: string, inject
 
   modeling.updateProperties(target, { 'flowable:actionType': value || undefined })
 
-  // Set or clear delegateExpression based on DELEGATE_MAP
+  // Set or clear delegateExpression based on DELEGATE_MAP.
+  // CONNECTOR_OPERATION has no static delegate — it is resolved by ConnectorOperationSection
+  // when the user picks a connector. Clear it here so no stale delegate survives the switch.
   const delegate = DELEGATE_MAP[value] ?? undefined
   modeling.updateProperties(target, {
     'flowable:delegateExpression': delegate,
@@ -764,25 +769,8 @@ function buildActionBlockEntries(
   // HUMAN_APPROVAL and SEND_NOTIFICATION are rendered in ServiceTaskPropertiesPanel
   // (React sidebar) for consistent card-based styling — no entries pushed here.
 
-  if (actionType === 'EXTERNAL_API_CALL') {
-    entries.push(
-      textField(element, modeling, translate, debounce, 'ab-url',
-        translate('URL'), 'ab:url', 'https://api.example.com/...'),
-      methodSelectEntry(element, modeling, translate),
-      textField(element, modeling, translate, debounce, 'ab-secretRef',
-        translate('Secret Reference'), 'ab:secretRef', null),
-      textField(element, modeling, translate, debounce, 'ab-responseVariable',
-        translate('Store Response As'), 'ab:responseVariable', 'apiResult'),
-      textField(element, modeling, translate, debounce, 'ab-extractFields',
-        translate('Extract Fields'), 'ab:extractFields', 'varName:$.path.to.field'),
-      textField(element, modeling, translate, debounce, 'ab-maskFields',
-        translate('Mask Fields'), 'ab:maskFields', '$.auth,$.token'),
-      onErrorSelectEntry(element, modeling, translate),
-      textField(element, modeling, translate, debounce, 'ab-sampleResponseJson',
-        translate('Sample Response JSON'), 'ab:sampleResponseJson',
-        translate('{"id": 123, "status": "approved"}')),
-    )
-  }
+  // CONNECTOR_OPERATION fields are rendered exclusively in ConnectorOperationSection
+  // (React sidebar) — no native panel entries needed.
 
   if (actionType === 'CALL_SUBPROCESS') {
     entries.push(
@@ -1041,35 +1029,3 @@ function channelSelectEntry(element: any, modeling: any, translate: (s: string) 
   }
 }
 
-function methodSelectEntry(element: any, modeling: any, translate: (s: string) => string): any {
-  return {
-    id: 'ab-method',
-    element,
-    component: SelectEntry,
-    isEdited: isSelectEntryEdited,
-    label: translate('Method'),
-    getValue: () => element.businessObject.get('ab:method') || 'GET',
-    setValue: (value: string) =>
-      modeling.updateProperties(element, { 'ab:method': value }),
-    getOptions: () =>
-      ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map(m => ({ value: m, label: m })),
-  }
-}
-
-function onErrorSelectEntry(element: any, modeling: any, translate: (s: string) => string): any {
-  return {
-    id: 'ab-onError',
-    element,
-    component: SelectEntry,
-    isEdited: isSelectEntryEdited,
-    label: translate('On Error'),
-    getValue: () => element.businessObject.get('ab:onError') || 'FAIL',
-    setValue: (value: string) =>
-      modeling.updateProperties(element, { 'ab:onError': value }),
-    getOptions: () => [
-      { value: 'FAIL',             label: translate('Fail') },
-      { value: 'CONTINUE',         label: translate('Continue') },
-      { value: 'THROW_BPMN_ERROR', label: translate('Throw BPMN Error') },
-    ],
-  }
-}

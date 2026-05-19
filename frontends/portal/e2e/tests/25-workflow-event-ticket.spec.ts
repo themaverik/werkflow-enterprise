@@ -8,7 +8,7 @@
  *   Start Event (form: event-ticket-form)
  *   → Business Rule Task "Route by Ticket Type" [DMN: ticket-routing, outputVariables]
  *   → Exclusive Gateway "Ticket Route?"
- *       → [approvalRequired == false] → Service Task "Log Booking" [EXTERNAL_API_CALL: mock-api /post]
+ *       → [approvalRequired == false] → Service Task "Log Booking" [CONNECTOR_OPERATION: mock-api /post]
  *                                     → End "Ticket Confirmed"
  *       → [default]                   → User Task "Organiser Review" [DOA_L1,DOA_L2,SUPER_ADMIN]
  *                                     → End "Ticket Decision Made"
