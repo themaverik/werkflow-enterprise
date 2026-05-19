@@ -265,6 +265,43 @@ werkflow:
     expose-management-endpoints: ${EXPOSE_MANAGEMENT_ENDPOINTS:false}
 
   # ----------------------------------------------------------------
+  # EL expression security — parse-time hard limits
+  #
+  # Werkflow evaluates ${...} expressions across many BPMN/DMN sites
+  # (SET_VARIABLES values, sequence-flow conditions, timer cycles, DMN
+  # FEEL inputs, etc.). These limits are enforced by
+  # RestrictedExpressionManager BEFORE an expression is evaluated:
+  # an oversized or pathological expression is rejected at parse time
+  # and never executed. A rejection raises a sanitised error with a
+  # stable ExpressionErrorCode and is recorded in the engine audit log.
+  #
+  # Background: ADR-013 and docs/flowable-7.2/EL-Expression-Security.md
+  # (decision D-EL-8). Defaults are conservative — roughly 50x / 2x / 8x
+  # headroom over the largest expression in the current process
+  # catalogue. Raise them per deployment only if a tenant legitimately
+  # needs larger expressions (e.g. wide DMN decision tables).
+  #
+  # Every key is overridable via the environment variable shown.
+  # ----------------------------------------------------------------
+  el:
+    # Maximum expression text length, in characters. Exact check.
+    # Exceeding it rejects the expression with code EL_DENY_LENGTH.
+    max-length: ${WERKFLOW_EL_MAX_LENGTH:4096}
+
+    # Maximum nesting depth of an expression. Enforced by a conservative
+    # heuristic (deepest parenthesis nesting in the raw text) because the
+    # JUEL parser does not expose its compiled AST — the heuristic may
+    # over-count but never under-counts real nesting. Exceeding it
+    # rejects the expression with code EL_DENY_DEPTH.
+    max-depth: ${WERKFLOW_EL_MAX_DEPTH:8}
+
+    # Maximum number of function calls in a single expression. Heuristic
+    # (counts each '(' preceded by an identifier character); guards
+    # against pathological function-chaining. Exceeding it rejects the
+    # expression with code EL_DENY_FUNCTIONS.
+    max-function-calls: ${WERKFLOW_EL_MAX_FUNCTION_CALLS:16}
+
+  # ----------------------------------------------------------------
   # Platform role hierarchy
   # Each role lists only its OWN permissions. Inherited permissions are
   # resolved transitively at runtime via role-hierarchy below.
