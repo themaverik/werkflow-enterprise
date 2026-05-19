@@ -264,6 +264,12 @@ werkflow:
     # Set to true only in development — opens /actuator/** and /swagger-ui/** without auth
     expose-management-endpoints: ${EXPOSE_MANAGEMENT_ENDPOINTS:false}
 
+  # Parse-time hard limits for EL (${...}) expression evaluation — see EL-Expression-Security audit (D-EL-8).
+  el:
+    max-length: ${WERKFLOW_EL_MAX_LENGTH:4096}
+    max-depth: ${WERKFLOW_EL_MAX_DEPTH:8}
+    max-function-calls: ${WERKFLOW_EL_MAX_FUNCTION_CALLS:16}
+
   # ----------------------------------------------------------------
   # Platform role hierarchy
   # Each role lists only its OWN permissions. Inherited permissions are
