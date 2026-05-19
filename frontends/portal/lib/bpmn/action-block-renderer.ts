@@ -8,12 +8,12 @@ import BaseRenderer from 'diagram-js/lib/draw/BaseRenderer'
 import { is } from 'bpmn-js/lib/util/ModelUtil'
 
 const ACTION_COLOURS: Record<string, { fill: string; stroke: string; label: string }> = {
-  HUMAN_APPROVAL:    { fill: '#e3f2fd', stroke: '#1565c0', label: 'APPROVAL' },
-  SEND_NOTIFICATION: { fill: '#fff3e0', stroke: '#e65100', label: 'NOTIFY' },
-  EXTERNAL_API_CALL: { fill: '#f3e5f5', stroke: '#6a1b9a', label: 'API' },
-  CALL_SUBPROCESS:   { fill: '#e8f5e9', stroke: '#2e7d32', label: 'SUB' },
-  GROOVY_SCRIPT:     { fill: '#fce4ec', stroke: '#c62828', label: 'SCRIPT' },
-  MANUAL_STEP:       { fill: '#f3e5f5', stroke: '#4a148c', label: 'MANUAL' },
+  HUMAN_APPROVAL:      { fill: '#e3f2fd', stroke: '#1565c0', label: 'APPROVAL' },
+  SEND_NOTIFICATION:   { fill: '#fff3e0', stroke: '#e65100', label: 'NOTIFY' },
+  CONNECTOR_OPERATION: { fill: '#f3e5f5', stroke: '#6a1b9a', label: 'CONNECTOR' },
+  CALL_SUBPROCESS:     { fill: '#e8f5e9', stroke: '#2e7d32', label: 'SUB' },
+  GROOVY_SCRIPT:       { fill: '#fce4ec', stroke: '#c62828', label: 'SCRIPT' },
+  MANUAL_STEP:         { fill: '#f3e5f5', stroke: '#4a148c', label: 'MANUAL' },
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg'

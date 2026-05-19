@@ -105,3 +105,14 @@ export async function testDatasourceConnection(
   )
   return res.data
 }
+
+/**
+ * List all data sources for the current tenant using the shared adminApiClient
+ * interceptor — no manual token required.
+ *
+ * Used by the CONNECTOR_OPERATION connector picker to populate the Data Sources group.
+ */
+export async function listDatasourcesCatalog(): Promise<TenantDatasourceResponse[]> {
+  const res = await adminApiClient.get('/api/v1/config/datasources')
+  return Array.isArray(res.data) ? res.data : []
+}
