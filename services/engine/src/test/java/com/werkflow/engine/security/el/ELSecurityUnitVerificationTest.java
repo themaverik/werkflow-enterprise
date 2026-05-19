@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  * <p><b>P1-11 — Bundle scoping (structural contract):</b> Verifies that
  * {@link RestrictedExpressionManager#compileWithFunctions} routes through the correct
  * pre-built sub-manager and enforces the bundle registry contract. Full function
- * evaluation (which proves JUEL resolution of {@code dateUtil.now()}) requires the
+ * evaluation (which proves JUEL resolution of {@code dateUtil:now()}) requires the
  * Spring-managed process engine context and is covered by
  * {@link ELSecurityVerificationSuiteTest} (P1-11 integration variant).
  */
@@ -149,11 +149,11 @@ class ELSecurityUnitVerificationTest {
         @DisplayName("compileWithFunctions with DATE bundle returns a non-null Expression")
         void compileWithFunctions_dateBundleValidExpression_returnsExpression() {
             // Act
-            Expression expression = manager.compileWithFunctions("${dateUtil.now()}", FunctionRegistry.DATE);
+            Expression expression = manager.compileWithFunctions("${dateUtil:now()}", FunctionRegistry.DATE);
 
             // Assert
             assertThat(expression).isNotNull();
-            assertThat(expression.getExpressionText()).isEqualTo("${dateUtil.now()}");
+            assertThat(expression.getExpressionText()).isEqualTo("${dateUtil:now()}");
         }
 
         /**
@@ -165,7 +165,7 @@ class ELSecurityUnitVerificationTest {
         void compileWithFunctions_dateStringBundle_returnsExpression() {
             // Act
             Expression expression = manager.compileWithFunctions(
-                    "${stringUtil.upper('hello')}", FunctionRegistry.DATE_STRING);
+                    "${stringUtil:upper('hello')}", FunctionRegistry.DATE_STRING);
 
             // Assert
             assertThat(expression).isNotNull();
@@ -188,7 +188,7 @@ class ELSecurityUnitVerificationTest {
                     new java.util.ArrayList<>(FunctionRegistry.DATE);
 
             // Act + Assert
-            assertThatThrownBy(() -> manager.compileWithFunctions("${dateUtil.now()}", unknownBundle))
+            assertThatThrownBy(() -> manager.compileWithFunctions("${dateUtil:now()}", unknownBundle))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Unknown function bundle");
         }
