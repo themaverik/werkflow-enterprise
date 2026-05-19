@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Hardened {@link ProcessExpressionManager} that enforces parse-time expression limits and
@@ -79,12 +80,21 @@ public class RestrictedExpressionManager extends ProcessExpressionManager {
      * <p>Installs {@link SecurityELResolver} into this manager's pre-default resolver list
      * and builds one leaf sub-manager per {@link FunctionRegistry} bundle.
      *
+     * <p>{@code beans} must be the same {@code SpringBeanFactoryProxyMap} that
+     * {@code SpringProcessEngineConfiguration.initBeans()} would install — ensuring
+     * {@code ${delegateBean}} EL lookups resolve Spring beans identically to the default
+     * {@code ProcessExpressionManager}. Flowable's {@code initExpressionManager()} does
+     * NOT inject the beans map into a user-supplied manager; the caller must provide it.
+     *
      * @param limits      parse-time hard limits; must not be null
      * @param auditLogger audit logger for denial events; must not be null
+     * @param beans       Spring bean factory proxy map from the engine's ApplicationContext;
+     *                    must not be null
      */
     public RestrictedExpressionManager(ExpressionLimitsConfig limits,
-                                       ExpressionAuditLogger auditLogger) {
-        super(); // ProcessExpressionManager no-arg → VariableScopeExpressionManager(null beans)
+                                       ExpressionAuditLogger auditLogger,
+                                       Map<Object, Object> beans) {
+        super(Objects.requireNonNull(beans, "beans must not be null"));
         this.limits = limits;
         this.auditLogger = auditLogger;
         addPreDefaultResolver(new SecurityELResolver(auditLogger));
@@ -92,11 +102,11 @@ public class RestrictedExpressionManager extends ProcessExpressionManager {
         Map<List<FlowableFunctionDelegate>, RestrictedExpressionManager> map =
                 new IdentityHashMap<>(BUNDLE_COUNT);
         map.put(FunctionRegistry.DATE,
-                new RestrictedExpressionManager(limits, auditLogger, FunctionRegistry.DATE));
+                new RestrictedExpressionManager(limits, auditLogger, beans, FunctionRegistry.DATE));
         map.put(FunctionRegistry.DATE_STRING,
-                new RestrictedExpressionManager(limits, auditLogger, FunctionRegistry.DATE_STRING));
+                new RestrictedExpressionManager(limits, auditLogger, beans, FunctionRegistry.DATE_STRING));
         map.put(FunctionRegistry.DATE_STRING_MATH,
-                new RestrictedExpressionManager(limits, auditLogger, FunctionRegistry.DATE_STRING_MATH));
+                new RestrictedExpressionManager(limits, auditLogger, beans, FunctionRegistry.DATE_STRING_MATH));
         this.subManagers = Collections.unmodifiableMap(map);
     }
 
@@ -106,14 +116,19 @@ public class RestrictedExpressionManager extends ProcessExpressionManager {
      * <p>Installs {@link SecurityELResolver} and registers the given function bundle.
      * Does not build sub-managers to prevent infinite recursion.
      *
+     * <p>Receives the same {@code beans} map as the ROOT so that function-scoped
+     * {@code compileWithFunctions} expressions can resolve Spring beans.
+     *
      * @param limits      parse-time hard limits
      * @param auditLogger audit logger for denial events
+     * @param beans       Spring bean factory proxy map; forwarded from ROOT
      * @param bundle      the function bundle to register via {@code setFunctionDelegates}
      */
     private RestrictedExpressionManager(ExpressionLimitsConfig limits,
                                         ExpressionAuditLogger auditLogger,
+                                        Map<Object, Object> beans,
                                         List<FlowableFunctionDelegate> bundle) {
-        super();
+        super(beans);
         this.limits = limits;
         this.auditLogger = auditLogger;
         this.subManagers = null; // leaf — no sub-managers
