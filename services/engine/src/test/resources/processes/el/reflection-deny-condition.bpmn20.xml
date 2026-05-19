@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://werkflow.com/bpmn/test/el">
+
+  <!--
+    Minimal fixture for P1-10: a two-path exclusive gateway whose "deny" branch
+    carries a reflection-attempt condition: ${execution.getEngineServices()}.
+    When the engine evaluates this condition, SecurityELResolver.invoke() fires
+    on the DelegateExecution base object and must throw
+    WerkflowExpressionEvaluationException(EL_DENY_REFLECTION).
+
+    The fixture has no service tasks — it reaches a UserTask on the safe branch
+    so the process parks cleanly when the reflection branch is not taken.
+    The test starts the instance WITHOUT the flag, forcing the engine to evaluate
+    all outgoing conditions on the gateway; the reflection branch fires first
+    (it is listed first in the XML) and must blow up before the safe branch is tried.
+  -->
+  <process id="el-reflection-deny-condition" name="EL Reflection Deny Condition" isExecutable="true">
+
+    <startEvent id="start" name="Start"/>
+
+    <exclusiveGateway id="gateway" name="Reflection Deny Gateway"/>
+
+    <!-- Branch 1: reflection attempt — MUST be denied -->
+    <sequenceFlow id="flowDeny" sourceRef="gateway" targetRef="endDenied">
+      <conditionExpression xsi:type="tFormalExpression">${execution.getEngineServices() != null}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- Branch 2: safe default — allows the test to start cleanly when running the safe path -->
+    <sequenceFlow id="flowSafe" sourceRef="gateway" targetRef="waitTask">
+      <conditionExpression xsi:type="tFormalExpression">${triggerSafePath == true}</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="waitTask" name="Wait Task"/>
+    <endEvent id="endDenied" name="End Denied"/>
+
+    <sequenceFlow id="flow0" sourceRef="start" targetRef="gateway"/>
+
+  </process>
+</definitions>
