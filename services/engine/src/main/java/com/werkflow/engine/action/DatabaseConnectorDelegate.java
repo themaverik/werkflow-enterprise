@@ -13,9 +13,7 @@ import com.werkflow.engine.client.AdminServiceClient;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.micrometer.core.instrument.MeterRegistry;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.springframework.stereotype.Component;
 
@@ -49,34 +47,6 @@ public class DatabaseConnectorDelegate extends ConnectorDelegateBase {
     private final NamedQueryExecutor queryExecutor;
     private final KeysetPaginator keysetPaginator;
 
-    // -------------------------------------------------------------------------
-    // BPMN expression fields (set by Flowable from <flowable:field> elements)
-    // -------------------------------------------------------------------------
-
-    /** Connector key matching a registered ConnectorDefinition with transport.type=database. */
-    @Setter private Expression connector;
-
-    /** Operation ID declared in the connector definition's operations array. */
-    @Setter private Expression operationId;
-
-    /**
-     * JSON object expression mapping parameter names to values.
-     * Example: {@code {"departmentCode": "${deptCode}", "limit": 50}}
-     */
-    @Setter private Expression queryParams;
-
-    /** Result mode override: SINGLE, LIST, or PAGINATED. Falls back to the query spec's resultMode. */
-    @Setter private Expression resultMode;
-
-    /** Keyset cursor column name for PAGINATED mode (e.g. "id"). */
-    @Setter private Expression cursorParam;
-
-    /** Initial cursor value for PAGINATED mode; null for the first page. */
-    @Setter private Expression cursorValue;
-
-    /** Page size for PAGINATED mode; falls back to query spec's rowLimit or 100. */
-    @Setter private Expression pageSize;
-
     public DatabaseConnectorDelegate(ResponseMasker responseMasker,
                                      SecretsResolver secretsResolver,
                                      ProcessAuditLogRepository auditLogRepository,
@@ -99,21 +69,21 @@ public class DatabaseConnectorDelegate extends ConnectorDelegateBase {
 
     @Override
     public void execute(DelegateExecution execution) {
-        String onErrorMode = getString(onError, execution, "FAIL");
-        String responseVar = getString(responseVariable, execution, "response");
+        String onErrorMode = getFieldString(execution, "onError", "FAIL");
+        String responseVar = getFieldString(execution, "responseVariable", "response");
 
         String connectorKey = null;
         String opId = null;
 
         try {
-            connectorKey = getString(connector, execution, null);
+            connectorKey = getFieldString(execution, "connector", null);
             if (connectorKey == null || connectorKey.isBlank()) {
                 throw new IllegalArgumentException(
                     "databaseConnectorDelegate: 'connector' field is required on task '"
                     + execution.getCurrentActivityId() + "'");
             }
 
-            opId = getString(operationId, execution, null);
+            opId = getFieldString(execution, "operationId", null);
             if (opId == null || opId.isBlank()) {
                 throw new IllegalArgumentException(
                     "databaseConnectorDelegate: 'operationId' field is required on task '"
@@ -198,13 +168,13 @@ public class DatabaseConnectorDelegate extends ConnectorDelegateBase {
                 yield MAPPER.writeValueAsString(row);
             }
             case "PAGINATED" -> {
-                String cursorCol = getString(cursorParam, execution, "id");
-                Object initialCursor = parseCursorValue(getString(cursorValue, execution, null));
-                int pgSize = parseIntExpression(getString(pageSize, execution, null), rowLimit);
+                String cursorCol = getFieldString(execution, "cursorParam", "id");
+                Object initialCursor = parseCursorValue(getFieldString(execution, "cursorValue", null));
+                int pgSize = parseIntExpression(getFieldString(execution, "pageSize", null), rowLimit);
                 PageResult result = keysetPaginator.fetchAll(
                     ds, sql, params, cursorCol, initialCursor, pgSize, timeoutSecs, readOnly);
                 // Store next cursor as a separate variable for the caller to chain subsequent pages
-                execution.setVariable(getString(responseVariable, execution, "response") + "NextCursor",
+                execution.setVariable(getFieldString(execution, "responseVariable", "response") + "NextCursor",
                     result.nextCursor());
                 yield MAPPER.writeValueAsString(result.rows());
             }
@@ -258,7 +228,7 @@ public class DatabaseConnectorDelegate extends ConnectorDelegateBase {
     }
 
     private Map<String, Object> resolveQueryParams(DelegateExecution execution) {
-        String paramsJson = getString(queryParams, execution, null);
+        String paramsJson = getFieldString(execution, "queryParams", null);
         if (paramsJson == null || paramsJson.isBlank()) return Map.of();
         try {
             return MAPPER.readValue(paramsJson, MAP_TYPE);
@@ -269,7 +239,7 @@ public class DatabaseConnectorDelegate extends ConnectorDelegateBase {
     }
 
     private String resolveResultMode(DelegateExecution execution, String specResultMode) {
-        String expressionMode = getString(resultMode, execution, null);
+        String expressionMode = getFieldString(execution, "resultMode", null);
         if (expressionMode != null && !expressionMode.isBlank()) return expressionMode;
         // Map connector spec result modes to our execution modes
         return switch (specResultMode.toLowerCase()) {
