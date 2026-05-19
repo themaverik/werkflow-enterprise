@@ -246,35 +246,37 @@ class ELSecurityVerificationSuiteTest extends IntegrationTestBase {
     class P1_11_FunctionBundleScoping {
 
         /**
-         * {@link FunctionRegistry#DATE} bundle includes {@code dateUtil.now}.
-         * Compiling and evaluating {@code ${dateUtil.now()}} through the DATE sub-manager
-         * must succeed and return a non-null value.
+         * {@link FunctionRegistry#DATE} bundle includes {@code dateUtil:now}.
+         * Compiling and evaluating {@code ${dateUtil:now()}} through the DATE sub-manager
+         * must succeed and return a non-null value. Flowable function delegates are
+         * invoked with the {@code prefix:localName(...)} (colon) syntax — a dot would be
+         * parsed by JUEL as a method call on a variable, not a function call.
          */
         @Test
-        @DisplayName("compileWithFunctions with DATE bundle accepts dateUtil.now() and evaluates successfully")
+        @DisplayName("compileWithFunctions with DATE bundle accepts dateUtil:now() and evaluates successfully")
         void compileWithFunctions_dateBundleDateUtilNow_compilesAndEvaluates() {
             // Arrange
             RestrictedExpressionManager manager = restrictedExpressionManager();
 
             // Act
-            Expression expression = manager.compileWithFunctions("${dateUtil.now()}", FunctionRegistry.DATE);
+            Expression expression = manager.compileWithFunctions("${dateUtil:now()}", FunctionRegistry.DATE);
             Object result = expression.getValue(emptyVariables());
 
-            // Assert — dateUtil.now() returns an OffsetDateTime; the result must be non-null
+            // Assert — dateUtil:now() returns an OffsetDateTime; the result must be non-null
             assertThat(result).isNotNull();
         }
 
         /**
-         * {@link FunctionRegistry#DATE} bundle does NOT include {@code stringUtil.*}.
-         * Compiling {@code ${stringUtil.upper('x')}} through the DATE sub-manager must
+         * {@link FunctionRegistry#DATE} bundle does NOT include {@code stringUtil:*}.
+         * Compiling {@code ${stringUtil:upper('x')}} through the DATE sub-manager must
          * fail — the function is not registered in that bundle so either the parse step
          * raises a WerkflowExpressionEvaluationException, or evaluation raises one.
          *
          * <p>Both outcomes are acceptable; the test asserts that no successful result is
-         * returned from {@code stringUtil.upper} when the DATE bundle is active.
+         * returned from {@code stringUtil:upper} when the DATE bundle is active.
          */
         @Test
-        @DisplayName("compileWithFunctions with DATE bundle rejects stringUtil.upper() as unknown function")
+        @DisplayName("compileWithFunctions with DATE bundle rejects stringUtil:upper() as unknown function")
         void compileWithFunctions_dateBundleStringUtilUpper_isRejected() {
             // Arrange
             RestrictedExpressionManager manager = restrictedExpressionManager();
@@ -282,7 +284,7 @@ class ELSecurityVerificationSuiteTest extends IntegrationTestBase {
             // Act — compile then attempt evaluation; either step must throw
             Throwable thrown = catchThrowable(() -> {
                 Expression expression = manager.compileWithFunctions(
-                        "${stringUtil.upper('x')}", FunctionRegistry.DATE);
+                        "${stringUtil:upper('x')}", FunctionRegistry.DATE);
                 // If compile succeeded, force evaluation — the function is absent so it will fail
                 expression.getValue(emptyVariables());
             });
@@ -294,19 +296,19 @@ class ELSecurityVerificationSuiteTest extends IntegrationTestBase {
         }
 
         /**
-         * Confirms that the same manager allows {@code stringUtil.upper()} when the
+         * Confirms that the same manager allows {@code stringUtil:upper()} when the
          * {@link FunctionRegistry#DATE_STRING} bundle is used — proving the scoping is
          * per-bundle, not a blanket block.
          */
         @Test
-        @DisplayName("compileWithFunctions with DATE_STRING bundle accepts stringUtil.upper() successfully")
+        @DisplayName("compileWithFunctions with DATE_STRING bundle accepts stringUtil:upper() successfully")
         void compileWithFunctions_dateStringBundleStringUtilUpper_succeeds() {
             // Arrange
             RestrictedExpressionManager manager = restrictedExpressionManager();
 
             // Act
             Expression expression = manager.compileWithFunctions(
-                    "${stringUtil.upper('hello')}", FunctionRegistry.DATE_STRING);
+                    "${stringUtil:upper('hello')}", FunctionRegistry.DATE_STRING);
             Object result = expression.getValue(emptyVariables());
 
             // Assert
