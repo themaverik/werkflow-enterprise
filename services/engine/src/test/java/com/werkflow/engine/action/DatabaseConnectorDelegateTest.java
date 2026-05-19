@@ -14,11 +14,13 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
+import org.flowable.engine.delegate.DelegateHelper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import javax.sql.DataSource;
@@ -34,6 +36,10 @@ import static org.mockito.Mockito.*;
  * - Happy path: LIST result mode stored as JSON variable
  * - DB error in CONTINUE mode: stores success=false + error message
  * - Missing connector key: throws immediately
+ *
+ * <p>Fields are driven via {@code MockedStatic<DelegateHelper>} rather than
+ * {@code @Setter} setters — matching the thread-safe, per-execution field
+ * resolution introduced by the F1 fix (field-injection race).
  */
 @ExtendWith(MockitoExtension.class)
 class DatabaseConnectorDelegateTest {
@@ -89,11 +95,6 @@ class DatabaseConnectorDelegateTest {
             responseMasker, secretsResolver, auditLogRepository, meterRegistry,
             adminServiceClient, datasourceRegistry, queryExecutor, keysetPaginator);
 
-        delegate.setConnector(connectorExpr);
-        delegate.setOperationId(operationIdExpr);
-        delegate.setResponseVariable(responseVarExpr);
-        delegate.setOnError(onErrorExpr);
-
         lenient().when(execution.getProcessInstanceId()).thenReturn("proc-1");
         lenient().when(execution.getId()).thenReturn("exec-1");
         lenient().when(execution.getProcessDefinitionId()).thenReturn("myProcess:1:abc");
@@ -104,104 +105,136 @@ class DatabaseConnectorDelegateTest {
         lenient().when(responseMasker.mask(any(), any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
+    /**
+     * Stubs {@link DelegateHelper#getFieldExpression(DelegateExecution, String)} for the
+     * named fields used by the base class and this delegate. Any field not listed returns null
+     * (which causes {@code getFieldString} to return its default value — matching BPMN behaviour
+     * when a {@code <flowable:field>} element is absent).
+     */
+    private void stubFields(MockedStatic<DelegateHelper> dh,
+                            String connectorVal,
+                            String operationIdVal,
+                            String responseVarVal,
+                            String onErrorVal) {
+        // Base-class fields
+        stubField(dh, "onError",           onErrorVal,      onErrorExpr);
+        stubField(dh, "responseVariable",  responseVarVal,  responseVarExpr);
+        // Absent base fields — null expression → default value
+        lenient().when(DelegateHelper.getFieldExpression(execution, "maskFields")).thenReturn(null);
+        lenient().when(DelegateHelper.getFieldExpression(execution, "extractFields")).thenReturn(null);
+        lenient().when(DelegateHelper.getFieldExpression(execution, "storeRawResponse")).thenReturn(null);
+        lenient().when(DelegateHelper.getFieldExpression(execution, "useLocalVariables")).thenReturn(null);
+        // Delegate-specific fields
+        stubField(dh, "connector",    connectorVal,    connectorExpr);
+        stubField(dh, "operationId",  operationIdVal,  operationIdExpr);
+        lenient().when(DelegateHelper.getFieldExpression(execution, "queryParams")).thenReturn(null);
+        lenient().when(DelegateHelper.getFieldExpression(execution, "resultMode")).thenReturn(null);
+    }
+
+    private void stubField(MockedStatic<DelegateHelper> dh, String name, String value, Expression expr) {
+        if (value != null) {
+            lenient().when(expr.getValue(execution)).thenReturn(value);
+            lenient().when(DelegateHelper.getFieldExpression(execution, name)).thenReturn(expr);
+        } else {
+            lenient().when(DelegateHelper.getFieldExpression(execution, name)).thenReturn(null);
+        }
+    }
+
     @Test
     void execute_happyPath_storesJsonArrayResult() throws Exception {
-        // Arrange
-        when(connectorExpr.getValue(execution)).thenReturn("employee-db");
-        when(operationIdExpr.getValue(execution)).thenReturn("listEmployees");
-        when(responseVarExpr.getValue(execution)).thenReturn("employees");
-        when(onErrorExpr.getValue(execution)).thenReturn("FAIL");
+        try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
+            // Arrange
+            stubFields(dh, "employee-db", "listEmployees", "employees", "FAIL");
 
-        when(adminServiceClient.getConnectorDefinitionJson("tenant-a", "employee-db"))
-            .thenReturn(SAMPLE_DEFINITION);
+            when(adminServiceClient.getConnectorDefinitionJson("tenant-a", "employee-db"))
+                .thenReturn(SAMPLE_DEFINITION);
 
-        DataSource mockDs = mock(DataSource.class);
-        when(datasourceRegistry.resolve("tenant-a", "demo-h2")).thenReturn(mockDs);
+            DataSource mockDs = mock(DataSource.class);
+            when(datasourceRegistry.resolve("tenant-a", "demo-h2")).thenReturn(mockDs);
 
-        CircuitBreaker openCb = CircuitBreakerRegistry.of(CircuitBreakerConfig.ofDefaults())
-            .circuitBreaker("test");
-        when(datasourceRegistry.circuitBreaker("tenant-a", "employee-db")).thenReturn(openCb);
+            CircuitBreaker openCb = CircuitBreakerRegistry.of(CircuitBreakerConfig.ofDefaults())
+                .circuitBreaker("test");
+            when(datasourceRegistry.circuitBreaker("tenant-a", "employee-db")).thenReturn(openCb);
 
-        List<Map<String, Object>> rows = List.of(
-            Map.of("id", 1L, "name", "Alice"),
-            Map.of("id", 2L, "name", "Bob")
-        );
-        when(queryExecutor.executeList(eq(mockDs), anyString(), any(), anyInt(), anyInt(), eq(true)))
-            .thenReturn(rows);
+            List<Map<String, Object>> rows = List.of(
+                Map.of("id", 1L, "name", "Alice"),
+                Map.of("id", 2L, "name", "Bob")
+            );
+            when(queryExecutor.executeList(eq(mockDs), anyString(), any(), anyInt(), anyInt(), eq(true)))
+                .thenReturn(rows);
 
-        // Act
-        delegate.execute(execution);
+            // Act
+            delegate.execute(execution);
 
-        // Assert — response variable should be a JSON array string
-        ArgumentCaptor<String> varValueCaptor = ArgumentCaptor.forClass(String.class);
-        verify(execution).setVariable(eq("employees"), varValueCaptor.capture());
-        String stored = varValueCaptor.getValue();
-        assertThat(stored).contains("Alice").contains("Bob");
+            // Assert — response variable should be a JSON array string
+            ArgumentCaptor<String> varValueCaptor = ArgumentCaptor.forClass(String.class);
+            verify(execution).setVariable(eq("employees"), varValueCaptor.capture());
+            String stored = varValueCaptor.getValue();
+            assertThat(stored).contains("Alice").contains("Bob");
+        }
     }
 
     @Test
     void execute_dbError_continueMode_storesSuccessFalse() throws Exception {
-        // Arrange
-        when(connectorExpr.getValue(execution)).thenReturn("employee-db");
-        when(operationIdExpr.getValue(execution)).thenReturn("listEmployees");
-        when(responseVarExpr.getValue(execution)).thenReturn("employees");
-        when(onErrorExpr.getValue(execution)).thenReturn("CONTINUE");
+        try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
+            // Arrange
+            stubFields(dh, "employee-db", "listEmployees", "employees", "CONTINUE");
 
-        when(adminServiceClient.getConnectorDefinitionJson("tenant-a", "employee-db"))
-            .thenReturn(SAMPLE_DEFINITION);
+            when(adminServiceClient.getConnectorDefinitionJson("tenant-a", "employee-db"))
+                .thenReturn(SAMPLE_DEFINITION);
 
-        DataSource mockDs = mock(DataSource.class);
-        when(datasourceRegistry.resolve("tenant-a", "demo-h2")).thenReturn(mockDs);
+            DataSource mockDs = mock(DataSource.class);
+            when(datasourceRegistry.resolve("tenant-a", "demo-h2")).thenReturn(mockDs);
 
-        CircuitBreaker openCb = CircuitBreakerRegistry.of(CircuitBreakerConfig.ofDefaults())
-            .circuitBreaker("test2");
-        when(datasourceRegistry.circuitBreaker("tenant-a", "employee-db")).thenReturn(openCb);
+            CircuitBreaker openCb = CircuitBreakerRegistry.of(CircuitBreakerConfig.ofDefaults())
+                .circuitBreaker("test2");
+            when(datasourceRegistry.circuitBreaker("tenant-a", "employee-db")).thenReturn(openCb);
 
-        when(queryExecutor.executeList(any(), any(), any(), anyInt(), anyInt(), anyBoolean()))
-            .thenThrow(new RuntimeException("Connection refused"));
+            when(queryExecutor.executeList(any(), any(), any(), anyInt(), anyInt(), anyBoolean()))
+                .thenThrow(new RuntimeException("Connection refused"));
 
-        // Act — should not throw
-        assertThatNoException().isThrownBy(() -> delegate.execute(execution));
+            // Act — should not throw
+            assertThatNoException().isThrownBy(() -> delegate.execute(execution));
 
-        // Assert
-        verify(execution).setVariable(eq("employeesSuccess"), eq(false));
-        verify(execution).setVariable(eq("employeesError"), contains("Connection refused"));
+            // Assert
+            verify(execution).setVariable(eq("employeesSuccess"), eq(false));
+            verify(execution).setVariable(eq("employeesError"), contains("Connection refused"));
+        }
     }
 
     @Test
     void execute_missingConnector_throwsImmediately() {
-        when(connectorExpr.getValue(execution)).thenReturn(null);
-        when(operationIdExpr.getValue(execution)).thenReturn("listEmployees");
-        when(onErrorExpr.getValue(execution)).thenReturn("FAIL");
-        when(responseVarExpr.getValue(execution)).thenReturn("response");
+        try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
+            stubFields(dh, null, "listEmployees", "response", "FAIL");
 
-        assertThatThrownBy(() -> delegate.execute(execution))
-            .isInstanceOf(RuntimeException.class)
-            .hasMessageContaining("connector");
+            assertThatThrownBy(() -> delegate.execute(execution))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("connector");
+        }
     }
 
     @Test
     void execute_missingOperationId_throwsImmediately() {
-        when(connectorExpr.getValue(execution)).thenReturn("employee-db");
-        when(operationIdExpr.getValue(execution)).thenReturn("  ");
-        when(onErrorExpr.getValue(execution)).thenReturn("FAIL");
-        when(responseVarExpr.getValue(execution)).thenReturn("response");
+        try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
+            stubFields(dh, "employee-db", "  ", "response", "FAIL");
+            // "  " is non-null so expr is stubbed but evaluates to blank
+            when(operationIdExpr.getValue(execution)).thenReturn("  ");
 
-        assertThatThrownBy(() -> delegate.execute(execution))
-            .isInstanceOf(RuntimeException.class)
-            .hasMessageContaining("operationId");
+            assertThatThrownBy(() -> delegate.execute(execution))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("operationId");
+        }
     }
 
     @Test
     void execute_missingTenantId_throwsImmediately() {
-        when(connectorExpr.getValue(execution)).thenReturn("employee-db");
-        when(operationIdExpr.getValue(execution)).thenReturn("listEmployees");
-        when(onErrorExpr.getValue(execution)).thenReturn("FAIL");
-        when(responseVarExpr.getValue(execution)).thenReturn("response");
-        when(execution.getTenantId()).thenReturn(null);
+        try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
+            stubFields(dh, "employee-db", "listEmployees", "response", "FAIL");
+            when(execution.getTenantId()).thenReturn(null);
 
-        assertThatThrownBy(() -> delegate.execute(execution))
-            .isInstanceOf(RuntimeException.class)
-            .hasMessageContaining("tenantId");
+            assertThatThrownBy(() -> delegate.execute(execution))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("tenantId");
+        }
     }
 }
