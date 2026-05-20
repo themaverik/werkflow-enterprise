@@ -100,9 +100,11 @@ public class DmnDecisionController {
     @PreAuthorize("hasPermission(null, 'WORKFLOW:MANAGE')")
     @Operation(summary = "Delete a decision deployment", description = "Removes the deployment and all decision table versions it contains")
     public ResponseEntity<Void> deleteDeployment(
-            @Parameter(description = "Flowable deployment ID") @PathVariable String deploymentId
+            @Parameter(description = "Flowable deployment ID") @PathVariable String deploymentId,
+            Authentication authentication
     ) {
-        dmnDecisionService.deleteDeployment(deploymentId);
+        String tenantId = extractTenantId(authentication);
+        dmnDecisionService.deleteDeployment(deploymentId, tenantId);
         return ResponseEntity.noContent().build();
     }
 

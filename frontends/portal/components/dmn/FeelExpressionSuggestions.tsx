@@ -7,8 +7,7 @@ import { PssPill, SuggestList, SuggestGroup, SuggestItem, Note } from '@/compone
 
 /**
  * FEEL expression suggestion panel for the DMN designer.
- * Displays configVars (DOA thresholds) for cell autocomplete and custodyVars
- * expressions for output cell suggestions.
+ * Displays configVars (DOA thresholds) for cell autocomplete.
  * Shown alongside the DMN editor in the "Suggest" tab.
  * Styled to match the DMN Editor design spec.
  */
@@ -33,7 +32,6 @@ export function FeelExpressionSuggestions() {
   }
 
   const noConfigVars = !catalog || catalog.configVars.monetary.length === 0
-  const noCustodyVars = !catalog || catalog.custodyVars.groupResolutions.length === 0
 
   const currencyCode = locale?.currencyCode ?? 'INR'
 
@@ -112,62 +110,6 @@ export function FeelExpressionSuggestions() {
           </SuggestList>
         )}
         <PssPill endpoint={`/feel-expressions · ${currencyCode}`} />
-      </div>
-
-      {/* ── Output cell suggestions ── */}
-      <div>
-        <p
-          style={{
-            fontSize: '10px',
-            color: '#6b7e8c',
-            textTransform: 'uppercase',
-            letterSpacing: '0.06em',
-            fontWeight: 700,
-            marginBottom: '6px',
-          }}
-        >
-          When editing <code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px' }}>assignedGroup</code>:
-        </p>
-
-        {noCustodyVars ? (
-          <Note variant="muted">
-            No custody groups configured.
-          </Note>
-        ) : (
-          <SuggestList>
-            <SuggestGroup title="custodyVars (FEEL)">
-              {/* custodyVars[category] — lookup by category */}
-              <SuggestItem
-                label="custodyVars[category]"
-                meta="by category"
-                kind="feel"
-                onClick={() => copy('custodyVars[category]')}
-              />
-              {/* Per-key resolutions from catalog */}
-              {catalog!.custodyVars.groupResolutions.map((res) => (
-                <SuggestItem
-                  key={res.key}
-                  label={copied === res.feelExpression ? 'Copied!' : res.feelExpression}
-                  meta={`→ ${res.candidateGroups.slice(0, 2).join(', ')}${res.candidateGroups.length > 2 ? '…' : ''}`}
-                  kind="feel"
-                  onClick={() => copy(res.feelExpression)}
-                />
-              ))}
-            </SuggestGroup>
-            <SuggestGroup title="Literal groups (business)">
-              {catalog!.custodyVars.lookupExpressions.map((expr) => (
-                <SuggestItem
-                  key={expr}
-                  label={copied === expr ? 'Copied!' : expr}
-                  meta="literal"
-                  kind="business"
-                  onClick={() => copy(expr)}
-                />
-              ))}
-            </SuggestGroup>
-          </SuggestList>
-        )}
-        <PssPill endpoint="/candidate-groups" />
       </div>
 
       {/* ── Informational note ── */}
