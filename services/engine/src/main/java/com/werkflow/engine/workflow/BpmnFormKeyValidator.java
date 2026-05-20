@@ -25,9 +25,8 @@ import java.util.List;
  * Dynamic EL expressions (${...}) are skipped — they are resolved at runtime.
  * UserTasks with no formKey are skipped — formKey is optional in BPMN.
  *
- * Catches the __werkflow_confirm_step__ orphan case (the MANUAL_STEP +
- * confirmation morph per ADR-011 references a synthesised form key that
- * may not be provisioned), plus any typo'd formKey in deployed BPMNs.
+ * Catches typo'd formKey or unprovisioned form references in deployed BPMNs,
+ * preventing silent task-completion failures at runtime.
  *
  * Throws IllegalStateException on startup if any active classpath BPMN
  * references a formKey that does not resolve, preventing silent
