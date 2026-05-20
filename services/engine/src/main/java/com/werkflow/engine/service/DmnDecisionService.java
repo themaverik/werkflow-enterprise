@@ -131,11 +131,20 @@ public class DmnDecisionService {
     }
 
     /**
-     * Deletes a deployment by Flowable deployment ID.
+     * Deletes a deployment by Flowable deployment ID, verifying tenant ownership first.
+     *
+     * @throws ProcessNotFoundException if the deployment does not exist or belongs to a different tenant
      */
     @Transactional
-    public void deleteDeployment(String deploymentId) {
-        log.info("Deleting DMN deployment: {}", deploymentId);
+    public void deleteDeployment(String deploymentId, String tenantId) {
+        DmnDeployment deployment = dmnRepositoryService.createDeploymentQuery()
+                .deploymentId(deploymentId)
+                .singleResult();
+        if (deployment == null || !tenantId.equals(deployment.getTenantId())) {
+            throw new ProcessNotFoundException(
+                    "DMN deployment not found: " + deploymentId + " (tenant: " + tenantId + ")");
+        }
+        log.info("Deleting DMN deployment: {} for tenant: {}", deploymentId, tenantId);
         dmnRepositoryService.deleteDeployment(deploymentId);
     }
 
@@ -169,11 +178,13 @@ public class DmnDecisionService {
     public Page<DmnExecutionDto> getExecutionHistory(String key, String tenantId, Pageable pageable) {
         long total = dmnHistoryService.createHistoricDecisionExecutionQuery()
                 .decisionKey(key)
+                .tenantId(tenantId)
                 .count();
 
         List<DmnHistoricDecisionExecution> executions = dmnHistoryService
                 .createHistoricDecisionExecutionQuery()
                 .decisionKey(key)
+                .tenantId(tenantId)
                 .orderByEndTime().desc()
                 .listPage((int) pageable.getOffset(), pageable.getPageSize());
 

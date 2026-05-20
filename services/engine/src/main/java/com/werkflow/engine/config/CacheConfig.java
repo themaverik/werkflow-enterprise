@@ -27,10 +27,6 @@ public class CacheConfig {
             Caffeine.newBuilder().expireAfterWrite(300, TimeUnit.SECONDS).maximumSize(100).build());
         manager.registerCustomCache("roleMappings",
             Caffeine.newBuilder().expireAfterWrite(300, TimeUnit.SECONDS).maximumSize(100).build());
-        manager.registerCustomCache("configVars",
-            Caffeine.newBuilder().expireAfterWrite(300, TimeUnit.SECONDS).maximumSize(100).build());
-        manager.registerCustomCache("custodyMappings",
-            Caffeine.newBuilder().expireAfterWrite(300, TimeUnit.SECONDS).maximumSize(100).build());
         manager.registerCustomCache("connectorDefs",
             Caffeine.newBuilder().expireAfterWrite(300, TimeUnit.SECONDS).maximumSize(200).build());
         Caffeine<Object, Object> defaultSpec = Caffeine.newBuilder()
