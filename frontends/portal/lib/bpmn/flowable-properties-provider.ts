@@ -22,7 +22,7 @@ import { VariableComboBoxEntry } from '@/components/bpmn/VariableComboBoxEntry'
 import type { CandidateGroupEntry } from '@/lib/platform/types'
 import type { ProcessVariable } from '@/lib/api/dtds'
 import { readFlowableField, writeFlowableField } from './extension-elements'
-import { setManualStepConfirmation } from './action-block-logic'
+
 
 /**
  * Module-level variable for form schema options.
@@ -813,19 +813,6 @@ function buildActionBlockEntries(
         description: translate('Instructions shown to the assignee.'),
         getValue: () => readFlowableField(element, 'stepDescription') || '',
         setValue: (value: string) => writeFlowableField(element, modeling, 'stepDescription', value || ''),
-      },
-      {
-        id: 'ms-confirmationRequired',
-        element,
-        component: SelectEntry,
-        isEdited: isSelectEntryEdited,
-        label: translate('Confirmation Required'),
-        getValue: () => readFlowableField(element, 'confirmationRequired') || 'false',
-        setValue: (value: string) => setManualStepConfirmation(element, injector, value),
-        getOptions: () => [
-          { value: 'false', label: translate('No') },
-          { value: 'true',  label: translate('Yes') },
-        ],
       },
     )
   }
