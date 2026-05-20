@@ -40,20 +40,6 @@ public class AdminServiceClient {
         }
     }
 
-    @Cacheable(value = "configVars", key = "#tenantCode")
-    public Map<String, String> getConfigVars(String tenantCode) {
-        String url = adminServiceUrl + "/api/v1/config/vars/map?tenantCode={tenantCode}";
-        try {
-            ResponseEntity<Map<String, String>> resp = restTemplate.exchange(
-                url, HttpMethod.GET, null,
-                new ParameterizedTypeReference<Map<String, String>>() {}, tenantCode);
-            return resp.getBody() != null ? resp.getBody() : Map.of();
-        } catch (Exception e) {
-            log.warn("AdminServiceClient: failed to fetch config vars for {} — {}", tenantCode, e.getMessage());
-            return Map.of();
-        }
-    }
-
     @Cacheable(value = "roleMappings", key = "#tenantCode")
     public Map<String, List<String>> getRoleMappings(String tenantCode) {
         String url = adminServiceUrl + "/api/v1/config/role-mappings/by-role?tenantCode={tenantCode}";
