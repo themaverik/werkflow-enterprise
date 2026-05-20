@@ -1,5 +1,6 @@
 package com.werkflow.engine.config;
 
+import com.werkflow.engine.config.flowable.WerkflowScriptTaskQuarantineValidator;
 import com.werkflow.engine.config.flowable.WerkflowSendTaskParseHandler;
 import com.werkflow.engine.config.flowable.WerkflowSendTaskValidator;
 import com.werkflow.engine.listener.GlobalTaskNotificationListener;
@@ -94,6 +95,7 @@ public class FlowableConfig {
             processValidator.getValidatorSets().forEach(set -> {
                 set.removeValidator(SendTaskValidator.class);
                 set.addValidator(new WerkflowSendTaskValidator());
+                set.addValidator(new WerkflowScriptTaskQuarantineValidator());
             });
             engineConfiguration.setProcessValidator(processValidator);
         };
