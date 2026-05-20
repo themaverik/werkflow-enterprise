@@ -424,13 +424,11 @@ class FlowablePropertiesProvider {
               component: SelectEntry,
               isEdited: isSelectEntryEdited,
               label: translate('Script Format'),
-              getValue: () => element.businessObject.scriptFormat || 'javascript',
+              getValue: () => element.businessObject.scriptFormat || 'groovy',
               setValue: (value: string) =>
                 modeling.updateProperties(element, { scriptFormat: value }),
               getOptions: () => [
-                { value: 'javascript', label: 'JavaScript' },
-                { value: 'groovy',     label: 'Groovy' },
-                { value: 'juel',       label: 'JUEL' },
+                { value: 'groovy', label: 'Groovy' },
               ],
             },
             {
@@ -632,7 +630,7 @@ export const ACTION_TYPES = [
   { value: 'CONNECTOR_OPERATION', label: 'Connector Operation' },
   { value: 'SET_VARIABLES',       label: 'Set Variables' },
   { value: 'CALL_SUBPROCESS',     label: 'Call Subprocess' },
-  { value: 'GROOVY_SCRIPT',       label: 'Groovy Script (Admin)' },
+  // GROOVY_SCRIPT action type quarantined pending ADR-016 — see docs/flowable-7.2/Script-Task.md D-SC-1 (Option C)
   { value: 'MANUAL_STEP',         label: 'Manual Step' },
 ]
 // DMN route action type removed — zero in-flight usage confirmed 2026-05-16; native BusinessRuleTask replaces it
@@ -643,7 +641,6 @@ const ACTION_COLOURS: Record<string, { fill: string; stroke: string }> = {
   CONNECTOR_OPERATION: { fill: '#f3e5f5', stroke: '#6a1b9a' },
   SET_VARIABLES:       { fill: '#e0f2f1', stroke: '#00695c' },
   CALL_SUBPROCESS:     { fill: '#e8f5e9', stroke: '#2e7d32' },
-  GROOVY_SCRIPT:       { fill: '#fce4ec', stroke: '#c62828' },
   MANUAL_STEP:         { fill: '#f3e5f5', stroke: '#4a148c' },
 }
 
@@ -661,12 +658,12 @@ const ACTION_TYPES_BY_ELEMENT: Record<string, string[]> = {
   'bpmn:UserTask':         ['', 'HUMAN_APPROVAL'],
   'bpmn:ServiceTask':      ['', 'CONNECTOR_OPERATION', 'SET_VARIABLES'],
   'bpmn:SendTask':         ['', 'SEND_NOTIFICATION'],
-  'bpmn:ScriptTask':       ['', 'GROOVY_SCRIPT'],
+  'bpmn:ScriptTask':       [''], // GROOVY_SCRIPT quarantined — see ADR-016
   'bpmn:ManualTask':       ['', 'MANUAL_STEP'],
   'bpmn:CallActivity':     ['', 'CALL_SUBPROCESS'],
   // BusinessRuleTask: action block hidden — native DMN group is the UI
   'bpmn:Task':             ['', 'HUMAN_APPROVAL', 'SEND_NOTIFICATION', 'CONNECTOR_OPERATION',
-                             'SET_VARIABLES', 'CALL_SUBPROCESS', 'GROOVY_SCRIPT', 'MANUAL_STEP'],
+                             'SET_VARIABLES', 'CALL_SUBPROCESS', 'MANUAL_STEP'], // GROOVY_SCRIPT quarantined — see ADR-016
   // ReceiveTask, SubProcess, all events: not in this map — action block hidden
 }
 
@@ -688,7 +685,6 @@ const MORPH_TARGET: Record<string, string> = {
   CONNECTOR_OPERATION: 'bpmn:ServiceTask',
   SET_VARIABLES:       'bpmn:ServiceTask',
   CALL_SUBPROCESS:     'bpmn:CallActivity',
-  GROOVY_SCRIPT:       'bpmn:ScriptTask',
   MANUAL_STEP:         'bpmn:ManualTask',
 }
 
@@ -717,10 +713,7 @@ export function setActionType(element: any, modeling: any, value: string, inject
     delegateExpression: delegate,
   })
 
-  // GROOVY_SCRIPT: ScriptTask requires a scriptFormat attribute
-  if (value === 'GROOVY_SCRIPT') {
-    modeling.updateProperties(target, { scriptFormat: 'groovy' })
-  }
+  // GROOVY_SCRIPT scriptFormat seed removed — action type quarantined (ADR-016)
 
   // SEND_NOTIFICATION: seed channel default so delegate never throws "Required field not set"
   if (value === 'SEND_NOTIFICATION') {
@@ -806,22 +799,7 @@ function buildActionBlockEntries(
     entries.push(...buildVarMappingEntries(element, modeling, translate, debounce, 'flowable:Out', 'Out Mappings (child → parent)'))
   }
 
-  if (actionType === 'GROOVY_SCRIPT') {
-    entries.push(
-      {
-        id: 'gs-script',
-        element,
-        component: TextFieldEntry,
-        isEdited: isTextFieldEntryEdited,
-        debounce,
-        label: translate('Groovy Script'),
-        description: translate('Admin-restricted. execution.setVariable("key", value) to write process variables.'),
-        getValue: () => element.businessObject.get('flowable:script') || '',
-        setValue: (value: string) =>
-          modeling.updateProperties(element, { 'flowable:script': value || undefined }),
-      },
-    )
-  }
+  // GROOVY_SCRIPT action block entries removed — action type quarantined (ADR-016)
 
   if (actionType === 'MANUAL_STEP') {
     entries.push(
