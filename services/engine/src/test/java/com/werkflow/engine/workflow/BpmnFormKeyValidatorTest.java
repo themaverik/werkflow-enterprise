@@ -69,15 +69,15 @@ class BpmnFormKeyValidatorTest {
 
     @Test
     void fails_when_formKey_is_missing_from_formSchemas() {
-        UserTask task = userTask("confirm", "Confirm Step", "__werkflow_confirm_step__");
+        UserTask task = userTask("confirm", "Confirm Step", "missing_form_key");
         when(repositoryService.getBpmnModel("def-1")).thenReturn(modelWith(task));
-        when(formSchemaService.loadFormSchema("__werkflow_confirm_step__"))
-            .thenThrow(new FormNotFoundException("__werkflow_confirm_step__"));
+        when(formSchemaService.loadFormSchema("missing_form_key"))
+            .thenThrow(new FormNotFoundException("missing_form_key"));
 
         assertThatThrownBy(() -> validator.validateDeployedBpmns())
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("BpmnFormKeyValidator: 1 missing formKey reference(s)")
-            .hasMessageContaining("__werkflow_confirm_step__")
+            .hasMessageContaining("missing_form_key")
             .hasMessageContaining("task 'Confirm Step'");
     }
 
