@@ -5,17 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   readFlowableField,
   writeFlowableField,
 } from '@/lib/bpmn/extension-elements'
-import { setManualStepConfirmation } from '@/lib/bpmn/action-block-logic'
 
 interface ManualStepSectionProps {
   element: any
@@ -24,12 +16,10 @@ interface ManualStepSectionProps {
 
 export default function ManualStepSection({ element, modeler }: ManualStepSectionProps) {
   const [msDescription, setMsDescription] = useState('')
-  const [msConfirmation, setMsConfirmation] = useState('false')
 
   useEffect(() => {
     if (!element || !modeler) return
     setMsDescription(readFlowableField(element, 'stepDescription'))
-    setMsConfirmation(readFlowableField(element, 'confirmationRequired') || 'false')
   }, [element, modeler])
 
   return (
@@ -47,24 +37,6 @@ export default function ManualStepSection({ element, modeler }: ManualStepSectio
             onChange={e => setMsDescription(e.target.value)}
             onBlur={() => writeFlowableField(element, modeler.get('modeling'), 'stepDescription', msDescription)}
           />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Confirmation Required</Label>
-          <Select
-            value={msConfirmation}
-            onValueChange={v => {
-              setMsConfirmation(v)
-              setManualStepConfirmation(element, modeler, v)
-            }}
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="false">No</SelectItem>
-              <SelectItem value="true">Yes (morphs to UserTask with confirm form)</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </CardContent>
     </Card>
