@@ -26,6 +26,7 @@
 | Portal     | 4000 | Web portal (Next.js)                                 |
 | Keycloak   | 8090 | Authentication and authorisation                     |
 | PostgreSQL | 5433 | Primary database                                     |
+| OpenBao    | 8200 | Per-tenant credential store (M4.12 Phase B.2)        |
 | Mailpit    | 8025 | Email sandbox (dev only — web UI to inspect sent emails) |
 
 ## Prerequisites
