@@ -13,10 +13,12 @@ import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
+import java.util.Set;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class EmailNotificationChannel implements NotificationChannel {
+public class EmailNotificationChannel implements ServiceAdapter {
 
     private final JavaMailSender mailSender;
 
@@ -27,8 +29,18 @@ public class EmailNotificationChannel implements NotificationChannel {
     private String fromName;
 
     @Override
-    public String getChannelName() {
+    public String name() {
         return "email";
+    }
+
+    @Override
+    public Set<String> supportedOperations() {
+        return Set.of("SEND_NOTIFICATION");
+    }
+
+    @Override
+    public String credentialTypeName() {
+        return "smtp";
     }
 
     @Override
