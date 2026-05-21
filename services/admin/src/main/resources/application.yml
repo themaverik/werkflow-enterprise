@@ -39,6 +39,16 @@ spring:
         jwt:
           issuer-uri: ${KEYCLOAK_URL:http://localhost:8090}/realms/${KEYCLOAK_REALM:werkflow}
           jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://keycloak:8080/realms/${KEYCLOAK_REALM:werkflow}/protocol/openid-connect/certs}
+      client:
+        registration:
+          werkflow-admin:
+            client-id: werkflow-admin
+            client-secret: ${ADMIN_CLIENT_SECRET:admin-dev-secret-do-not-use-in-prod}
+            authorization-grant-type: client_credentials
+            scope: openid
+        provider:
+          werkflow-admin:
+            token-uri: ${KEYCLOAK_TOKEN_URI:http://keycloak:8080/realms/${KEYCLOAK_REALM:werkflow}/protocol/openid-connect/token}
 
 server:
   port: ${SERVER_PORT:8083}
@@ -128,3 +138,15 @@ app:
     "services/**": finance_head,finance_manager,hr_head,hr_manager,hub_manager,hub_request_approver,inventory_manager,it_head,it_manager,leave_request_approver,logistics_manager,procurement_approver,procurement_head,procurement_manager,super_admin
     "admin": super_admin
     "admin/**": super_admin
+
+# ----------------------------------------------------------------
+# Werkflow platform-scoped settings
+# ----------------------------------------------------------------
+werkflow:
+  # OpenBao secrets backend — tenant credential storage (M4.12 B.2).
+  # In Docker the addr resolves to the in-network openbao service. For local
+  # non-Docker runs, point at the OpenBao you started yourself.
+  # The admin-service token has read+write+delete on secret/data/tenants/+/+/+.
+  vault:
+    addr: ${WERKFLOW_VAULT_ADDR:http://localhost:8200}
+    token: ${WERKFLOW_VAULT_TOKEN:}
