@@ -73,9 +73,11 @@ public class TenantCredentialService {
     public CredentialPathResponse resolvePath(String tenantId, String credentialType, String label) {
         TenantCredential entity = repository
             .findByTenantIdAndCredentialTypeAndLabel(tenantId, credentialType, label)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                "No credential registered for tenant=" + tenantId
-                    + " type=" + credentialType + " label=" + label));
+            .orElseThrow(() -> {
+                log.debug("resolvePath: no row for tenant={} type={} label={}",
+                    tenantId, credentialType, label);
+                return new ResponseStatusException(HttpStatus.NOT_FOUND, "Credential not found");
+            });
         return new CredentialPathResponse(
             entity.getTenantId(),
             entity.getCredentialType(),
