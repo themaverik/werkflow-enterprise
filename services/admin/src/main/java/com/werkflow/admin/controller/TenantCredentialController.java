@@ -2,6 +2,7 @@ package com.werkflow.admin.controller;
 
 import com.werkflow.admin.dto.credential.CreateTenantCredentialRequest;
 import com.werkflow.admin.dto.credential.CredentialPathResponse;
+import com.werkflow.admin.dto.credential.CredentialTestResultResponse;
 import com.werkflow.admin.dto.credential.TenantCredentialResponse;
 import com.werkflow.admin.dto.credential.UpdateTenantCredentialRequest;
 import com.werkflow.admin.security.JwtClaimsExtractor;
@@ -96,6 +97,20 @@ public class TenantCredentialController {
         String tenantId = jwtClaimsExtractor.getTenantId(jwt);
         credentialService.delete(tenantId, id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/test")
+    @PreAuthorize("hasAnyRole('WORKFLOW_ADMIN','ADMIN','SUPER_ADMIN')")
+    @Operation(
+        summary = "Test a credential's connection by delegating to engine",
+        description = "Engine resolves the credential from OpenBao and runs CredentialType.validate. "
+            + "Plaintext values never traverse the wire — only the boolean+message outcome."
+    )
+    public ResponseEntity<CredentialTestResultResponse> test(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt) {
+        String tenantId = jwtClaimsExtractor.getTenantId(jwt);
+        return ResponseEntity.ok(credentialService.testConnection(tenantId, id));
     }
 
     // -- Engine-internal lookup ----------------------------------------------
