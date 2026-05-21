@@ -49,7 +49,7 @@ public class CredentialInternalController {
             + "POST /api/v1/config/credentials/{id}/test endpoint."
     )
     public ResponseEntity<TestResult> test(@Valid @RequestBody CredentialTestRequest request) {
-        log.info("Credential test: tenant={} type={} label={}",
+        log.debug("Credential test: tenant={} type={} label={}",
             request.tenantId(), request.credentialType(), request.label());
         try {
             CredentialType type = credentialRegistry.get(request.credentialType());
@@ -60,7 +60,9 @@ public class CredentialInternalController {
             return ResponseEntity.ok(TestResult.error("Unknown credential type: "
                 + request.credentialType()));
         } catch (CredentialResolutionException ex) {
-            return ResponseEntity.ok(TestResult.error(ex.getMessage()));
+            log.warn("Credential test failed for tenant={} type={} label={}: {}",
+                request.tenantId(), request.credentialType(), request.label(), ex.getMessage());
+            return ResponseEntity.ok(TestResult.error("Credential resolution failed"));
         }
     }
 }

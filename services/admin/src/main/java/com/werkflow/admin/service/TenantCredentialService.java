@@ -2,6 +2,7 @@ package com.werkflow.admin.service;
 
 import com.werkflow.admin.dto.credential.CreateTenantCredentialRequest;
 import com.werkflow.admin.dto.credential.CredentialPathResponse;
+import com.werkflow.admin.dto.credential.CredentialTestResultResponse;
 import com.werkflow.admin.dto.credential.TenantCredentialResponse;
 import com.werkflow.admin.dto.credential.UpdateTenantCredentialRequest;
 import com.werkflow.admin.entity.TenantCredential;
@@ -47,6 +48,7 @@ public class TenantCredentialService {
 
     private final TenantCredentialRepository repository;
     private final VaultCredentialStore vault;
+    private final CredentialTestClient credentialTestClient;
 
     // -- queries -------------------------------------------------------------
 
@@ -145,6 +147,24 @@ public class TenantCredentialService {
         entity.setRotatedAt(OffsetDateTime.now());
         TenantCredential saved = repository.save(entity);
         return TenantCredentialResponse.from(saved, fieldNames);
+    }
+
+    /**
+     * Verifies a credential by delegating to engine's
+     * {@code POST /api/internal/credentials/test} endpoint.
+     *
+     * <p>The tenant guard surfaces cross-tenant access as 404 (OWASP API BOLA).
+     * Plaintext values never leave OpenBao — only the engine reads them and
+     * returns a boolean+message outcome.
+     *
+     * @throws ResponseStatusException 404 if the credential is missing or owned by another tenant
+     */
+    @Transactional(readOnly = true)
+    public CredentialTestResultResponse testConnection(String tenantId, UUID id) {
+        TenantCredential entity = findOwned(tenantId, id);
+        log.debug("testConnection: delegating to engine for tenant={} type={} label={}",
+            tenantId, entity.getCredentialType(), entity.getLabel());
+        return credentialTestClient.test(tenantId, entity.getCredentialType(), entity.getLabel());
     }
 
     /**

@@ -39,6 +39,16 @@ spring:
         jwt:
           issuer-uri: ${KEYCLOAK_URL:http://localhost:8090}/realms/${KEYCLOAK_REALM:werkflow}
           jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://keycloak:8080/realms/${KEYCLOAK_REALM:werkflow}/protocol/openid-connect/certs}
+      client:
+        registration:
+          werkflow-admin:
+            client-id: werkflow-admin
+            client-secret: ${ADMIN_CLIENT_SECRET:REDACTED_KC_SECRET}
+            authorization-grant-type: client_credentials
+            scope: openid
+        provider:
+          werkflow-admin:
+            token-uri: ${KEYCLOAK_TOKEN_URI:http://keycloak:8080/realms/${KEYCLOAK_REALM:werkflow}/protocol/openid-connect/token}
 
 server:
   port: ${SERVER_PORT:8083}
