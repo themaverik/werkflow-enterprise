@@ -76,9 +76,12 @@ public class RestTemplateConfig {
                     .principal(registrationId)
                     .build();
             OAuth2AuthorizedClient client = manager.authorize(authorizeRequest);
-            if (client != null && client.getAccessToken() != null) {
-                request.getHeaders().setBearerAuth(client.getAccessToken().getTokenValue());
+            if (client == null || client.getAccessToken() == null) {
+                throw new IllegalStateException(
+                        "Failed to obtain service access token for client_credentials registration: "
+                                + registrationId);
             }
+            request.getHeaders().setBearerAuth(client.getAccessToken().getTokenValue());
             return execution.execute(request, body);
         }
     }

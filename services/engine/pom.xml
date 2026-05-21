@@ -39,6 +39,9 @@
         <!-- Utilities -->
         <lombok.version>1.18.32</lombok.version>
         <mapstruct.version>1.5.5.Final</mapstruct.version>
+
+        <!-- Secrets backend (M4.12 B.2) -->
+        <spring-vault.version>3.1.2</spring-vault.version>
     </properties>
 
     <dependencyManagement>
@@ -247,6 +250,13 @@
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- Spring Vault — OpenBao client for tenant credential resolution (M4.12 B.2). -->
+        <dependency>
+            <groupId>org.springframework.vault</groupId>
+            <artifactId>spring-vault-core</artifactId>
+            <version>${spring-vault.version}</version>
         </dependency>
 
         <!-- Testing -->
