@@ -2,16 +2,28 @@ package com.werkflow.engine.action.notification;
 
 import org.springframework.stereotype.Component;
 
+import java.util.Set;
+
 /**
- * Slack notification channel stub (ADR-009).
- * Full implementation deferred post-demo.
+ * Slack service adapter stub (ADR-009, ADR-019).
+ * Full implementation deferred post-demo; credential type: slack-bot-token (ADR-020).
  */
 @Component
-public class SlackNotificationChannel implements NotificationChannel {
+public class SlackNotificationChannel implements ServiceAdapter {
 
     @Override
-    public String getChannelName() {
+    public String name() {
         return "slack";
+    }
+
+    @Override
+    public Set<String> supportedOperations() {
+        return Set.of("SEND_NOTIFICATION");
+    }
+
+    @Override
+    public String credentialTypeName() {
+        return "slack-bot-token";
     }
 
     @Override
