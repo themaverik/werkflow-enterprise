@@ -29,6 +29,9 @@ public class CacheConfig {
             Caffeine.newBuilder().expireAfterWrite(300, TimeUnit.SECONDS).maximumSize(100).build());
         manager.registerCustomCache("connectorDefs",
             Caffeine.newBuilder().expireAfterWrite(300, TimeUnit.SECONDS).maximumSize(200).build());
+        // 60s TTL keeps rotation effective quickly (D5 — see Phase B.2 brainstorm).
+        manager.registerCustomCache("credentialPaths",
+            Caffeine.newBuilder().expireAfterWrite(60, TimeUnit.SECONDS).maximumSize(500).build());
         Caffeine<Object, Object> defaultSpec = Caffeine.newBuilder()
             .expireAfterWrite(30, TimeUnit.SECONDS).maximumSize(100).recordStats();
         for (String name : List.of("serviceUrls", "processDefinitionNames", "formSchemas", "doaThresholds")) {
