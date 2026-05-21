@@ -247,6 +247,13 @@ werkflow:
   business:
     enabled: ${WERKFLOW_BUSINESS_ENABLED:false}
 
+  # OpenBao secrets backend — tenant credential resolution (M4.12 B.2).
+  # Engine uses a read-only token on secret/data/tenants/+/+/+. See ADR-020
+  # and docs/brainstorm/Brainstorm-Credential-Registry-DB.md (platform repo).
+  vault:
+    addr: ${WERKFLOW_VAULT_ADDR:http://localhost:8200}
+    token: ${WERKFLOW_VAULT_TOKEN:}
+
   # Set to true to auto-deploy example BPMN processes on startup from classpath:processes/examples/
   examples:
     deploy-on-startup: ${WERKFLOW_DEPLOY_EXAMPLES:true}
