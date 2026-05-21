@@ -1,5 +1,9 @@
 package com.werkflow.engine.action;
 
+import com.werkflow.common.security.SecretsResolver;
+import com.werkflow.engine.audit.ProcessAuditLog;
+import com.werkflow.engine.audit.ProcessAuditLogRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
@@ -27,6 +31,9 @@ import static org.mockito.Mockito.*;
  * <p>Fields are driven via {@code MockedStatic<DelegateHelper>} rather than {@code @Setter}
  * setters — matching the thread-safe, per-execution field resolution introduced by the
  * connector-delegate field-injection-race fix (audit Database-And-Connector.md §2).
+ *
+ * <p>{@code SimpleMeterRegistry} is used instead of a Mockito mock for {@code MeterRegistry}
+ * to avoid stubbing the full counter chain (counter(...).increment()) across every test.
  */
 @ExtendWith(MockitoExtension.class)
 class ConnectorWebhookDelegateTest {
@@ -34,13 +41,22 @@ class ConnectorWebhookDelegateTest {
     @Mock RestTemplate serviceRestTemplate;
     @Mock DelegateExecution execution;
     @Mock Expression connectorKeyExpr, pathExpr, bodyExpr, onErrorExpr;
+    @Mock ResponseMasker responseMasker;
+    @Mock SecretsResolver secretsResolver;
+    @Mock ProcessAuditLogRepository auditLogRepository;
 
     ConnectorWebhookDelegate delegate;
     MockedStatic<DelegateHelper> delegateHelper;
 
     @BeforeEach
     void setUp() {
-        delegate = new ConnectorWebhookDelegate(serviceRestTemplate, "http://admin:8083");
+        delegate = new ConnectorWebhookDelegate(
+            serviceRestTemplate,
+            "http://admin:8083",
+            responseMasker,
+            secretsResolver,
+            auditLogRepository,
+            new SimpleMeterRegistry());
         delegateHelper = mockStatic(DelegateHelper.class);
 
         // Default <flowable:field> stubs; the body field is absent by default.
@@ -181,5 +197,23 @@ class ConnectorWebhookDelegateTest {
         assertThatThrownBy(() -> delegate.execute(execution))
             .isInstanceOf(RuntimeException.class)
             .hasMessageContaining("connectorWebhookDelegate failed");
+    }
+
+    // --- audit logging ---
+
+    @Test
+    void execute_writesAuditLogWithWebhookOutActionTypeOnSuccess() {
+        when(serviceRestTemplate.postForEntity(anyString(), any(), eq(Map.class)))
+            .thenReturn(ResponseEntity.ok(Map.of("statusCode", 200, "body", "")));
+
+        delegate.execute(execution);
+
+        ArgumentCaptor<ProcessAuditLog> captor = ArgumentCaptor.forClass(ProcessAuditLog.class);
+        verify(auditLogRepository).saveAndFlush(captor.capture());
+
+        ProcessAuditLog logged = captor.getValue();
+        assertThat(logged.getActionType()).isEqualTo("WEBHOOK_OUT");
+        assertThat(logged.getRequestMethod()).isEqualTo("POST");
+        assertThat(logged.getErrorMessage()).isNull();
     }
 }
