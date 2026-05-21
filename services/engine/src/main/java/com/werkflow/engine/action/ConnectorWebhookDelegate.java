@@ -1,11 +1,11 @@
 package com.werkflow.engine.action;
 
+import com.werkflow.common.security.SecretsResolver;
+import com.werkflow.engine.audit.ProcessAuditLogRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
-import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
-import org.flowable.engine.delegate.DelegateHelper;
-import org.flowable.engine.delegate.JavaDelegate;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -16,12 +16,22 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.util.List;
 import java.util.Map;
 
 /**
  * Fire-and-forget outbound webhook delegate for BPMN SendTask / WEBHOOK_OUT connectors.
  * Calls the admin connector proxy with method=POST and only requires a 2xx ACK.
  * The process continues immediately regardless of the downstream response body.
+ *
+ * <p>Extends {@link ConnectorDelegateBase} for parity with {@code RestConnectorDelegate}
+ * and {@code DatabaseConnectorDelegate}: shared field helpers, audit logging, and meter
+ * counters are inherited. Response storage ({@link #storeResult}) is intentionally NOT
+ * called — webhook is fire-and-forget with no response variable concept.</p>
+ *
+ * <p>Error handling is kept local (not delegated to {@link #handleError}) because the
+ * webhook error code is {@code CONNECTOR_WEBHOOK_ERROR}, distinct from the base
+ * {@code CONNECTOR_ERROR}, and the CONTINUE branch does not write response variables.</p>
  *
  * BPMN extension fields (all via &lt;flowable:field&gt;):
  *   connectorKey — required; matches admin_service.tenant_service_endpoints.connector_key
@@ -31,21 +41,32 @@ import java.util.Map;
  */
 @Slf4j
 @Component("connectorWebhookDelegate")
-public class ConnectorWebhookDelegate implements JavaDelegate {
+public class ConnectorWebhookDelegate extends ConnectorDelegateBase {
 
     private final RestTemplate serviceRestTemplate;
     private final String adminServiceUrl;
 
     public ConnectorWebhookDelegate(
             @Qualifier("serviceRestTemplate") RestTemplate serviceRestTemplate,
-            @Value("${app.admin-service.url}") String adminServiceUrl) {
+            @Value("${app.admin-service.url}") String adminServiceUrl,
+            ResponseMasker responseMasker,
+            SecretsResolver secretsResolver,
+            ProcessAuditLogRepository auditLogRepository,
+            MeterRegistry meterRegistry) {
+        super(responseMasker, secretsResolver, auditLogRepository, meterRegistry);
         this.serviceRestTemplate = serviceRestTemplate;
         this.adminServiceUrl = adminServiceUrl;
     }
 
     @Override
+    protected String resolveActionType() {
+        return "WEBHOOK_OUT";
+    }
+
+    @Override
     public void execute(DelegateExecution execution) {
         String onErrorMode = getFieldString(execution, "onError", "FAIL");
+        String callUrl = null;
 
         try {
             String key = getFieldString(execution, "connectorKey", null);
@@ -63,7 +84,7 @@ public class ConnectorWebhookDelegate implements JavaDelegate {
                     "connectorWebhookDelegate: execution has no tenantId — connector mode requires a tenant-scoped process");
             }
 
-            String callUrl = UriComponentsBuilder.fromHttpUrl(adminServiceUrl)
+            callUrl = UriComponentsBuilder.fromHttpUrl(adminServiceUrl)
                 .path("/api/connectors/{key}/call")
                 .queryParam("tenantCode", tenantCode)
                 .queryParam("path", webhookPath)
@@ -74,12 +95,17 @@ public class ConnectorWebhookDelegate implements JavaDelegate {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<String> entity = new HttpEntity<>(payload != null ? payload : "{}", headers);
+
+            long startTime = System.currentTimeMillis();
             ResponseEntity<Map> response = serviceRestTemplate.postForEntity(callUrl, entity, Map.class);
+            long durationMs = System.currentTimeMillis() - startTime;
 
             Map<?, ?> result = response.getBody();
             int statusCode = result != null && result.containsKey("statusCode")
                 ? ((Number) result.get("statusCode")).intValue()
                 : response.getStatusCode().value();
+
+            writeAuditLog(execution, callUrl, "POST", null, statusCode, durationMs, false, List.of(), null);
 
             if (statusCode < 200 || statusCode >= 300) {
                 log.warn("connectorWebhookDelegate: non-2xx ACK {} for connector={} path={}",
@@ -90,6 +116,7 @@ public class ConnectorWebhookDelegate implements JavaDelegate {
             }
 
         } catch (Exception e) {
+            writeAuditLog(execution, callUrl, "POST", null, null, 0, false, List.of(), e.getMessage());
             log.error("connectorWebhookDelegate error [{}]: {}", onErrorMode, e.getMessage());
             if ("CONTINUE".equals(onErrorMode)) {
                 log.info("connectorWebhookDelegate: CONTINUE — process proceeds despite error");
@@ -99,20 +126,5 @@ public class ConnectorWebhookDelegate implements JavaDelegate {
                 throw new RuntimeException("connectorWebhookDelegate failed: " + e.getMessage(), e);
             }
         }
-    }
-
-    /**
-     * Reads a named {@code <flowable:field>} per-execution via {@link DelegateHelper#getFieldExpression}.
-     * Thread-safe replacement for {@code @Setter Expression} instance fields: this delegate is a
-     * Spring singleton, so injected fields would be shared mutable state across concurrent executions.
-     */
-    private String getFieldString(DelegateExecution execution, String fieldName, String defaultValue) {
-        return getString(DelegateHelper.getFieldExpression(execution, fieldName), execution, defaultValue);
-    }
-
-    private String getString(Expression expr, DelegateExecution execution, String defaultValue) {
-        if (expr == null) return defaultValue;
-        Object val = expr.getValue(execution);
-        return val != null ? val.toString() : defaultValue;
     }
 }
