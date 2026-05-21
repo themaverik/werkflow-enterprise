@@ -127,23 +127,24 @@ public class CredentialRegistry {
         Optional<CredentialPathDto> path = metadataClient.resolvePath(
             tenantId, credentialTypeName, label);
         if (path.isEmpty()) {
-            throw new CredentialResolutionException(
-                "No credential registered for tenant=" + tenantId
-                    + " type=" + credentialTypeName + " label=" + label);
+            log.debug("resolveForTenant: no metadata row for tenant={} type={} label={}",
+                tenantId, credentialTypeName, label);
+            throw new CredentialResolutionException("Credential not configured");
         }
 
         Map<String, Object> values;
         try {
             values = vaultReader.read(path.get().vaultPath())
-                .orElseThrow(() -> new CredentialResolutionException(
-                    "Credential metadata exists but Vault has no entry at path="
-                        + path.get().vaultPath()));
+                .orElseThrow(() -> {
+                    log.warn("Credential metadata exists but Vault is empty at the configured path");
+                    return new CredentialResolutionException("Credential not configured");
+                });
         } catch (CredentialResolutionException ex) {
             throw ex;
         } catch (RuntimeException ex) {
-            throw new CredentialResolutionException(
-                "OpenBao read failed for tenant=" + tenantId + " type=" + credentialTypeName
-                    + " label=" + label, ex);
+            log.error("OpenBao read failed for tenant={} type={} label={}",
+                tenantId, credentialTypeName, label, ex);
+            throw new CredentialResolutionException("Credential resolution failed", ex);
         }
         return CredentialValues.of(values);
     }

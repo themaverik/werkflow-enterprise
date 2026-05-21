@@ -13,13 +13,17 @@ import java.util.UUID;
  * list reflects only which keys are set in Vault (echoed from the request on
  * create/update). This lets the portal display "Slack credential — botToken, signingSecret"
  * without ever leaking secret material.
+ *
+ * <p>The internal {@code vaultPath} is intentionally omitted from this tenant-facing
+ * DTO — it leaks the Vault path layout to any role that can read credentials.
+ * Engine receives the path via {@link CredentialPathResponse} on the
+ * {@code ENGINE_SERVICE}-gated endpoint instead.
  */
 public record TenantCredentialResponse(
     UUID id,
     String tenantId,
     String credentialType,
     String label,
-    String vaultPath,
     List<String> fieldNames,
     OffsetDateTime createdAt,
     OffsetDateTime updatedAt,
@@ -32,7 +36,6 @@ public record TenantCredentialResponse(
             entity.getTenantId(),
             entity.getCredentialType(),
             entity.getLabel(),
-            entity.getVaultPath(),
             fieldNames,
             entity.getCreatedAt(),
             entity.getUpdatedAt(),
