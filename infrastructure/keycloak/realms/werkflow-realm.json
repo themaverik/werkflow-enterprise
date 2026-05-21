@@ -46,6 +46,34 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "werkflow-engine",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "engine-dev-secret-do-not-use-in-prod",
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "werkflow-admin",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "admin-dev-secret-do-not-use-in-prod",
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect"
     }
   ],
   "roles": {
@@ -81,6 +109,14 @@
       {
         "name": "doa_approver_level4",
         "description": "DOA Approver Level 4"
+      },
+      {
+        "name": "ENGINE_SERVICE",
+        "description": "Service-to-service principal for engine calling other internal services (M4.12 B.2)"
+      },
+      {
+        "name": "ADMIN_SERVICE",
+        "description": "Service-to-service principal for admin calling other internal services (M4.12 B.2)"
       }
     ]
   },
@@ -133,6 +169,22 @@
           "query-users"
         ]
       }
+    },
+    {
+      "username": "service-account-werkflow-engine",
+      "enabled": true,
+      "serviceAccountClientId": "werkflow-engine",
+      "realmRoles": [
+        "ENGINE_SERVICE"
+      ]
+    },
+    {
+      "username": "service-account-werkflow-admin",
+      "enabled": true,
+      "serviceAccountClientId": "werkflow-admin",
+      "realmRoles": [
+        "ADMIN_SERVICE"
+      ]
     }
   ]
 }

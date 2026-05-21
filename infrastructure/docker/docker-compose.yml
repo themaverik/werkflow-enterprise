@@ -226,6 +226,9 @@ services:
       # OpenBao — credential resolution backend. Engine reads tenant secrets directly.
       WERKFLOW_VAULT_ADDR: http://openbao:8200
       WERKFLOW_VAULT_TOKEN: werkflow-engine-dev-token-do-not-use-in-prod
+      # Keycloak service-account credential for engine -> admin internal calls.
+      # Matches the werkflow-engine client secret in werkflow-realm.json (dev only).
+      ENGINE_CLIENT_SECRET: engine-dev-secret-do-not-use-in-prod
     ports:
       - "8081:8081"
     volumes:
@@ -268,9 +271,13 @@ services:
       KEYCLOAK_REALM: werkflow
       KEYCLOAK_CLIENT_ID: werkflow-portal
       KEYCLOAK_CLIENT_SECRET: REDACTED_KC_PORTAL_SECRET
+      KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/werkflow/protocol/openid-connect/token
       # OpenBao — credential store. Admin writes tenant secrets here.
       WERKFLOW_VAULT_ADDR: http://openbao:8200
       WERKFLOW_VAULT_TOKEN: werkflow-admin-dev-token-do-not-use-in-prod
+      # Keycloak service-account credential for admin -> engine internal calls.
+      # Matches the werkflow-admin client secret in werkflow-realm.json (dev only).
+      ADMIN_CLIENT_SECRET: admin-dev-secret-do-not-use-in-prod
     ports:
       - "8083:8083"
     volumes:
