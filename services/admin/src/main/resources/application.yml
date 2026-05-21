@@ -128,3 +128,15 @@ app:
     "services/**": finance_head,finance_manager,hr_head,hr_manager,hub_manager,hub_request_approver,inventory_manager,it_head,it_manager,leave_request_approver,logistics_manager,procurement_approver,procurement_head,procurement_manager,super_admin
     "admin": super_admin
     "admin/**": super_admin
+
+# ----------------------------------------------------------------
+# Werkflow platform-scoped settings
+# ----------------------------------------------------------------
+werkflow:
+  # OpenBao secrets backend — tenant credential storage (M4.12 B.2).
+  # In Docker the addr resolves to the in-network openbao service. For local
+  # non-Docker runs, point at the OpenBao you started yourself.
+  # The admin-service token has read+write+delete on secret/data/tenants/+/+/+.
+  vault:
+    addr: ${WERKFLOW_VAULT_ADDR:http://localhost:8200}
+    token: ${WERKFLOW_VAULT_TOKEN:}
