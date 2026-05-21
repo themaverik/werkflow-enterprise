@@ -9,23 +9,34 @@ import org.junit.jupiter.api.Test;
 import org.springframework.core.env.Environment;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class CredentialRegistryTest {
 
     private Environment env;
+    private CredentialMetadataClient metadataClient;
+    private VaultReader vaultReader;
     private CredentialRegistry registry;
 
     @BeforeEach
     void setUp() {
         env = mock(Environment.class);
+        metadataClient = mock(CredentialMetadataClient.class);
+        vaultReader = mock(VaultReader.class);
+        // Default to "no tenant credential exists" so 2-arg resolveForTenant
+        // calls fall through to the env-based path the B.1a tests rely on.
+        when(metadataClient.resolvePath(any(), any(), any())).thenReturn(Optional.empty());
         registry = new CredentialRegistry(
             List.of(new SmtpCredential(), new SlackBotTokenCredential(), new WhatsAppBusinessCredential()),
-            env
+            env,
+            metadataClient,
+            vaultReader
         );
     }
 
