@@ -2,6 +2,7 @@ package com.werkflow.engine.action.credential;
 
 import com.werkflow.engine.action.credential.dto.CredentialPathDto;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
@@ -32,7 +33,7 @@ public class CredentialMetadataClient {
     private final String adminServiceUrl;
 
     public CredentialMetadataClient(
-            RestTemplate restTemplate,
+            @Qualifier("serviceRestTemplate") RestTemplate restTemplate,
             @Value("${app.admin-service.url:http://localhost:8083}") String adminServiceUrl) {
         this.restTemplate = restTemplate;
         this.adminServiceUrl = adminServiceUrl;
