@@ -1,6 +1,8 @@
 package com.werkflow.engine.action;
 
-import com.werkflow.engine.action.notification.*;
+import com.werkflow.engine.action.notification.ActionBlockNotificationRequest;
+import com.werkflow.engine.action.notification.AdapterRegistry;
+import com.werkflow.engine.action.notification.NotificationTemplateService;
 import com.werkflow.engine.security.el.RestrictedExpressionManager;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.validator.routines.EmailValidator;
@@ -49,14 +51,14 @@ import java.util.List;
 @Component("notificationDelegate")
 public class NotificationDelegate implements JavaDelegate {
 
-    private final NotificationChannelFactory channelFactory;
+    private final AdapterRegistry adapterRegistry;
     private final NotificationTemplateService templateService;
     private final ExpressionManager expressionManager;
 
-    public NotificationDelegate(NotificationChannelFactory channelFactory,
+    public NotificationDelegate(AdapterRegistry adapterRegistry,
                                 NotificationTemplateService templateService,
                                 ProcessEngineConfiguration cfg) {
-        this.channelFactory = channelFactory;
+        this.adapterRegistry = adapterRegistry;
         this.templateService = templateService;
         this.expressionManager = ((HasExpressionManagerEngineConfiguration) cfg).getExpressionManager();
     }
@@ -96,7 +98,7 @@ public class NotificationDelegate implements JavaDelegate {
             channelValue
         );
 
-        channelFactory.getChannel(channelValue).send(request);
+        adapterRegistry.getAdapter(channelValue).send(request);
         log.info("notificationDelegate: notification dispatched channel={} processInstance={} execution={} tenant={}",
                 channelValue, execution.getProcessInstanceId(), execution.getId(), execution.getTenantId());
     }

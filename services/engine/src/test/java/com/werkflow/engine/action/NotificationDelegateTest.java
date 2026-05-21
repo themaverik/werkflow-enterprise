@@ -1,6 +1,9 @@
 package com.werkflow.engine.action;
 
-import com.werkflow.engine.action.notification.*;
+import com.werkflow.engine.action.notification.ActionBlockNotificationRequest;
+import com.werkflow.engine.action.notification.AdapterRegistry;
+import com.werkflow.engine.action.notification.NotificationTemplateService;
+import com.werkflow.engine.action.notification.ServiceAdapter;
 import org.flowable.bpmn.model.FieldExtension;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.common.engine.impl.HasExpressionManagerEngineConfiguration;
@@ -26,9 +29,9 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class NotificationDelegateTest {
 
-    @Mock private NotificationChannelFactory channelFactory;
+    @Mock private AdapterRegistry adapterRegistry;
     @Mock private NotificationTemplateService templateService;
-    @Mock private NotificationChannel emailChannel;
+    @Mock private ServiceAdapter emailChannel;
     @Mock private DelegateExecution execution;
     @Mock private ExpressionManager expressionManager;
 
@@ -48,7 +51,7 @@ class NotificationDelegateTest {
 
     @BeforeEach
     void setUp() {
-        delegate = new NotificationDelegate(channelFactory, templateService, engineCfgMock());
+        delegate = new NotificationDelegate(adapterRegistry, templateService, engineCfgMock());
     }
 
     // ------------------------------------------------------------------
@@ -101,7 +104,7 @@ class NotificationDelegateTest {
         when(execution.getVariables()).thenReturn(Map.of("name", "Alice"));
         when(templateService.render(eq("welcome"), anyMap(), eq(false)))
             .thenReturn(new NotificationTemplateService.RenderedTemplate("Hi Alice", "Body"));
-        when(channelFactory.getChannel("email")).thenReturn(emailChannel);
+        when(adapterRegistry.getAdapter("email")).thenReturn(emailChannel);
 
         try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
             dh.when(() -> DelegateHelper.getFlowElementFields(execution)).thenReturn(fields);
@@ -130,7 +133,7 @@ class NotificationDelegateTest {
             delegate.execute(execution);
         }
 
-        verifyNoInteractions(channelFactory, templateService);
+        verifyNoInteractions(adapterRegistry, templateService);
     }
 
     @Test
@@ -150,7 +153,7 @@ class NotificationDelegateTest {
         when(execution.getVariables()).thenReturn(Map.of());
         when(templateService.render(eq("welcome"), anyMap(), eq(false)))
             .thenReturn(new NotificationTemplateService.RenderedTemplate("Subj", "Body"));
-        when(channelFactory.getChannel("email")).thenReturn(emailChannel);
+        when(adapterRegistry.getAdapter("email")).thenReturn(emailChannel);
 
         try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
             dh.when(() -> DelegateHelper.getFlowElementFields(execution)).thenReturn(fields);
@@ -202,7 +205,7 @@ class NotificationDelegateTest {
         when(templateService.render(eq("welcome"), anyMap(), eq(false)))
             .thenReturn(new NotificationTemplateService.RenderedTemplate(
                 "Hello\r\nInjected", "Body"));
-        when(channelFactory.getChannel("email")).thenReturn(emailChannel);
+        when(adapterRegistry.getAdapter("email")).thenReturn(emailChannel);
 
         try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
             dh.when(() -> DelegateHelper.getFlowElementFields(execution)).thenReturn(fields);
@@ -231,8 +234,8 @@ class NotificationDelegateTest {
         DelegateExecution executionA = mock(DelegateExecution.class);
         DelegateExecution executionB = mock(DelegateExecution.class);
 
-        NotificationChannel channelA = mock(NotificationChannel.class);
-        NotificationChannel channelB = mock(NotificationChannel.class);
+        ServiceAdapter channelA = mock(ServiceAdapter.class);
+        ServiceAdapter channelB = mock(ServiceAdapter.class);
 
         NotificationTemplateService.RenderedTemplate renderedA =
                 new NotificationTemplateService.RenderedTemplate("Subj A", "Body A");
@@ -254,7 +257,7 @@ class NotificationDelegateTest {
         when(expressionManager.createExpression("email")).thenReturn(exprEmailA);
         when(executionA.getVariables()).thenReturn(Map.of());
         when(templateService.render(eq("tmpl-a"), anyMap(), eq(false))).thenReturn(renderedA);
-        when(channelFactory.getChannel("email")).thenReturn(channelA);
+        when(adapterRegistry.getAdapter("email")).thenReturn(channelA);
 
         try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
             dh.when(() -> DelegateHelper.getFlowElementFields(executionA)).thenReturn(fieldsA);
@@ -267,7 +270,7 @@ class NotificationDelegateTest {
         String recipientA = capA.getValue().recipient();
 
         // -- Execute for tenant B (reset shared mocks) --
-        reset(expressionManager, templateService, channelFactory);
+        reset(expressionManager, templateService, adapterRegistry);
 
         Expression exprRecipientB = exprReturning("tenant-b@example.com");
         Expression exprTmplB      = exprReturning("tmpl-b");
@@ -283,7 +286,7 @@ class NotificationDelegateTest {
         when(expressionManager.createExpression("email")).thenReturn(exprEmailB);
         when(executionB.getVariables()).thenReturn(Map.of());
         when(templateService.render(eq("tmpl-b"), anyMap(), eq(false))).thenReturn(renderedB);
-        when(channelFactory.getChannel("email")).thenReturn(channelB);
+        when(adapterRegistry.getAdapter("email")).thenReturn(channelB);
 
         try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
             dh.when(() -> DelegateHelper.getFlowElementFields(executionB)).thenReturn(fieldsB);
