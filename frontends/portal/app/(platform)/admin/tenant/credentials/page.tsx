@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import axios from 'axios'
 import { useSession } from 'next-auth/react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
@@ -52,7 +53,13 @@ export default function CredentialsPage() {
       setDeletingId(null)
       toast.success(t('deleteSuccess'))
     },
-    onError: () => toast.error(t('deleteFailed')),
+    onError: (e: unknown) => {
+      if (axios.isAxiosError(e) && e.response?.status === 400) {
+        toast.error(t('invalidId'))
+      } else {
+        toast.error(t('deleteFailed'))
+      }
+    },
   })
 
   function openCreate() {
@@ -72,7 +79,10 @@ export default function CredentialsPage() {
     try {
       const result = await testCredential(id)
       setTestResults((prev) => ({ ...prev, [id]: result }))
-    } catch {
+    } catch (e: unknown) {
+      if (axios.isAxiosError(e) && e.response?.status === 400) {
+        toast.error(t('invalidId'))
+      }
       setTestResults((prev) => ({ ...prev, [id]: { success: false, message: t('testFailed') } }))
     }
   }
@@ -165,7 +175,12 @@ export default function CredentialsPage() {
                       {cred.rotatedAt ? formatDate(cred.rotatedAt) : <span className="italic">{t('never')}</span>}
                     </td>
                     <td className="px-4 py-3">
-                      <TestCell state={testState} neverLabel={t('notTested')} />
+                      <TestCell
+                        state={testState}
+                        neverLabel={t('notTested')}
+                        okLabel={t('testOk')}
+                        failedShortLabel={t('testFailedShort')}
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 justify-end">
@@ -173,6 +188,7 @@ export default function CredentialsPage() {
                           variant="outline"
                           size="sm"
                           className="h-6 text-xs px-2"
+                          aria-label={t('testAriaLabel', { label: cred.label })}
                           onClick={() => handleTest(cred.id)}
                           disabled={testState === 'testing'}
                         >
@@ -186,6 +202,7 @@ export default function CredentialsPage() {
                           size="icon"
                           className="h-7 w-7"
                           title={t('edit')}
+                          aria-label={t('edit')}
                           onClick={() => openEdit(cred)}
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -195,6 +212,7 @@ export default function CredentialsPage() {
                           size="icon"
                           className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
                           title={t('delete')}
+                          aria-label={t('delete')}
                           onClick={() => setDeletingId(cred.id)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -242,27 +260,40 @@ export default function CredentialsPage() {
         mode={formMode}
         initial={editTarget}
         onClose={() => setFormOpen(false)}
-        onSaved={() => setFormOpen(false)}
+        onSaved={() => {
+          qc.invalidateQueries({ queryKey: ['tenant-credentials'] })
+          setFormOpen(false)
+        }}
       />
     </div>
   )
 }
 
-function TestCell({ state, neverLabel }: { state: TestState | undefined; neverLabel: string }) {
+function TestCell({
+  state,
+  neverLabel,
+  okLabel,
+  failedShortLabel,
+}: {
+  state: TestState | undefined
+  neverLabel: string
+  okLabel: string
+  failedShortLabel: string
+}) {
   if (!state) return <span className="text-xs text-muted-foreground italic">{neverLabel}</span>
   if (state === 'testing') return <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
   if (state.success) {
     return (
-      <span className="flex items-center gap-1 text-xs" style={{ color: '#149ba5' }}>
+      <span className="flex items-center gap-1 text-xs text-[color:var(--wf-accent)]">
         <CheckCircle2 className="h-3.5 w-3.5" />
-        {state.message || 'OK'}
+        {state.message || okLabel}
       </span>
     )
   }
   return (
     <span className="flex items-center gap-1 text-xs text-destructive" title={state.message}>
       <XCircle className="h-3.5 w-3.5" />
-      {state.message || 'Failed'}
+      {state.message || failedShortLabel}
     </span>
   )
 }
