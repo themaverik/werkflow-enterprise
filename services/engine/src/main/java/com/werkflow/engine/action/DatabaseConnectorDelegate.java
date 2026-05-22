@@ -3,7 +3,6 @@ package com.werkflow.engine.action;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.werkflow.common.security.SecretsResolver;
 import com.werkflow.engine.action.db.DatasourceRegistry;
 import com.werkflow.engine.action.db.KeysetPaginator;
 import com.werkflow.engine.action.db.NamedQueryExecutor;
@@ -48,14 +47,13 @@ public class DatabaseConnectorDelegate extends ConnectorDelegateBase {
     private final KeysetPaginator keysetPaginator;
 
     public DatabaseConnectorDelegate(ResponseMasker responseMasker,
-                                     SecretsResolver secretsResolver,
                                      ProcessAuditLogRepository auditLogRepository,
                                      MeterRegistry meterRegistry,
                                      AdminServiceClient adminServiceClient,
                                      DatasourceRegistry datasourceRegistry,
                                      NamedQueryExecutor queryExecutor,
                                      KeysetPaginator keysetPaginator) {
-        super(responseMasker, secretsResolver, auditLogRepository, meterRegistry);
+        super(responseMasker, auditLogRepository, meterRegistry);
         this.adminServiceClient = adminServiceClient;
         this.datasourceRegistry = datasourceRegistry;
         this.queryExecutor = queryExecutor;

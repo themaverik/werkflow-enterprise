@@ -1,6 +1,5 @@
 package com.werkflow.engine.action;
 
-import com.werkflow.common.security.SecretsResolver;
 import com.werkflow.engine.audit.ProcessAuditLog;
 import com.werkflow.engine.audit.ProcessAuditLogRepository;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -42,7 +41,6 @@ class ConnectorWebhookDelegateTest {
     @Mock DelegateExecution execution;
     @Mock Expression connectorKeyExpr, pathExpr, bodyExpr, onErrorExpr;
     @Mock ResponseMasker responseMasker;
-    @Mock SecretsResolver secretsResolver;
     @Mock ProcessAuditLogRepository auditLogRepository;
 
     ConnectorWebhookDelegate delegate;
@@ -54,7 +52,6 @@ class ConnectorWebhookDelegateTest {
             serviceRestTemplate,
             "http://admin:8083",
             responseMasker,
-            secretsResolver,
             auditLogRepository,
             new SimpleMeterRegistry());
         delegateHelper = mockStatic(DelegateHelper.class);

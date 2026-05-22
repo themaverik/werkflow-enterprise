@@ -1,6 +1,5 @@
 package com.werkflow.engine.action;
 
-import com.werkflow.common.security.SecretsResolver;
 import com.werkflow.engine.audit.ProcessAuditLogRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
@@ -50,10 +49,9 @@ public class ConnectorWebhookDelegate extends ConnectorDelegateBase {
             @Qualifier("serviceRestTemplate") RestTemplate serviceRestTemplate,
             @Value("${app.admin-service.url}") String adminServiceUrl,
             ResponseMasker responseMasker,
-            SecretsResolver secretsResolver,
             ProcessAuditLogRepository auditLogRepository,
             MeterRegistry meterRegistry) {
-        super(responseMasker, secretsResolver, auditLogRepository, meterRegistry);
+        super(responseMasker, auditLogRepository, meterRegistry);
         this.serviceRestTemplate = serviceRestTemplate;
         this.adminServiceUrl = adminServiceUrl;
     }
