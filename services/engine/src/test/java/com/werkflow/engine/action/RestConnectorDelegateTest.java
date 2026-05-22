@@ -1,7 +1,10 @@
 package com.werkflow.engine.action;
 
-import com.werkflow.common.security.SecretsResolver;
 import com.werkflow.common.security.SsrfGuard;
+import com.werkflow.engine.action.credential.CredentialRegistry;
+import com.werkflow.engine.action.credential.CredentialType;
+import com.werkflow.engine.action.credential.CredentialValues;
+import com.werkflow.engine.action.credential.HttpCredentialType;
 import com.werkflow.engine.audit.ProcessAuditLogRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -34,12 +37,12 @@ class RestConnectorDelegateTest {
 
     @Mock private SsrfGuard ssrfGuard;
     @Mock private ResponseMasker responseMasker;
-    @Mock private SecretsResolver secretsResolver;
+    @Mock private CredentialRegistry credentialRegistry;
     @Mock private ProcessAuditLogRepository auditLogRepository;
     @Mock private TenantEndpointResolver endpointResolver;
     @Mock private DelegateExecution execution;
-    @Mock private Expression urlExpr, methodExpr, secretRefExpr, responseVarExpr,
-                             extractFieldsExpr, maskFieldsExpr, onErrorExpr,
+    @Mock private Expression urlExpr, methodExpr, credentialTypeExpr, credentialRefExpr,
+                             responseVarExpr, extractFieldsExpr, maskFieldsExpr, onErrorExpr,
                              connectorExpr, pathExpr, bodyExpr;
 
     private final MeterRegistry meterRegistry = new SimpleMeterRegistry();
@@ -48,7 +51,7 @@ class RestConnectorDelegateTest {
     @BeforeEach
     void setUp() {
         delegate = new RestConnectorDelegate(
-            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, meterRegistry, endpointResolver);
+            ssrfGuard, responseMasker, credentialRegistry, auditLogRepository, meterRegistry, endpointResolver);
 
         lenient().when(execution.getProcessInstanceId()).thenReturn("proc-1");
         lenient().when(execution.getId()).thenReturn("exec-1");
@@ -63,7 +66,7 @@ class RestConnectorDelegateTest {
 
     /**
      * Stubs all base and REST-specific fields for a legacy-url scenario
-     * (no connector, just a direct url + method).
+     * (no connector, just a direct url + method). No credential fields.
      */
     private void stubLegacyUrlFields(MockedStatic<DelegateHelper> dh,
                                      String url,
@@ -77,11 +80,14 @@ class RestConnectorDelegateTest {
         stubAbsent(dh, "path");
         stubAbsent(dh, "body");
         stubAbsent(dh, "secretRef");
+        stubAbsent(dh, "credentialType");
+        stubAbsent(dh, "credentialRef");
         stubAbsent(dh, "timeoutSeconds");
     }
 
     /**
      * Stubs all base and REST-specific fields for a connector+path scenario.
+     * No credential fields.
      */
     private void stubConnectorFields(MockedStatic<DelegateHelper> dh,
                                      String connector,
@@ -96,6 +102,8 @@ class RestConnectorDelegateTest {
         stubAbsent(dh, "url");
         stubAbsent(dh, "body");
         stubAbsent(dh, "secretRef");
+        stubAbsent(dh, "credentialType");
+        stubAbsent(dh, "credentialRef");
         stubAbsent(dh, "timeoutSeconds");
     }
 
@@ -122,7 +130,7 @@ class RestConnectorDelegateTest {
     }
 
     // -------------------------------------------------------------------------
-    // Tests
+    // Existing tests — unchanged in behaviour, updated to use CredentialRegistry
     // -------------------------------------------------------------------------
 
     @Test
@@ -171,10 +179,7 @@ class RestConnectorDelegateTest {
 
     @Test
     void parseExtractFields_parsesValidEntries() {
-        // No DelegateHelper needed — parseExtractFields is a pure utility
-        RestConnectorDelegate d = new RestConnectorDelegate(
-            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, meterRegistry, endpointResolver);
-        Map<String, String> parsed = d.parseExtractFields("count:$.stock.count,available:$.stock.available");
+        Map<String, String> parsed = delegate.parseExtractFields("count:$.stock.count,available:$.stock.available");
         assertThat(parsed).containsEntry("count", "$.stock.count")
                           .containsEntry("available", "$.stock.available");
     }
@@ -212,37 +217,28 @@ class RestConnectorDelegateTest {
 
     @Test
     void resolveBodyTemplate_substitutesVariables() {
-        RestConnectorDelegate d = new RestConnectorDelegate(
-            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, meterRegistry, endpointResolver);
-
         when(execution.getVariable("requestId")).thenReturn("REQ-001");
         when(execution.getVariable("amount")).thenReturn(5000);
 
-        String result = d.resolveBodyTemplate("{\"requestId\":\"${requestId}\",\"amount\":${amount}}", execution);
+        String result = delegate.resolveBodyTemplate("{\"requestId\":\"${requestId}\",\"amount\":${amount}}", execution);
 
         assertThat(result).isEqualTo("{\"requestId\":\"REQ-001\",\"amount\":5000}");
     }
 
     @Test
     void resolveBodyTemplate_jsonEscapesStringValues() {
-        RestConnectorDelegate d = new RestConnectorDelegate(
-            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, meterRegistry, endpointResolver);
-
         when(execution.getVariable("description")).thenReturn("Laptop, 16\" screen");
 
-        String result = d.resolveBodyTemplate("{\"desc\":\"${description}\"}", execution);
+        String result = delegate.resolveBodyTemplate("{\"desc\":\"${description}\"}", execution);
 
         assertThat(result).contains("Laptop, 16\\\" screen");
     }
 
     @Test
     void resolveBodyTemplate_handlesNullVariable() {
-        RestConnectorDelegate d = new RestConnectorDelegate(
-            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, meterRegistry, endpointResolver);
-
         when(execution.getVariable("missingVar")).thenReturn(null);
 
-        String result = d.resolveBodyTemplate("{\"val\":${missingVar}}", execution);
+        String result = delegate.resolveBodyTemplate("{\"val\":${missingVar}}", execution);
 
         assertThat(result).isEqualTo("{\"val\":null}");
     }
@@ -271,13 +267,176 @@ class RestConnectorDelegateTest {
 
     @Test
     void resolveBodyTemplate_escapesControlCharacters() {
-        RestConnectorDelegate d = new RestConnectorDelegate(
-            ssrfGuard, responseMasker, secretsResolver, auditLogRepository, meterRegistry, endpointResolver);
-
         when(execution.getVariable("data")).thenReturn("line1\nline2\ttabbed");
 
-        String result = d.resolveBodyTemplate("{\"data\":\"${data}\"}", execution);
+        String result = delegate.resolveBodyTemplate("{\"data\":\"${data}\"}", execution);
 
         assertThat(result).isEqualTo("{\"data\":\"line1\\nline2\\ttabbed\"}");
+    }
+
+    // -------------------------------------------------------------------------
+    // New tests — B.4 secretRef hard-cut + credential path
+    // -------------------------------------------------------------------------
+
+    /**
+     * Any BPMN containing a {@code secretRef} field element (even blank value) must
+     * cause an {@link IllegalStateException} with the migration-help message.
+     * The check fires at the top of execute() before any other field is read,
+     * so only the secretRef stub is needed.
+     */
+    @Test
+    void execute_throwsIllegalStateWhenLegacySecretRefFieldPresent() {
+        try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
+            Expression legacyExpr = mock(Expression.class);
+            lenient().when(DelegateHelper.getFieldExpression(execution, "secretRef")).thenReturn(legacyExpr);
+
+            assertThatThrownBy(() -> delegate.execute(execution))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("secretRef field is no longer supported")
+                .hasMessageContaining("ADR-020");
+        }
+    }
+
+    /**
+     * Present-but-blank secretRef element should also trigger the migration error,
+     * because the BPMN element itself (not its value) is the indicator of a stale design.
+     */
+    @Test
+    void execute_throwsIllegalStateWhenSecretRefFieldPresentButBlank() {
+        try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
+            Expression legacyExpr = mock(Expression.class);
+            lenient().when(DelegateHelper.getFieldExpression(execution, "secretRef")).thenReturn(legacyExpr);
+
+            assertThatThrownBy(() -> delegate.execute(execution))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("secretRef field is no longer supported");
+        }
+    }
+
+    /**
+     * credentialRef present but credentialType absent → {@link IllegalArgumentException}
+     * naming the missing field. Credential validation runs before SSRF, so no ssrfGuard
+     * stub is needed.
+     */
+    @Test
+    void execute_throwsWhenCredentialRefSetButTypeAbsent() {
+        try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
+            stubLegacyUrlFields(dh, "https://api.example.com/stock", "GET", "response", "FAIL");
+            // Override: credentialRef present, credentialType stays absent
+            lenient().when(DelegateHelper.getFieldExpression(execution, "credentialRef"))
+                .thenReturn(credentialRefExpr);
+            lenient().when(credentialRefExpr.getValue(execution)).thenReturn("my-api-key");
+
+            assertThatThrownBy(() -> delegate.execute(execution))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("credentialType");
+        }
+    }
+
+    /**
+     * credentialType present but credentialRef absent → {@link IllegalArgumentException}
+     * naming the missing field. Credential validation runs before SSRF, so no ssrfGuard
+     * stub is needed.
+     */
+    @Test
+    void execute_throwsWhenCredentialTypeSetButRefAbsent() {
+        try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
+            stubLegacyUrlFields(dh, "https://api.example.com/stock", "GET", "response", "FAIL");
+            // Override: credentialType present, credentialRef stays absent
+            lenient().when(DelegateHelper.getFieldExpression(execution, "credentialType"))
+                .thenReturn(credentialTypeExpr);
+            lenient().when(credentialTypeExpr.getValue(execution)).thenReturn("http-basic-auth");
+
+            assertThatThrownBy(() -> delegate.execute(execution))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("credentialRef");
+        }
+    }
+
+    /**
+     * credentialType resolves to a type that does NOT implement {@link HttpCredentialType}
+     * (e.g. a database credential) → {@link IllegalArgumentException} naming the type.
+     * Credential validation runs before SSRF, so no ssrfGuard stub is needed.
+     */
+    @Test
+    void execute_throwsWhenCredentialTypeIsNotHttpCredentialType() {
+        try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
+            stubLegacyUrlFields(dh, "https://api.example.com/stock", "GET", "response", "FAIL");
+            lenient().when(DelegateHelper.getFieldExpression(execution, "credentialType"))
+                .thenReturn(credentialTypeExpr);
+            lenient().when(credentialTypeExpr.getValue(execution)).thenReturn("database");
+            lenient().when(DelegateHelper.getFieldExpression(execution, "credentialRef"))
+                .thenReturn(credentialRefExpr);
+            lenient().when(credentialRefExpr.getValue(execution)).thenReturn("my-db-cred");
+
+            // Registry returns a non-HTTP credential type
+            CredentialType nonHttpType = mock(CredentialType.class);
+            when(credentialRegistry.get("database")).thenReturn(nonHttpType);
+
+            assertThatThrownBy(() -> delegate.execute(execution))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("HttpCredentialType");
+        }
+    }
+
+    /**
+     * Both credentialType and credentialRef absent → unauthenticated call proceeds
+     * past credential resolution (SSRF guard terminates the call with a test stop;
+     * no auth-related exception is thrown).
+     */
+    @Test
+    void execute_unauthenticatedCallProceedsWhenBothCredentialFieldsAbsent() {
+        try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
+            stubLegacyUrlFields(dh, "https://api.example.com/public", "GET", "response", "FAIL");
+            doThrow(new SecurityException("test-stop")).when(ssrfGuard).validate(anyString());
+
+            // Should throw from the SSRF guard, NOT from credential validation —
+            // proves credential block was skipped cleanly.
+            assertThatThrownBy(() -> delegate.execute(execution))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("test-stop");
+
+            verifyNoInteractions(credentialRegistry);
+        }
+    }
+
+    /**
+     * Happy credential path: credentialType + credentialRef both present, type is a valid
+     * {@link HttpCredentialType}. Verifies that {@link HttpCredentialType#applyTo} is called
+     * with the resolved values before the HTTP dispatch. The actual HTTP call fails because
+     * the URL is not real — we assert on the applyTo invocation, not the HTTP outcome.
+     */
+    @Test
+    void execute_appliesHttpCredentialWhenBothFieldsPresent() {
+        try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
+            stubLegacyUrlFields(dh, "https://api.example.com/secure", "GET", "response", "FAIL");
+            when(execution.getTenantId()).thenReturn("tenant-a");
+
+            lenient().when(DelegateHelper.getFieldExpression(execution, "credentialType"))
+                .thenReturn(credentialTypeExpr);
+            lenient().when(credentialTypeExpr.getValue(execution)).thenReturn("http-header-auth");
+            lenient().when(DelegateHelper.getFieldExpression(execution, "credentialRef"))
+                .thenReturn(credentialRefExpr);
+            lenient().when(credentialRefExpr.getValue(execution)).thenReturn("my-api-key-label");
+
+            HttpCredentialType fakeType = mock(HttpCredentialType.class);
+            when(credentialRegistry.get("http-header-auth")).thenReturn(fakeType);
+
+            CredentialValues fakeValues = CredentialValues.of(Map.of("apiKey", "secret-value"));
+            when(credentialRegistry.resolveForTenant("http-header-auth", "tenant-a", "my-api-key-label"))
+                .thenReturn(fakeValues);
+
+            // ssrfGuard.validate() does nothing (Mockito default for void mock) — call proceeds
+            // past SSRF. applyTo is invoked before makeHttpCall. makeHttpCall then throws
+            // because the URL is not reachable in unit tests. We verify applyTo was called
+            // regardless of the HTTP outcome.
+            try {
+                delegate.execute(execution);
+            } catch (Exception ignored) {
+                // Network failure expected in unit test environment — not the subject of this test
+            }
+
+            verify(fakeType).applyTo(any(), eq(fakeValues));
+        }
     }
 }
