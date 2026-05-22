@@ -49,6 +49,29 @@ export const CREDENTIAL_TYPES: CredentialTypeSchema[] = [
       { name: 'apiVersion',    displayName: 'API Version',     type: 'STRING', required: true, defaultValue: 'v18.0' },
     ],
   },
+  {
+    name: 'http-basic-auth',
+    displayName: 'HTTP Basic Auth',
+    fields: [
+      { name: 'username', displayName: 'Username', type: 'STRING', required: true, defaultValue: null },
+      { name: 'password', displayName: 'Password', type: 'SECRET', required: true, defaultValue: null },
+    ],
+  },
+  {
+    name: 'http-header-auth',
+    displayName: 'HTTP Header Auth',
+    fields: [
+      { name: 'headerName',  displayName: 'Header Name',  type: 'STRING', required: true, defaultValue: null },
+      { name: 'headerValue', displayName: 'Header Value', type: 'SECRET', required: true, defaultValue: null },
+    ],
+  },
+  {
+    name: 'sendgrid-api',
+    displayName: 'SendGrid API',
+    fields: [
+      { name: 'apiKey', displayName: 'API Key', type: 'SECRET', required: true, defaultValue: null },
+    ],
+  },
 ]
 
 export function getCredentialType(name: string): CredentialTypeSchema | undefined {
