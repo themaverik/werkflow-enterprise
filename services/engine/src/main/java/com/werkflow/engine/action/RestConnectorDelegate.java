@@ -1,7 +1,10 @@
 package com.werkflow.engine.action;
 
-import com.werkflow.common.security.SecretsResolver;
 import com.werkflow.common.security.SsrfGuard;
+import com.werkflow.engine.action.credential.CredentialRegistry;
+import com.werkflow.engine.action.credential.CredentialType;
+import com.werkflow.engine.action.credential.CredentialValues;
+import com.werkflow.engine.action.credential.HttpCredentialType;
 import com.werkflow.engine.audit.ProcessAuditLogRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
@@ -27,9 +30,15 @@ import java.util.regex.Pattern;
  * <p>Previously named {@code externalApiCallDelegate}; both bean names are registered
  * so deployed BPMNs using the old name continue to work without modification.</p>
  *
- * <p>HTTP-specific concerns (URL resolution, SSRF guard, body templating, secret injection)
+ * <p>HTTP-specific concerns (URL resolution, SSRF guard, body templating, credential injection)
  * live here. Cross-cutting concerns (audit, masking, extraction, error dispatch) are
  * inherited from {@link ConnectorDelegateBase}.</p>
+ *
+ * <p>As of M4.12 Phase B.4, authentication is handled via {@code credentialType} +
+ * {@code credentialRef} BPMN fields resolved through {@link CredentialRegistry}. The legacy
+ * {@code secretRef} field is no longer supported — any BPMN using it will receive an
+ * {@link IllegalStateException} at runtime with a clear migration message. See ADR-020
+ * Phase B.4 Implementation Notes.</p>
  */
 @Slf4j
 @Component("externalApiCallDelegate")
@@ -38,20 +47,26 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
     private static final int MAX_RESPONSE_BYTES = 100 * 1024;
     private static final Pattern BODY_TOKEN = Pattern.compile("\\$\\{([^}]+)\\}");
 
+    private static final String LEGACY_SECRETREF_ERROR =
+        "secretRef field is no longer supported in M4.12 Phase B.4. " +
+        "Replace with credentialType + credentialRef BPMN fields. See ADR-020 Phase B.4 Implementation Notes.";
+
     private final SsrfGuard ssrfGuard;
     private final HttpClient httpClient;
     private final TenantEndpointResolver endpointResolver;
+    private final CredentialRegistry credentialRegistry;
 
     private static final int DEFAULT_TIMEOUT_SECONDS = 30;
 
     public RestConnectorDelegate(SsrfGuard ssrfGuard,
                                  ResponseMasker responseMasker,
-                                 SecretsResolver secretsResolver,
+                                 CredentialRegistry credentialRegistry,
                                  ProcessAuditLogRepository auditLogRepository,
                                  MeterRegistry meterRegistry,
                                  TenantEndpointResolver endpointResolver) {
-        super(responseMasker, secretsResolver, auditLogRepository, meterRegistry);
+        super(responseMasker, auditLogRepository, meterRegistry);
         this.ssrfGuard = ssrfGuard;
+        this.credentialRegistry = credentialRegistry;
         this.endpointResolver = endpointResolver;
         this.httpClient = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NEVER)
@@ -72,6 +87,16 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
         String methodValue = null;
 
         try {
+            // Hard-error guard: detect presence of legacy secretRef field in BPMN definition.
+            // DelegateHelper.getFieldExpression returns non-null if the <flowable:field> element
+            // exists — regardless of whether its value is blank or populated. This means we can
+            // distinguish "field element present in BPMN" from "field element absent" using the
+            // expression reference alone. We reject any BPMN containing the secretRef element,
+            // even if blank, because a present element indicates a stale/unmigrated design.
+            if (DelegateHelper.getFieldExpression(execution, "secretRef") != null) {
+                throw new IllegalStateException(LEGACY_SECRETREF_ERROR);
+            }
+
             methodValue = getFieldString(execution, "method", "GET").toUpperCase();
             String bodyTemplate = getFieldString(execution, "body", null);
 
@@ -108,16 +133,16 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
                          "Migrate to 'connector'+'path' fields.", execution.getCurrentActivityId());
             }
 
-            // Resolve bearer secret
-            String secretKey = getFieldString(execution, "secretRef", null);
-            String secretValue = secretKey != null && !secretKey.isBlank()
-                ? secretsResolver.resolve(secretKey) : null;
-
             // Resolve body template (${varName} substitution)
             String resolvedBody = null;
             if (bodyTemplate != null && !bodyTemplate.isBlank()) {
                 resolvedBody = resolveBodyTemplate(bodyTemplate, execution);
             }
+
+            // Validate credential fields before SSRF — operator config errors must surface
+            // immediately, not after a network validation. Resolution (vault read) happens later.
+            String tenantCode = execution.getTenantId();
+            HttpCredentialType resolvedCredType = validateCredentialConfig(execution);
 
             // F7: SSRF guard runs here — after full URL resolution and EL evaluation,
             // immediately before HTTP dispatch. resolvedUrl is the exact string sent on the wire.
@@ -139,8 +164,19 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
                 }
             }
 
+            HttpRequest.Builder reqBuilder = buildRequest(resolvedUrl, methodValue, resolvedBody, timeoutSecs);
+
+            // Apply credential auth headers. resolvedCredType is non-null only when both
+            // credentialType + credentialRef fields were present and validated above.
+            if (resolvedCredType != null) {
+                String credentialRef = getFieldString(execution, "credentialRef", null);
+                String credentialTypeName = getFieldString(execution, "credentialType", null);
+                CredentialValues values = credentialRegistry.resolveForTenant(credentialTypeName, tenantCode, credentialRef);
+                resolvedCredType.applyTo(reqBuilder, values);
+            }
+
             long startTime = System.currentTimeMillis();
-            HttpResult httpResult = makeHttpCall(resolvedUrl, methodValue, secretValue, resolvedBody, timeoutSecs);
+            HttpResult httpResult = makeHttpCall(reqBuilder);
             long durationMs = System.currentTimeMillis() - startTime;
 
             // Truncate at 100KB
@@ -158,6 +194,10 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
 
             storeResult(rawBody, execution);
 
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            // Operator configuration errors — not transient failures subject to onError mode.
+            // Re-throw immediately so callers see the exact exception type.
+            throw e;
         } catch (HttpTimeoutException e) {
             // F1: surface timeout as a named delegate failure so onError mode applies
             String msg = "HTTP timeout after " + (resolvedUrl != null ? getFieldString(execution, "timeoutSeconds", String.valueOf(DEFAULT_TIMEOUT_SECONDS)) : DEFAULT_TIMEOUT_SECONDS) + "s calling " + resolvedUrl;
@@ -168,22 +208,72 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
     }
 
     // -------------------------------------------------------------------------
+    // Credential validation
+    // -------------------------------------------------------------------------
+
+    /**
+     * Validates the {@code credentialType} and {@code credentialRef} BPMN fields and returns
+     * the resolved {@link HttpCredentialType}, or {@code null} if both fields are absent
+     * (unauthenticated call).
+     *
+     * <p>This method is intentionally free of vault reads — it validates operator config only.
+     * Vault resolution happens in {@code execute()} after this method returns.
+     *
+     * <p>Rules:
+     * <ul>
+     *   <li>Both blank → returns {@code null} (unauthenticated).</li>
+     *   <li>Exactly one blank → {@link IllegalArgumentException} naming the missing field.</li>
+     *   <li>Both present, type not {@link HttpCredentialType} → {@link IllegalArgumentException}.</li>
+     *   <li>Both present, type valid → returns the {@link HttpCredentialType}.</li>
+     * </ul>
+     */
+    private HttpCredentialType validateCredentialConfig(DelegateExecution execution) {
+        String credentialType = getFieldString(execution, "credentialType", null);
+        String credentialRef  = getFieldString(execution, "credentialRef",  null);
+
+        boolean typeBlank = credentialType == null || credentialType.isBlank();
+        boolean refBlank  = credentialRef  == null || credentialRef.isBlank();
+
+        if (typeBlank && refBlank) {
+            return null;
+        }
+        if (typeBlank) {
+            throw new IllegalArgumentException(
+                "restConnectorDelegate: 'credentialRef' is set but 'credentialType' is missing on task '"
+                + execution.getCurrentActivityId() + "'");
+        }
+        if (refBlank) {
+            throw new IllegalArgumentException(
+                "restConnectorDelegate: 'credentialType' is set but 'credentialRef' is missing on task '"
+                + execution.getCurrentActivityId() + "'");
+        }
+
+        CredentialType type = credentialRegistry.get(credentialType);
+        if (!(type instanceof HttpCredentialType httpType)) {
+            throw new IllegalArgumentException(
+                "restConnectorDelegate: credential type '" + credentialType
+                + "' does not implement HttpCredentialType — REST transport requires an HTTP credential");
+        }
+        return httpType;
+    }
+
+    // -------------------------------------------------------------------------
     // Private HTTP helpers
     // -------------------------------------------------------------------------
 
     private record HttpResult(String body, int status) {}
 
-    private HttpResult makeHttpCall(String urlStr, String methodStr, String secret,
-                                    String bodyContent, int timeoutSecs)
-            throws IOException, InterruptedException {
+    /**
+     * Constructs an {@link HttpRequest.Builder} with URI, timeout, Accept header, optional
+     * Content-Type, and HTTP method set. Auth headers are applied by the caller after
+     * credential resolution.
+     */
+    private HttpRequest.Builder buildRequest(String urlStr, String methodStr,
+                                             String bodyContent, int timeoutSecs) {
         HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
             .uri(URI.create(urlStr))
             .timeout(Duration.ofSeconds(timeoutSecs))
             .header("Accept", "application/json");
-
-        if (secret != null) {
-            reqBuilder.header("Authorization", "Bearer " + secret);
-        }
 
         HttpRequest.BodyPublisher publisher = bodyContent != null
             ? HttpRequest.BodyPublishers.ofString(bodyContent, StandardCharsets.UTF_8)
@@ -194,10 +284,13 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
         }
 
         reqBuilder.method(methodStr, publisher);
+        return reqBuilder;
+    }
 
+    private HttpResult makeHttpCall(HttpRequest.Builder reqBuilder)
+            throws IOException, InterruptedException {
         HttpResponse<String> response = httpClient.send(reqBuilder.build(),
             HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-
         return new HttpResult(response.body(), response.statusCode());
     }
 

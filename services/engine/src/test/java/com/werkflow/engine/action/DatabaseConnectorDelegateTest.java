@@ -1,7 +1,6 @@
 package com.werkflow.engine.action;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.werkflow.common.security.SecretsResolver;
 import com.werkflow.engine.action.db.DatasourceRegistry;
 import com.werkflow.engine.action.db.KeysetPaginator;
 import com.werkflow.engine.action.db.NamedQueryExecutor;
@@ -45,7 +44,6 @@ import static org.mockito.Mockito.*;
 class DatabaseConnectorDelegateTest {
 
     @Mock private ResponseMasker responseMasker;
-    @Mock private SecretsResolver secretsResolver;
     @Mock private ProcessAuditLogRepository auditLogRepository;
     private final MeterRegistry meterRegistry = new SimpleMeterRegistry();
     @Mock private AdminServiceClient adminServiceClient;
@@ -92,7 +90,7 @@ class DatabaseConnectorDelegateTest {
     @BeforeEach
     void setUp() {
         delegate = new DatabaseConnectorDelegate(
-            responseMasker, secretsResolver, auditLogRepository, meterRegistry,
+            responseMasker, auditLogRepository, meterRegistry,
             adminServiceClient, datasourceRegistry, queryExecutor, keysetPaginator);
 
         lenient().when(execution.getProcessInstanceId()).thenReturn("proc-1");
