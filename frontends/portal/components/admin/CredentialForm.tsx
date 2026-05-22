@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
-import { useQueryClient } from '@tanstack/react-query'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -33,9 +33,28 @@ interface Props {
   onSaved: () => void
 }
 
+type ValidationResult = { field: 'label' | 'value'; message: string } | null
+
+// L3: shared helper — builds a fresh values record for a given field list.
+function defaultValuesFor(
+  fields: CredentialFieldSchema[],
+  isEdit: boolean,
+): Record<string, string | number | boolean> {
+  const result: Record<string, string | number | boolean> = {}
+  for (const f of fields) {
+    if (f.type === 'BOOL') {
+      result[f.name] = isEdit ? false : (typeof f.defaultValue === 'boolean' ? f.defaultValue : false)
+    } else if (f.type === 'INT') {
+      result[f.name] = isEdit ? '' : (typeof f.defaultValue === 'number' ? String(f.defaultValue) : '')
+    } else {
+      result[f.name] = isEdit ? '' : (typeof f.defaultValue === 'string' ? f.defaultValue : '')
+    }
+  }
+  return result
+}
+
 export function CredentialForm({ open, mode, initial, onClose, onSaved }: Props) {
   const t = useTranslations('admin.credentials')
-  const qc = useQueryClient()
 
   const isEdit = mode === 'edit'
 
@@ -46,48 +65,37 @@ export function CredentialForm({ open, mode, initial, onClose, onSaved }: Props)
   const schema = CREDENTIAL_TYPES.find((ct) => ct.name === selectedType)
   const fields: CredentialFieldSchema[] = schema?.fields ?? []
 
-  function buildDefaultValues(): Record<string, string | number | boolean> {
-    const result: Record<string, string | number | boolean> = {}
-    for (const f of fields) {
-      if (f.type === 'BOOL') {
-        result[f.name] = isEdit ? false : (typeof f.defaultValue === 'boolean' ? f.defaultValue : false)
-      } else if (f.type === 'INT') {
-        result[f.name] = isEdit ? '' : (typeof f.defaultValue === 'number' ? String(f.defaultValue) : '')
-      } else {
-        result[f.name] = isEdit ? '' : (typeof f.defaultValue === 'string' ? f.defaultValue : '')
-      }
-    }
-    return result
-  }
-
-  const [values, setValues] = useState<Record<string, string | number | boolean>>(buildDefaultValues)
+  const [values, setValues] = useState<Record<string, string | number | boolean>>(
+    () => defaultValuesFor(fields, isEdit),
+  )
   const [saving, setSaving] = useState(false)
   const [labelError, setLabelError] = useState('')
 
+  // H3: reset form state when dialog opens or the target credential changes.
+  useEffect(() => {
+    if (!open) return
+    const freshType = isEdit ? (initial?.credentialType ?? '') : CREDENTIAL_TYPES[0].name
+    const freshFields = CREDENTIAL_TYPES.find((ct) => ct.name === freshType)?.fields ?? []
+    setSelectedType(freshType)
+    setLabel(isEdit ? (initial?.label ?? '') : '')
+    setValues(defaultValuesFor(freshFields, isEdit))
+    setLabelError('')
+  }, [open, mode, initial?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleTypeChange(type: string) {
     setSelectedType(type)
-    const newSchema = CREDENTIAL_TYPES.find((ct) => ct.name === type)
-    const newFields = newSchema?.fields ?? []
-    const reset: Record<string, string | number | boolean> = {}
-    for (const f of newFields) {
-      if (f.type === 'BOOL') {
-        reset[f.name] = typeof f.defaultValue === 'boolean' ? f.defaultValue : false
-      } else if (f.type === 'INT') {
-        reset[f.name] = typeof f.defaultValue === 'number' ? String(f.defaultValue) : ''
-      } else {
-        reset[f.name] = typeof f.defaultValue === 'string' ? f.defaultValue : ''
-      }
-    }
-    setValues(reset)
+    const newFields = CREDENTIAL_TYPES.find((ct) => ct.name === type)?.fields ?? []
+    setValues(defaultValuesFor(newFields, false))
   }
 
   function setField(name: string, value: string | number | boolean) {
     setValues((prev) => ({ ...prev, [name]: value }))
   }
 
-  function validate(): string | null {
+  // L1: returns a structured result instead of a translated string so callers branch on field, not text.
+  function validate(): ValidationResult {
     if (!isEdit && !LABEL_REGEX.test(label)) {
-      return t('labelError')
+      return { field: 'label', message: t('labelError') }
     }
     for (const f of fields) {
       if (!f.required) continue
@@ -95,13 +103,13 @@ export function CredentialForm({ open, mode, initial, onClose, onSaved }: Props)
       if (f.type === 'INT') {
         const n = Number(raw)
         if (raw === '' || raw === undefined || isNaN(n)) {
-          return t('fieldRequired', { field: f.displayName })
+          return { field: 'value', message: t('fieldRequired', { field: f.displayName }) }
         }
       } else if (f.type === 'BOOL') {
         // boolean always has a value
       } else {
         if (!raw || String(raw).trim() === '') {
-          return t('fieldRequired', { field: f.displayName })
+          return { field: 'value', message: t('fieldRequired', { field: f.displayName }) }
         }
       }
     }
@@ -109,12 +117,12 @@ export function CredentialForm({ open, mode, initial, onClose, onSaved }: Props)
   }
 
   async function handleSubmit() {
-    const err = validate()
-    if (err) {
-      if (!isEdit && err === t('labelError')) {
-        setLabelError(err)
+    const result = validate()
+    if (result) {
+      if (result.field === 'label') {
+        setLabelError(result.message)
       } else {
-        toast.error(err)
+        toast.error(result.message)
       }
       return
     }
@@ -139,9 +147,9 @@ export function CredentialForm({ open, mode, initial, onClose, onSaved }: Props)
         await createCredential({ credentialType: selectedType, label, values: coercedValues })
         toast.success(t('createSuccess'))
       }
-      qc.invalidateQueries({ queryKey: ['tenant-credentials'] })
+      // H4: call only onSaved on success — do not also call onClose.
+      // The parent's onSaved callback owns query invalidation and dialog close.
       onSaved()
-      onClose()
     } catch (e: unknown) {
       toast.error(isEdit ? t('rotateFailed') : t('createFailed'), {
         description: e instanceof Error ? e.message : undefined,
@@ -162,6 +170,10 @@ export function CredentialForm({ open, mode, initial, onClose, onSaved }: Props)
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+          {/* L2: DialogDescription required for a11y — Radix warns without it. */}
+          <DialogDescription>
+            {isEdit ? t('rotateWarning') : t('createSubtitle')}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
@@ -194,6 +206,7 @@ export function CredentialForm({ open, mode, initial, onClose, onSaved }: Props)
 
           <div className="space-y-2">
             <Label htmlFor="cf-label">{t('label')}</Label>
+            {/* M6: aria-describedby + aria-invalid associate the error message with this input. */}
             <Input
               id="cf-label"
               placeholder={t('labelPlaceholder')}
@@ -204,9 +217,11 @@ export function CredentialForm({ open, mode, initial, onClose, onSaved }: Props)
               }}
               readOnly={isEdit}
               className={isEdit ? 'bg-muted text-muted-foreground' : ''}
+              aria-describedby={labelError ? 'cf-label-error' : undefined}
+              aria-invalid={!!labelError}
             />
             {labelError && (
-              <p className="text-xs text-destructive">{labelError}</p>
+              <p id="cf-label-error" className="text-xs text-destructive">{labelError}</p>
             )}
             {!isEdit && (
               <p className="text-xs text-muted-foreground">{t('labelHint')}</p>
@@ -222,11 +237,15 @@ export function CredentialForm({ open, mode, initial, onClose, onSaved }: Props)
                 )}
               </Label>
               {f.type === 'BOOL' ? (
+                // M5: aria-required on the SelectTrigger for BOOL fields.
                 <Select
                   value={String(values[f.name] ?? false)}
                   onValueChange={(v) => setField(f.name, v === 'true')}
                 >
-                  <SelectTrigger id={`cf-${f.name}`}>
+                  <SelectTrigger
+                    id={`cf-${f.name}`}
+                    aria-required={f.required ? 'true' : undefined}
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -235,6 +254,7 @@ export function CredentialForm({ open, mode, initial, onClose, onSaved }: Props)
                   </SelectContent>
                 </Select>
               ) : (
+                // M5: pass required={f.required} to Input for native validation + AT announcements.
                 <Input
                   id={`cf-${f.name}`}
                   type={f.type === 'SECRET' ? 'password' : f.type === 'INT' ? 'number' : 'text'}
@@ -242,6 +262,7 @@ export function CredentialForm({ open, mode, initial, onClose, onSaved }: Props)
                   placeholder={isEdit && f.type === 'SECRET' ? '••••••••' : undefined}
                   value={String(values[f.name] ?? '')}
                   onChange={(e) => setField(f.name, e.target.value)}
+                  required={f.required}
                 />
               )}
             </div>

@@ -66,7 +66,7 @@ export interface TenantCredentialResponse {
   fieldNames: string[]
   createdAt: string
   updatedAt: string
-  rotatedAt: string
+  rotatedAt: string | null
 }
 
 export interface CreateTenantCredentialRequest {
@@ -89,11 +89,6 @@ export interface CredentialTestResult {
 export async function listCredentials(): Promise<TenantCredentialResponse[]> {
   const res = await adminApiClient.get('/api/v1/config/credentials')
   return Array.isArray(res.data) ? res.data : []
-}
-
-export async function getCredential(id: string): Promise<TenantCredentialResponse> {
-  const res = await adminApiClient.get(`/api/v1/config/credentials/${encodeURIComponent(id)}`)
-  return res.data
 }
 
 export async function createCredential(
