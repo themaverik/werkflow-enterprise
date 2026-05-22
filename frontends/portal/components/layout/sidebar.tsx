@@ -48,10 +48,10 @@ const sidebarSections: SidebarSection[] = [
     titleKey: 'connectorsData',
     items: [
       { labelKey: 'connectors',     href: '/admin/connectors',         icon: Link2,       requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
-      { labelKey: 'marketplace',    href: '/admin/marketplace',        icon: Store,       requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'marketplace',    href: '/admin/marketplace',        icon: Store,       requiredRoles: ['WORKFLOW_ADMIN', 'ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'datasources',    href: '/admin/tenant/datasources',  icon: Database,    requiredRoles: ['WORKFLOW_ADMIN', 'ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'credentials',    href: '/admin/tenant/credentials',  icon: KeyRound,    requiredRoles: ['WORKFLOW_ADMIN', 'ADMIN', 'SUPER_ADMIN'] },
-      { labelKey: 'deadLetterJobs', href: '/admin/jobs/dead-letter',    icon: AlertCircle, requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'deadLetterJobs', href: '/admin/jobs/dead-letter',    icon: AlertCircle, requiredRoles: ['WORKFLOW_ADMIN', 'ADMIN', 'SUPER_ADMIN'] },
     ],
   },
   {
@@ -61,7 +61,7 @@ const sidebarSections: SidebarSection[] = [
       { labelKey: 'approvalAuthority', href: '/admin/tenant/approval-authority', icon: ShieldCheck,       requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'departments',       href: '/admin/tenant/departments',        icon: Building2,         requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'custodyMappings',   href: '/admin/tenant/custody-mappings',   icon: BriefcaseBusiness, requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
-      { labelKey: 'categories',        href: '/admin/tenant/categories',         icon: Tag,               requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'categories',        href: '/admin/tenant/categories',         icon: Tag,               requiredRoles: ['WORKFLOW_ADMIN', 'ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'visibilityPolicy',  href: '/admin/tenant/visibility-policy',  icon: Eye,               requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'locale',            href: '/admin/tenant/locale',             icon: Globe,             requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
     ],
