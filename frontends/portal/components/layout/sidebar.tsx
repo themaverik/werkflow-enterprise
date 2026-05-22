@@ -49,7 +49,7 @@ const sidebarSections: SidebarSection[] = [
     items: [
       { labelKey: 'connectors',     href: '/admin/connectors',         icon: Link2,       requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'marketplace',    href: '/admin/marketplace',        icon: Store,       requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
-      { labelKey: 'datasources',    href: '/admin/tenant/datasources',  icon: Database,    requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'datasources',    href: '/admin/tenant/datasources',  icon: Database,    requiredRoles: ['WORKFLOW_ADMIN', 'ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'credentials',    href: '/admin/tenant/credentials',  icon: KeyRound,    requiredRoles: ['WORKFLOW_ADMIN', 'ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'deadLetterJobs', href: '/admin/jobs/dead-letter',    icon: AlertCircle, requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
     ],
