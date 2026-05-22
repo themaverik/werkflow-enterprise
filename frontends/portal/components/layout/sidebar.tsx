@@ -9,7 +9,7 @@ import {
   LayoutDashboard, CheckSquare, FileText, BookOpen,
   Workflow, FormInput, GitBranch, Mail,
   Link2, ShieldCheck, Building2, Users, TrendingUp, Activity,
-  BriefcaseBusiness, AlertCircle, Tag, Eye, Globe, Database, Store,
+  BriefcaseBusiness, AlertCircle, Tag, Eye, Globe, Database, Store, KeyRound,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -49,8 +49,9 @@ const sidebarSections: SidebarSection[] = [
     items: [
       { labelKey: 'connectors',     href: '/admin/connectors',         icon: Link2,       requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
       { labelKey: 'marketplace',    href: '/admin/marketplace',        icon: Store,       requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
-      { labelKey: 'datasources',    href: '/admin/tenant/datasources', icon: Database,    requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
-      { labelKey: 'deadLetterJobs', href: '/admin/jobs/dead-letter',   icon: AlertCircle, requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'datasources',    href: '/admin/tenant/datasources',  icon: Database,    requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'credentials',    href: '/admin/tenant/credentials',  icon: KeyRound,    requiredRoles: ['WORKFLOW_ADMIN', 'ADMIN', 'SUPER_ADMIN'] },
+      { labelKey: 'deadLetterJobs', href: '/admin/jobs/dead-letter',    icon: AlertCircle, requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
     ],
   },
   {
