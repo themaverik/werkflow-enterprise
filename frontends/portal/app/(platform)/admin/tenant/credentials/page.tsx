@@ -25,6 +25,7 @@ import {
   type CredentialTestResult,
 } from '@/lib/api/credentials'
 import { CredentialForm } from '@/components/admin/CredentialForm'
+import { PageSurface } from '@/components/layout/page-surface'
 
 type TestState = CredentialTestResult | 'testing'
 
@@ -92,6 +93,7 @@ export default function CredentialsPage() {
   }
 
   return (
+    <PageSurface>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -266,6 +268,7 @@ export default function CredentialsPage() {
         }}
       />
     </div>
+    </PageSurface>
   )
 }
 

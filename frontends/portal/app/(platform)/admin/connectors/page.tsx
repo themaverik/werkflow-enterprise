@@ -17,6 +17,7 @@ import {
 import { RefreshCw, Plus, Pencil, FlaskConical, Trash2, Upload, Plug } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from 'next-intl'
+import { PageSurface } from '@/components/layout/page-surface'
 import { listConnectors, deleteConnector, type ConnectorResponse } from '@/lib/api/connectors'
 import { ConnectorForm } from '@/components/admin/ConnectorForm'
 import { DtdsConnectorCard } from '@/components/admin/DtdsConnectorCard'
@@ -99,6 +100,7 @@ export default function ConnectorsPage() {
   }
 
   return (
+    <PageSurface>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -358,5 +360,6 @@ export default function ConnectorsPage() {
         onImported={handleOpenApiImported}
       />
     </div>
+    </PageSurface>
   )
 }

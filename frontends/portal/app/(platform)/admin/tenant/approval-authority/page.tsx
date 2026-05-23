@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { PageSurface } from '@/components/layout/page-surface'
 
 const MAX_LEVELS = 10
 
@@ -169,6 +170,7 @@ export default function ApprovalAuthorityPage() {
   const availableRoles = realmRoles.filter((r) => !assignedRoles.has(r))
 
   return (
+    <PageSurface>
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Approval Authority</h1>
@@ -426,5 +428,6 @@ export default function ApprovalAuthorityPage() {
         </div>
       </section>
     </div>
+    </PageSurface>
   )
 }

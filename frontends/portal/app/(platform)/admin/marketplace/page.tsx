@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select'
 import { Download, ExternalLink, RefreshCw, ShieldCheck } from 'lucide-react'
 import { createConnector } from '@/lib/api/connectors'
+import { PageSurface } from '@/components/layout/page-surface'
 import {
   MARKETPLACE_CATALOG,
   type MarketplaceConnector,
@@ -311,6 +312,7 @@ export default function MarketplacePage() {
   }
 
   return (
+    <PageSurface>
     <div className="space-y-8">
       {/* Header */}
       <div>
@@ -411,5 +413,6 @@ export default function MarketplacePage() {
         }}
       />
     </div>
+    </PageSurface>
   )
 }
