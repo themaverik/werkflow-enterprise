@@ -6,7 +6,6 @@ export type ConnectorType = 'API' | 'WEBHOOK' | 'MCP' | 'OTHER'
 
 export interface ConnectorResponse {
   endpointId: number
-  credentialId: number
   tenantCode: string
   connectorKey: string
   displayName: string
@@ -15,10 +14,8 @@ export interface ConnectorResponse {
   active: boolean
   connectorType: ConnectorType
   authScheme: string
-  headerName: string | null
   credentialRef: string | null
   sampleSchema: string | null
-  hasSecret: boolean
   createdAt: string
   updatedAt: string
 }
@@ -35,7 +32,6 @@ export interface ConnectorRequest {
   authScheme: string
   /** Label of the OpenBao-backed credential to bind (Phase B.6). Required unless authScheme is NONE. */
   credentialRef?: string
-  headerName?: string
   sampleSchema?: string
 }
 
@@ -127,7 +123,6 @@ export interface ConnectorUpdateRequest {
   authScheme: string
   /** Label of the OpenBao-backed credential to bind (Phase B.6). Blank preserves the existing binding. */
   credentialRef?: string
-  headerName?: string
 }
 
 export async function updateConnector(
