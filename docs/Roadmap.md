@@ -2,7 +2,7 @@
 
 **Repo scope**: Enterprise-only engine, admin-service, and portal features
 **Master Roadmap**: `~/Projects/werkflow-platform/docs/Roadmap.md` (authoritative for all future tasks)
-**Last Updated**: 2026-05-09
+**Last Updated**: 2026-05-23
 **Target**: Internal Enterprise Demo — June 2026
 
 > Future tasks in this file are synced from the master Roadmap. Do not add tasks here without adding them to master first.
@@ -14,11 +14,13 @@
 | Item | Status |
 |------|--------|
 | E2E quality gate | 7/7 specs passing |
-| ADRs | ADR-001 through ADR-014 written |
-| Active milestone | M4.11 — BPMN/DMN Native Coverage & Element Correctness (P3 per-element audit pass) |
-| P3 audits done | External-Api-Call, User-Task, Service-Task, EL-Expression-Security, Database-And-Connector |
-| Next session | M4.11 P3 — Send-Task.md audit |
-| Branch | main (M4.11 P3 work merged) |
+| ADRs | ADR-001 through ADR-022 (in master `docs/adr/`); ADR-020 has B.5 amendment |
+| Active milestone | M4.12 — Connector Architecture Maturity (Phase B credentials) |
+| M4.11 P3 | Complete — 11 of 11 element audits |
+| M4.12 done | A.1/A.2 (ADR-019); B.1a/B.2/B.3/B.4/B.4-portal; **B.5 backend (DB credential migration AES→OpenBao, `674018a`)** |
+| Next session | **M4.12 B.5-portal** — datasources-page credential picker + B.5 rotation pool-eviction wiring (D7) |
+| Branch | main (B.5 backend merged) |
+| Operational | dev/live admin DBs need `mvn flyway:repair` (V6 + V24); unmerged `fix/m4.12-datasources-role-gate` |
 
 ---
 
