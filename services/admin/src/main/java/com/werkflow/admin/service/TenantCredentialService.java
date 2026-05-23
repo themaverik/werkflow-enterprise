@@ -8,8 +8,10 @@ import com.werkflow.admin.dto.credential.UpdateTenantCredentialRequest;
 import com.werkflow.admin.entity.TenantCredential;
 import com.werkflow.admin.entity.TenantDatasource;
 import com.werkflow.admin.repository.TenantCredentialRepository;
+import com.werkflow.admin.event.DatasourcePoolEvictionEvent;
 import com.werkflow.admin.repository.TenantDatasourceRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -52,6 +54,7 @@ public class TenantCredentialService {
     private final VaultCredentialStore vault;
     private final CredentialTestClient credentialTestClient;
     private final TenantDatasourceRepository datasourceRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     // -- queries -------------------------------------------------------------
 
@@ -149,6 +152,16 @@ public class TenantCredentialService {
         // 2) Stamp rotation timestamp on DB row
         entity.setRotatedAt(OffsetDateTime.now());
         TenantCredential saved = repository.save(entity);
+
+        // 3) Evict any engine pool using this credential after commit, so live pools
+        // pick up the rotated secret (B.5 D7). Only jdbc-password credentials back a
+        // datasource pool; AFTER_COMMIT-scoped listener fires the eviction.
+        if ("jdbc-password".equals(entity.getCredentialType())) {
+            datasourceRepository
+                .findByTenantIdAndCredentialRef(tenantId, entity.getLabel())
+                .forEach(ds -> eventPublisher.publishEvent(
+                    new DatasourcePoolEvictionEvent(tenantId, ds.getRef())));
+        }
         return TenantCredentialResponse.from(saved, fieldNames);
     }
 
