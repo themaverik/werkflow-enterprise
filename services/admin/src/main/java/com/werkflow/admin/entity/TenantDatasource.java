@@ -16,9 +16,9 @@ import java.util.UUID;
 /**
  * Stores the connection metadata for a tenant's registered JDBC datasource.
  *
- * <p>The password is stored as AES-256-GCM ciphertext in {@code encryptedPassword}.
- * {@link com.werkflow.common.security.EncryptionService} encrypts on write and
- * decrypts on read. The plaintext credential is never persisted or logged.</p>
+ * <p>Credentials are not stored here. {@code credentialRef} points at a
+ * {@code jdbc-password} credential whose username/password live in OpenBao; the engine
+ * resolves them at pool-creation time and admin reads them only for connection tests.</p>
  *
  * <p>Unique constraint on {@code (tenantId, ref)} ensures each tenant can register
  * a datasource reference once, and the ref slug is immutable after creation.</p>
@@ -63,19 +63,16 @@ public class TenantDatasource {
     @Column(name = "driver_class_name", nullable = false, length = 200)
     private String driverClassName;
 
-    @NotBlank
-    @Column(name = "username", nullable = false, length = 200)
-    private String username;
-
     /**
-     * AES-256-GCM encrypted password, managed by
-     * {@link com.werkflow.common.security.EncryptionService}.
-     * The plaintext is only decrypted for engine-internal resolution
-     * and is never returned to external callers.
+     * Label of the {@code jdbc-password} credential (in {@code tenant_credentials} /
+     * OpenBao) that supplies this datasource's username and password. Distinct from
+     * {@code ref} so one credential can back multiple datasources.
      */
     @NotBlank
-    @Column(name = "encrypted_password", nullable = false, length = 500)
-    private String encryptedPassword;
+    @Pattern(regexp = "^[a-z][a-z0-9-]*$",
+             message = "credentialRef must be lowercase alphanumeric with hyphens, starting with a letter")
+    @Column(name = "credential_ref", nullable = false, length = 100)
+    private String credentialRef;
 
     /** SQL dialect hint used by the engine to apply dialect-specific features. */
     @Column(name = "dialect", length = 50)
