@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,6 +23,7 @@ import {
   type TenantDatasourceRequest,
   type TenantDatasourceResponse,
 } from '@/lib/api/datasources'
+import { listCredentials, type TenantCredentialResponse } from '@/lib/api/credentials'
 
 const DRIVER_OPTIONS = [
   { label: 'PostgreSQL', value: 'org.postgresql.Driver' },
@@ -49,8 +51,7 @@ type FormState = {
   ref: string
   jdbcUrl: string
   driverClassName: string
-  username: string
-  password: string
+  credentialRef: string
   dialect: string
   poolMinSize: string
   poolMaxSize: string
@@ -63,10 +64,7 @@ function defaultForm(existing?: TenantDatasourceResponse): FormState {
     ref: existing?.ref ?? '',
     jdbcUrl: existing?.jdbcUrl ?? '',
     driverClassName: existing?.driverClassName ?? '',
-    username: existing?.username ?? '',
-    // H-5: always start empty — password is write-only and not returned by the API.
-    // On create this is required; on edit leave blank to keep the existing encrypted value.
-    password: '',
+    credentialRef: existing?.credentialRef ?? '',
     dialect: existing?.dialect ?? '',
     poolMinSize: String(existing?.poolMinSize ?? 1),
     poolMaxSize: String(existing?.poolMaxSize ?? 5),
@@ -83,23 +81,37 @@ export function DatasourceForm({ existing }: Props) {
   const [form, setForm] = useState<FormState>(defaultForm(existing))
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
+  const [jdbcCredentials, setJdbcCredentials] = useState<TenantCredentialResponse[]>([])
+  const [credentialsLoading, setCredentialsLoading] = useState(true)
 
   const isEdit = !!existing
+
+  useEffect(() => {
+    listCredentials()
+      .then((all) => setJdbcCredentials(all.filter((c) => c.credentialType === 'jdbc-password')))
+      .catch((err) => {
+        console.error('Failed to load credentials for datasource picker', err)
+        setJdbcCredentials([])
+      })
+      .finally(() => setCredentialsLoading(false))
+  }, [])
+
+  // Empty-state (create mode only) and picker visibility are gated on the fetch
+  // having resolved, so the loading window never flashes the wrong UI (edit mode
+  // must show the picker with its pre-selected credentialRef, not the empty-state).
+  const showEmptyState = !isEdit && !credentialsLoading && jdbcCredentials.length === 0
+  const showPicker = !credentialsLoading && !showEmptyState
 
   function setField(field: keyof FormState, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
   function buildRequest(): TenantDatasourceRequest {
-    const trimmedPassword = form.password.trim()
     return {
       ref: form.ref.trim(),
       jdbcUrl: form.jdbcUrl.trim(),
       driverClassName: form.driverClassName.trim(),
-      username: form.username.trim(),
-      // H-5: only include password if the user typed something.
-      // On update, omitting it tells the server to keep the existing encrypted value.
-      ...(trimmedPassword ? { password: trimmedPassword } : {}),
+      credentialRef: form.credentialRef,
       dialect: form.dialect || undefined,
       poolMinSize: parseInt(form.poolMinSize, 10) || 1,
       poolMaxSize: parseInt(form.poolMaxSize, 10) || 5,
@@ -110,9 +122,8 @@ export function DatasourceForm({ existing }: Props) {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    // On create, password is required
-    if (!isEdit && !form.password.trim()) {
-      toast.error('Password is required when registering a new datasource.')
+    if (!isEdit && !form.credentialRef) {
+      toast.error('Select a credential before registering the datasource.')
       return
     }
     setSaving(true)
@@ -229,40 +240,44 @@ export function DatasourceForm({ existing }: Props) {
         </Select>
       </div>
 
-      {/* Username */}
+      {/* Credential */}
       <div className="space-y-1.5">
-        <Label htmlFor="username">Username</Label>
-        <Input
-          id="username"
-          placeholder="db_user"
-          value={form.username}
-          onChange={(e) => setField('username', e.target.value)}
-          required
-          className="font-mono"
-        />
-      </div>
-
-      {/* Password */}
-      <div className="space-y-1.5">
-        <Label htmlFor="password">
-          Password
-          {isEdit && (
-            <span className="text-muted-foreground text-xs ml-1">(leave blank to keep existing)</span>
-          )}
-        </Label>
-        <Input
-          id="password"
-          type="password"
-          placeholder="••••••••"
-          value={form.password}
-          onChange={(e) => setField('password', e.target.value)}
-          required={!isEdit}
-          className="font-mono text-sm"
-        />
-        <p className="text-xs text-muted-foreground">
-          Encrypted with AES-256-GCM before storing — never logged or returned.
-          {isEdit && ' Leave blank to keep the currently stored password.'}
-        </p>
+        <Label htmlFor={showPicker ? 'credentialRef' : undefined}>Credential</Label>
+        {credentialsLoading ? (
+          <p className="text-sm text-muted-foreground">Loading credentials…</p>
+        ) : showEmptyState ? (
+          <p className="text-sm text-muted-foreground">
+            No JDBC credentials found.{' '}
+            <Link href="/admin/tenant/credentials" className="underline underline-offset-2">
+              Create a JDBC credential first
+            </Link>
+          </p>
+        ) : (
+          <Select
+            value={form.credentialRef}
+            onValueChange={(v) => setField('credentialRef', v)}
+          >
+            <SelectTrigger id="credentialRef" className="font-mono text-sm">
+              <SelectValue placeholder="Select credential…" />
+            </SelectTrigger>
+            <SelectContent>
+              {jdbcCredentials.map((c) => (
+                <SelectItem key={c.id} value={c.label} className="font-mono text-xs">
+                  {c.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {showPicker && (
+          <p className="text-xs text-muted-foreground">
+            The credential supplies the database username and password. Manage credentials on the{' '}
+            <Link href="/admin/tenant/credentials" className="underline underline-offset-2">
+              Credentials page
+            </Link>
+            .
+          </p>
+        )}
       </div>
 
       {/* Pool settings */}
@@ -341,7 +356,7 @@ export function DatasourceForm({ existing }: Props) {
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={saving}>
+          <Button type="submit" disabled={saving || showEmptyState}>
             {saving && <RefreshCw className="h-4 w-4 animate-spin mr-2" />}
             {isEdit ? 'Update' : 'Register'}
           </Button>
