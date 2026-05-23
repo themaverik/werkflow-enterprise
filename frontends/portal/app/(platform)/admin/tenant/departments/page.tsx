@@ -8,6 +8,7 @@ import { AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { useAuthorization } from '@/lib/auth/use-authorization'
 import { listConnectors } from '@/lib/api/connectors'
+import { PageSurface } from '@/components/layout/page-surface'
 
 const DEPARTMENTS_CONNECTOR_KEY = 'hr-service'
 
@@ -68,6 +69,7 @@ export default function DepartmentsPage() {
   const isLoading = loadingConnectors || (hasConnector && loadingDepts)
 
   return (
+    <PageSurface>
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Departments</h1>
@@ -146,5 +148,6 @@ export default function DepartmentsPage() {
         </div>
       )}
     </div>
+    </PageSurface>
   )
 }

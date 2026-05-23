@@ -9,6 +9,7 @@ import { Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { platformApi } from '@/lib/platform/api'
 import type { VisibilityPolicyEntry } from '@/lib/platform/types'
+import { PageSurface } from '@/components/layout/page-surface'
 
 export default function VisibilityPolicyPage() {
   const { data: session, status } = useSession()
@@ -65,7 +66,8 @@ export default function VisibilityPolicyPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl">
+    <PageSurface className="max-w-2xl">
+    <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold">Visibility Policy</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -142,5 +144,6 @@ export default function VisibilityPolicyPage() {
         </>
       )}
     </div>
+    </PageSurface>
   )
 }
