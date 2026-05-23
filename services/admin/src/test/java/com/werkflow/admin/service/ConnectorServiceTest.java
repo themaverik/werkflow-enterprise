@@ -93,7 +93,7 @@ class ConnectorServiceTest {
             .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.callConnector("acme", "erp-connector", "/data", "GET", null))
-            .isInstanceOf(NoSuchElementException.class)
+            .isInstanceOf(ResponseStatusException.class)
             .hasMessageContaining("Credential not found");
     }
 

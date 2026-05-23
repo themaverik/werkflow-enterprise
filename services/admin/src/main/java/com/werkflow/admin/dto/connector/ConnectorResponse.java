@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
 @Builder
 public class ConnectorResponse {
     private Long endpointId;
-    private Long credentialId;
     private String tenantCode;
     private String connectorKey;
     private String displayName;
@@ -17,9 +16,7 @@ public class ConnectorResponse {
     private boolean active;
     private String connectorType;
     private String authScheme;
-    private String headerName;
     private String credentialRef;
-    private boolean hasSecret;
     private String sampleSchema;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
