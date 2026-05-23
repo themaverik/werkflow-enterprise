@@ -1,5 +1,6 @@
 package com.werkflow.admin.service;
 
+import com.werkflow.admin.designtime.platform.service.LocaleProjector;
 import com.werkflow.admin.dto.ConfigVarRequest;
 import com.werkflow.admin.dto.ConfigVarResponse;
 import com.werkflow.admin.entity.ConfigurationVariable;
@@ -16,7 +17,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ConfigurationVariableService {
 
+    // Mirrors LocaleProjector.LOCALE_VAR_TYPE — keep in sync (same "LOCALE" slug).
+    private static final String LOCALE_VAR_TYPE = "LOCALE";
+
     private final ConfigurationVariableRepository repository;
+    private final LocaleProjector localeProjector;
 
     @Transactional(readOnly = true)
     public List<ConfigVarResponse> listByTenant(String tenantCode) {
@@ -43,7 +48,9 @@ public class ConfigurationVariableService {
         ConfigurationVariable target = repository
                 .findByTenantCodeAndVarKey(request.tenantCode(), request.varKey())
                 .orElse(new ConfigurationVariable());
-        return toResponse(repository.save(fromRequest(target, request)));
+        ConfigVarResponse response = toResponse(repository.save(fromRequest(target, request)));
+        evictLocaleCacheIfNeeded(request);
+        return response;
     }
 
     @Transactional
@@ -57,7 +64,25 @@ public class ConfigurationVariableService {
                 org.springframework.http.HttpStatus.FORBIDDEN,
                 "Cannot change tenant ownership of a config var");
         }
-        return toResponse(repository.save(fromRequest(existing, request)));
+        ConfigVarResponse response = toResponse(repository.save(fromRequest(existing, request)));
+        evictLocaleCacheIfNeeded(request);
+        return response;
+    }
+
+    /**
+     * Evicts the PSS locale/capabilities cache when a LOCALE config var is written.
+     * Without this, {@link LocaleProjector#project} keeps serving the stale cached
+     * value and the portal appears to revert to the USD default after a save.
+     *
+     * <p>Eviction runs inside the enclosing transaction (after save, before commit).
+     * A concurrent reader between eviction and commit could transiently re-cache the
+     * old value; it self-corrects on the cache TTL or the next save. Acceptable for
+     * this low-concurrency settings path over an AFTER_COMMIT synchronization callback.
+     */
+    private void evictLocaleCacheIfNeeded(ConfigVarRequest request) {
+        if (LOCALE_VAR_TYPE.equals(request.varType())) {
+            localeProjector.evict(request.tenantCode());
+        }
     }
 
     @Transactional
