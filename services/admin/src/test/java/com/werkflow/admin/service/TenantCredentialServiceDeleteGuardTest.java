@@ -1,7 +1,9 @@
 package com.werkflow.admin.service;
 
+import com.werkflow.admin.entity.TenantApiCredential;
 import com.werkflow.admin.entity.TenantCredential;
 import com.werkflow.admin.entity.TenantDatasource;
+import com.werkflow.admin.repository.TenantApiCredentialRepository;
 import com.werkflow.admin.repository.TenantCredentialRepository;
 import com.werkflow.admin.repository.TenantDatasourceRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,16 +30,30 @@ class TenantCredentialServiceDeleteGuardTest {
     @Mock private VaultCredentialStore vault;
     @Mock private CredentialTestClient credentialTestClient;
     @Mock private TenantDatasourceRepository datasourceRepository;
+    @Mock private TenantApiCredentialRepository connectorCredentialRepository;
 
     private TenantCredentialService service;
 
     @BeforeEach
     void setUp() {
-        service = new TenantCredentialService(repository, vault, credentialTestClient, datasourceRepository, event -> {});
+        service = new TenantCredentialService(repository, vault, credentialTestClient,
+            datasourceRepository, connectorCredentialRepository, event -> {});
     }
 
     private TenantCredential jdbcCredential() {
         return new TenantCredential("acme", "jdbc-password", "my-cred", "tenants/acme/jdbc-password/my-cred");
+    }
+
+    private TenantCredential httpHeaderCredential() {
+        return new TenantCredential("acme", "http-header-auth", "erp-key", "tenants/acme/http-header-auth/erp-key");
+    }
+
+    private TenantApiCredential connector(String key, String authScheme, String credentialRef) {
+        TenantApiCredential c = new TenantApiCredential();
+        c.setConnectorKey(key);
+        c.setAuthScheme(authScheme);
+        c.setCredentialRef(credentialRef);
+        return c;
     }
 
     @Test
@@ -71,5 +87,37 @@ class TenantCredentialServiceDeleteGuardTest {
 
         verify(repository).delete(cred);
         verify(vault).delete("tenants/acme/jdbc-password/my-cred");
+    }
+
+    @Test
+    @DisplayName("delete is blocked with 409 when a connector references the http credential")
+    void delete_blockedWhenConnectorReferencesCredential() {
+        UUID id = UUID.randomUUID();
+        TenantCredential cred = httpHeaderCredential();
+        when(repository.findById(id)).thenReturn(Optional.of(cred));
+        when(connectorCredentialRepository.findByTenantCodeAndCredentialRef("acme", "erp-key"))
+            .thenReturn(List.of(connector("erp-connector", "API_KEY", "erp-key")));
+
+        assertThatThrownBy(() -> service.delete("acme", id))
+            .isInstanceOf(ResponseStatusException.class)
+            .hasMessageContaining("erp-connector");
+
+        verify(repository, never()).delete(cred);
+    }
+
+    @Test
+    @DisplayName("delete ignores connectors that share the label but use a different authScheme")
+    void delete_ignoresConnectorWithMismatchedScheme() {
+        UUID id = UUID.randomUUID();
+        TenantCredential cred = httpHeaderCredential();
+        when(repository.findById(id)).thenReturn(Optional.of(cred));
+        // A BEARER connector maps to http-bearer-token, not http-header-auth — must not block.
+        when(connectorCredentialRepository.findByTenantCodeAndCredentialRef("acme", "erp-key"))
+            .thenReturn(List.of(connector("other-connector", "BEARER", "erp-key")));
+
+        service.delete("acme", id);
+
+        verify(repository).delete(cred);
+        verify(vault).delete("tenants/acme/http-header-auth/erp-key");
     }
 }
