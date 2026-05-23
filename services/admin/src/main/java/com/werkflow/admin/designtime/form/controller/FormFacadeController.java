@@ -26,7 +26,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/design/form")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('WORKFLOW_ADMIN','ADMIN','SUPER_ADMIN')")
+@PreAuthorize("hasAnyRole('WORKFLOW_DESIGNER','WORKFLOW_ADMIN','ADMIN','SUPER_ADMIN')")
 @Tag(name = "DTDS — Form Facade", description = "Design-time data service for the form-js editor")
 public class FormFacadeController {
 
