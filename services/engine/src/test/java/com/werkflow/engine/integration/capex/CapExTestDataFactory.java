@@ -355,6 +355,8 @@ public class CapExTestDataFactory {
                                                                String approverName,
                                                                String comments) {
         Map<String, Object> variables = new HashMap<>();
+        // Decision gateways read the portal contract variable 'decision' ('approve'/'reject').
+        variables.put("decision", "approve");
         variables.put("approved", true);
         variables.put("approvalDecision", "APPROVED");
         variables.put("approverId", approverId);
@@ -372,6 +374,8 @@ public class CapExTestDataFactory {
                                                                 String approverName,
                                                                 String reason) {
         Map<String, Object> variables = new HashMap<>();
+        // Decision gateways read the portal contract variable 'decision' ('approve'/'reject').
+        variables.put("decision", "reject");
         variables.put("approved", false);
         variables.put("approvalDecision", "REJECTED");
         variables.put("approverId", approverId);
