@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { platformApi } from '@/lib/platform/api'
 import type { CategoryEntry, CategoryRequest } from '@/lib/platform/types'
+import { PageSurface } from '@/components/layout/page-surface'
 
 const COLOR_OPTIONS = ['purple', 'green', 'blue', 'cyan', 'orange', 'amber', 'gray', 'red', 'pink']
 
@@ -124,7 +125,8 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div className="p-6 space-y-4">
+    <PageSurface>
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">Categories</h1>
@@ -253,5 +255,6 @@ export default function CategoriesPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </PageSurface>
   )
 }
