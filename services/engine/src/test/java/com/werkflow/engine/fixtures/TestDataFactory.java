@@ -312,6 +312,8 @@ public class TestDataFactory {
      */
     public static Map<String, Object> createApprovalDecision(boolean approved, String comments) {
         Map<String, Object> variables = new HashMap<>();
+        // Decision gateways read the portal contract variable 'decision' ('approve'/'reject').
+        variables.put("decision", approved ? "approve" : "reject");
         variables.put("approved", approved);
         variables.put("approvalDecision", approved ? "APPROVED" : "REJECTED");
         variables.put("approverComments", comments);
@@ -324,6 +326,8 @@ public class TestDataFactory {
      */
     public static Map<String, Object> createRejectionDecision(String reason) {
         Map<String, Object> variables = new HashMap<>();
+        // Decision gateways read the portal contract variable 'decision' ('approve'/'reject').
+        variables.put("decision", "reject");
         variables.put("approved", false);
         variables.put("approvalDecision", "REJECTED");
         variables.put("rejectionReason", reason);
