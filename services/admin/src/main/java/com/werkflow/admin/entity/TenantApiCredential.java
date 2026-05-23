@@ -34,13 +34,18 @@ public class TenantApiCredential {
     @Column(nullable = false, length = 30)
     private String authScheme;
 
-    /** Legacy pointer — nullable; prefer secretValue for new connectors */
+    /** Legacy pointer — nullable; superseded by credentialRef. */
     @Column(length = 200)
     private String secretRef;
 
-    /** Encrypted raw credential value (AES-256-GCM via EncryptionService) */
-    @Column(columnDefinition = "TEXT")
-    private String secretValue;
+    /**
+     * Label of the OpenBao-backed {@link TenantCredential} that holds this connector's
+     * auth material (M4.12 Phase B.6). Null when {@code authScheme == "NONE"}. The
+     * credential type is derived from {@code authScheme}; engine and admin resolve the
+     * secret from OpenBao via the {@code (tenantCode, type, credentialRef)} triple.
+     */
+    @Column(name = "credential_ref", length = 100)
+    private String credentialRef;
 
     @Column(length = 100)
     private String headerName;

@@ -16,6 +16,7 @@ export interface ConnectorResponse {
   connectorType: ConnectorType
   authScheme: string
   headerName: string | null
+  credentialRef: string | null
   sampleSchema: string | null
   hasSecret: boolean
   createdAt: string
@@ -32,7 +33,8 @@ export interface ConnectorRequest {
   active: boolean
   connectorType?: ConnectorType
   authScheme: string
-  secretValue: string
+  /** Label of the OpenBao-backed credential to bind (Phase B.6). Required unless authScheme is NONE. */
+  credentialRef?: string
   headerName?: string
   sampleSchema?: string
 }
@@ -123,7 +125,8 @@ export interface ConnectorUpdateRequest {
   active: boolean
   connectorType?: ConnectorType
   authScheme: string
-  secretValue?: string
+  /** Label of the OpenBao-backed credential to bind (Phase B.6). Blank preserves the existing binding. */
+  credentialRef?: string
   headerName?: string
 }
 
