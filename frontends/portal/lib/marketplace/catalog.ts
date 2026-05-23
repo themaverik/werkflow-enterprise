@@ -29,7 +29,6 @@ export type TransportType =
 
 export type AuthType =
   | 'none'
-  | 'secret-ref'
   | 'bearer'
   | 'basic'
   | 'api-key'
@@ -164,7 +163,6 @@ export function transportLabel(transport: TransportType): string {
 export function authLabel(auth: AuthType): string {
   const labels: Record<AuthType, string> = {
     none: 'No auth',
-    'secret-ref': 'Secret ref',
     bearer: 'Bearer token',
     basic: 'Basic auth',
     'api-key': 'API key',

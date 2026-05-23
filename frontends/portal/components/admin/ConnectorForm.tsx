@@ -198,11 +198,12 @@ export function ConnectorForm({
     () => credentials.filter((c) => c.credentialType === credentialType),
     [credentials, credentialType],
   )
-  // Edit mode keeps the picker visible with its pre-selected ref; only create mode
-  // shows the empty-state link when no credential of the required type exists yet.
+  // When no credential of the required type exists, show the empty-state link instead of an
+  // empty Select — in both create and edit mode (a typeless/empty picker is useless either way).
   const showCredEmptyState =
-    !isEdit && !credentialsLoading && credentialType !== undefined && matchingCredentials.length === 0
-  const showCredPicker = !credentialsLoading && credentialType !== undefined && !showCredEmptyState
+    !credentialsLoading && credentialType !== undefined && matchingCredentials.length === 0
+  const showCredPicker =
+    !credentialsLoading && credentialType !== undefined && matchingCredentials.length > 0
 
   // authScheme drives the credential type; switching it invalidates the current pick.
   const handleAuthSchemeChange = (v: string) => {
