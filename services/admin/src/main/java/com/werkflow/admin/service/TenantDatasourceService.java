@@ -1,11 +1,12 @@
 package com.werkflow.admin.service;
 
+import com.werkflow.admin.dto.credential.CredentialPathResponse;
+import com.werkflow.admin.dto.datasource.DatasourceEngineConfig;
 import com.werkflow.admin.dto.datasource.DatasourceTestResult;
 import com.werkflow.admin.dto.datasource.TenantDatasourceRequest;
 import com.werkflow.admin.dto.datasource.TenantDatasourceResponse;
 import com.werkflow.admin.entity.TenantDatasource;
 import com.werkflow.admin.repository.TenantDatasourceRepository;
-import com.werkflow.common.security.EncryptionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +22,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -32,9 +34,9 @@ import java.util.regex.Pattern;
  * <p>All read/write operations are tenant-scoped — callers pass their {@code tenantId}
  * from the JWT, and the service enforces isolation before returning results.</p>
  *
- * <p>Passwords are encrypted with AES-256-GCM via {@link EncryptionService} before
- * persisting. The {@link #testConnection} method decrypts at call time so that
- * the plaintext credential is never stored or logged.</p>
+ * <p>Credentials are resolved from OpenBao via {@link VaultCredentialStore} at connection-test
+ * time. The plaintext credential is never stored in the database — only a {@code credentialRef}
+ * is persisted, which names a {@code jdbc-password} credential managed via the credentials API.</p>
  *
  * <p>SSRF protection is applied on {@link #create} and {@link #update}: the JDBC URL
  * scheme must be in the allowlist and the host must not resolve to a private/loopback
@@ -46,8 +48,11 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class TenantDatasourceService {
 
+    private static final String JDBC_CREDENTIAL_TYPE = "jdbc-password";
+
     private final TenantDatasourceRepository repository;
-    private final EncryptionService encryptionService;
+    private final TenantCredentialService credentialService;
+    private final VaultCredentialStore vault;
 
     @Value("${app.environment:development}")
     private String appEnvironment;
@@ -109,7 +114,8 @@ public class TenantDatasourceService {
 
     /**
      * Registers a new datasource for the tenant.
-     * The plaintext {@code password} in the request is encrypted before persisting.
+     * The {@code credentialRef} in the request names an existing {@code jdbc-password}
+     * credential — no credential values are persisted here.
      *
      * @throws ResponseStatusException 409 if the (tenantId, ref) pair already exists
      * @throws ResponseStatusException 400 if the JDBC URL or driver class is not permitted
@@ -134,7 +140,7 @@ public class TenantDatasourceService {
     /**
      * Updates an existing datasource registration.
      * The {@code ref} slug is immutable — pass the same value or update other fields.
-     * If {@code password} is null or blank in the request, the existing encrypted value is retained.
+     * The {@code credentialRef} may be updated to point at a different credential.
      *
      * @throws ResponseStatusException 404 if not found
      * @throws ResponseStatusException 400 if the JDBC URL or driver class is not permitted
@@ -149,11 +155,7 @@ public class TenantDatasourceService {
         TenantDatasource entity = resolve(tenantId, ref);
         entity.setJdbcUrl(request.jdbcUrl());
         entity.setDriverClassName(request.driverClassName());
-        entity.setUsername(request.username());
-        // H-5: only encrypt and update the password if a new value was provided
-        if (request.password() != null && !request.password().isBlank()) {
-            entity.setEncryptedPassword(encryptionService.encrypt(request.password()));
-        }
+        entity.setCredentialRef(request.credentialRef());
         entity.setDialect(request.dialect());
         entity.setPoolMinSize(request.poolMinSize() > 0 ? request.poolMinSize() : 1);
         entity.setPoolMaxSize(request.poolMaxSize() > 0 ? request.poolMaxSize() : 5);
@@ -187,19 +189,39 @@ public class TenantDatasourceService {
      * and credential validity. Uses DriverManagerDataSource — not Hikari —
      * so no pool resources are consumed by the test.
      *
-     * <p>JDBC exceptions are categorized before returning to avoid leaking
-     * internal topology or credential details to the client (M-1).</p>
+     * <p>The credential is resolved tenant-scoped from OpenBao via
+     * {@link TenantCredentialService} and {@link VaultCredentialStore} (IDOR-safe).
+     * JDBC exceptions are categorized before returning to avoid leaking internal
+     * topology or credential details to the client (M-1).</p>
      *
      * @return test result with ok=true and latency, or ok=false with a safe error message
      */
     public DatasourceTestResult testConnection(String tenantId, String ref) {
         TenantDatasource entity = resolve(tenantId, ref);
-        String resolvedPassword;
+
+        String username;
+        String password;
         try {
-            resolvedPassword = encryptionService.decrypt(entity.getEncryptedPassword());
-        } catch (Exception e) {
+            CredentialPathResponse path = credentialService.resolvePath(
+                tenantId, JDBC_CREDENTIAL_TYPE, entity.getCredentialRef());
+            Map<String, Object> values = vault.read(path.vaultPath())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "empty"));
+            Object u = values.get("username");
+            Object p = values.get("password");
+            if (u == null || u.toString().isBlank() || p == null || p.toString().isBlank()) {
+                return new DatasourceTestResult(false,
+                    "Credential '" + entity.getCredentialRef() + "' is missing username or password", 0);
+            }
+            username = u.toString();
+            password = p.toString();
+        } catch (ResponseStatusException e) {
             return new DatasourceTestResult(false,
-                "Failed to decrypt password — the stored credential may be corrupt", 0);
+                "Credential '" + entity.getCredentialRef() + "' not found or empty", 0);
+        } catch (RuntimeException e) {
+            // e.g. VaultException when OpenBao is unreachable — fail gracefully, never 500.
+            log.warn("tenant.datasource.test.credential-resolve-failed tenantId={} ref={} error={}",
+                tenantId, ref, e.getMessage());
+            return new DatasourceTestResult(false, "Credential resolution failed", 0);
         }
 
         long start = System.currentTimeMillis();
@@ -207,8 +229,8 @@ public class TenantDatasourceService {
             DriverManagerDataSource ds = new DriverManagerDataSource();
             ds.setDriverClassName(entity.getDriverClassName());
             ds.setUrl(entity.getJdbcUrl());
-            ds.setUsername(entity.getUsername());
-            ds.setPassword(resolvedPassword);
+            ds.setUsername(username);
+            ds.setPassword(password);
 
             try (Connection conn = ds.getConnection();
                  PreparedStatement ps = conn.prepareStatement("SELECT 1");
@@ -220,34 +242,28 @@ public class TenantDatasourceService {
             }
         } catch (Exception e) {
             long latency = System.currentTimeMillis() - start;
-            // M-1: log full detail internally but return only a safe categorized message
             log.warn("tenant.datasource.test.failed tenantId={} ref={} error={}", tenantId, ref, e.getMessage());
             return new DatasourceTestResult(false, categorizeJdbcError(e), latency);
         }
     }
 
     // -------------------------------------------------------------------------
-    // Internal engine endpoint — returns the DTO without resolving the password
+    // Internal engine endpoint — returns only non-secret config + credentialRef
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the datasource config for the engine's DatasourceRegistry.
-     * The password is decrypted here and returned over the trusted internal channel
-     * so the engine can use it directly without a local SecretsResolver.
+     * Returns only non-secret config plus credentialRef; the engine resolves
+     * the credential from OpenBao.
      *
      * <p>This is an internal endpoint; it is not exposed in the public API.</p>
      */
     @Transactional(readOnly = true)
-    public TenantDatasourceResponse resolveForEngine(String tenantId, String ref) {
-        TenantDatasource entity = resolve(tenantId, ref);
-        return new TenantDatasourceResponse(
-            entity.getId(), entity.getTenantId(), entity.getRef(), entity.getJdbcUrl(),
-            entity.getDriverClassName(), entity.getUsername(),
-            encryptionService.decrypt(entity.getEncryptedPassword()),
-            entity.getDialect(), entity.getPoolMinSize(), entity.getPoolMaxSize(),
-            entity.getConnectionTimeoutSeconds(), entity.getIdleTimeoutSeconds(),
-            entity.getCreatedAt(), entity.getUpdatedAt()
-        );
+    public DatasourceEngineConfig resolveForEngine(String tenantId, String ref) {
+        TenantDatasource e = resolve(tenantId, ref);
+        return new DatasourceEngineConfig(
+            e.getJdbcUrl(), e.getDriverClassName(), e.getCredentialRef(), e.getDialect(),
+            e.getPoolMinSize(), e.getPoolMaxSize(),
+            e.getConnectionTimeoutSeconds(), e.getIdleTimeoutSeconds());
     }
 
     // -------------------------------------------------------------------------
@@ -327,20 +343,13 @@ public class TenantDatasourceService {
                 "Datasource '" + ref + "' not found for tenant '" + tenantId + "'"));
     }
 
-    /**
-     * Maps an entity to a response DTO for external (portal) callers.
-     * H-5: password is intentionally excluded (null) — clients that need to update it
-     * supply a new plaintext value on PUT; responses do not echo it back.
-     */
     private TenantDatasourceResponse toResponse(TenantDatasource e) {
         return new TenantDatasourceResponse(
             e.getId(), e.getTenantId(), e.getRef(), e.getJdbcUrl(),
-            e.getDriverClassName(), e.getUsername(),
-            null,  // H-5: password not returned to external clients
+            e.getDriverClassName(), e.getCredentialRef(),
             e.getDialect(), e.getPoolMinSize(), e.getPoolMaxSize(),
             e.getConnectionTimeoutSeconds(), e.getIdleTimeoutSeconds(),
-            e.getCreatedAt(), e.getUpdatedAt()
-        );
+            e.getCreatedAt(), e.getUpdatedAt());
     }
 
     private TenantDatasource fromRequest(String tenantId, TenantDatasourceRequest r) {
@@ -349,8 +358,7 @@ public class TenantDatasourceService {
         e.setRef(r.ref());
         e.setJdbcUrl(r.jdbcUrl());
         e.setDriverClassName(r.driverClassName());
-        e.setUsername(r.username());
-        e.setEncryptedPassword(encryptionService.encrypt(r.password()));
+        e.setCredentialRef(r.credentialRef());
         e.setDialect(r.dialect());
         e.setPoolMinSize(r.poolMinSize() > 0 ? r.poolMinSize() : 1);
         e.setPoolMaxSize(r.poolMaxSize() > 0 ? r.poolMaxSize() : 5);

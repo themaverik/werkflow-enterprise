@@ -1,5 +1,9 @@
 package com.werkflow.engine.action.db;
 
+import com.werkflow.engine.action.credential.CredentialRegistry;
+import com.werkflow.engine.action.credential.CredentialType;
+import com.werkflow.engine.action.credential.CredentialValues;
+import com.werkflow.engine.action.credential.DatabaseCredentialType;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
@@ -27,9 +31,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * window by default. The circuit breaker prevents workflow threads piling up against
  * a dead database — it opens after repeated failures and half-opens to probe recovery.</p>
  *
- * <p>The admin service's internal {@code resolveForEngine} endpoint returns the
- * decrypted password directly over the trusted service-to-service channel.
- * The engine uses it directly — no local {@code SecretsResolver} is required.</p>
+ * <p>The admin service's internal endpoint returns only non-secret config plus a
+ * {@code credentialRef}. The username and password are resolved from OpenBao by the
+ * {@link com.werkflow.engine.action.credential.CredentialRegistry} on each cache miss.
+ *
+ * <p>Known limitation (B.5): rotating the underlying credential in OpenBao does not evict
+ * a live pool; call {@link #evict(String, String)} (or restart) to pick up new credentials.</p>
  *
  * <p>Fix H-2: the pool cache is keyed by a typed {@link DsKey} record rather than
  * string concatenation to eliminate potential key collisions between tenant codes
@@ -44,8 +51,10 @@ public class DatasourceRegistry {
 
     private static final int CB_FAILURE_THRESHOLD = 5;
     private static final int CB_RESET_TIMEOUT_SECONDS = 30;
+    private static final String JDBC_CREDENTIAL_TYPE = "jdbc-password";
 
     private final RestTemplate serviceRestTemplate;
+    private final CredentialRegistry credentialRegistry;
     private final CircuitBreakerRegistry circuitBreakerRegistry;
     private final String adminServiceUrl;
 
@@ -58,21 +67,20 @@ public class DatasourceRegistry {
     /** Cache of live HikariDataSource instances keyed by typed (tenantCode, ref) pair. */
     private final ConcurrentHashMap<DsKey, HikariDataSource> poolCache = new ConcurrentHashMap<>();
 
-    /** Cache of raw datasource config DTOs keyed by typed (tenantCode, ref) pair. */
-    private final ConcurrentHashMap<DsKey, DatasourceConfigDto> configCache = new ConcurrentHashMap<>();
+    /** Cache of non-secret datasource config keyed by typed (tenantCode, ref) pair. */
+    private final ConcurrentHashMap<DsKey, DatasourceConfig> configCache = new ConcurrentHashMap<>();
 
     public DatasourceRegistry(
             @org.springframework.beans.factory.annotation.Qualifier("serviceRestTemplate")
             RestTemplate serviceRestTemplate,
+            CredentialRegistry credentialRegistry,
             @Value("${app.admin-service.url:http://localhost:8083}") String adminServiceUrl) {
         this.serviceRestTemplate = serviceRestTemplate;
+        this.credentialRegistry = credentialRegistry;
         this.adminServiceUrl = adminServiceUrl;
 
-        // Default circuit breaker registry with our platform-standard config.
-        // Connectors with custom thresholds could override per-key, but the spec
-        // only defines global defaults, so we use a shared config here.
         CircuitBreakerConfig cbConfig = CircuitBreakerConfig.custom()
-            .failureRateThreshold(CB_FAILURE_THRESHOLD * 10.0f) // 50% of 10-call window
+            .failureRateThreshold(CB_FAILURE_THRESHOLD * 10.0f)
             .slidingWindowSize(CB_FAILURE_THRESHOLD * 2)
             .waitDurationInOpenState(Duration.ofSeconds(CB_RESET_TIMEOUT_SECONDS))
             .permittedNumberOfCallsInHalfOpenState(1)
@@ -145,55 +153,43 @@ public class DatasourceRegistry {
     // -------------------------------------------------------------------------
 
     private HikariDataSource createPool(String tenantCode, String datasourceRef) {
-        DatasourceConfigDto config = fetchConfig(tenantCode, datasourceRef);
+        DatasourceConfig config = fetchConfig(tenantCode, datasourceRef);
 
-        // Admin service decrypts the password before returning it over the
-        // trusted internal channel — use it directly here.
+        // Resolve username + password from OpenBao via the credential registry —
+        // the admin service no longer ships plaintext credentials.
+        CredentialValues values = credentialRegistry.resolveForTenant(
+            JDBC_CREDENTIAL_TYPE, tenantCode, config.credentialRef());
+
+        CredentialType type = credentialRegistry.get(JDBC_CREDENTIAL_TYPE);
+        if (!(type instanceof DatabaseCredentialType dbCredential)) {
+            throw new IllegalStateException(
+                "Credential type '" + JDBC_CREDENTIAL_TYPE + "' is not a DatabaseCredentialType");
+        }
+
+        // The registry owns pool construction (name, autoCommit, sizing). The credential
+        // type only injects username + password.
         HikariConfig hk = new HikariConfig();
         hk.setJdbcUrl(config.jdbcUrl());
         hk.setDriverClassName(config.driverClassName());
-        hk.setUsername(config.username());
-        hk.setPassword(config.password());
         hk.setMinimumIdle(config.poolMinSize());
         hk.setMaximumPoolSize(config.poolMaxSize());
         hk.setConnectionTimeout(Duration.ofSeconds(config.connectionTimeoutSeconds()).toMillis());
         hk.setIdleTimeout(Duration.ofSeconds(config.idleTimeoutSeconds()).toMillis());
         hk.setPoolName("werkflow-db-" + tenantCode + "-" + datasourceRef);
         hk.setAutoCommit(true);
+        dbCredential.applyCredentials(hk, values);
 
         log.info("DatasourceRegistry: creating pool tenant={} ref={} maxSize={}",
             tenantCode, datasourceRef, config.poolMaxSize());
         return new HikariDataSource(hk);
     }
 
-    private DatasourceConfigDto fetchConfig(String tenantCode, String datasourceRef) {
+    private DatasourceConfig fetchConfig(String tenantCode, String datasourceRef) {
         DsKey key = new DsKey(tenantCode, datasourceRef);
         return configCache.computeIfAbsent(key, k -> {
             String url = adminServiceUrl + "/api/v1/config/datasources/{tenantCode}/{ref}";
             log.debug("DatasourceRegistry: fetching config for tenantCode={} ref={}", tenantCode, datasourceRef);
-            return serviceRestTemplate.getForObject(url, DatasourceConfigDto.class, tenantCode, datasourceRef);
+            return serviceRestTemplate.getForObject(url, DatasourceConfig.class, tenantCode, datasourceRef);
         });
     }
-
-    // -------------------------------------------------------------------------
-    // DTO for the admin service response
-    // -------------------------------------------------------------------------
-
-    /**
-     * Projection of the admin service's TenantDatasourceResponse.
-     *
-     * <p>The admin service's internal {@code resolveForEngine} endpoint decrypts the
-     * password before returning, so this DTO carries the plaintext {@code password}
-     * directly. No local {@code SecretsResolver} is required.</p>
-     */
-    public record DatasourceConfigDto(
-        String jdbcUrl,
-        String driverClassName,
-        String username,
-        String password,
-        int poolMinSize,
-        int poolMaxSize,
-        int connectionTimeoutSeconds,
-        int idleTimeoutSeconds
-    ) {}
 }
