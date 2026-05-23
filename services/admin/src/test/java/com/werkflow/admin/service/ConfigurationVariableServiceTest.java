@@ -1,5 +1,6 @@
 package com.werkflow.admin.service;
 
+import com.werkflow.admin.designtime.platform.service.LocaleProjector;
 import com.werkflow.admin.dto.ConfigVarRequest;
 import com.werkflow.admin.dto.ConfigVarResponse;
 import com.werkflow.admin.entity.ConfigurationVariable;
@@ -24,6 +25,7 @@ import static org.mockito.Mockito.*;
 class ConfigurationVariableServiceTest {
 
     @Mock ConfigurationVariableRepository repository;
+    @Mock LocaleProjector localeProjector;
     @InjectMocks ConfigurationVariableService service;
 
     private ConfigurationVariable var(Long id, String key, String value, String type) {
@@ -68,7 +70,7 @@ class ConfigurationVariableServiceTest {
     @Test
     void create_savesNewVar() {
         ConfigVarRequest req = new ConfigVarRequest("default", "DOA_L1_AMOUNT", "10000", "NUMBER", null);
-        when(repository.existsByTenantCodeAndVarKey("default", "DOA_L1_AMOUNT")).thenReturn(false);
+        when(repository.findByTenantCodeAndVarKey("default", "DOA_L1_AMOUNT")).thenReturn(Optional.empty());
         ConfigurationVariable saved = var(1L, "DOA_L1_AMOUNT", "10000", "NUMBER");
         when(repository.save(any(ConfigurationVariable.class))).thenReturn(saved);
 
@@ -79,13 +81,16 @@ class ConfigurationVariableServiceTest {
     }
 
     @Test
-    void create_throwsWhenKeyAlreadyExists() {
-        ConfigVarRequest req = new ConfigVarRequest("default", "DOA_L1_AMOUNT", "10000", "NUMBER", null);
-        when(repository.existsByTenantCodeAndVarKey("default", "DOA_L1_AMOUNT")).thenReturn(true);
+    void create_upsertsExistingKey() {
+        ConfigVarRequest req = new ConfigVarRequest("default", "DOA_L1_AMOUNT", "15000", "NUMBER", null);
+        ConfigurationVariable existing = var(1L, "DOA_L1_AMOUNT", "10000", "NUMBER");
+        when(repository.findByTenantCodeAndVarKey("default", "DOA_L1_AMOUNT")).thenReturn(Optional.of(existing));
+        when(repository.save(any(ConfigurationVariable.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertThatThrownBy(() -> service.create(req))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("already exists");
+        ConfigVarResponse result = service.create(req);
+
+        assertThat(result.varValue()).isEqualTo("15000");
+        verify(repository).save(any(ConfigurationVariable.class));
     }
 
     @Test
@@ -99,6 +104,42 @@ class ConfigurationVariableServiceTest {
         ConfigVarResponse result = service.update(1L, req);
 
         assertThat(result.varValue()).isEqualTo("15000");
+    }
+
+    @Test
+    void create_evictsLocaleCacheForLocaleVar() {
+        ConfigVarRequest req = new ConfigVarRequest("default", "tenantLocale",
+            "{\"currencyCode\":\"INR\"}", "LOCALE", null);
+        when(repository.findByTenantCodeAndVarKey("default", "tenantLocale")).thenReturn(Optional.empty());
+        when(repository.save(any(ConfigurationVariable.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.create(req);
+
+        verify(localeProjector).evict("default");
+    }
+
+    @Test
+    void update_evictsLocaleCacheForLocaleVar() {
+        ConfigurationVariable existing = var(1L, "tenantLocale", "{\"currencyCode\":\"USD\"}", "LOCALE");
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(repository.save(any(ConfigurationVariable.class))).thenAnswer(inv -> inv.getArgument(0));
+        ConfigVarRequest req = new ConfigVarRequest("default", "tenantLocale",
+            "{\"currencyCode\":\"INR\"}", "LOCALE", null);
+
+        service.update(1L, req);
+
+        verify(localeProjector).evict("default");
+    }
+
+    @Test
+    void create_doesNotEvictLocaleCacheForNonLocaleVar() {
+        ConfigVarRequest req = new ConfigVarRequest("default", "DOA_L1_AMOUNT", "10000", "NUMBER", null);
+        when(repository.findByTenantCodeAndVarKey("default", "DOA_L1_AMOUNT")).thenReturn(Optional.empty());
+        when(repository.save(any(ConfigurationVariable.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.create(req);
+
+        verify(localeProjector, never()).evict(any());
     }
 
     @Test
