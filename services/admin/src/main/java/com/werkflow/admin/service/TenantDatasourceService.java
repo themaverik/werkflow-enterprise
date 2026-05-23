@@ -6,10 +6,12 @@ import com.werkflow.admin.dto.datasource.DatasourceTestResult;
 import com.werkflow.admin.dto.datasource.TenantDatasourceRequest;
 import com.werkflow.admin.dto.datasource.TenantDatasourceResponse;
 import com.werkflow.admin.entity.TenantDatasource;
+import com.werkflow.admin.event.DatasourcePoolEvictionEvent;
 import com.werkflow.admin.repository.TenantDatasourceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.stereotype.Service;
@@ -53,6 +55,7 @@ public class TenantDatasourceService {
     private final TenantDatasourceRepository repository;
     private final TenantCredentialService credentialService;
     private final VaultCredentialStore vault;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${app.environment:development}")
     private String appEnvironment;
@@ -163,6 +166,9 @@ public class TenantDatasourceService {
         entity.setIdleTimeoutSeconds(request.idleTimeoutSeconds() > 0 ? request.idleTimeoutSeconds() : 600);
         TenantDatasource saved = repository.save(entity);
         log.info("tenant.datasource.updated tenantId={} ref={}", tenantId, ref);
+        // Evict the engine's cached pool after commit so the next query picks up
+        // updated config/credentials (B.5 D7). AFTER_COMMIT-scoped listener.
+        eventPublisher.publishEvent(new DatasourcePoolEvictionEvent(tenantId, ref));
         return toResponse(saved);
     }
 
