@@ -8,12 +8,7 @@ export interface TenantDatasourceResponse {
   ref: string
   jdbcUrl: string
   driverClassName: string
-  username: string
-  /**
-   * Always null in API responses — the password is write-only (Fix H-5).
-   * Supply a new plaintext value on create or update; never read back.
-   */
-  password: string | null
+  credentialRef: string
   dialect: string | null
   poolMinSize: number
   poolMaxSize: number
@@ -27,12 +22,7 @@ export interface TenantDatasourceRequest {
   ref: string
   jdbcUrl: string
   driverClassName: string
-  username: string
-  /**
-   * Plaintext password. The admin service encrypts it before persisting.
-   * Optional on update: omit to keep the existing encrypted value.
-   */
-  password?: string
+  credentialRef: string
   dialect?: string
   poolMinSize: number
   poolMaxSize: number

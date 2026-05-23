@@ -233,7 +233,7 @@ function DatasourceCard({
             </Badge>
           )}
           <Badge variant="outline" className="text-xs font-mono">
-            {datasource.username}
+            {datasource.credentialRef}
           </Badge>
           <Badge variant="outline" className="text-xs">
             pool {datasource.poolMinSize}–{datasource.poolMaxSize}

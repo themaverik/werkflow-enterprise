@@ -72,6 +72,14 @@ export const CREDENTIAL_TYPES: CredentialTypeSchema[] = [
       { name: 'apiKey', displayName: 'API Key', type: 'SECRET', required: true, defaultValue: null },
     ],
   },
+  {
+    name: 'jdbc-password',
+    displayName: 'JDBC Username/Password',
+    fields: [
+      { name: 'username', displayName: 'Username', type: 'STRING', required: true, defaultValue: null },
+      { name: 'password', displayName: 'Password', type: 'SECRET', required: true, defaultValue: null },
+    ],
+  },
 ]
 
 export function getCredentialType(name: string): CredentialTypeSchema | undefined {
