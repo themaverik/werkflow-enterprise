@@ -161,6 +161,8 @@ public class TestFixtures {
      */
     public static Map<String, Object> createApprovalVariables(boolean approved, String comments) {
         Map<String, Object> variables = new HashMap<>();
+        // Decision gateways read the portal contract variable 'decision' ('approve'/'reject').
+        variables.put("decision", approved ? "approve" : "reject");
         variables.put("approved", approved);
         variables.put("approvalDecision", approved ? "APPROVED" : "REJECTED");
         variables.put("approverComments", comments);
