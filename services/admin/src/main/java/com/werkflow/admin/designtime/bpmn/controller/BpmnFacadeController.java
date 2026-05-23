@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/design/bpmn")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('WORKFLOW_ADMIN','ADMIN','SUPER_ADMIN')")
+@PreAuthorize("hasAnyRole('WORKFLOW_DESIGNER','WORKFLOW_ADMIN','ADMIN','SUPER_ADMIN')")
 @Tag(name = "DTDS — BPMN Facade", description = "Design-time BPMN introspection: process variables, activity context")
 public class BpmnFacadeController {
 
