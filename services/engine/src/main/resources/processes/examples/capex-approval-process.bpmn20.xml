@@ -61,9 +61,6 @@
               flowable:candidateGroups="DEPT:FIN::DOA:L2,SUPER_ADMIN"
               flowable:formKey="capex-request-form">
       <documentation>Finance manager reviews and approves/rejects CapEx request</documentation>
-      <extensionElements>
-        <flowable:field name="outcomeVariable"><flowable:string>managerDecision</flowable:string></flowable:field>
-      </extensionElements>
     </userTask>
 
     <exclusiveGateway id="amountGateway" name="Amount > $50,000?" />
@@ -74,9 +71,6 @@
               flowable:candidateGroups="DEPT:FIN::DOA:L3,SUPER_ADMIN"
               flowable:formKey="capex-request-form">
       <documentation>Finance VP reviews high-value CapEx requests over $50,000</documentation>
-      <extensionElements>
-        <flowable:field name="outcomeVariable"><flowable:string>vpDecision</flowable:string></flowable:field>
-      </extensionElements>
     </userTask>
 
     <exclusiveGateway id="cfoGateway" name="Amount > $250,000?" />
@@ -87,9 +81,6 @@
               flowable:candidateGroups="DEPT:FIN::DOA:L4,SUPER_ADMIN"
               flowable:formKey="capex-request-form">
       <documentation>CFO reviews very high-value CapEx requests over $250,000</documentation>
-      <extensionElements>
-        <flowable:field name="outcomeVariable"><flowable:string>cfoDecision</flowable:string></flowable:field>
-      </extensionElements>
     </userTask>
 
     <exclusiveGateway id="mergeGateway" name="Merge Approvals" />
@@ -174,10 +165,10 @@
     <sequenceFlow id="flow11" sourceRef="cfoApproval" targetRef="mergeGateway" />
     <sequenceFlow id="flow12" sourceRef="mergeGateway" targetRef="decisionGateway" />
     <sequenceFlow id="flow13" sourceRef="decisionGateway" targetRef="updateApproved">
-      <conditionExpression xsi:type="tFormalExpression">${managerDecision == 'APPROVED' || vpDecision == 'APPROVED' || cfoDecision == 'APPROVED'}</conditionExpression>
+      <conditionExpression xsi:type="tFormalExpression">${decision == 'approve'}</conditionExpression>
     </sequenceFlow>
     <sequenceFlow id="flow14" sourceRef="decisionGateway" targetRef="updateRejected">
-      <conditionExpression xsi:type="tFormalExpression">${managerDecision == 'REJECTED' || vpDecision == 'REJECTED' || cfoDecision == 'REJECTED'}</conditionExpression>
+      <conditionExpression xsi:type="tFormalExpression">${decision == 'reject'}</conditionExpression>
     </sequenceFlow>
     <sequenceFlow id="flow15" sourceRef="updateApproved" targetRef="sendApprovalNotification" />
     <sequenceFlow id="flow16" sourceRef="sendApprovalNotification" targetRef="endEventApproved" />
