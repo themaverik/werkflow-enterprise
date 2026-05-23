@@ -6,6 +6,8 @@ import com.werkflow.admin.dto.credential.CredentialTestResultResponse;
 import com.werkflow.admin.dto.credential.TenantCredentialResponse;
 import com.werkflow.admin.dto.credential.UpdateTenantCredentialRequest;
 import com.werkflow.admin.entity.TenantCredential;
+import com.werkflow.admin.entity.TenantDatasource;
+import com.werkflow.admin.event.DatasourcePoolEvictionEvent;
 import com.werkflow.admin.repository.TenantCredentialRepository;
 import com.werkflow.admin.repository.TenantDatasourceRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -15,6 +17,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.vault.VaultException;
 import org.springframework.web.server.ResponseStatusException;
@@ -41,6 +44,7 @@ class TenantCredentialServiceTest {
     @Mock VaultCredentialStore vault;
     @Mock CredentialTestClient credentialTestClient;
     @Mock TenantDatasourceRepository datasourceRepository;
+    @Mock ApplicationEventPublisher eventPublisher;
     @InjectMocks TenantCredentialService service;
 
     private static final String TENANT = "tenant-1";
@@ -193,6 +197,29 @@ class TenantCredentialServiceTest {
             .hasFieldOrPropertyWithValue("statusCode", HttpStatus.NOT_FOUND);
 
         verify(vault, never()).write(any(), anyMap());
+    }
+
+    @Test
+    @DisplayName("rotating a jdbc-password credential publishes an eviction event per referencing datasource")
+    void update_jdbcPassword_publishesEvictionPerDatasource() {
+        UUID id = UUID.randomUUID();
+        TenantCredential e = entity(id, TENANT, "jdbc-password", "hris-db");
+        when(repository.findById(id)).thenReturn(Optional.of(e));
+        when(repository.save(any(TenantCredential.class))).thenAnswer(inv -> inv.getArgument(0));
+        TenantDatasource ds1 = new TenantDatasource();
+        ds1.setTenantId(TENANT);
+        ds1.setRef("ds-a");
+        TenantDatasource ds2 = new TenantDatasource();
+        ds2.setTenantId(TENANT);
+        ds2.setRef("ds-b");
+        when(datasourceRepository.findByTenantIdAndCredentialRef(TENANT, "hris-db"))
+            .thenReturn(List.of(ds1, ds2));
+
+        service.update(TENANT, id,
+            new UpdateTenantCredentialRequest(Map.of("username", "u", "password", "p")));
+
+        verify(eventPublisher).publishEvent(new DatasourcePoolEvictionEvent(TENANT, "ds-a"));
+        verify(eventPublisher).publishEvent(new DatasourcePoolEvictionEvent(TENANT, "ds-b"));
     }
 
     // -- delete ------------------------------------------------------------
