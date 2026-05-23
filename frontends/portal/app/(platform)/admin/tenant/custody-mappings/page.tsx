@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Plus, Pencil, Trash2, X, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import type { CandidateGroupEntry } from '@/lib/platform/types'
+import { PageSurface } from '@/components/layout/page-surface'
 
 interface CustodyMapping {
   id: number
@@ -269,6 +270,7 @@ export default function CustodyMappingsPage() {
   const isSaving = updateMutation.isPending || createMutation.isPending
 
   return (
+    <PageSurface>
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Custody Mappings</h1>
@@ -474,5 +476,6 @@ export default function CustodyMappingsPage() {
         </dl>
       </details>
     </div>
+    </PageSurface>
   )
 }

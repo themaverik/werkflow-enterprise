@@ -22,6 +22,7 @@ import {
   testDatasourceConnection,
   type TenantDatasourceResponse,
 } from '@/lib/api/datasources'
+import { PageSurface } from '@/components/layout/page-surface'
 
 type HealthResult = { ok: boolean; message: string } | 'testing'
 
@@ -61,6 +62,7 @@ export default function DatasourcesPage() {
   })
 
   return (
+    <PageSurface>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -169,6 +171,7 @@ export default function DatasourcesPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </PageSurface>
   )
 }
 

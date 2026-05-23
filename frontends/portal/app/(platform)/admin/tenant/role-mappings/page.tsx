@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useState } from 'react'
 import { Info, Lock, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { PageSurface } from '@/components/layout/page-surface'
 
 interface Tier1Mapping { role: string; groups: string[] }
 interface Tier2Mapping { id: string; roleName: string; groupName: string; tier: 2; isManagerTier?: boolean }
@@ -135,6 +136,7 @@ export default function RoleMappingsPage() {
   }
 
   return (
+    <PageSurface>
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Role Mappings</h1>
@@ -308,5 +310,6 @@ export default function RoleMappingsPage() {
         </div>
       </section>
     </div>
+    </PageSurface>
   )
 }
