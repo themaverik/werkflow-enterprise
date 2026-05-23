@@ -28,9 +28,9 @@ import java.util.List;
  * datasources belonging to their own tenant (resolved from the JWT).</p>
  *
  * <p>The engine-internal endpoint {@code GET /{tenantCode}/{ref}} requires the
- * {@code ENGINE_SERVICE} role or {@code SUPER_ADMIN}. It returns only the
- * {@link TenantDatasourceResponse} (no resolved password); the engine resolves
- * the credential locally via its own SecretsResolver (Fix C-3).</p>
+ * {@code ENGINE_SERVICE} role or {@code SUPER_ADMIN}. It returns a
+ * {@link DatasourceEngineConfig} carrying only non-secret config plus {@code credentialRef};
+ * the engine resolves the username/password from OpenBao via its CredentialRegistry (B.5).</p>
  *
  * <p>The test endpoint is rate-limited to 5 calls per 60 seconds per JVM instance
  * to prevent brute-force host probing (Fix H-3).</p>
