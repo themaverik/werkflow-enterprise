@@ -33,7 +33,7 @@ class TenantCredentialServiceDeleteGuardTest {
 
     @BeforeEach
     void setUp() {
-        service = new TenantCredentialService(repository, vault, credentialTestClient, datasourceRepository);
+        service = new TenantCredentialService(repository, vault, credentialTestClient, datasourceRepository, event -> {});
     }
 
     private TenantCredential jdbcCredential() {
