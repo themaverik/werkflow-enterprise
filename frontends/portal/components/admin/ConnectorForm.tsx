@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import Link from 'next/link'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,6 +27,12 @@ import {
   type ConnectorResponse,
   type ConnectorTestResponse,
 } from '@/lib/api/connectors'
+import {
+  listCredentials,
+  getCredentialType,
+  AUTH_SCHEME_TO_CREDENTIAL_TYPE,
+  type TenantCredentialResponse,
+} from '@/lib/api/credentials'
 
 // ─── Schema types ────────────────────────────────────────────
 export interface SampleRequest {
@@ -122,11 +129,11 @@ export function ConnectorForm({
   const [environment, setEnvironment] = useState(existingConnector?.environment ?? 'production')
   const [active, setActive] = useState(existingConnector?.active ?? true)
 
-  // ── Auth
+  // ── Auth (credential picker — Phase B.6)
   const [authScheme, setAuthScheme] = useState(existingConnector?.authScheme ?? 'BEARER')
-  const [secretValue, setSecretValue] = useState('')
-  const [showSecret, setShowSecret] = useState(false)
-  const [headerName, setHeaderName] = useState(existingConnector?.headerName ?? '')
+  const [credentialRef, setCredentialRef] = useState(existingConnector?.credentialRef ?? '')
+  const [credentials, setCredentials] = useState<TenantCredentialResponse[]>([])
+  const [credentialsLoading, setCredentialsLoading] = useState(true)
 
   // ── ERP key inline reveal
   const [generatedRawKey, setGeneratedRawKey] = useState('')
@@ -175,10 +182,44 @@ export function ConnectorForm({
 
   const [saving, setSaving] = useState(false)
 
+  // ── Credential picker data (Phase B.6) ───────────────────────
+  useEffect(() => {
+    listCredentials()
+      .then(setCredentials)
+      .catch((err) => {
+        console.error('Failed to load credentials for connector picker', err)
+        setCredentials([])
+      })
+      .finally(() => setCredentialsLoading(false))
+  }, [])
+
+  const credentialType = AUTH_SCHEME_TO_CREDENTIAL_TYPE[authScheme]
+  const matchingCredentials = useMemo(
+    () => credentials.filter((c) => c.credentialType === credentialType),
+    [credentials, credentialType],
+  )
+  // Edit mode keeps the picker visible with its pre-selected ref; only create mode
+  // shows the empty-state link when no credential of the required type exists yet.
+  const showCredEmptyState =
+    !isEdit && !credentialsLoading && credentialType !== undefined && matchingCredentials.length === 0
+  const showCredPicker = !credentialsLoading && credentialType !== undefined && !showCredEmptyState
+
+  // authScheme drives the credential type; switching it invalidates the current pick.
+  const handleAuthSchemeChange = (v: string) => {
+    setAuthScheme(v)
+    setCredentialRef('')
+  }
+
+  // True when an edit-mode connector references a credential that no longer exists for
+  // its current type (e.g. deleted in OpenBao) — the picker would render with no selection.
+  const credentialStale =
+    isEdit && !credentialsLoading && authScheme !== 'NONE' && credentialRef !== '' &&
+    !matchingCredentials.some((c) => c.label === credentialRef)
+
+  const credentialOk = authScheme === 'NONE' || credentialRef !== ''
   const canSave = isEdit
-    ? displayName.trim() !== '' && baseUrl.trim() !== ''
-    : connectorKey.trim() !== '' && displayName.trim() !== '' && baseUrl.trim() !== '' &&
-      (authScheme === 'NONE' || secretValue.trim() !== '')
+    ? displayName.trim() !== '' && baseUrl.trim() !== '' && credentialOk
+    : connectorKey.trim() !== '' && displayName.trim() !== '' && baseUrl.trim() !== '' && credentialOk
 
   const usedEnvironments = new Set(endpoints.map(e => e.environment))
   const availableEnvs = ['development', 'staging', 'production'].filter(e => !usedEnvironments.has(e))
@@ -383,8 +424,7 @@ export function ConnectorForm({
           active,
           connectorType,
           authScheme,
-          secretValue: secretValue.trim() || undefined,
-          headerName: headerName.trim() || undefined,
+          credentialRef: authScheme === 'NONE' ? undefined : (credentialRef || undefined),
         })
         toast({ title: 'Connector updated', description: `${displayName} saved.` })
       } else {
@@ -397,8 +437,7 @@ export function ConnectorForm({
           active: true,
           connectorType,
           authScheme,
-          secretValue: secretValue.trim(),
-          headerName: headerName.trim() || undefined,
+          credentialRef: authScheme === 'NONE' ? undefined : credentialRef,
         }
         await createConnector(req)
         toast({ title: 'Connector created', description: `${displayName} registered successfully.` })
@@ -608,7 +647,7 @@ export function ConnectorForm({
         <TabsContent value="auth" className="space-y-4 pt-4">
           <div className="space-y-2">
             <Label htmlFor="authScheme">Auth Scheme</Label>
-            <Select value={authScheme} onValueChange={setAuthScheme}>
+            <Select value={authScheme} onValueChange={handleAuthSchemeChange}>
               <SelectTrigger id="authScheme"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="BEARER">Bearer Token</SelectItem>
@@ -621,33 +660,42 @@ export function ConnectorForm({
 
           {authScheme !== 'NONE' && (
             <div className="space-y-2">
-              <Label htmlFor="secretValue">
-                Secret
-                {isEdit && existingConnector?.hasSecret && (
-                  <span className="text-muted-foreground font-normal ml-1">(stored — leave blank to keep)</span>
-                )}
-              </Label>
-              <div className="relative">
-                <Input
-                  id="secretValue"
-                  type={showSecret ? 'text' : 'password'}
-                  placeholder={isEdit && existingConnector?.hasSecret ? '••••••••' : 'Paste secret value'}
-                  value={secretValue}
-                  onChange={(e) => setSecretValue(e.target.value)}
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowSecret(p => !p)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  tabIndex={-1}
-                >
-                  {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Stored encrypted (AES-256-GCM). Never shown again after saving.
-              </p>
+              <Label htmlFor={showCredPicker ? 'credentialRef' : undefined}>Credential</Label>
+              {credentialsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading credentials…</p>
+              ) : showCredEmptyState ? (
+                <p className="text-sm text-muted-foreground">
+                  No {getCredentialType(credentialType)?.displayName ?? credentialType} credentials found.{' '}
+                  <Link href="/admin/tenant/credentials" className="underline underline-offset-2">
+                    Create one first
+                  </Link>
+                </p>
+              ) : (
+                <Select value={credentialRef} onValueChange={setCredentialRef}>
+                  <SelectTrigger id="credentialRef" className="font-mono text-sm">
+                    <SelectValue placeholder="Select credential…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {matchingCredentials.map((c) => (
+                      <SelectItem key={c.id} value={c.label} className="font-mono text-xs">
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {credentialStale && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  The bound credential <code className="font-mono">{credentialRef}</code> no longer exists for this
+                  auth scheme. Select another, or it will be left unchanged on save.
+                </p>
+              )}
+              {showCredPicker && (
+                <p className="text-xs text-muted-foreground">
+                  Secret material is stored in OpenBao. Manage credentials on the{' '}
+                  <Link href="/admin/tenant/credentials" className="underline underline-offset-2">Credentials page</Link>.
+                </p>
+              )}
             </div>
           )}
 
@@ -656,7 +704,7 @@ export function ConnectorForm({
               <div>
                 <p className="text-sm font-medium">ERP API Key Auto-Registration</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Generates a key, registers its hash in werkflow-erp, and stores the encrypted raw key.
+                  Generates a key, registers its hash in werkflow-erp, and stores the raw key in OpenBao.
                 </p>
               </div>
               {!generatedRawKey ? (
@@ -702,13 +750,6 @@ export function ConnectorForm({
               )}
             </div>
           )}
-
-          <div className="space-y-2">
-            <Label htmlFor="headerName">
-              Header Name <span className="text-muted-foreground font-normal">(optional)</span>
-            </Label>
-            <Input id="headerName" placeholder="e.g. X-Api-Key" value={headerName} onChange={(e) => setHeaderName(e.target.value)} />
-          </div>
         </TabsContent>
 
         {/* ── Sample Requests / Contract tab ── */}

@@ -29,12 +29,16 @@ public class ConnectorRequest {
     @Pattern(regexp = "API|WEBHOOK|MCP|OTHER")
     private String connectorType = "API";
 
-    @NotBlank @Pattern(regexp = "API_KEY|BEARER|BASIC|OAUTH2_CLIENT_CREDENTIALS|NONE")
+    @NotBlank @Pattern(regexp = "API_KEY|BEARER|BASIC|NONE")
     private String authScheme;
 
-    /** Raw credential value — encrypted at rest. Required unless authScheme is NONE. */
-    @Size(max = 500)
-    private String secretValue;
+    /**
+     * Label of the OpenBao-backed credential to bind to this connector (Phase B.6).
+     * Required unless authScheme is NONE. The credential's type must match authScheme.
+     */
+    @Size(max = 100)
+    @Pattern(regexp = "^[a-z][a-z0-9-]*$", message = "credentialRef must be lowercase alphanumeric with hyphens, starting with a letter")
+    private String credentialRef;
 
     @Size(max = 100)
     private String headerName;

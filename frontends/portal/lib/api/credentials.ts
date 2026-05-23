@@ -66,6 +66,13 @@ export const CREDENTIAL_TYPES: CredentialTypeSchema[] = [
     ],
   },
   {
+    name: 'http-bearer-token',
+    displayName: 'HTTP Bearer Token',
+    fields: [
+      { name: 'token', displayName: 'Token', type: 'SECRET', required: true, defaultValue: null },
+    ],
+  },
+  {
     name: 'sendgrid-api',
     displayName: 'SendGrid API',
     fields: [
@@ -84,6 +91,14 @@ export const CREDENTIAL_TYPES: CredentialTypeSchema[] = [
 
 export function getCredentialType(name: string): CredentialTypeSchema | undefined {
   return CREDENTIAL_TYPES.find((t) => t.name === name)
+}
+
+// Connector authScheme → canonical credential-type slug (Phase B.6). Mirrors the
+// admin-service ConnectorService.authSchemeToType mapping. NONE has no credential.
+export const AUTH_SCHEME_TO_CREDENTIAL_TYPE: Record<string, string> = {
+  BASIC: 'http-basic-auth',
+  BEARER: 'http-bearer-token',
+  API_KEY: 'http-header-auth',
 }
 
 // ==================== RESPONSE / REQUEST TYPES ====================
