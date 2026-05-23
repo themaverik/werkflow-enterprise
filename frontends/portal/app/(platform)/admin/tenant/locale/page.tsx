@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import type { LocaleEntry } from '@/lib/platform/types'
+import { PageSurface } from '@/components/layout/page-surface'
 
 interface CurrencyOption {
   code: string
@@ -152,7 +153,8 @@ export default function LocalePage() {
   const previewEntry = buildLocaleEntry(form)
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl">
+    <PageSurface className="max-w-2xl">
+    <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold">Locale &amp; Currency</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -229,5 +231,6 @@ export default function LocalePage() {
         </div>
       )}
     </div>
+    </PageSurface>
   )
 }
