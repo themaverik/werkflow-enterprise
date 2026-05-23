@@ -4,8 +4,8 @@ import com.werkflow.admin.dto.connector.ConnectorApiKeyRequest;
 import com.werkflow.admin.entity.TenantApiCredential;
 import com.werkflow.admin.entity.TenantServiceEndpoint;
 import com.werkflow.admin.repository.TenantApiCredentialRepository;
+import com.werkflow.admin.repository.TenantCredentialRepository;
 import com.werkflow.admin.repository.TenantServiceEndpointRepository;
-import com.werkflow.common.security.EncryptionService;
 import com.werkflow.common.security.SsrfGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,7 +32,8 @@ class ConnectorServiceTest {
 
     @Mock TenantApiCredentialRepository credentialRepo;
     @Mock TenantServiceEndpointRepository endpointRepo;
-    @Mock EncryptionService encryptionService;
+    @Mock TenantCredentialRepository tenantCredentialRepo;
+    @Mock VaultCredentialStore vault;
     @Mock SsrfGuard ssrfGuard;
 
     @InjectMocks ConnectorService service;
@@ -67,8 +68,8 @@ class ConnectorServiceTest {
         assertThatThrownBy(() -> service.registerApiKey("acme", "erp-connector", req, "Bearer x"))
             .isInstanceOf(ResponseStatusException.class);
 
-        // Verify no DB or ERP calls were made
-        verifyNoInteractions(endpointRepo, credentialRepo, encryptionService);
+        // Verify no DB, vault, or ERP calls were made
+        verifyNoInteractions(endpointRepo, credentialRepo, vault, tenantCredentialRepo);
     }
 
     // --- callConnector ---

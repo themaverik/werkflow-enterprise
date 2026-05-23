@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -23,12 +24,19 @@ import {
 } from '@/components/ui/select'
 import { Download, ExternalLink, RefreshCw, ShieldCheck } from 'lucide-react'
 import { createConnector } from '@/lib/api/connectors'
+import {
+  listCredentials,
+  getCredentialType,
+  AUTH_SCHEME_TO_CREDENTIAL_TYPE,
+  type TenantCredentialResponse,
+} from '@/lib/api/credentials'
 import { PageSurface } from '@/components/layout/page-surface'
 import {
   MARKETPLACE_CATALOG,
   type MarketplaceConnector,
   transportLabel,
   authLabel,
+  authTypeToScheme,
   buildInstallPayload,
 } from '@/lib/marketplace/catalog'
 
@@ -53,16 +61,39 @@ interface InstallModalProps {
 
 function InstallModal({ connector, open, onOpenChange, onInstalled }: InstallModalProps) {
   const [baseUrl, setBaseUrl] = useState('')
-  const [secretValue, setSecretValue] = useState('')
-  const [headerName, setHeaderName] = useState('')
+  const [credentialRef, setCredentialRef] = useState('')
+  const [credentials, setCredentials] = useState<TenantCredentialResponse[]>([])
+  const [credentialsLoading, setCredentialsLoading] = useState(true)
   const [environment, setEnvironment] = useState<'development' | 'staging' | 'production'>(
     'development'
   )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const needsSecret = connector?.primaryAuth !== 'none'
-  const needsHeaderName = connector?.primaryAuth === 'api-key'
+  const authScheme = connector ? authTypeToScheme(connector.primaryAuth) : 'NONE'
+  const credentialType = AUTH_SCHEME_TO_CREDENTIAL_TYPE[authScheme]
+  // A credential is needed when the connector authenticates with a supported scheme.
+  // Unsupported schemes (oauth2, mtls) map to no credential type and cannot be installed here.
+  const needsCredential = authScheme !== 'NONE'
+  const unsupportedAuth = needsCredential && credentialType === undefined
+
+  useEffect(() => {
+    if (!open) return
+    setCredentialsLoading(true)
+    setCredentials([])
+    listCredentials()
+      .then(setCredentials)
+      .catch((err) => {
+        console.error('Failed to load credentials for marketplace install', err)
+        setCredentials([])
+      })
+      .finally(() => setCredentialsLoading(false))
+  }, [open])
+
+  const matchingCredentials = useMemo(
+    () => credentials.filter((c) => c.credentialType === credentialType),
+    [credentials, credentialType],
+  )
 
   const handleInstall = async () => {
     if (!connector) return
@@ -70,8 +101,8 @@ function InstallModal({ connector, open, onOpenChange, onInstalled }: InstallMod
       setError('Base URL is required.')
       return
     }
-    if (needsSecret && !secretValue.trim()) {
-      setError('Credential value is required.')
+    if (needsCredential && !credentialRef) {
+      setError('Select a credential to install this connector.')
       return
     }
 
@@ -81,8 +112,7 @@ function InstallModal({ connector, open, onOpenChange, onInstalled }: InstallMod
     try {
       const payload = buildInstallPayload(connector, {
         baseUrl: baseUrl.trim(),
-        secretValue: secretValue.trim(),
-        headerName: needsHeaderName ? headerName.trim() || 'X-API-Key' : undefined,
+        credentialRef: needsCredential ? credentialRef : undefined,
         environment,
       })
       await createConnector({ ...payload, active: true })
@@ -98,8 +128,7 @@ function InstallModal({ connector, open, onOpenChange, onInstalled }: InstallMod
 
   const resetForm = () => {
     setBaseUrl('')
-    setSecretValue('')
-    setHeaderName('')
+    setCredentialRef('')
     setEnvironment('development')
     setError(null)
   }
@@ -115,8 +144,8 @@ function InstallModal({ connector, open, onOpenChange, onInstalled }: InstallMod
         <DialogHeader>
           <DialogTitle>Install {connector?.displayName}</DialogTitle>
           <DialogDescription>
-            Register this connector for your tenant. Supply the runtime endpoint and
-            credential — these are stored encrypted and never returned by the API.
+            Register this connector for your tenant. Supply the runtime endpoint and select
+            an OpenBao-backed credential — secret material is never returned by the API.
           </DialogDescription>
         </DialogHeader>
 
@@ -151,37 +180,44 @@ function InstallModal({ connector, open, onOpenChange, onInstalled }: InstallMod
             </Select>
           </div>
 
-          {needsHeaderName && (
-            <div className="space-y-1.5">
-              <Label htmlFor="marketplace-headerName">
-                API Key Header{' '}
-                <span className="text-muted-foreground font-normal">(default: X-API-Key)</span>
-              </Label>
-              <Input
-                id="marketplace-headerName"
-                placeholder="X-API-Key"
-                value={headerName}
-                onChange={(e) => setHeaderName(e.target.value)}
-              />
-            </div>
+          {needsCredential && unsupportedAuth && (
+            <p className="text-sm text-muted-foreground">
+              {authLabel(connector?.primaryAuth ?? 'bearer')} authentication is not yet supported
+              for one-click install. Configure this connector manually from the Connectors page.
+            </p>
           )}
 
-          {needsSecret && (
+          {needsCredential && !unsupportedAuth && (
             <div className="space-y-1.5">
-              <Label htmlFor="marketplace-secret">
+              <Label htmlFor="marketplace-credential">
                 {authLabel(connector?.primaryAuth ?? 'bearer')} credential
               </Label>
-              <Input
-                id="marketplace-secret"
-                type="password"
-                placeholder="Paste your credential value"
-                value={secretValue}
-                onChange={(e) => setSecretValue(e.target.value)}
-                autoComplete="new-password"
-              />
+              {credentialsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading credentials…</p>
+              ) : matchingCredentials.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No {getCredentialType(credentialType)?.displayName ?? credentialType} credentials found.{' '}
+                  <Link href="/admin/tenant/credentials" className="underline underline-offset-2">
+                    Create one first
+                  </Link>
+                </p>
+              ) : (
+                <Select value={credentialRef} onValueChange={setCredentialRef}>
+                  <SelectTrigger id="marketplace-credential" className="font-mono text-sm">
+                    <SelectValue placeholder="Select credential…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {matchingCredentials.map((c) => (
+                      <SelectItem key={c.id} value={c.label} className="font-mono text-xs">
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <ShieldCheck className="h-3 w-3 shrink-0" />
-                Stored encrypted at rest. Never returned by the API.
+                Secret material is stored in OpenBao. Never returned by the API.
               </p>
             </div>
           )}
@@ -194,7 +230,7 @@ function InstallModal({ connector, open, onOpenChange, onInstalled }: InstallMod
             <Button variant="outline" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleInstall} disabled={loading}>
+            <Button onClick={handleInstall} disabled={loading || unsupportedAuth}>
               {loading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
               Install
             </Button>

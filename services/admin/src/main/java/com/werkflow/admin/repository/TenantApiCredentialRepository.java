@@ -11,4 +11,6 @@ public interface TenantApiCredentialRepository extends JpaRepository<TenantApiCr
         String tenantCode, String credentialKey);
     List<TenantApiCredential> findByTenantCodeAndRevokedAtIsNull(String tenantCode);
     Optional<TenantApiCredential> findByTenantCodeAndConnectorKey(String tenantCode, String connectorKey);
+
+    List<TenantApiCredential> findByTenantCodeAndCredentialRef(String tenantCode, String credentialRef);
 }

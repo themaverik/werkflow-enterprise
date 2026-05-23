@@ -5,6 +5,7 @@ import com.werkflow.admin.dto.credential.CreateTenantCredentialRequest;
 import com.werkflow.admin.dto.credential.TenantCredentialResponse;
 import com.werkflow.admin.entity.TenantCredential;
 import com.werkflow.admin.integration.AbstractCredentialIT;
+import com.werkflow.admin.repository.TenantApiCredentialRepository;
 import com.werkflow.admin.repository.TenantCredentialRepository;
 import com.werkflow.admin.repository.TenantDatasourceRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,7 +68,7 @@ class TenantCredentialServiceIT extends AbstractCredentialIT {
         String path = "tenants/" + tenantId + "/smtp/default";
         Map<String, Object> values = Map.of("host", "smtp.example.com", "password", "s3cr3t");
 
-        TenantCredentialService service = new TenantCredentialService(repository, realVault, mockTestClient, mock(TenantDatasourceRepository.class), event -> {});
+        TenantCredentialService service = new TenantCredentialService(repository, realVault, mockTestClient, mock(TenantDatasourceRepository.class), mock(TenantApiCredentialRepository.class), event -> {});
         TenantCredentialResponse response = service.create(tenantId,
             new CreateTenantCredentialRequest("smtp", "default", values));
 
@@ -99,7 +100,7 @@ class TenantCredentialServiceIT extends AbstractCredentialIT {
         String tenantId = "tenant-" + UUID.randomUUID();
         String path = "tenants/" + tenantId + "/slack-bot-token/alpha";
 
-        TenantCredentialService service = new TenantCredentialService(repository, realVault, mockTestClient, mock(TenantDatasourceRepository.class), event -> {});
+        TenantCredentialService service = new TenantCredentialService(repository, realVault, mockTestClient, mock(TenantDatasourceRepository.class), mock(TenantApiCredentialRepository.class), event -> {});
         TenantCredentialResponse response = service.create(tenantId,
             new CreateTenantCredentialRequest(
                 "slack-bot-token", "alpha",
@@ -129,7 +130,7 @@ class TenantCredentialServiceIT extends AbstractCredentialIT {
         when(mockRepo.save(any(TenantCredential.class)))
             .thenThrow(new RuntimeException("constraint violation"));
 
-        TenantCredentialService service = new TenantCredentialService(mockRepo, realVault, mockTestClient, mock(TenantDatasourceRepository.class), event -> {});
+        TenantCredentialService service = new TenantCredentialService(mockRepo, realVault, mockTestClient, mock(TenantDatasourceRepository.class), mock(TenantApiCredentialRepository.class), event -> {});
 
         assertThatThrownBy(() -> service.create(tenantId,
             new CreateTenantCredentialRequest("smtp", "default",

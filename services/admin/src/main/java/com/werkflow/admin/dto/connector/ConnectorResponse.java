@@ -18,6 +18,7 @@ public class ConnectorResponse {
     private String connectorType;
     private String authScheme;
     private String headerName;
+    private String credentialRef;
     private boolean hasSecret;
     private String sampleSchema;
     private LocalDateTime createdAt;

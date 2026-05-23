@@ -174,17 +174,31 @@ export function authLabel(auth: AuthType): string {
   return labels[auth] ?? auth
 }
 
+/** Maps a marketplace auth type to its connector authScheme. */
+const AUTH_TYPE_TO_SCHEME: Partial<Record<AuthType, string>> = {
+  'api-key': 'API_KEY',
+  bearer: 'BEARER',
+  basic: 'BASIC',
+  'oauth2-client-credentials': 'OAUTH2_CLIENT_CREDENTIALS',
+  none: 'NONE',
+}
+
+export function authTypeToScheme(auth: AuthType): string {
+  return AUTH_TYPE_TO_SCHEME[auth] ?? 'NONE'
+}
+
 /**
  * Returns the ConnectorRequest payload (for POST /api/connectors) derived from
- * a marketplace connector. The caller supplies the baseUrl and secretValue —
+ * a marketplace connector. The caller supplies the baseUrl and credentialRef —
  * these are runtime deployment values that cannot be embedded in the catalog.
+ * Secret material lives in an OpenBao-backed credential (Phase B.6); the connector
+ * stores only a reference to it.
  */
 export function buildInstallPayload(
   connector: MarketplaceConnector,
   opts: {
     baseUrl: string
-    secretValue: string
-    headerName?: string
+    credentialRef?: string
     environment?: string
   }
 ): {
@@ -194,25 +208,16 @@ export function buildInstallPayload(
   environment: string
   active: boolean
   authScheme: string
-  secretValue: string
-  headerName?: string
+  credentialRef?: string
 } {
-  const authSchemeMap: Partial<Record<AuthType, string>> = {
-    'api-key': 'API_KEY',
-    bearer: 'BEARER',
-    basic: 'BASIC',
-    'oauth2-client-credentials': 'OAUTH2_CLIENT_CREDENTIALS',
-    none: 'NONE',
-  }
-
+  const authScheme = authTypeToScheme(connector.primaryAuth)
   return {
     connectorKey: connector.key,
     displayName: connector.displayName,
     baseUrl: opts.baseUrl,
     environment: opts.environment ?? 'development',
     active: true,
-    authScheme: authSchemeMap[connector.primaryAuth] ?? 'NONE',
-    secretValue: opts.secretValue,
-    headerName: opts.headerName,
+    authScheme,
+    credentialRef: authScheme === 'NONE' ? undefined : opts.credentialRef,
   }
 }

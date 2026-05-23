@@ -22,12 +22,17 @@ public class ConnectorUpdateRequest {
     @Pattern(regexp = "API|WEBHOOK|MCP|OTHER")
     private String connectorType;
 
-    @NotBlank @Pattern(regexp = "API_KEY|BEARER|BASIC|OAUTH2_CLIENT_CREDENTIALS|NONE")
+    @NotBlank @Pattern(regexp = "API_KEY|BEARER|BASIC|NONE")
     private String authScheme;
 
-    /** If blank, the existing secretValue is preserved. */
-    @Size(max = 500)
-    private String secretValue;
+    /**
+     * Label of the OpenBao-backed credential to bind (Phase B.6). If blank, the existing
+     * binding is preserved. Required (non-blank) when changing to a non-NONE authScheme
+     * that has no binding yet — enforced in the service layer.
+     */
+    @Size(max = 100)
+    @Pattern(regexp = "^[a-z][a-z0-9-]*$", message = "credentialRef must be lowercase alphanumeric with hyphens, starting with a letter")
+    private String credentialRef;
 
     @Size(max = 100)
     private String headerName;
