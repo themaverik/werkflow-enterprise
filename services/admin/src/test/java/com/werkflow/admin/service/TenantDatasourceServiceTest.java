@@ -6,6 +6,7 @@ import com.werkflow.admin.dto.datasource.DatasourceTestResult;
 import com.werkflow.admin.dto.datasource.TenantDatasourceRequest;
 import com.werkflow.admin.dto.datasource.TenantDatasourceResponse;
 import com.werkflow.admin.entity.TenantDatasource;
+import com.werkflow.admin.event.DatasourcePoolEvictionEvent;
 import com.werkflow.admin.repository.TenantDatasourceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.vault.VaultException;
@@ -23,6 +25,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,12 +34,13 @@ class TenantDatasourceServiceTest {
     @Mock private TenantDatasourceRepository repository;
     @Mock private TenantCredentialService credentialService;
     @Mock private VaultCredentialStore vault;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private TenantDatasourceService service;
 
     @BeforeEach
     void setUp() {
-        service = new TenantDatasourceService(repository, credentialService, vault);
+        service = new TenantDatasourceService(repository, credentialService, vault, eventPublisher);
         ReflectionTestUtils.setField(service, "appEnvironment", "development");
     }
 
@@ -55,6 +59,21 @@ class TenantDatasourceServiceTest {
 
         assertThat(resp.credentialRef()).isEqualTo("my-cred");
         assertThat(resp.ref()).isEqualTo("ds1");
+    }
+
+    @Test
+    @DisplayName("update publishes a pool-eviction event for the datasource ref")
+    void update_publishesEvictionEvent() {
+        TenantDatasource existing = new TenantDatasource();
+        existing.setTenantId("acme");
+        existing.setRef("ds1");
+        existing.setCredentialRef("old-cred");
+        when(repository.findByTenantIdAndRef("acme", "ds1")).thenReturn(Optional.of(existing));
+        when(repository.save(any(TenantDatasource.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.update("acme", "ds1", request());
+
+        verify(eventPublisher).publishEvent(new DatasourcePoolEvictionEvent("acme", "ds1"));
     }
 
     @Test

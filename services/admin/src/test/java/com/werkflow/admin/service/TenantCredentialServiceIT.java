@@ -67,7 +67,7 @@ class TenantCredentialServiceIT extends AbstractCredentialIT {
         String path = "tenants/" + tenantId + "/smtp/default";
         Map<String, Object> values = Map.of("host", "smtp.example.com", "password", "s3cr3t");
 
-        TenantCredentialService service = new TenantCredentialService(repository, realVault, mockTestClient, mock(TenantDatasourceRepository.class));
+        TenantCredentialService service = new TenantCredentialService(repository, realVault, mockTestClient, mock(TenantDatasourceRepository.class), event -> {});
         TenantCredentialResponse response = service.create(tenantId,
             new CreateTenantCredentialRequest("smtp", "default", values));
 
@@ -99,7 +99,7 @@ class TenantCredentialServiceIT extends AbstractCredentialIT {
         String tenantId = "tenant-" + UUID.randomUUID();
         String path = "tenants/" + tenantId + "/slack-bot-token/alpha";
 
-        TenantCredentialService service = new TenantCredentialService(repository, realVault, mockTestClient, mock(TenantDatasourceRepository.class));
+        TenantCredentialService service = new TenantCredentialService(repository, realVault, mockTestClient, mock(TenantDatasourceRepository.class), event -> {});
         TenantCredentialResponse response = service.create(tenantId,
             new CreateTenantCredentialRequest(
                 "slack-bot-token", "alpha",
@@ -129,7 +129,7 @@ class TenantCredentialServiceIT extends AbstractCredentialIT {
         when(mockRepo.save(any(TenantCredential.class)))
             .thenThrow(new RuntimeException("constraint violation"));
 
-        TenantCredentialService service = new TenantCredentialService(mockRepo, realVault, mockTestClient, mock(TenantDatasourceRepository.class));
+        TenantCredentialService service = new TenantCredentialService(mockRepo, realVault, mockTestClient, mock(TenantDatasourceRepository.class), event -> {});
 
         assertThatThrownBy(() -> service.create(tenantId,
             new CreateTenantCredentialRequest("smtp", "default",
