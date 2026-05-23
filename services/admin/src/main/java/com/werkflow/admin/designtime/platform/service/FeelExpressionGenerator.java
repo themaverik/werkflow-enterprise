@@ -1,24 +1,18 @@
 package com.werkflow.admin.designtime.platform.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.werkflow.admin.config.CacheConfig;
-import com.werkflow.admin.designtime.platform.client.ErpClient;
 import com.werkflow.admin.designtime.platform.dto.FeelExpressionCatalog;
 import com.werkflow.admin.entity.ConfigurationVariable;
 import com.werkflow.admin.repository.ConfigurationVariableRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -32,14 +26,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class FeelExpressionGenerator {
 
+    private static final String CUSTODY_MAPPINGS_PATH = "/custody-mappings";
+
     private final ConfigurationVariableRepository configRepo;
-    private final RestTemplate restTemplate;
-
-    @Value("${app.erp-service.url:http://werkflow-business:8084}")
-    private String erpBaseUrl;
-
-    private static final ParameterizedTypeReference<List<Map<String, Object>>> LIST_MAP_TYPE =
-            new ParameterizedTypeReference<>() {};
+    private final ErpMetadataReader erpMetadataReader;
 
     /**
      * Generates the full FEEL expression catalog for the tenant.
@@ -64,28 +54,24 @@ public class FeelExpressionGenerator {
         );
     }
 
-    /** Fetches custody var group resolutions from ERP (ADR-004). Degrades gracefully on failure. */
-    @SuppressWarnings("unchecked")
+    /**
+     * Fetches custody var group resolutions from ERP via the connector abstraction (ADR-004, ADR-023).
+     * Degrades to an empty list when the connector is unregistered or ERP is unavailable.
+     */
     private List<FeelExpressionCatalog.GroupResolutionEntry> fetchCustodyVarsFromErp(String tenantCode) {
-        try {
-            String url = UriComponentsBuilder
-                    .fromHttpUrl(erpBaseUrl + "/api/v1/custody-mappings")
-                    .queryParam("tenantId", tenantCode)
-                    .toUriString();
-            List<Map<String, Object>> body = restTemplate
-                    .exchange(url, HttpMethod.GET, null, LIST_MAP_TYPE)
-                    .getBody();
-            if (body == null) return Collections.emptyList();
-            return body.stream().map(m -> {
-                String key = (String) m.getOrDefault("custodyOwner", "");
-                List<String> groups = (List<String>) m.getOrDefault("candidateGroups", List.of());
-                return new FeelExpressionCatalog.GroupResolutionEntry(
-                        key, groups, "custodyVars." + key);
-            }).collect(Collectors.toList());
-        } catch (Exception e) {
-            log.debug("FeelExpressionGenerator: custodyVars unavailable from ERP — {}", e.getMessage());
-            return Collections.emptyList();
-        }
+        return erpMetadataReader.readCollection(tenantCode, CUSTODY_MAPPINGS_PATH).stream()
+                .filter(node -> {
+                    String key = node.path("custodyOwner").asText(null);
+                    return key != null && !key.isBlank();
+                })
+                .map(node -> {
+                    String key = node.path("custodyOwner").asText();
+                    List<String> groups = new ArrayList<>();
+                    node.path("candidateGroups").forEach(group -> groups.add(group.asText()));
+                    return new FeelExpressionCatalog.GroupResolutionEntry(
+                            key, groups, "custodyVars." + key);
+                })
+                .collect(Collectors.toList());
     }
 
     private List<FeelExpressionCatalog.MonetaryEntry> buildMonetaryEntries(
