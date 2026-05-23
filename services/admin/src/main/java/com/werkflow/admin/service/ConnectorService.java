@@ -2,10 +2,11 @@ package com.werkflow.admin.service;
 
 import com.werkflow.admin.dto.connector.*;
 import com.werkflow.admin.entity.TenantApiCredential;
+import com.werkflow.admin.entity.TenantCredential;
 import com.werkflow.admin.entity.TenantServiceEndpoint;
 import com.werkflow.admin.repository.TenantApiCredentialRepository;
+import com.werkflow.admin.repository.TenantCredentialRepository;
 import com.werkflow.admin.repository.TenantServiceEndpointRepository;
-import com.werkflow.common.security.EncryptionService;
 import com.werkflow.common.security.SsrfGuard;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
@@ -49,7 +51,8 @@ public class ConnectorService {
 
     private final TenantApiCredentialRepository credentialRepo;
     private final TenantServiceEndpointRepository endpointRepo;
-    private final EncryptionService encryptionService;
+    private final TenantCredentialRepository tenantCredentialRepo;
+    private final VaultCredentialStore vault;
     private final SsrfGuard ssrfGuard;
 
     @PostConstruct
@@ -99,9 +102,7 @@ public class ConnectorService {
         cred.setLabel(request.getDisplayName());
         cred.setAuthScheme(request.getAuthScheme());
         cred.setHeaderName(request.getHeaderName());
-        if (request.getSecretValue() != null && !request.getSecretValue().isBlank()) {
-            cred.setSecretValue(encryptionService.encrypt(request.getSecretValue()));
-        }
+        cred.setCredentialRef(blankToNull(request.getCredentialRef()));
         credentialRepo.save(cred);
 
         return toResponse(ep, cred);
@@ -123,8 +124,8 @@ public class ConnectorService {
         cred.setLabel(request.getDisplayName());
         cred.setAuthScheme(request.getAuthScheme());
         cred.setHeaderName(request.getHeaderName());
-        if (request.getSecretValue() != null && !request.getSecretValue().isBlank()) {
-            cred.setSecretValue(encryptionService.encrypt(request.getSecretValue()));
+        if (request.getCredentialRef() != null && !request.getCredentialRef().isBlank()) {
+            cred.setCredentialRef(request.getCredentialRef());
         }
         credentialRepo.save(cred);
 
@@ -245,9 +246,11 @@ public class ConnectorService {
     }
 
     /**
-     * Registers a pre-hashed API key in ERP and stores the encrypted raw key for outbound calls.
-     * Validates that SHA-256(rawKey) == keyHash before calling ERP (defense in depth).
-     * The user's JWT is forwarded to ERP so tenantId is extracted from the token there.
+     * Registers a pre-hashed API key in ERP and stores the raw key in OpenBao as an
+     * {@code http-header-auth} credential for outbound calls (Phase B.6 — replaces the
+     * legacy AES {@code secretValue} path). Validates that SHA-256(rawKey) == keyHash before
+     * calling ERP (defense in depth). The user's JWT is forwarded to ERP so tenantId is
+     * extracted from the token there.
      */
     @Transactional
     public void registerApiKey(String tenantCode, String connectorKey,
@@ -276,11 +279,38 @@ public class ConnectorService {
         }
 
         TenantApiCredential cred = findCredential(tenantCode, connectorKey);
-        cred.setSecretValue(encryptionService.encrypt(request.getRawKey()));
-        cred.setAuthScheme("API_KEY");
-        credentialRepo.save(cred);
+        String headerName = cred.getHeaderName() != null && !cred.getHeaderName().isBlank()
+            ? cred.getHeaderName() : "Authorization";
+        String credentialType = "http-header-auth";
+        String label = connectorKey.replace('_', '-');
+        String vaultPath = "tenants/" + tenantCode + "/" + credentialType + "/" + label;
+        Map<String, Object> values = Map.of("headerName", headerName, "headerValue", request.getRawKey());
 
-        log.info("connector.api-key.registered tenantCode={} connectorKey={}", tenantCode, connectorKey);
+        // Vault write first; compensate (soft-delete) if the DB updates below fail, mirroring
+        // TenantCredentialService.create — otherwise a transaction rollback leaves an orphan
+        // Vault version with no metadata row pointing at it.
+        vault.write(vaultPath, values);
+        try {
+            TenantCredential meta = tenantCredentialRepo
+                .findByTenantIdAndCredentialTypeAndLabel(tenantCode, credentialType, label)
+                .orElseGet(() -> new TenantCredential(tenantCode, credentialType, label, vaultPath));
+            meta.setRotatedAt(OffsetDateTime.now());
+            tenantCredentialRepo.save(meta);
+
+            cred.setAuthScheme("API_KEY");
+            cred.setCredentialRef(label);
+            credentialRepo.save(cred);
+        } catch (RuntimeException dbEx) {
+            try {
+                vault.delete(vaultPath);
+            } catch (RuntimeException compensateEx) {
+                log.error("Vault compensation delete failed; manual cleanup required for path={}", vaultPath, compensateEx);
+            }
+            throw dbEx;
+        }
+
+        log.info("connector.api-key.registered tenantCode={} connectorKey={} credentialRef={}",
+            tenantCode, connectorKey, label);
     }
 
     private ConnectorTestResponse executeProxy(TenantServiceEndpoint ep, TenantApiCredential cred,
@@ -290,18 +320,7 @@ public class ConnectorService {
         String fullUrl = baseUrl + normalizedPath;
         ssrfGuard.validateExternal(fullUrl);
 
-        String rawSecret = cred.getSecretValue() != null
-            ? encryptionService.decrypt(cred.getSecretValue())
-            : null;
-
-        String authHeader = cred.getHeaderName() != null ? cred.getHeaderName() : "Authorization";
-        String authValue = switch (cred.getAuthScheme()) {
-            case "NONE" -> null;
-            case "BEARER" -> rawSecret != null ? "Bearer " + rawSecret : null;
-            case "API_KEY" -> rawSecret;
-            case "BASIC" -> rawSecret != null ? "Basic " + rawSecret : null;
-            default -> rawSecret;
-        };
+        AuthHeader auth = resolveAuthHeader(cred);
 
         RestClient proxyClient = RestClient.builder()
             .requestFactory(new JdkClientHttpRequestFactory(
@@ -315,7 +334,7 @@ public class ConnectorService {
         var spec = proxyClient.method(HttpMethod.valueOf(method))
             .uri(fullUrl)
             .headers(headers -> {
-                if (authValue != null) headers.set(authHeader, authValue);
+                if (auth != null) headers.set(auth.name(), auth.value());
             });
         if (requestBody != null && !requestBody.isBlank()) {
             spec = spec.contentType(MediaType.APPLICATION_JSON).body(requestBody);
@@ -356,6 +375,75 @@ public class ConnectorService {
             throw new IllegalStateException("SHA-256 unavailable", e);
         }
     }
+
+    /**
+     * Resolves the connector's outbound auth header from OpenBao, or {@code null} when the
+     * connector requires no auth ({@code authScheme == NONE}). Mirrors the engine's
+     * credential-consumer flow: look up the {@code tenant_credentials} metadata row by the
+     * {@code (tenantCode, type, credentialRef)} triple, then read values from OpenBao.
+     *
+     * @throws ResponseStatusException 400 if a non-NONE connector has no bound credential or
+     *         an unsupported authScheme; 404 if the bound credential is missing from the
+     *         metadata index or has no value in OpenBao
+     */
+    private AuthHeader resolveAuthHeader(TenantApiCredential cred) {
+        String scheme = cred.getAuthScheme();
+        if ("NONE".equals(scheme)) {
+            return null;
+        }
+        String credentialType = authSchemeToType(scheme);
+        String ref = cred.getCredentialRef();
+        if (ref == null || ref.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Connector '" + cred.getConnectorKey() + "' has no credential bound");
+        }
+        TenantCredential meta = tenantCredentialRepo
+            .findByTenantIdAndCredentialTypeAndLabel(cred.getTenantCode(), credentialType, ref)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "Bound credential not found: type=" + credentialType + " ref=" + ref));
+        Map<String, Object> values = vault.read(meta.getVaultPath())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "Credential has no value in vault: ref=" + ref));
+        return buildAuthHeader(scheme, values);
+    }
+
+    /** Maps a connector authScheme to its canonical credential-type slug (Phase B.6). */
+    private String authSchemeToType(String authScheme) {
+        return switch (authScheme) {
+            case "BASIC" -> "http-basic-auth";
+            case "BEARER" -> "http-bearer-token";
+            case "API_KEY" -> "http-header-auth";
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Unsupported authScheme for credential resolution: " + authScheme);
+        };
+    }
+
+    /** Builds the outbound auth header from OpenBao values for the given scheme. */
+    private AuthHeader buildAuthHeader(String scheme, Map<String, Object> values) {
+        return switch (scheme) {
+            case "BASIC" -> {
+                String token = Base64.getEncoder().encodeToString(
+                    (str(values.get("username")) + ":" + str(values.get("password")))
+                        .getBytes(StandardCharsets.UTF_8));
+                yield new AuthHeader("Authorization", "Basic " + token);
+            }
+            case "BEARER" -> new AuthHeader("Authorization", "Bearer " + str(values.get("token")));
+            case "API_KEY" -> new AuthHeader(str(values.get("headerName")), str(values.get("headerValue")));
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Unsupported authScheme for credential resolution: " + scheme);
+        };
+    }
+
+    private static String str(Object value) {
+        return value == null ? "" : value.toString();
+    }
+
+    private static String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value;
+    }
+
+    /** Outbound auth header name/value pair resolved from a tenant credential. */
+    private record AuthHeader(String name, String value) {}
 
     @Transactional(readOnly = true)
     public Optional<String> resolveBaseUrl(String tenantCode, String connectorKey, String environment) {
@@ -398,8 +486,9 @@ public class ConnectorService {
             .connectorType(ep.getConnectorType())
             .authScheme(cred.getAuthScheme())
             .headerName(cred.getHeaderName())
+            .credentialRef(cred.getCredentialRef())
             .sampleSchema(ep.getSampleSchema())
-            .hasSecret(cred.getSecretValue() != null && !cred.getSecretValue().isBlank())
+            .hasSecret(cred.getCredentialRef() != null && !cred.getCredentialRef().isBlank())
             .createdAt(ep.getCreatedAt())
             .updatedAt(ep.getUpdatedAt())
             .build();

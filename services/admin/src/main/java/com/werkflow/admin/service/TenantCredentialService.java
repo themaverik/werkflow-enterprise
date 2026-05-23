@@ -5,8 +5,10 @@ import com.werkflow.admin.dto.credential.CredentialPathResponse;
 import com.werkflow.admin.dto.credential.CredentialTestResultResponse;
 import com.werkflow.admin.dto.credential.TenantCredentialResponse;
 import com.werkflow.admin.dto.credential.UpdateTenantCredentialRequest;
+import com.werkflow.admin.entity.TenantApiCredential;
 import com.werkflow.admin.entity.TenantCredential;
 import com.werkflow.admin.entity.TenantDatasource;
+import com.werkflow.admin.repository.TenantApiCredentialRepository;
 import com.werkflow.admin.repository.TenantCredentialRepository;
 import com.werkflow.admin.event.DatasourcePoolEvictionEvent;
 import com.werkflow.admin.repository.TenantDatasourceRepository;
@@ -50,10 +52,18 @@ import java.util.UUID;
 @Slf4j
 public class TenantCredentialService {
 
+    /** Connector authScheme that maps to each HTTP credential type (Phase B.6 delete-guard). */
+    private static final Map<String, String> HTTP_TYPE_TO_AUTH_SCHEME = Map.of(
+        "http-basic-auth", "BASIC",
+        "http-bearer-token", "BEARER",
+        "http-header-auth", "API_KEY"
+    );
+
     private final TenantCredentialRepository repository;
     private final VaultCredentialStore vault;
     private final CredentialTestClient credentialTestClient;
     private final TenantDatasourceRepository datasourceRepository;
+    private final TenantApiCredentialRepository connectorCredentialRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     // -- queries -------------------------------------------------------------
@@ -206,6 +216,20 @@ public class TenantCredentialService {
             if (!dependents.isEmpty()) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Credential is in use by datasource(s): " + String.join(", ", dependents));
+            }
+        }
+
+        String boundScheme = HTTP_TYPE_TO_AUTH_SCHEME.get(entity.getCredentialType());
+        if (boundScheme != null) {
+            List<String> dependents = connectorCredentialRepository
+                .findByTenantCodeAndCredentialRef(tenantId, entity.getLabel())
+                .stream()
+                .filter(c -> boundScheme.equals(c.getAuthScheme()))
+                .map(TenantApiCredential::getConnectorKey)
+                .toList();
+            if (!dependents.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Credential is in use by connector(s): " + String.join(", ", dependents));
             }
         }
 
