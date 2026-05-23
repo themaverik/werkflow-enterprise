@@ -14,5 +14,8 @@ WHERE u.department_id = d.id
 -- Step 3: remove FK column
 ALTER TABLE users DROP COLUMN IF EXISTS department_id;
 
--- Step 4: drop the departments table — ERP is now source of truth
-DROP TABLE IF EXISTS departments;
+-- Step 4: drop the departments table — ERP is now source of truth.
+-- CASCADE drops FK constraints in roles/users/service_registry that reference this table
+-- so that this migration succeeds on a fresh schema (e.g. Testcontainers IT databases).
+-- Live databases that already applied V6 require: mvn flyway:repair (updates stored checksum).
+DROP TABLE IF EXISTS departments CASCADE;
