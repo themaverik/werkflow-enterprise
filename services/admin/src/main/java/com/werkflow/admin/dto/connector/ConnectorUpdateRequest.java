@@ -33,7 +33,4 @@ public class ConnectorUpdateRequest {
     @Size(max = 100)
     @Pattern(regexp = "^[a-z][a-z0-9-]*$", message = "credentialRef must be lowercase alphanumeric with hyphens, starting with a letter")
     private String credentialRef;
-
-    @Size(max = 100)
-    private String headerName;
 }

@@ -34,21 +34,16 @@ public class TenantApiCredential {
     @Column(nullable = false, length = 30)
     private String authScheme;
 
-    /** Legacy pointer — nullable; superseded by credentialRef. */
-    @Column(length = 200)
-    private String secretRef;
-
     /**
      * Label of the OpenBao-backed {@link TenantCredential} that holds this connector's
      * auth material (M4.12 Phase B.6). Null when {@code authScheme == "NONE"}. The
      * credential type is derived from {@code authScheme}; engine and admin resolve the
      * secret from OpenBao via the {@code (tenantCode, type, credentialRef)} triple.
+     * For header-based auth, the header name is part of the http-header-auth credential
+     * (stored in OpenBao), not on this entity.
      */
     @Column(name = "credential_ref", length = 100)
     private String credentialRef;
-
-    @Column(length = 100)
-    private String headerName;
 
     @Column(length = 20)
     private String keyPrefix;

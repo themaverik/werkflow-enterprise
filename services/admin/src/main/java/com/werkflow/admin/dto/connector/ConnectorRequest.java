@@ -12,7 +12,7 @@ public class ConnectorRequest {
     private String tenantCode;
 
     @NotBlank @Size(max = 100)
-    @Pattern(regexp = "^[a-z0-9-_]+$", message = "connectorKey must be lowercase alphanumeric, hyphens, or underscores")
+    @Pattern(regexp = "^[a-z][a-z0-9-_]*$", message = "connectorKey must start with a lowercase letter and contain only lowercase alphanumerics, hyphens, or underscores")
     private String connectorKey;
 
     @NotBlank @Size(max = 200)
@@ -39,9 +39,6 @@ public class ConnectorRequest {
     @Size(max = 100)
     @Pattern(regexp = "^[a-z][a-z0-9-]*$", message = "credentialRef must be lowercase alphanumeric with hyphens, starting with a letter")
     private String credentialRef;
-
-    @Size(max = 100)
-    private String headerName;
 
     private String sampleSchema;
 }
