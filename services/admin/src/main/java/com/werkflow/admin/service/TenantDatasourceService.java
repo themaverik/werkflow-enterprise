@@ -23,7 +23,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -207,11 +206,22 @@ public class TenantDatasourceService {
                 tenantId, JDBC_CREDENTIAL_TYPE, entity.getCredentialRef());
             Map<String, Object> values = vault.read(path.vaultPath())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "empty"));
-            username = String.valueOf(values.get("username"));
-            password = String.valueOf(values.get("password"));
+            Object u = values.get("username");
+            Object p = values.get("password");
+            if (u == null || u.toString().isBlank() || p == null || p.toString().isBlank()) {
+                return new DatasourceTestResult(false,
+                    "Credential '" + entity.getCredentialRef() + "' is missing username or password", 0);
+            }
+            username = u.toString();
+            password = p.toString();
         } catch (ResponseStatusException e) {
             return new DatasourceTestResult(false,
                 "Credential '" + entity.getCredentialRef() + "' not found or empty", 0);
+        } catch (RuntimeException e) {
+            // e.g. VaultException when OpenBao is unreachable — fail gracefully, never 500.
+            log.warn("tenant.datasource.test.credential-resolve-failed tenantId={} ref={} error={}",
+                tenantId, ref, e.getMessage());
+            return new DatasourceTestResult(false, "Credential resolution failed", 0);
         }
 
         long start = System.currentTimeMillis();
