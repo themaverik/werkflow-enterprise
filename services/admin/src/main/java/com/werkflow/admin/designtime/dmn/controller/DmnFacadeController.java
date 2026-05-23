@@ -35,7 +35,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/design/dmn")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('WORKFLOW_ADMIN','ADMIN','SUPER_ADMIN')")
+@PreAuthorize("hasAnyRole('WORKFLOW_DESIGNER','WORKFLOW_ADMIN','ADMIN','SUPER_ADMIN')")
 @Tag(name = "DTDS — DMN Facade", description = "Design-time data service for the dmn-js editor")
 public class DmnFacadeController {
 
