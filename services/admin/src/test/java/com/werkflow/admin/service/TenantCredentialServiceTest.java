@@ -7,6 +7,7 @@ import com.werkflow.admin.dto.credential.TenantCredentialResponse;
 import com.werkflow.admin.dto.credential.UpdateTenantCredentialRequest;
 import com.werkflow.admin.entity.TenantCredential;
 import com.werkflow.admin.repository.TenantCredentialRepository;
+import com.werkflow.admin.repository.TenantDatasourceRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +40,7 @@ class TenantCredentialServiceTest {
     @Mock TenantCredentialRepository repository;
     @Mock VaultCredentialStore vault;
     @Mock CredentialTestClient credentialTestClient;
+    @Mock TenantDatasourceRepository datasourceRepository;
     @InjectMocks TenantCredentialService service;
 
     private static final String TENANT = "tenant-1";
