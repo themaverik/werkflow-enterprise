@@ -101,7 +101,6 @@ public class ConnectorService {
         cred.setCredentialKey(request.getConnectorKey());
         cred.setLabel(request.getDisplayName());
         cred.setAuthScheme(request.getAuthScheme());
-        cred.setHeaderName(request.getHeaderName());
         cred.setCredentialRef(blankToNull(request.getCredentialRef()));
         credentialRepo.save(cred);
 
@@ -123,7 +122,6 @@ public class ConnectorService {
         TenantApiCredential cred = findCredential(tenantCode, connectorKey);
         cred.setLabel(request.getDisplayName());
         cred.setAuthScheme(request.getAuthScheme());
-        cred.setHeaderName(request.getHeaderName());
         if (request.getCredentialRef() != null && !request.getCredentialRef().isBlank()) {
             cred.setCredentialRef(request.getCredentialRef());
         }
@@ -279,12 +277,14 @@ public class ConnectorService {
         }
 
         TenantApiCredential cred = findCredential(tenantCode, connectorKey);
-        String headerName = cred.getHeaderName() != null && !cred.getHeaderName().isBlank()
-            ? cred.getHeaderName() : "Authorization";
         String credentialType = "http-header-auth";
+        // connectorKey regex permits '_'; the credential label regex (^[a-z][a-z0-9-]*$) does not,
+        // so map '_'→'-'. connectorKey is letter-led, so the result always satisfies the label CHECK.
         String label = connectorKey.replace('_', '-');
         String vaultPath = "tenants/" + tenantCode + "/" + credentialType + "/" + label;
-        Map<String, Object> values = Map.of("headerName", headerName, "headerValue", request.getRawKey());
+        // ERP API keys are presented in the Authorization header (the pre-B.6 default; the
+        // connector no longer carries a configurable header name — that lives on the credential).
+        Map<String, Object> values = Map.of("headerName", "Authorization", "headerValue", request.getRawKey());
 
         // Vault write first; compensate (soft-delete) if the DB updates below fail, mirroring
         // TenantCredentialService.create — otherwise a transaction rollback leaves an orphan
@@ -470,13 +470,13 @@ public class ConnectorService {
 
     private TenantApiCredential findCredential(String tenantCode, String connectorKey) {
         return credentialRepo.findByTenantCodeAndConnectorKey(tenantCode, connectorKey)
-            .orElseThrow(() -> new NoSuchElementException("Credential not found for connector: " + connectorKey));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "Credential not found for connector: " + connectorKey));
     }
 
     private ConnectorResponse toResponse(TenantServiceEndpoint ep, TenantApiCredential cred) {
         return ConnectorResponse.builder()
             .endpointId(ep.getId())
-            .credentialId(cred.getId())
             .tenantCode(ep.getTenantCode())
             .connectorKey(ep.getConnectorKey())
             .displayName(ep.getDisplayName())
@@ -485,10 +485,8 @@ public class ConnectorService {
             .active(ep.isActive())
             .connectorType(ep.getConnectorType())
             .authScheme(cred.getAuthScheme())
-            .headerName(cred.getHeaderName())
             .credentialRef(cred.getCredentialRef())
             .sampleSchema(ep.getSampleSchema())
-            .hasSecret(cred.getCredentialRef() != null && !cred.getCredentialRef().isBlank())
             .createdAt(ep.getCreatedAt())
             .updatedAt(ep.getUpdatedAt())
             .build();
