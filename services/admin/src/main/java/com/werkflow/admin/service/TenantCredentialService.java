@@ -6,7 +6,9 @@ import com.werkflow.admin.dto.credential.CredentialTestResultResponse;
 import com.werkflow.admin.dto.credential.TenantCredentialResponse;
 import com.werkflow.admin.dto.credential.UpdateTenantCredentialRequest;
 import com.werkflow.admin.entity.TenantCredential;
+import com.werkflow.admin.entity.TenantDatasource;
 import com.werkflow.admin.repository.TenantCredentialRepository;
+import com.werkflow.admin.repository.TenantDatasourceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -49,6 +51,7 @@ public class TenantCredentialService {
     private final TenantCredentialRepository repository;
     private final VaultCredentialStore vault;
     private final CredentialTestClient credentialTestClient;
+    private final TenantDatasourceRepository datasourceRepository;
 
     // -- queries -------------------------------------------------------------
 
@@ -172,14 +175,29 @@ public class TenantCredentialService {
      * A Vault failure does not roll back the DB delete — the metadata row is
      * gone, so the orphaned Vault data is unreachable.
      *
+     * <p>For {@code jdbc-password} credentials, deletion is blocked (409) when any
+     * {@code tenant_datasource} row still references the credential by label, preventing
+     * dangling {@code credentialRef} pointers.
+     *
      * @throws ResponseStatusException 404 if the credential is missing or owned by another tenant
+     * @throws ResponseStatusException 409 if a jdbc-password credential is referenced by a datasource
      */
     @Transactional
     public void delete(String tenantId, UUID id) {
         TenantCredential entity = findOwned(tenantId, id);
+
+        if ("jdbc-password".equals(entity.getCredentialType())) {
+            List<String> dependents = datasourceRepository
+                .findByTenantIdAndCredentialRef(tenantId, entity.getLabel())
+                .stream().map(TenantDatasource::getRef).toList();
+            if (!dependents.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Credential is in use by datasource(s): " + String.join(", ", dependents));
+            }
+        }
+
         String vaultPath = entity.getVaultPath();
         repository.delete(entity);
-
         try {
             vault.delete(vaultPath);
         } catch (VaultException vaultEx) {

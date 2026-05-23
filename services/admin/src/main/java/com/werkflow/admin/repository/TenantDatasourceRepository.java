@@ -16,4 +16,6 @@ public interface TenantDatasourceRepository extends JpaRepository<TenantDatasour
     Optional<TenantDatasource> findByTenantIdAndRef(String tenantId, String ref);
 
     boolean existsByTenantIdAndRef(String tenantId, String ref);
+
+    List<TenantDatasource> findByTenantIdAndCredentialRef(String tenantId, String credentialRef);
 }
