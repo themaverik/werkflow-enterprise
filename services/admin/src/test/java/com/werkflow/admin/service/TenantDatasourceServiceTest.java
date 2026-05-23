@@ -15,8 +15,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.vault.VaultException;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -95,5 +97,49 @@ class TenantDatasourceServiceTest {
 
         assertThat(result.ok()).isFalse();
         assertThat(result.message()).contains("missing-cred");
+    }
+
+    @Test
+    @DisplayName("testConnection returns a safe error when OpenBao read throws (no 500)")
+    void testConnection_vaultUnavailable_returnsSafeError() {
+        TenantDatasource e = new TenantDatasource();
+        e.setTenantId("acme");
+        e.setRef("ds1");
+        e.setCredentialRef("my-cred");
+        e.setJdbcUrl("jdbc:h2:mem:t");
+        e.setDriverClassName("org.h2.Driver");
+        when(repository.findByTenantIdAndRef("acme", "ds1")).thenReturn(Optional.of(e));
+        when(credentialService.resolvePath("acme", "jdbc-password", "my-cred"))
+            .thenReturn(new com.werkflow.admin.dto.credential.CredentialPathResponse(
+                "acme", "jdbc-password", "my-cred", "tenants/acme/jdbc-password/my-cred"));
+        when(vault.read("tenants/acme/jdbc-password/my-cred"))
+            .thenThrow(new VaultException("OpenBao unreachable"));
+
+        DatasourceTestResult result = service.testConnection("acme", "ds1");
+
+        assertThat(result.ok()).isFalse();
+        assertThat(result.message()).contains("resolution failed");
+    }
+
+    @Test
+    @DisplayName("testConnection returns a safe error when the credential lacks username/password")
+    void testConnection_missingFields_returnsSafeError() {
+        TenantDatasource e = new TenantDatasource();
+        e.setTenantId("acme");
+        e.setRef("ds1");
+        e.setCredentialRef("my-cred");
+        e.setJdbcUrl("jdbc:h2:mem:t");
+        e.setDriverClassName("org.h2.Driver");
+        when(repository.findByTenantIdAndRef("acme", "ds1")).thenReturn(Optional.of(e));
+        when(credentialService.resolvePath("acme", "jdbc-password", "my-cred"))
+            .thenReturn(new com.werkflow.admin.dto.credential.CredentialPathResponse(
+                "acme", "jdbc-password", "my-cred", "tenants/acme/jdbc-password/my-cred"));
+        when(vault.read("tenants/acme/jdbc-password/my-cred"))
+            .thenReturn(Optional.of(Map.of("username", "sa")));  // password missing
+
+        DatasourceTestResult result = service.testConnection("acme", "ds1");
+
+        assertThat(result.ok()).isFalse();
+        assertThat(result.message()).contains("missing username or password");
     }
 }
