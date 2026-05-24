@@ -1,10 +1,12 @@
 package com.werkflow.engine.action;
 
 import com.werkflow.common.security.SsrfGuard;
+import com.werkflow.engine.action.credential.ConnectorCredentialBindingClient;
 import com.werkflow.engine.action.credential.CredentialRegistry;
 import com.werkflow.engine.action.credential.CredentialType;
 import com.werkflow.engine.action.credential.CredentialValues;
 import com.werkflow.engine.action.credential.HttpCredentialType;
+import com.werkflow.engine.action.credential.dto.ConnectorCredentialBindingDto;
 import com.werkflow.engine.audit.ProcessAuditLogRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -38,6 +40,7 @@ class RestConnectorDelegateTest {
     @Mock private SsrfGuard ssrfGuard;
     @Mock private ResponseMasker responseMasker;
     @Mock private CredentialRegistry credentialRegistry;
+    @Mock private ConnectorCredentialBindingClient bindingClient;
     @Mock private ProcessAuditLogRepository auditLogRepository;
     @Mock private TenantEndpointResolver endpointResolver;
     @Mock private DelegateExecution execution;
@@ -51,7 +54,8 @@ class RestConnectorDelegateTest {
     @BeforeEach
     void setUp() {
         delegate = new RestConnectorDelegate(
-            ssrfGuard, responseMasker, credentialRegistry, auditLogRepository, meterRegistry, endpointResolver);
+            ssrfGuard, responseMasker, credentialRegistry, bindingClient,
+            auditLogRepository, meterRegistry, endpointResolver);
 
         lenient().when(execution.getProcessInstanceId()).thenReturn("proc-1");
         lenient().when(execution.getId()).thenReturn("exec-1");
@@ -437,6 +441,162 @@ class RestConnectorDelegateTest {
             }
 
             verify(fakeType).applyTo(any(), eq(fakeValues));
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // New tests — ADR-024 connector-mode credential resolution (Model A)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Connector mode with no per-task credential fields: the engine resolves the registered
+     * connector's own credential binding from admin and applies it. Verifies
+     * {@link HttpCredentialType#applyTo} is invoked with the resolved values before HTTP dispatch.
+     */
+    @Test
+    void execute_connectorMode_appliesRegisteredConnectorCredential() {
+        try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
+            stubConnectorFields(dh, "crm-api", "/v2/contacts", "GET", "response", "FAIL");
+            when(execution.getTenantId()).thenReturn("tenant-a");
+            when(endpointResolver.resolve("tenant-a", "crm-api")).thenReturn("https://crm.example.io");
+
+            when(bindingClient.resolveBinding("tenant-a", "crm-api"))
+                .thenReturn(java.util.Optional.of(
+                    new ConnectorCredentialBindingDto("http-bearer-token", "prod-token")));
+
+            HttpCredentialType fakeType = mock(HttpCredentialType.class);
+            when(credentialRegistry.get("http-bearer-token")).thenReturn(fakeType);
+            CredentialValues fakeValues = CredentialValues.of(Map.of("token", "sk-123"));
+            when(credentialRegistry.resolveForTenant("http-bearer-token", "tenant-a", "prod-token"))
+                .thenReturn(fakeValues);
+
+            // SSRF passes (validateExternal default no-op); applyTo runs before the unreachable
+            // makeHttpCall. We assert on applyTo regardless of the HTTP outcome.
+            try {
+                delegate.execute(execution);
+            } catch (Exception ignored) {
+                // Network failure expected in unit test environment
+            }
+
+            verify(fakeType).applyTo(any(), eq(fakeValues));
+        }
+    }
+
+    /**
+     * Connector mode where the connector requires no auth (binding empty — authScheme NONE,
+     * unregistered, or no bound credential): no credential is resolved or applied, and the call
+     * proceeds unauthenticated. No exception from the credential path.
+     */
+    @Test
+    void execute_connectorMode_appliesNoAuthWhenBindingEmpty() {
+        try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
+            stubConnectorFields(dh, "public-api", "/status", "GET", "response", "FAIL");
+            when(execution.getTenantId()).thenReturn("tenant-a");
+            when(endpointResolver.resolve("tenant-a", "public-api")).thenReturn("https://public.example.io");
+            when(bindingClient.resolveBinding("tenant-a", "public-api"))
+                .thenReturn(java.util.Optional.empty());
+
+            try {
+                delegate.execute(execution);
+            } catch (Exception ignored) {
+                // Network failure expected in unit test environment
+            }
+
+            verify(bindingClient).resolveBinding("tenant-a", "public-api");
+            verify(credentialRegistry, never()).get(anyString());
+            verify(credentialRegistry, never()).resolveForTenant(anyString(), anyString(), anyString());
+        }
+    }
+
+    /**
+     * Precedence (ADR-024): explicit per-task credential fields win over the connector binding.
+     * When a task carries both a connector and per-task credentialType/credentialRef, the per-task
+     * credential is applied and the connector binding is never consulted.
+     */
+    @Test
+    void execute_connectorMode_perTaskCredentialWinsOverConnectorBinding() {
+        try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
+            stubConnectorFields(dh, "crm-api", "/v2/contacts", "GET", "response", "FAIL");
+            when(execution.getTenantId()).thenReturn("tenant-a");
+            when(endpointResolver.resolve("tenant-a", "crm-api")).thenReturn("https://crm.example.io");
+
+            // Override: per-task credential fields present
+            lenient().when(DelegateHelper.getFieldExpression(execution, "credentialType"))
+                .thenReturn(credentialTypeExpr);
+            lenient().when(credentialTypeExpr.getValue(execution)).thenReturn("http-header-auth");
+            lenient().when(DelegateHelper.getFieldExpression(execution, "credentialRef"))
+                .thenReturn(credentialRefExpr);
+            lenient().when(credentialRefExpr.getValue(execution)).thenReturn("per-task-key");
+
+            HttpCredentialType fakeType = mock(HttpCredentialType.class);
+            when(credentialRegistry.get("http-header-auth")).thenReturn(fakeType);
+            CredentialValues fakeValues = CredentialValues.of(Map.of("headerName", "X-Api-Key", "headerValue", "v"));
+            when(credentialRegistry.resolveForTenant("http-header-auth", "tenant-a", "per-task-key"))
+                .thenReturn(fakeValues);
+
+            try {
+                delegate.execute(execution);
+            } catch (Exception ignored) {
+                // Network failure expected in unit test environment
+            }
+
+            verify(fakeType).applyTo(any(), eq(fakeValues));
+            verifyNoInteractions(bindingClient);
+        }
+    }
+
+    /**
+     * A connector bound to a non-HTTP credential type signals a registry misconfiguration and is
+     * rejected with {@link IllegalStateException} (admin only maps HTTP authSchemes, so this
+     * should never occur in practice).
+     */
+    @Test
+    void execute_connectorMode_throwsWhenBoundTypeIsNotHttp() {
+        try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
+            stubConnectorFields(dh, "crm-api", "/v2/contacts", "GET", "response", "FAIL");
+            when(execution.getTenantId()).thenReturn("tenant-a");
+            when(endpointResolver.resolve("tenant-a", "crm-api")).thenReturn("https://crm.example.io");
+
+            when(bindingClient.resolveBinding("tenant-a", "crm-api"))
+                .thenReturn(java.util.Optional.of(
+                    new ConnectorCredentialBindingDto("database", "some-ref")));
+            CredentialType nonHttpType = mock(CredentialType.class);
+            when(credentialRegistry.get("database")).thenReturn(nonHttpType);
+
+            // IllegalStateException is an operator-config error — rethrown directly, not via onError.
+            assertThatThrownBy(() -> delegate.execute(execution))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("HttpCredentialType");
+        }
+    }
+
+    /**
+     * HIGH-3: a connector binding that resolves but whose credential is missing/rotated-away in
+     * OpenBao must FAIL the task — never silently degrade to an unauthenticated call — even under
+     * {@code onError=CONTINUE}. {@link CredentialResolutionException} is re-thrown, not routed
+     * through onError handling.
+     */
+    @Test
+    void execute_connectorMode_missingCredentialFailsTaskEvenWhenOnErrorContinue() {
+        try (MockedStatic<DelegateHelper> dh = mockStatic(DelegateHelper.class)) {
+            stubConnectorFields(dh, "crm-api", "/v2/contacts", "GET", "response", "CONTINUE");
+            when(execution.getTenantId()).thenReturn("tenant-a");
+            when(endpointResolver.resolve("tenant-a", "crm-api")).thenReturn("https://crm.example.io");
+
+            when(bindingClient.resolveBinding("tenant-a", "crm-api"))
+                .thenReturn(java.util.Optional.of(
+                    new ConnectorCredentialBindingDto("http-bearer-token", "rotated-away")));
+            HttpCredentialType fakeType = mock(HttpCredentialType.class);
+            when(credentialRegistry.get("http-bearer-token")).thenReturn(fakeType);
+            when(credentialRegistry.resolveForTenant("http-bearer-token", "tenant-a", "rotated-away"))
+                .thenThrow(new com.werkflow.engine.action.credential.CredentialResolutionException(
+                    "Credential not configured"));
+
+            assertThatThrownBy(() -> delegate.execute(execution))
+                .isInstanceOf(com.werkflow.engine.action.credential.CredentialResolutionException.class);
+
+            // Did NOT swallow into onError=CONTINUE success-flag write
+            verify(execution, never()).setVariable(eq("responseSuccess"), eq(false));
         }
     }
 }
