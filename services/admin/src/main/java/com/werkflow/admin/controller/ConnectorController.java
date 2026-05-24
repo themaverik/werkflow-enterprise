@@ -119,6 +119,19 @@ public class ConnectorController {
             .orElse(ResponseEntity.noContent().build());
     }
 
+    @GetMapping("/internal/connectors/{connectorKey}/credential-binding")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_SUPER_ADMIN') or hasAuthority('ROLE_ENGINE_SERVICE')")
+    @Operation(summary = "Resolve connector credential binding",
+        description = "Returns the {credentialType, credentialRef} a registered connector is bound to, for the engine to apply in connector mode (ADR-024 Model A). 204 when the connector requires no auth (authScheme NONE), is unregistered, or has no bound credential. Never returns secret material. tenantCode required for ENGINE_SERVICE callers.")
+    public ResponseEntity<ConnectorCredentialBindingResponse> resolveCredentialBinding(
+            @RequestParam(required = false, defaultValue = "") String tenantCode,
+            @PathVariable String connectorKey,
+            @AuthenticationPrincipal Jwt jwt) {
+        return connectorService.resolveCredentialBinding(resolveTenant(tenantCode, jwt), connectorKey)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.noContent().build());
+    }
+
     @PostMapping("/{connectorKey}/test")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @Operation(summary = "Test connector call", description = "Test a connector call with provided request (ADMIN, SUPER_ADMIN)")
