@@ -103,18 +103,35 @@ public class DmnDecisionService {
      */
     @Transactional
     public DmnDecisionDto deployDecision(String dmnXml, String resourceName, String tenantId) {
+        return deployDecision(dmnXml, resourceName, tenantId, null);
+    }
+
+    /**
+     * Deploys a DMN decision, optionally under a bundle's {@code parentDeploymentId}
+     * (ADR-026 Phase 1) so a process's same-deployment business-rule task resolves to
+     * this version. Flowable auto-increments the version if the key already exists.
+     */
+    @Transactional
+    public DmnDecisionDto deployDecision(String dmnXml, String resourceName, String tenantId,
+                                         String parentDeploymentId) {
         validateDmnXml(dmnXml);
-        log.info("Deploying DMN decision: {} for tenant: {}", resourceName, tenantId);
+        log.info("Deploying DMN decision: {} for tenant: {} (parentDeploymentId={})",
+                resourceName, tenantId, parentDeploymentId);
 
         String fileName = resourceName.endsWith(".dmn") ? resourceName : resourceName + ".dmn";
         try (InputStream inputStream = new ByteArrayInputStream(
                 dmnXml.getBytes(StandardCharsets.UTF_8))) {
 
-            DmnDeployment deployment = dmnRepositoryService.createDeployment()
+            var builder = dmnRepositoryService.createDeployment()
                     .name(resourceName)
                     .tenantId(tenantId)
-                    .addInputStream(fileName, inputStream)
-                    .deploy();
+                    .addInputStream(fileName, inputStream);
+
+            if (parentDeploymentId != null && !parentDeploymentId.isBlank()) {
+                builder = builder.parentDeploymentId(parentDeploymentId);
+            }
+
+            DmnDeployment deployment = builder.deploy();
 
             DmnDecision deployed = dmnRepositoryService.createDecisionQuery()
                     .deploymentId(deployment.getId())
