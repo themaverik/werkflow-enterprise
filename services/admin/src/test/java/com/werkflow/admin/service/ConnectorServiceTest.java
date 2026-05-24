@@ -97,6 +97,72 @@ class ConnectorServiceTest {
             .hasMessageContaining("Credential not found");
     }
 
+    // --- resolveCredentialBinding (ADR-024) ---
+
+    @Test
+    void resolveCredentialBinding_bearer_mapsToHttpBearerTokenSlug() {
+        TenantApiCredential cred = credential("acme", "crm-api", "BEARER");
+        cred.setCredentialRef("prod-token");
+        when(credentialRepo.findByTenantCodeAndConnectorKey("acme", "crm-api"))
+            .thenReturn(Optional.of(cred));
+
+        var binding = service.resolveCredentialBinding("acme", "crm-api");
+
+        assertThat(binding).hasValueSatisfying(b -> {
+            assertThat(b.credentialType()).isEqualTo("http-bearer-token");
+            assertThat(b.credentialRef()).isEqualTo("prod-token");
+        });
+    }
+
+    @Test
+    void resolveCredentialBinding_basic_mapsToHttpBasicAuthSlug() {
+        TenantApiCredential cred = credential("acme", "billing-api", "BASIC");
+        cred.setCredentialRef("svc-account");
+        when(credentialRepo.findByTenantCodeAndConnectorKey("acme", "billing-api"))
+            .thenReturn(Optional.of(cred));
+
+        assertThat(service.resolveCredentialBinding("acme", "billing-api"))
+            .hasValueSatisfying(b -> assertThat(b.credentialType()).isEqualTo("http-basic-auth"));
+    }
+
+    @Test
+    void resolveCredentialBinding_apiKey_mapsToHttpHeaderAuthSlug() {
+        TenantApiCredential cred = credential("acme", "erp-connector", "API_KEY");
+        cred.setCredentialRef("erp-key");
+        when(credentialRepo.findByTenantCodeAndConnectorKey("acme", "erp-connector"))
+            .thenReturn(Optional.of(cred));
+
+        assertThat(service.resolveCredentialBinding("acme", "erp-connector"))
+            .hasValueSatisfying(b -> assertThat(b.credentialType()).isEqualTo("http-header-auth"));
+    }
+
+    @Test
+    void resolveCredentialBinding_authSchemeNone_returnsEmpty() {
+        TenantApiCredential cred = credential("acme", "public-api", "NONE");
+        cred.setCredentialRef("ignored");
+        when(credentialRepo.findByTenantCodeAndConnectorKey("acme", "public-api"))
+            .thenReturn(Optional.of(cred));
+
+        assertThat(service.resolveCredentialBinding("acme", "public-api")).isEmpty();
+    }
+
+    @Test
+    void resolveCredentialBinding_noBoundCredentialRef_returnsEmpty() {
+        TenantApiCredential cred = credential("acme", "crm-api", "BEARER"); // credentialRef left null
+        when(credentialRepo.findByTenantCodeAndConnectorKey("acme", "crm-api"))
+            .thenReturn(Optional.of(cred));
+
+        assertThat(service.resolveCredentialBinding("acme", "crm-api")).isEmpty();
+    }
+
+    @Test
+    void resolveCredentialBinding_unregisteredConnector_returnsEmpty() {
+        when(credentialRepo.findByTenantCodeAndConnectorKey("acme", "missing"))
+            .thenReturn(Optional.empty());
+
+        assertThat(service.resolveCredentialBinding("acme", "missing")).isEmpty();
+    }
+
     // --- helpers ---
 
     private TenantServiceEndpoint endpoint(String tenant, String key, String baseUrl) {
