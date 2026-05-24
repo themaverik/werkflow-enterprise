@@ -1,0 +1,100 @@
+package com.werkflow.engine.service;
+
+import com.werkflow.engine.dto.BundleDeploymentResponse;
+import com.werkflow.engine.dto.ProcessDefinitionResponse;
+import com.werkflow.engine.workflow.BpmnBundleRefExtractor;
+import com.werkflow.engine.workflow.ProcessBundle;
+import com.werkflow.engine.workflow.ProcessBundleRepository;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Set;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class BundleDeploymentServiceTest {
+
+    @Mock private BpmnBundleRefExtractor refExtractor;
+    @Mock private ProcessDefinitionService processDefinitionService;
+    @Mock private DmnDecisionService dmnDecisionService;
+    @Mock private ProcessBundleRepository bundleRepository;
+
+    @InjectMocks private BundleDeploymentService service;
+
+    private static final String TENANT = "acme";
+    private static final String BPMN = "<bpmn/>";
+
+    @Test
+    @DisplayName("deploys process and each referenced DMN under one shared parentDeploymentId")
+    void bundles_process_and_dmns_under_shared_parent() {
+        when(refExtractor.extract(BPMN))
+                .thenReturn(new BpmnBundleRefExtractor.BundleRefs("capex-approval", Set.of("doa_routing")));
+        when(bundleRepository.findMaxBundleVersion(TENANT, "capex-approval")).thenReturn(2);
+        when(processDefinitionService.deployProcessDefinition(eq(BPMN), any(), any(), eq(TENANT)))
+                .thenReturn(new ProcessDefinitionResponse());
+        when(dmnDecisionService.getDecisionXml("doa_routing", TENANT)).thenReturn("<dmn/>");
+
+        BundleDeploymentResponse result = service.deployBundle(BPMN, "Capex Approval", TENANT, "alice");
+
+        String expectedParent = "acme:capex-approval:bundle:3";
+        assertThat(result.bundleVersion()).isEqualTo(3);
+        assertThat(result.parentDeploymentId()).isEqualTo(expectedParent);
+        assertThat(result.bundledDecisions()).containsExactly("doa_routing");
+        assertThat(result.unbundledDecisions()).isEmpty();
+
+        verify(processDefinitionService)
+                .deployProcessDefinition(eq(BPMN), eq("capex-approval.bpmn20.xml"), eq(expectedParent), eq(TENANT));
+        verify(dmnDecisionService).deployDecision("<dmn/>", "doa_routing", TENANT, expectedParent);
+
+        ArgumentCaptor<ProcessBundle> saved = ArgumentCaptor.forClass(ProcessBundle.class);
+        verify(bundleRepository).save(saved.capture());
+        assertThat(saved.getValue().getParentDeploymentId()).isEqualTo(expectedParent);
+        assertThat(saved.getValue().getBundleVersion()).isEqualTo(3);
+        assertThat(saved.getValue().getCreatedBy()).isEqualTo("alice");
+    }
+
+    @Test
+    @DisplayName("first bundle for a process starts at version 1")
+    void first_bundle_is_version_one() {
+        when(refExtractor.extract(BPMN))
+                .thenReturn(new BpmnBundleRefExtractor.BundleRefs("simple", Set.of()));
+        when(bundleRepository.findMaxBundleVersion(TENANT, "simple")).thenReturn(0);
+        when(processDefinitionService.deployProcessDefinition(any(), any(), any(), any()))
+                .thenReturn(new ProcessDefinitionResponse());
+
+        BundleDeploymentResponse result = service.deployBundle(BPMN, "Simple", TENANT, "bob");
+
+        assertThat(result.bundleVersion()).isEqualTo(1);
+        assertThat(result.parentDeploymentId()).isEqualTo("acme:simple:bundle:1");
+    }
+
+    @Test
+    @DisplayName("a referenced decision that cannot be resolved is skipped, not fatal")
+    void unresolved_decision_is_skipped() {
+        when(refExtractor.extract(BPMN))
+                .thenReturn(new BpmnBundleRefExtractor.BundleRefs("p1", Set.of("missing_decision")));
+        when(bundleRepository.findMaxBundleVersion(TENANT, "p1")).thenReturn(0);
+        when(processDefinitionService.deployProcessDefinition(any(), any(), any(), any()))
+                .thenReturn(new ProcessDefinitionResponse());
+        when(dmnDecisionService.getDecisionXml("missing_decision", TENANT))
+                .thenThrow(new IllegalStateException("not found"));
+
+        BundleDeploymentResponse result = service.deployBundle(BPMN, "P1", TENANT, "carol");
+
+        assertThat(result.bundledDecisions()).isEmpty();
+        assertThat(result.unbundledDecisions()).containsExactly("missing_decision");
+        verify(dmnDecisionService, never()).deployDecision(any(), any(), any(), any());
+        verify(bundleRepository).save(any(ProcessBundle.class));
+    }
+}

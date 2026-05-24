@@ -22,6 +22,16 @@ export interface DeploymentResponse {
   name: string
 }
 
+// ADR-026 Phase 1 — result of a bundle deploy (process + pinned DMN bundle).
+export interface BundleDeploymentResponse {
+  process: ProcessDefinitionResponse
+  processKey: string
+  bundleVersion: number
+  parentDeploymentId: string
+  bundledDecisions: string[]
+  unbundledDecisions: string[]
+}
+
 export interface ProcessDefinitionResponse {
   id: string
   key: string
@@ -93,9 +103,10 @@ export interface FormVersionResponse {
   createdBy: string
 }
 
-// Deploy BPMN process
-export async function deployBpmn(data: BpmnDeploymentRequest): Promise<DeploymentResponse> {
-  const response = await apiClient.post('/api/process-definitions/deploy', data)
+// Deploy BPMN process as a version bundle (BPMN + referenced DMNs under one
+// parentDeploymentId, so same-deployment binding pins DMN versions — ADR-026).
+export async function deployBpmn(data: BpmnDeploymentRequest): Promise<BundleDeploymentResponse> {
+  const response = await apiClient.post('/api/process-definitions/deploy/bundle', data)
   return response.data
 }
 
