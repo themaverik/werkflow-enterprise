@@ -1,8 +1,10 @@
 package com.werkflow.engine.controller;
 
+import com.werkflow.engine.dto.BundleDeploymentResponse;
 import com.werkflow.engine.dto.JwtUserContext;
 import com.werkflow.engine.dto.ProcessDefinitionResponse;
 import com.werkflow.engine.dto.TaskFormResponse;
+import com.werkflow.engine.service.BundleDeploymentService;
 import com.werkflow.engine.service.ProcessCustodyService;
 import com.werkflow.engine.service.ProcessDefinitionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,8 +34,11 @@ public class ProcessDefinitionController {
 
     private final ProcessDefinitionService processDefinitionService;
     private final ProcessCustodyService processCustodyService;
+    private final BundleDeploymentService bundleDeploymentService;
 
     public record DeployRequest(String name, String bpmnXml, String owningDepartment, String parentDeploymentId) {}
+
+    public record DeployBundleRequest(String name, String bpmnXml, String owningDepartment) {}
 
     @PostMapping(value = "/deploy", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasPermission(null, 'WORKFLOW:DEPLOY')")
@@ -52,6 +57,28 @@ public class ProcessDefinitionController {
             processCustodyService.recordCustody(response.getKey(), deployRequest.owningDepartment(),
                     user.getUserId(), user.getDepartment());
             response.setOwningDepartment(deployRequest.owningDepartment());
+        }
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping(value = "/deploy/bundle", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasPermission(null, 'WORKFLOW:DEPLOY')")
+    @Operation(summary = "Deploy a process as a version bundle",
+        description = "Deploys a BPMN and its referenced DMNs under one shared parentDeploymentId "
+            + "so same-deployment binding resolves to the pinned DMN versions (ADR-026 Phase 1).")
+    public ResponseEntity<BundleDeploymentResponse> deployBundle(
+        @RequestBody DeployBundleRequest deployRequest,
+        Authentication authentication
+    ) {
+        JwtUserContext user = extractUserContext(authentication);
+        BundleDeploymentResponse response = bundleDeploymentService.deployBundle(
+                deployRequest.bpmnXml(), deployRequest.name(), user.getTenantCode(), user.getUserId());
+
+        if (deployRequest.owningDepartment() != null && !deployRequest.owningDepartment().isBlank()) {
+            processCustodyService.recordCustody(response.process().getKey(), deployRequest.owningDepartment(),
+                    user.getUserId(), user.getDepartment());
+            response.process().setOwningDepartment(deployRequest.owningDepartment());
         }
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
