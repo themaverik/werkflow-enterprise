@@ -51,6 +51,11 @@
           "type": "String"
         },
         {
+          "name": "type",
+          "isAttr": true,
+          "type": "String"
+        },
+        {
           "name": "class",
           "isAttr": true,
           "type": "String"

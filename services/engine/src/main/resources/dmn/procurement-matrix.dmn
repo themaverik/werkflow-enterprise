@@ -28,13 +28,25 @@ full board approval.</description>
       <output id="output_path" label="Procurement Path" name="procurementPath" typeRef="string"/>
       <output id="output_committee" label="Requires Committee" name="requiresCommittee" typeRef="boolean"/>
 
-      <!-- Rule 1: IT or INFRASTRUCTURE > 500,000 — board approval + committee -->
-      <rule id="rule_board">
-        <description>Large IT or infrastructure spend requires full board and committee</description>
-        <inputEntry id="rule_board_amount"><text>&gt; 500000</text></inputEntry>
-        <inputEntry id="rule_board_cat"><text>"IT","INFRASTRUCTURE"</text></inputEntry>
-        <outputEntry id="rule_board_path"><text>"BOARD_APPROVAL"</text></outputEntry>
-        <outputEntry id="rule_board_committee"><text>true</text></outputEntry>
+      <!-- Rule 1a: IT > 500,000 — board approval + committee.
+           Flowable evaluates input entries as JUEL (not FEEL): a comma "one of" list
+           ("IT","INFRASTRUCTURE") is not valid here, so the IT and INFRASTRUCTURE cases
+           are split into single-equality rules. FIRST hit policy keeps this unambiguous. -->
+      <rule id="rule_board_it">
+        <description>Large IT spend requires full board and committee</description>
+        <inputEntry id="rule_board_it_amount"><text>&gt; 500000</text></inputEntry>
+        <inputEntry id="rule_board_it_cat"><text>== "IT"</text></inputEntry>
+        <outputEntry id="rule_board_it_path"><text>"BOARD_APPROVAL"</text></outputEntry>
+        <outputEntry id="rule_board_it_committee"><text>true</text></outputEntry>
+      </rule>
+
+      <!-- Rule 1b: INFRASTRUCTURE > 500,000 — board approval + committee -->
+      <rule id="rule_board_infra">
+        <description>Large infrastructure spend requires full board and committee</description>
+        <inputEntry id="rule_board_infra_amount"><text>&gt; 500000</text></inputEntry>
+        <inputEntry id="rule_board_infra_cat"><text>== "INFRASTRUCTURE"</text></inputEntry>
+        <outputEntry id="rule_board_infra_path"><text>"BOARD_APPROVAL"</text></outputEntry>
+        <outputEntry id="rule_board_infra_committee"><text>true</text></outputEntry>
       </rule>
 
       <!-- Rule 2: > 200,000 any category — committee review -->
@@ -46,10 +58,14 @@ full board approval.</description>
         <outputEntry id="rule_com_committee"><text>true</text></outputEntry>
       </rule>
 
-      <!-- Rule 3: 50,001–200,000 — manager approval, no committee -->
+      <!-- Rule 3: 50,001–200,000 — manager approval, no committee.
+           Upper bound (<= 200000) is implicit: FIRST hit policy means rule_committee
+           (> 200000) above has already matched-and-stopped for larger amounts, so a
+           one-sided JUEL bound is correct here. Flowable evaluates entries as JUEL,
+           not FEEL, so FEEL range syntax (50000..200000] is not supported. -->
       <rule id="rule_manager">
         <description>Mid-range purchases require manager sign-off</description>
-        <inputEntry id="rule_mgr_amount"><text>(50000..200000]</text></inputEntry>
+        <inputEntry id="rule_mgr_amount"><text>&gt; 50000</text></inputEntry>
         <inputEntry id="rule_mgr_cat"><text></text></inputEntry>
         <outputEntry id="rule_mgr_path"><text>"MANAGER_APPROVAL"</text></outputEntry>
         <outputEntry id="rule_mgr_committee"><text>false</text></outputEntry>

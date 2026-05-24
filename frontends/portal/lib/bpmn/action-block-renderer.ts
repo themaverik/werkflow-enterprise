@@ -2,7 +2,8 @@
  * ActionBlockRenderer
  *
  * Custom bpmn-js renderer that draws a colour badge overlay on Service Tasks
- * and User Tasks that have a flowable:actionType extension property set.
+ * and User Tasks that have a flowable:actionType extension property set,
+ * and on DMN service tasks (flowable:type="dmn").
  */
 import BaseRenderer from 'diagram-js/lib/draw/BaseRenderer'
 import { is } from 'bpmn-js/lib/util/ModelUtil'
@@ -15,6 +16,8 @@ const ACTION_COLOURS: Record<string, { fill: string; stroke: string; label: stri
   GROOVY_SCRIPT:       { fill: '#fce4ec', stroke: '#c62828', label: 'SCRIPT' },
   MANUAL_STEP:         { fill: '#f3e5f5', stroke: '#4a148c', label: 'MANUAL' },
 }
+
+const DMN_BADGE = { fill: '#e8eaf6', stroke: '#283593', label: 'DMN' }
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
@@ -37,12 +40,18 @@ export default class ActionBlockRenderer extends BaseRenderer {
     ) {
       return false
     }
-    return !!this._getActionType(element)
+    return !!this._getActionType(element) || this._isDmnServiceTask(element)
   }
 
   drawShape(parentNode: SVGElement, element: any): SVGElement {
     // Let the default renderer draw the base shape first
     const shape = this._bpmnRenderer.drawShape(parentNode, element)
+
+    // DMN service task badge takes precedence over action-type badge
+    if (this._isDmnServiceTask(element)) {
+      this._drawBadge(parentNode, element, DMN_BADGE.label, DMN_BADGE.stroke)
+      return shape
+    }
 
     const actionType = this._getActionType(element)
     if (!actionType) return shape
@@ -53,6 +62,11 @@ export default class ActionBlockRenderer extends BaseRenderer {
     this._drawBadge(parentNode, element, config.label, config.stroke)
 
     return shape
+  }
+
+  private _isDmnServiceTask(element: any): boolean {
+    if (!is(element, 'bpmn:ServiceTask')) return false
+    return element.businessObject?.get('flowable:type') === 'dmn'
   }
 
   private _getActionType(element: any): string | null {

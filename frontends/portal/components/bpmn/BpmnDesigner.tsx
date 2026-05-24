@@ -73,11 +73,13 @@ function extractReferencedKeys(modeler: any): { formKeys: string[]; dmnKeys: str
       if (fk) formKeys.add(fk)
     }
 
-    // DMN decisionRef in service task flowable:field extensions
-    if (bo.$type === 'bpmn:ServiceTask') {
+    // DMN decision key in native DMN service tasks (flowable:type="dmn")
+    if (bo.$type === 'bpmn:ServiceTask' && bo.get('flowable:type') === 'dmn') {
       const fields: any[] = bo.extensionElements?.values
         ?.filter((v: any) => v.$type === 'flowable:Field') ?? []
-      // action-type DMN route removed in M4.11 — no longer enriching expression variables from this path
+      const keyField = fields.find((v: any) => v.name === 'decisionTableReferenceKey')
+      const key = keyField?.string ?? keyField?.expression ?? ''
+      if (key) dmnKeys.add(key)
     }
   })
 
@@ -174,6 +176,13 @@ function validateActionBlocks(modeler: any): string[] {
         const hasAssignee = !!(bo.get('assignee') || bo.get('candidateGroups'))
         if (!hasAssignee) {
           errors.push(`${label}: User task has no assignee or candidate groups set.`)
+        }
+      }
+
+      // Validate native DMN service tasks have a decision key
+      if (bo.$type === 'bpmn:ServiceTask' && bo.get('flowable:type') === 'dmn') {
+        if (!getFlowableField(bo, 'decisionTableReferenceKey')) {
+          errors.push(`${label}: DMN Decision task is missing a decision key (decisionTableReferenceKey).`)
         }
       }
     }
