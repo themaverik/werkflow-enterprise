@@ -453,6 +453,27 @@ public class ConnectorService {
             .map(TenantServiceEndpoint::getBaseUrl);
     }
 
+    /**
+     * Resolves the credential a registered connector is bound to, for the engine to apply in
+     * connector mode (ADR-024 Model A). Admin owns the {@code authScheme → credential-type}
+     * mapping ({@link #authSchemeToType}); the engine resolves the returned type/label against
+     * OpenBao itself.
+     *
+     * <p>Returns {@link Optional#empty()} when the connector is unregistered, has
+     * {@code authScheme=NONE}, or carries no {@code credentialRef} — all "apply no auth" cases.
+     *
+     * @throws ResponseStatusException 400 if the connector has an unsupported authScheme
+     */
+    @Transactional(readOnly = true)
+    public Optional<ConnectorCredentialBindingResponse> resolveCredentialBinding(
+            String tenantCode, String connectorKey) {
+        return credentialRepo.findByTenantCodeAndConnectorKey(tenantCode, connectorKey)
+            .filter(cred -> !"NONE".equals(cred.getAuthScheme()))
+            .filter(cred -> blankToNull(cred.getCredentialRef()) != null)
+            .map(cred -> new ConnectorCredentialBindingResponse(
+                authSchemeToType(cred.getAuthScheme()), cred.getCredentialRef()));
+    }
+
     private void notifyEngineCache(String tenantCode, String connectorKey) {
         try {
             String uri = UriComponentsBuilder.fromHttpUrl(engineServiceUrl)

@@ -1,7 +1,9 @@
 package com.werkflow.engine.action;
 
 import com.werkflow.common.security.SsrfGuard;
+import com.werkflow.engine.action.credential.ConnectorCredentialBindingClient;
 import com.werkflow.engine.action.credential.CredentialRegistry;
+import com.werkflow.engine.action.credential.CredentialResolutionException;
 import com.werkflow.engine.action.credential.CredentialType;
 import com.werkflow.engine.action.credential.CredentialValues;
 import com.werkflow.engine.action.credential.HttpCredentialType;
@@ -55,18 +57,21 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
     private final HttpClient httpClient;
     private final TenantEndpointResolver endpointResolver;
     private final CredentialRegistry credentialRegistry;
+    private final ConnectorCredentialBindingClient bindingClient;
 
     private static final int DEFAULT_TIMEOUT_SECONDS = 30;
 
     public RestConnectorDelegate(SsrfGuard ssrfGuard,
                                  ResponseMasker responseMasker,
                                  CredentialRegistry credentialRegistry,
+                                 ConnectorCredentialBindingClient bindingClient,
                                  ProcessAuditLogRepository auditLogRepository,
                                  MeterRegistry meterRegistry,
                                  TenantEndpointResolver endpointResolver) {
         super(responseMasker, auditLogRepository, meterRegistry);
         this.ssrfGuard = ssrfGuard;
         this.credentialRegistry = credentialRegistry;
+        this.bindingClient = bindingClient;
         this.endpointResolver = endpointResolver;
         this.httpClient = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NEVER)
@@ -166,13 +171,17 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
 
             HttpRequest.Builder reqBuilder = buildRequest(resolvedUrl, methodValue, resolvedBody, timeoutSecs);
 
-            // Apply credential auth headers. resolvedCredType is non-null only when both
-            // credentialType + credentialRef fields were present and validated above.
+            // Apply credential auth headers. Precedence (ADR-024): explicit per-task fields win
+            // (direct-url escape hatch, B.4); otherwise, in connector mode, resolve the registered
+            // connector's own credential server-side (Model A). Connectors with authScheme=NONE,
+            // unregistered, or with no bound credential resolve to an empty binding → no auth.
             if (resolvedCredType != null) {
                 String credentialRef = getFieldString(execution, "credentialRef", null);
                 String credentialTypeName = getFieldString(execution, "credentialType", null);
                 CredentialValues values = credentialRegistry.resolveForTenant(credentialTypeName, tenantCode, credentialRef);
                 resolvedCredType.applyTo(reqBuilder, values);
+            } else if (connectorKey != null && !connectorKey.isBlank()) {
+                applyConnectorCredential(connectorKey, tenantCode, reqBuilder);
             }
 
             long startTime = System.currentTimeMillis();
@@ -194,9 +203,11 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
 
             storeResult(rawBody, execution);
 
-        } catch (IllegalStateException | IllegalArgumentException e) {
-            // Operator configuration errors — not transient failures subject to onError mode.
-            // Re-throw immediately so callers see the exact exception type.
+        } catch (IllegalStateException | IllegalArgumentException | CredentialResolutionException e) {
+            // Operator/credential configuration errors — not transient failures subject to onError
+            // mode. A missing or rotated-away credential (CredentialResolutionException) must FAIL
+            // the task, never silently degrade to an unauthenticated call under onError=CONTINUE
+            // (ADR-024). Re-throw immediately so callers see the exact exception type.
             throw e;
         } catch (HttpTimeoutException e) {
             // F1: surface timeout as a named delegate failure so onError mode applies
@@ -255,6 +266,30 @@ public class RestConnectorDelegate extends ConnectorDelegateBase {
                 + "' does not implement HttpCredentialType — REST transport requires an HTTP credential");
         }
         return httpType;
+    }
+
+    /**
+     * Applies the registered connector's own credential in connector mode (ADR-024 Model A).
+     *
+     * <p>Resolves the connector's {@code (credentialType, credentialRef)} binding from admin,
+     * then resolves the values from OpenBao via {@link CredentialRegistry} and applies them.
+     * No-op when the connector requires no auth (empty binding). The binding's type is always an
+     * HTTP credential (admin only maps HTTP authSchemes); a non-HTTP type signals a registry
+     * misconfiguration and is rejected.
+     */
+    private void applyConnectorCredential(String connectorKey, String tenantCode,
+                                          HttpRequest.Builder reqBuilder) {
+        bindingClient.resolveBinding(tenantCode, connectorKey).ifPresent(binding -> {
+            CredentialType type = credentialRegistry.get(binding.credentialType());
+            if (!(type instanceof HttpCredentialType httpType)) {
+                throw new IllegalStateException(
+                    "restConnectorDelegate: connector '" + connectorKey + "' is bound to credential type '"
+                    + binding.credentialType() + "' which does not implement HttpCredentialType");
+            }
+            CredentialValues values = credentialRegistry.resolveForTenant(
+                binding.credentialType(), tenantCode, binding.credentialRef());
+            httpType.applyTo(reqBuilder, values);
+        });
     }
 
     // -------------------------------------------------------------------------
