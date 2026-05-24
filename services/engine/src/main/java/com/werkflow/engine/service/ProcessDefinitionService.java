@@ -57,11 +57,28 @@ public class ProcessDefinitionService {
      * When {@code parentDeploymentId} is set, Flowable resolves resources from the parent deployment
      * first, enabling incremental updates within a bundle without redundant re-deployment of unchanged files.
      */
+    /**
+     * Deploy without a tenant (standalone path). The process is deployed with no tenant id,
+     * unlike the bundle path which is tenant-scoped (ADR-026). Same-deployment binding requires
+     * matching tenant ids, so standalone-deployed processes are not bundle-pinned.
+     */
     @Transactional
     public ProcessDefinitionResponse deployProcessDefinition(String bpmnXml, String resourceName,
                                                              String parentDeploymentId) {
+        return deployProcessDefinition(bpmnXml, resourceName, parentDeploymentId, null);
+    }
+
+    /**
+     * Deploy a process definition into a tenant, optionally linking it to a bundle's
+     * {@code parentDeploymentId} (ADR-026 Phase 1). Setting {@code tenantId} is required
+     * for same-deployment binding to resolve the bundle's DMNs in a multi-tenant engine.
+     */
+    @Transactional
+    public ProcessDefinitionResponse deployProcessDefinition(String bpmnXml, String resourceName,
+                                                             String parentDeploymentId, String tenantId) {
         validateBpmnExpressions(bpmnXml);
-        log.info("Deploying process definition: {} (parentDeploymentId={})", resourceName, parentDeploymentId);
+        log.info("Deploying process definition: {} (parentDeploymentId={}, tenantId={})",
+            resourceName, parentDeploymentId, tenantId);
 
         try (InputStream inputStream = new java.io.ByteArrayInputStream(
                 bpmnXml.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
@@ -72,6 +89,9 @@ public class ProcessDefinitionService {
 
             if (parentDeploymentId != null && !parentDeploymentId.isBlank()) {
                 builder = builder.parentDeploymentId(parentDeploymentId);
+            }
+            if (tenantId != null && !tenantId.isBlank()) {
+                builder = builder.tenantId(tenantId);
             }
 
             Deployment deployment = builder.deploy();
