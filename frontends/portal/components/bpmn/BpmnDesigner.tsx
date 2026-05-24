@@ -757,9 +757,19 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
         bpmnXml: xml
       })
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setHasChanges(false)
       queryClient.invalidateQueries({ queryKey: ['processDefinitions'] })
+      // Surface any referenced decisions that could not be pinned into the bundle —
+      // they will resolve to their latest deployed version at runtime (ADR-026).
+      if (data.unbundledDecisions.length > 0) {
+        toast({
+          title: 'Deployed — some decisions not version-pinned',
+          description:
+            `These decision tables will resolve to their latest version: ${data.unbundledDecisions.join(', ')}. ` +
+            'Deploy them, then redeploy this process to pin them.',
+        })
+      }
       // Clean up draft so it doesn't resurface as "unsaved draft" after deploy
       if (processId) {
         deleteDraft(processId.split(':')[0]).catch(() => {})
