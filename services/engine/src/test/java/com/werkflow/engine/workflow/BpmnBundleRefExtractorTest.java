@@ -11,15 +11,23 @@ class BpmnBundleRefExtractorTest {
     private final BpmnBundleRefExtractor extractor = new BpmnBundleRefExtractor();
 
     @Test
-    @DisplayName("extracts process key and all flowable:decisionRef values")
+    @DisplayName("extracts process key and all DMN serviceTask decisionTableReferenceKey values")
     void extracts_processKey_and_decisionRefs() {
         String xml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
                          xmlns:flowable="http://flowable.org/bpmn">
               <process id="capex-approval" name="Capex Approval">
-                <businessRuleTask id="brt1" flowable:decisionRef="doa_routing"/>
-                <businessRuleTask id="brt2" flowable:decisionRef="risk_scoring"/>
+                <serviceTask id="d1" flowable:type="dmn">
+                  <extensionElements>
+                    <flowable:field name="decisionTableReferenceKey"><flowable:string>doa_routing</flowable:string></flowable:field>
+                  </extensionElements>
+                </serviceTask>
+                <serviceTask id="d2" flowable:type="dmn">
+                  <extensionElements>
+                    <flowable:field name="decisionTableReferenceKey"><flowable:string>risk_scoring</flowable:string></flowable:field>
+                  </extensionElements>
+                </serviceTask>
               </process>
             </definitions>
             """;
@@ -31,7 +39,7 @@ class BpmnBundleRefExtractorTest {
     }
 
     @Test
-    @DisplayName("returns empty decisionRefs when no business rule tasks reference a decision")
+    @DisplayName("returns empty decisionRefs when no DMN service tasks reference a decision")
     void empty_decisionRefs_when_none() {
         String xml = """
             <?xml version="1.0" encoding="UTF-8"?>
@@ -50,16 +58,20 @@ class BpmnBundleRefExtractorTest {
     }
 
     @Test
-    @DisplayName("skips business rule tasks with a blank or missing decisionRef")
+    @DisplayName("ignores non-DMN service tasks and DMN tasks missing the reference key")
     void skips_blank_decisionRef() {
         String xml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
                          xmlns:flowable="http://flowable.org/bpmn">
               <process id="p1">
-                <businessRuleTask id="brt1" flowable:decisionRef=""/>
-                <businessRuleTask id="brt2"/>
-                <businessRuleTask id="brt3" flowable:decisionRef="real_decision"/>
+                <serviceTask id="rest" flowable:type="http"/>
+                <serviceTask id="dmnNoKey" flowable:type="dmn"/>
+                <serviceTask id="dmnReal" flowable:type="dmn">
+                  <extensionElements>
+                    <flowable:field name="decisionTableReferenceKey"><flowable:string>real_decision</flowable:string></flowable:field>
+                  </extensionElements>
+                </serviceTask>
               </process>
             </definitions>
             """;
@@ -67,6 +79,60 @@ class BpmnBundleRefExtractorTest {
         BpmnBundleRefExtractor.BundleRefs refs = extractor.extract(xml);
 
         assertThat(refs.decisionRefs()).containsExactly("real_decision");
+    }
+
+    @Test
+    @DisplayName("excludes expression-keyed decisions (not statically resolvable, so not bundleable)")
+    void excludes_expression_keyed_decision() {
+        String xml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                         xmlns:flowable="http://flowable.org/bpmn">
+              <process id="p1">
+                <serviceTask id="dynamic" flowable:type="dmn">
+                  <extensionElements>
+                    <flowable:field name="decisionTableReferenceKey"><flowable:expression>${decisionKey}</flowable:expression></flowable:field>
+                  </extensionElements>
+                </serviceTask>
+                <serviceTask id="static" flowable:type="dmn">
+                  <extensionElements>
+                    <flowable:field name="decisionTableReferenceKey"><flowable:string>static_decision</flowable:string></flowable:field>
+                  </extensionElements>
+                </serviceTask>
+              </process>
+            </definitions>
+            """;
+
+        BpmnBundleRefExtractor.BundleRefs refs = extractor.extract(xml);
+
+        assertThat(refs.decisionRefs()).containsExactly("static_decision");
+    }
+
+    @Test
+    @DisplayName("de-duplicates the same decision key referenced by multiple DMN tasks")
+    void deduplicates_repeated_decision_key() {
+        String xml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                         xmlns:flowable="http://flowable.org/bpmn">
+              <process id="p1">
+                <serviceTask id="d1" flowable:type="dmn">
+                  <extensionElements>
+                    <flowable:field name="decisionTableReferenceKey"><flowable:string>doa_routing</flowable:string></flowable:field>
+                  </extensionElements>
+                </serviceTask>
+                <serviceTask id="d2" flowable:type="dmn">
+                  <extensionElements>
+                    <flowable:field name="decisionTableReferenceKey"><flowable:string>doa_routing</flowable:string></flowable:field>
+                  </extensionElements>
+                </serviceTask>
+              </process>
+            </definitions>
+            """;
+
+        BpmnBundleRefExtractor.BundleRefs refs = extractor.extract(xml);
+
+        assertThat(refs.decisionRefs()).containsExactly("doa_routing");
     }
 
     @Test

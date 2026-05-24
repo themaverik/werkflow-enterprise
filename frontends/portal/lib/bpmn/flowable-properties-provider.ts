@@ -180,7 +180,8 @@ class FlowablePropertiesProvider {
       }
 
       // --- Action Block group — context-aware per element type ---
-      const applicable = getApplicableActionTypes(element)
+      // DMN service tasks (flowable:type="dmn") use the DMN Decision group below; skip action block.
+      const applicable = isDmnServiceTask(element) ? [] : getApplicableActionTypes(element)
       if (applicable.length > 1) {
         const actionBlockEntries = buildActionBlockEntries(element, modeling, translate, debounce, this._injector)
         groups.splice(generalIdx + 1, 0, {
@@ -345,68 +346,49 @@ class FlowablePropertiesProvider {
         })
       }
 
-      // --- Business Rule Task (DMN) ---
-      if (is(element, 'bpmn:BusinessRuleTask')) {
+      // --- DMN Decision Task (serviceTask flowable:type="dmn") ---
+      // This is the ONLY working DMN authoring form in Flowable 7.2.
+      // businessRuleTask + flowable:decisionRef is dead config (routes to legacy Drools engine).
+      // See DmnDecisionTaskExecutionTest.java and ADR-026 for the verified contract.
+      if (isDmnServiceTask(element) || (is(element, 'bpmn:ServiceTask') && !getActionType(element))) {
         groups.splice(generalIdx + 1, 0, {
           id: 'flowable-dmn',
           label: 'DMN Decision',
           entries: [
             {
-              id: 'decisionRef',
+              id: 'decisionTableReferenceKey',
               element,
               component: SelectEntry,
               isEdited: isSelectEntryEdited,
-              label: translate('Decision Reference'),
-              description: translate('DMN decision key to evaluate (e.g. doa_routing)'),
-              getValue: () =>
-                element.businessObject.get('flowable:decisionRef') || '',
-              setValue: (value: string) =>
+              label: translate('Decision Key'),
+              description: translate(
+                'Evaluates a DMN decision table. Outputs become process variables directly. ' +
+                'Selecting a key marks this task as flowable:type="dmn".'
+              ),
+              getValue: () => readFlowableField(element, 'decisionTableReferenceKey'),
+              setValue: (value: string) => {
+                // Write the decisionTableReferenceKey as a <flowable:field> extension element
+                writeFlowableField(element, modeling, 'decisionTableReferenceKey', value || '')
+                // Set or clear flowable:type="dmn" on the serviceTask
                 modeling.updateProperties(element, {
-                  'flowable:decisionRef': value || undefined,
-                }),
+                  'flowable:type': value ? 'dmn' : undefined,
+                })
+                // Tint the shape so DMN tasks are visually distinct
+                if (value) {
+                  modeling.setColor(element, DMN_TASK_COLOURS)
+                } else {
+                  modeling.setColor(element, { fill: '#f9f9f9', stroke: '#bbb' })
+                }
+              },
               getOptions: () => {
                 const options: Array<{ value: string; label: string }> = [
-                  { value: '', label: translate('(select decision)') },
+                  { value: '', label: translate('(none — plain service task)') },
                 ]
                 for (const d of dmnDecisionOptions) {
                   options.push({ value: d.key, label: d.name || d.key })
                 }
                 return options
               },
-            },
-            {
-              id: 'mapDecisionResult',
-              element,
-              component: SelectEntry,
-              isEdited: isSelectEntryEdited,
-              label: translate('Map Decision Result'),
-              getValue: () =>
-                element.businessObject.get('flowable:mapDecisionResult') || 'singleEntry',
-              setValue: (value: string) =>
-                modeling.updateProperties(element, {
-                  'flowable:mapDecisionResult': value,
-                }),
-              getOptions: () => [
-                { value: 'singleEntry', label: translate('Single Entry (first matched rule, first output)') },
-                { value: 'singleResult', label: translate('Single Result (first matched rule, all outputs)') },
-                { value: 'resultList', label: translate('Result List (all matched rules)') },
-                { value: 'collectEntries', label: translate('Collect Entries (all values for one output)') },
-              ],
-            },
-            {
-              id: 'resultVariable',
-              element,
-              component: TextFieldEntry,
-              isEdited: isTextFieldEntryEdited,
-              debounce,
-              label: translate('Result Variable'),
-              description: translate('Process variable name to store the decision output (e.g. approverGroup)'),
-              getValue: () =>
-                element.businessObject.get('flowable:resultVariable') || '',
-              setValue: (value: string) =>
-                modeling.updateProperties(element, {
-                  'flowable:resultVariable': value || undefined,
-                }),
             },
           ],
         })
@@ -836,6 +818,18 @@ function textField(
     setValue: (value: string) =>
       modeling.updateProperties(element, { [prop]: value || undefined }),
   }
+}
+
+/** Colour scheme for DMN service tasks — visually distinct from action-block tasks. */
+export const DMN_TASK_COLOURS = { fill: '#e8eaf6', stroke: '#283593' }
+
+/**
+ * Returns true when element is a bpmn:ServiceTask with flowable:type="dmn".
+ * This is the Flowable 7.2 native DMN authoring form (verified by DmnDecisionTaskExecutionTest).
+ */
+export function isDmnServiceTask(element: any): boolean {
+  if (!is(element, 'bpmn:ServiceTask')) return false
+  return element.businessObject?.get('flowable:type') === 'dmn'
 }
 
 // readFlowableField / writeFlowableField now live in ./extension-elements.

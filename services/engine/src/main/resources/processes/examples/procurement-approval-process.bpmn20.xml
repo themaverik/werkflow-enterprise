@@ -22,8 +22,9 @@
     </extensionElements>
 
     <documentation>Purchase request approval workflow with vendor selection and DMN-backed approval routing.
-After calculating total cost, a Business Rule Task evaluates the procurement_matrix decision table to
-determine the required approval path (DIRECT_PURCHASE, MANAGER_APPROVAL, COMMITTEE_REVIEW, BOARD_APPROVAL).
+After calculating total cost, a DMN service task (serviceTask flowable:type="dmn") evaluates the
+procurement_matrix decision table to determine the required approval path (DIRECT_PURCHASE,
+MANAGER_APPROVAL, COMMITTEE_REVIEW, BOARD_APPROVAL).
 An exclusive gateway then routes the request to the appropriate human task. Edit procurement-matrix.dmn
 to adjust spend thresholds and category rules — no code changes required.</documentation>
 
@@ -99,17 +100,22 @@ to adjust spend thresholds and category rules — no code changes required.</doc
       </extensionElements>
     </serviceTask>
 
-    <!-- Step 7: Business Rule Task — evaluate procurement_matrix DMN -->
-    <!-- Sets procurementPath (DIRECT_PURCHASE|MANAGER_APPROVAL|COMMITTEE_REVIEW|BOARD_APPROVAL) -->
-    <!-- and requiresCommittee (boolean). Edit procurement-matrix.dmn to change thresholds. -->
-    <businessRuleTask id="evaluateProcurement" name="Evaluate Procurement Path"
-                      flowable:decisionRef="procurement_matrix"
-                      flowable:mapDecisionResult="singleEntry"
-                      flowable:resultVariable="procurementPath">
+    <!-- Step 7: DMN Decision Task — evaluate procurement_matrix DMN. -->
+    <!-- Flowable 7.2 evaluates DMN only via serviceTask flowable:type="dmn" with a -->
+    <!-- decisionTableReferenceKey field extension (NOT businessRuleTask, which routes to -->
+    <!-- the legacy Drools engine and never reaches DMN — see ADR-026 re-audit). -->
+    <!-- The decision's output columns (procurementPath, requiresCommittee) are written -->
+    <!-- directly as process variables. Edit procurement-matrix.dmn to change thresholds. -->
+    <serviceTask id="evaluateProcurement" name="Evaluate Procurement Path" flowable:type="dmn">
       <documentation>Evaluates the procurement approval matrix. Input: amount, category.
 Output: procurementPath = DIRECT_PURCHASE | MANAGER_APPROVAL | COMMITTEE_REVIEW | BOARD_APPROVAL.
 Also sets requiresCommittee boolean. Thresholds and category rules are defined in procurement-matrix.dmn.</documentation>
-    </businessRuleTask>
+      <extensionElements>
+        <flowable:field name="decisionTableReferenceKey">
+          <flowable:string>procurement_matrix</flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
 
     <!-- Step 8: Route based on DMN output -->
     <exclusiveGateway id="procurementRouteGateway" name="Route by Procurement Path"/>
