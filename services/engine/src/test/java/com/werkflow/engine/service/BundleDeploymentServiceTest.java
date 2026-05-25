@@ -2,6 +2,7 @@ package com.werkflow.engine.service;
 
 import com.werkflow.engine.dto.BundleDeploymentResponse;
 import com.werkflow.engine.dto.ProcessDefinitionResponse;
+import com.werkflow.engine.exception.ProcessNotFoundException;
 import com.werkflow.engine.workflow.BpmnBundleRefExtractor;
 import com.werkflow.engine.workflow.BpmnFormKeyPinner;
 import com.werkflow.engine.workflow.ProcessBundle;
@@ -15,9 +16,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -106,5 +110,49 @@ class BundleDeploymentServiceTest {
         assertThat(result.unbundledDecisions()).containsExactly("missing_decision");
         verify(dmnDecisionService, never()).deployDecision(any(), any(), any(), any());
         verify(bundleRepository).save(any(ProcessBundle.class));
+    }
+
+    @Test
+    @DisplayName("rollback redeploys the target version's exact artifacts as a new latest bundle version")
+    void rollback_redeploys_target_as_new_version() {
+        String sourceParent = "acme:capex-approval:bundle:1";
+        when(bundleRepository.findByTenantIdAndProcessKeyAndBundleVersion(TENANT, "capex-approval", 1))
+                .thenReturn(Optional.of(ProcessBundle.builder()
+                        .tenantId(TENANT).processKey("capex-approval").bundleVersion(1)
+                        .parentDeploymentId(sourceParent).build()));
+        when(bundleRepository.findMaxBundleVersion(TENANT, "capex-approval")).thenReturn(3);
+        when(processDefinitionService.getBpmnXmlByParentDeployment(sourceParent, TENANT)).thenReturn(BPMN);
+        when(processDefinitionService.deployProcessDefinition(eq(BPMN), any(), any(), eq(TENANT)))
+                .thenReturn(new ProcessDefinitionResponse());
+        when(dmnDecisionService.getDecisionsByParentDeployment(sourceParent, TENANT))
+                .thenReturn(List.of(new DmnDecisionService.DecisionXml("doa_routing", "<dmn/>")));
+
+        BundleDeploymentResponse result = service.rollbackToBundleVersion(TENANT, "capex-approval", 1, "carol");
+
+        String newParent = "acme:capex-approval:bundle:4";
+        assertThat(result.bundleVersion()).isEqualTo(4);
+        assertThat(result.parentDeploymentId()).isEqualTo(newParent);
+        assertThat(result.bundledDecisions()).containsExactly("doa_routing");
+
+        // Redeploys the re-read BPMN as-is (already pinned) under the new parent, never re-pins.
+        verify(formKeyPinner, never()).pinFormKeys(any());
+        verify(processDefinitionService)
+                .deployProcessDefinition(eq(BPMN), eq("capex-approval.bpmn20.xml"), eq(newParent), eq(TENANT));
+        verify(dmnDecisionService).deployDecision("<dmn/>", "doa_routing", TENANT, newParent);
+
+        ArgumentCaptor<ProcessBundle> saved = ArgumentCaptor.forClass(ProcessBundle.class);
+        verify(bundleRepository).save(saved.capture());
+        assertThat(saved.getValue().getBundleVersion()).isEqualTo(4);
+        assertThat(saved.getValue().getCreatedBy()).isEqualTo("carol");
+    }
+
+    @Test
+    @DisplayName("rollback throws when the target bundle version does not exist")
+    void rollback_missing_version_throws() {
+        when(bundleRepository.findByTenantIdAndProcessKeyAndBundleVersion(TENANT, "capex-approval", 99))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.rollbackToBundleVersion(TENANT, "capex-approval", 99, "carol"))
+                .isInstanceOf(ProcessNotFoundException.class);
     }
 }
