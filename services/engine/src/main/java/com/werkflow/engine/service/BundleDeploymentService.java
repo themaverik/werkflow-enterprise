@@ -126,11 +126,12 @@ public class BundleDeploymentService {
         String newParentDeploymentId = "%s:%s:bundle:%d".formatted(tenantId, processKey, newBundleVersion);
 
         // Re-read and redeploy the target version's exact artifacts; the BPMN already carries
-        // its original formKey@version pins, so it is redeployed as-is (no re-pinning).
-        String bpmnXml = processDefinitionService.getBpmnXmlByParentDeployment(sourceParentDeploymentId, tenantId);
-        String resourceName = processKey + ".bpmn20.xml";
+        // its original formKey@version pins, so it is redeployed as-is (no re-pinning). Reusing the
+        // source bundle's original resource name keeps rollback symmetric with deployBundle.
+        ProcessDefinitionService.BundleBpmn source =
+                processDefinitionService.getBundleBpmnByParentDeployment(sourceParentDeploymentId, tenantId);
         ProcessDefinitionResponse process = processDefinitionService.deployProcessDefinition(
-                bpmnXml, resourceName, newParentDeploymentId, tenantId);
+                source.xml(), source.resourceName(), newParentDeploymentId, tenantId);
 
         List<String> bundled = new ArrayList<>();
         for (DmnDecisionService.DecisionXml decision : dmnDecisionService.getDecisionsByParentDeployment(sourceParentDeploymentId, tenantId)) {
