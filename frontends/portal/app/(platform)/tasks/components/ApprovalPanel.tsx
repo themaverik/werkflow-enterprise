@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { CheckCircle2, XCircle, ArrowUpCircle, Loader2, FileText, Building, User as UserIcon, Calendar, DollarSign } from "lucide-react"
+import { CheckCircle2, XCircle, Loader2, FileText, Building, User as UserIcon, Calendar, DollarSign } from "lucide-react"
 import { DOAIndicator } from './DOAIndicator'
 import type { Task } from '@/lib/types/task'
 import type { User } from '@/lib/auth/auth-context'
@@ -18,11 +18,13 @@ export interface ApprovalPanelProps {
   user: User
   onApprove: (comment: string) => Promise<void>
   onReject: (comment: string) => Promise<void>
-  onEscalate: (reason: string) => Promise<void>
   isSubmitting?: boolean
 }
 
-type ApprovalAction = 'approve' | 'reject' | 'escalate'
+// 'escalate' intentionally omitted: no approval BPMN gateway routes decision='escalate'
+// (no default flow), so a user-initiated escalate jams the instance. Time-based SLA
+// escalation (timer boundary events) is unaffected. Re-add when gateway routing exists.
+type ApprovalAction = 'approve' | 'reject'
 
 const DOA_LIMITS: Record<number, number> = {
   1: 1000,
@@ -43,7 +45,6 @@ export function ApprovalPanel({
   user,
   onApprove,
   onReject,
-  onEscalate,
   isSubmitting = false,
 }: ApprovalPanelProps) {
   const [selectedAction, setSelectedAction] = useState<ApprovalAction>('approve')
@@ -66,11 +67,6 @@ export function ApprovalPanel({
       return
     }
 
-    if (selectedAction === 'escalate' && !comment.trim()) {
-      setValidationError('Reason is required when escalating a request')
-      return
-    }
-
     setValidationError('')
 
     try {
@@ -80,9 +76,6 @@ export function ApprovalPanel({
           break
         case 'reject':
           await onReject(comment)
-          break
-        case 'escalate':
-          await onEscalate(comment)
           break
       }
     } catch (error) {
@@ -258,28 +251,17 @@ export function ApprovalPanel({
                 <span>Reject</span>
               </Label>
             </div>
-
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="escalate" id="escalate" />
-              <Label htmlFor="escalate" className="flex items-center gap-2 cursor-pointer">
-                <ArrowUpCircle className="h-4 w-4 text-blue-600" />
-                <span>Escalate to Higher Authority</span>
-              </Label>
-            </div>
           </RadioGroup>
 
           <div className="space-y-2">
             <Label htmlFor="comment">
-              {selectedAction === 'approve' ? 'Comment (Optional)' :
-               selectedAction === 'reject' ? 'Rejection Reason (Required)' :
-               'Escalation Reason (Required)'}
+              {selectedAction === 'approve' ? 'Comment (Optional)' : 'Rejection Reason (Required)'}
             </Label>
             <Textarea
               id="comment"
               placeholder={
                 selectedAction === 'approve' ? 'Add any additional comments...' :
-                selectedAction === 'reject' ? 'Explain why you are rejecting this request...' :
-                'Explain why escalation is needed...'
+                'Explain why you are rejecting this request...'
               }
               value={comment}
               onChange={(e) => {
@@ -313,7 +295,6 @@ export function ApprovalPanel({
               <>
                 {selectedAction === 'approve' && <CheckCircle2 className="h-4 w-4 mr-2" />}
                 {selectedAction === 'reject' && <XCircle className="h-4 w-4 mr-2" />}
-                {selectedAction === 'escalate' && <ArrowUpCircle className="h-4 w-4 mr-2" />}
                 Submit Decision
               </>
             )}
