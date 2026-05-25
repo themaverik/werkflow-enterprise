@@ -186,12 +186,16 @@ export function ConnectorForm({
   useEffect(() => {
     listCredentials()
       .then(setCredentials)
-      .catch((err) => {
-        console.error('Failed to load credentials for connector picker', err)
+      .catch((err: unknown) => {
         setCredentials([])
+        toast({
+          title: 'Could not load credentials',
+          description: err instanceof Error ? err.message : 'The credential picker may be empty.',
+          variant: 'destructive',
+        })
       })
       .finally(() => setCredentialsLoading(false))
-  }, [])
+  }, [toast])
 
   const credentialType = AUTH_SCHEME_TO_CREDENTIAL_TYPE[authScheme]
   const matchingCredentials = useMemo(
