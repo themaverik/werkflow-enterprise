@@ -5,6 +5,7 @@ import com.werkflow.engine.service.FormSchemaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.UserTask;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.repository.ProcessDefinition;
@@ -70,27 +71,15 @@ public class BpmnFormKeyValidator {
             }
 
             BpmnModel model = repositoryService.getBpmnModel(definition.getId());
-            model.getProcesses().forEach(process ->
-                process.findFlowElementsOfType(UserTask.class).forEach(userTask -> {
-                    String formKey = userTask.getFormKey();
-                    if (formKey == null || formKey.isBlank()) {
-                        return;
-                    }
-                    String trimmed = formKey.trim();
-                    if (trimmed.startsWith("${")) {
-                        return;
-                    }
-                    try {
-                        formSchemaService.loadFormSchema(trimmed);
-                    } catch (FormNotFoundException ex) {
-                        violations.add(String.format(
-                            "  [%s] task '%s' (%s): formKey '%s' has no active row in form_schemas",
-                            definition.getKey(), userTask.getName(),
-                            userTask.getId(), trimmed
-                        ));
-                    }
-                })
-            );
+            model.getProcesses().forEach(process -> {
+                process.findFlowElementsOfType(UserTask.class).forEach(userTask ->
+                    checkFormKey(definition.getKey(), "task", userTask.getId(),
+                        userTask.getName(), userTask.getFormKey(), violations));
+                // Start-event forms are pinned at bundle deploy too (ADR-026 F1), so validate them.
+                process.findFlowElementsOfType(StartEvent.class).forEach(startEvent ->
+                    checkFormKey(definition.getKey(), "start event", startEvent.getId(),
+                        startEvent.getName(), startEvent.getFormKey(), violations));
+            });
         }
 
         if (violations.isEmpty()) {
@@ -103,6 +92,29 @@ public class BpmnFormKeyValidator {
                 "block task completion. Provision the form in form_schemas or fix the BPMN before starting:\n" +
                 String.join("\n", violations)
             );
+        }
+    }
+
+    /**
+     * Records a violation if a static formKey does not resolve. Skips blank keys (optional)
+     * and EL expressions ({@code ${...}}, resolved at runtime). Honours an ADR-026
+     * {@code formKey@version} pin via {@link FormSchemaService#loadFormSchemaByRef(String)}.
+     */
+    private void checkFormKey(String processKey, String elementKind, String elementId,
+                             String elementName, String formKey, List<String> violations) {
+        if (formKey == null || formKey.isBlank()) {
+            return;
+        }
+        String trimmed = formKey.trim();
+        if (trimmed.startsWith("${")) {
+            return;
+        }
+        try {
+            formSchemaService.loadFormSchemaByRef(trimmed);
+        } catch (FormNotFoundException ex) {
+            violations.add(String.format(
+                "  [%s] %s '%s' (%s): formKey '%s' has no active row in form_schemas",
+                processKey, elementKind, elementName, elementId, trimmed));
         }
     }
 }
