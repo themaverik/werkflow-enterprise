@@ -37,9 +37,6 @@
               flowable:candidateGroups="DOA_L2,SUPER_ADMIN"
               flowable:formKey="general-approval-decision">
       <documentation>Manager reviews the request and sets decision = approve or reject</documentation>
-      <extensionElements>
-        <flowable:field name="outcomeVariable"><flowable:string>decision</flowable:string></flowable:field>
-      </extensionElements>
     </userTask>
 
     <!-- Gateway: check if manager rejected — if so, skip amount check -->
@@ -53,9 +50,6 @@
               flowable:candidateGroups="DOA_L3,DOA_L4,SUPER_ADMIN"
               flowable:formKey="general-approval-decision">
       <documentation>Director reviews high-value requests (amount > $50,000) and sets decision = approve or reject</documentation>
-      <extensionElements>
-        <flowable:field name="outcomeVariable"><flowable:string>decision</flowable:string></flowable:field>
-      </extensionElements>
     </userTask>
 
     <!-- Merge gateway: combines both amount paths -->
