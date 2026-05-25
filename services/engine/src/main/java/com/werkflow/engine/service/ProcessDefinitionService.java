@@ -111,6 +111,37 @@ public class ProcessDefinitionService {
     }
 
     /**
+     * Reads the BPMN XML of the process deployed under a bundle's {@code parentDeploymentId}
+     * (ADR-026 Phase 3 rollback). Flowable retains prior deployments, so a bundle's original
+     * artifacts remain readable for redeploy. Returns the first process deployment's BPMN.
+     *
+     * @throws IllegalStateException if no process deployment exists for the parentDeploymentId
+     */
+    public String getBpmnXmlByParentDeployment(String parentDeploymentId, String tenantId) {
+        List<Deployment> deployments = repositoryService.createDeploymentQuery()
+            .parentDeploymentId(parentDeploymentId)
+            .deploymentTenantId(tenantId)
+            .list();
+
+        for (Deployment deployment : deployments) {
+            String resourceName = repositoryService.getDeploymentResourceNames(deployment.getId()).stream()
+                .filter(n -> n.endsWith(".bpmn20.xml") || n.endsWith(".bpmn"))
+                .findFirst()
+                .orElse(null);
+            if (resourceName == null) {
+                continue;
+            }
+            try (InputStream in = repositoryService.getResourceAsStream(deployment.getId(), resourceName)) {
+                return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                throw new IllegalStateException(
+                    "Failed to read BPMN XML for bundle " + parentDeploymentId, e);
+            }
+        }
+        throw new IllegalStateException("No process deployment found for bundle " + parentDeploymentId);
+    }
+
+    /**
      * Get all process definitions (latest versions)
      */
     public List<ProcessDefinitionResponse> getAllProcessDefinitions() {
@@ -312,7 +343,7 @@ public class ProcessDefinitionService {
             throw new RuntimeException("Process definition " + processDefinitionId + " has no start form");
         }
 
-        var formSchema = formSchemaService.loadFormSchema(formKey);
+        var formSchema = formSchemaService.loadFormSchemaByRef(formKey);
 
         return TaskFormResponse.builder()
             .formKey(formSchema.getFormKey())

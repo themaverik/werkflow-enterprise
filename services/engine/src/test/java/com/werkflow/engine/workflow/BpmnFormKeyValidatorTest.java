@@ -5,6 +5,7 @@ import com.werkflow.engine.exception.FormNotFoundException;
 import com.werkflow.engine.service.FormSchemaService;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.Process;
+import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.UserTask;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.repository.ProcessDefinition;
@@ -45,7 +46,7 @@ class BpmnFormKeyValidatorTest {
     void passes_when_all_formKeys_resolve() {
         UserTask task = userTask("managerApproval", "Manager Review", "manager-approval-form");
         when(repositoryService.getBpmnModel("def-1")).thenReturn(modelWith(task));
-        when(formSchemaService.loadFormSchema("manager-approval-form"))
+        when(formSchemaService.loadFormSchemaByRef("manager-approval-form"))
             .thenReturn(FormSchema.builder().formKey("manager-approval-form").build());
 
         validator.validateDeployedBpmns();
@@ -71,7 +72,7 @@ class BpmnFormKeyValidatorTest {
     void fails_when_formKey_is_missing_from_formSchemas() {
         UserTask task = userTask("confirm", "Confirm Step", "missing_form_key");
         when(repositoryService.getBpmnModel("def-1")).thenReturn(modelWith(task));
-        when(formSchemaService.loadFormSchema("missing_form_key"))
+        when(formSchemaService.loadFormSchemaByRef("missing_form_key"))
             .thenThrow(new FormNotFoundException("missing_form_key"));
 
         assertThatThrownBy(() -> validator.validateDeployedBpmns())
@@ -87,11 +88,11 @@ class BpmnFormKeyValidatorTest {
         UserTask t2 = userTask("b", "Task B", "missing-form-b");
         UserTask t3 = userTask("c", "Task C", "good-form");
         when(repositoryService.getBpmnModel("def-1")).thenReturn(modelWith(t1, t2, t3));
-        when(formSchemaService.loadFormSchema("missing-form-a"))
+        when(formSchemaService.loadFormSchemaByRef("missing-form-a"))
             .thenThrow(new FormNotFoundException("missing-form-a"));
-        when(formSchemaService.loadFormSchema("missing-form-b"))
+        when(formSchemaService.loadFormSchemaByRef("missing-form-b"))
             .thenThrow(new FormNotFoundException("missing-form-b"));
-        when(formSchemaService.loadFormSchema("good-form"))
+        when(formSchemaService.loadFormSchemaByRef("good-form"))
             .thenReturn(FormSchema.builder().formKey("good-form").build());
 
         assertThatThrownBy(() -> validator.validateDeployedBpmns())
@@ -99,6 +100,27 @@ class BpmnFormKeyValidatorTest {
             .hasMessageContaining("2 missing formKey reference(s)")
             .hasMessageContaining("missing-form-a")
             .hasMessageContaining("missing-form-b");
+    }
+
+    @Test
+    void fails_when_startEvent_formKey_is_missing() {
+        StartEvent start = new StartEvent();
+        start.setId("start");
+        start.setName("Request Submitted");
+        start.setFormKey("missing-start-form");
+        BpmnModel model = new BpmnModel();
+        Process process = new Process();
+        process.setId("test-process");
+        process.addFlowElement(start);
+        model.addProcess(process);
+        when(repositoryService.getBpmnModel("def-1")).thenReturn(model);
+        when(formSchemaService.loadFormSchemaByRef("missing-start-form"))
+            .thenThrow(new FormNotFoundException("missing-start-form"));
+
+        assertThatThrownBy(() -> validator.validateDeployedBpmns())
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("start event 'Request Submitted'")
+            .hasMessageContaining("missing-start-form");
     }
 
     @Test

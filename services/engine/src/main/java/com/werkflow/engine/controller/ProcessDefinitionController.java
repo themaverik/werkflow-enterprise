@@ -84,6 +84,22 @@ public class ProcessDefinitionController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PostMapping("/{processKey}/rollback/{bundleVersion}")
+    @PreAuthorize("hasPermission(null, 'WORKFLOW:DEPLOY')")
+    @Operation(summary = "Roll a process back to a prior bundle version",
+        description = "Redeploys the target bundle version's exact artifacts (BPMN + pinned DMNs) "
+            + "as a new latest version (ADR-026 Phase 3). In-flight instances are unaffected.")
+    public ResponseEntity<BundleDeploymentResponse> rollbackBundle(
+        @Parameter(description = "Process definition key") @PathVariable String processKey,
+        @Parameter(description = "Bundle version to roll back to") @PathVariable int bundleVersion,
+        Authentication authentication
+    ) {
+        JwtUserContext user = extractUserContext(authentication);
+        BundleDeploymentResponse response = bundleDeploymentService.rollbackToBundleVersion(
+                user.getTenantCode(), processKey, bundleVersion, user.getUserId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
     @GetMapping
     @Operation(summary = "Get all process definitions", description = "Retrieve all process definitions (latest versions)")
     public ResponseEntity<List<ProcessDefinitionResponse>> getAllProcessDefinitions() {
