@@ -22,8 +22,12 @@ import java.time.Duration;
 /**
  * RestTemplate beans for the admin-service.
  *
- * <p>The {@code @Primary} bean is unauthenticated — used for legacy engine calls
- * (DMN XML lookup, Tier 1 role mappings) that hit permitAll endpoints.
+ * <p>The {@code @Primary} bean adds no auth automatically. It serves two call
+ * styles: permitAll engine endpoints (Tier 1 role mappings) and token-forwarding
+ * calls where the caller's own bearer token is set per-request (DMN XML lookup —
+ * the engine xml endpoint requires {@code WORKFLOW:MANAGE}). When adding a new
+ * call through this bean, set the {@code Authorization} header explicitly unless
+ * the target endpoint is genuinely permitAll.
  *
  * <p>The {@code serviceRestTemplate} bean attaches a Keycloak client-credentials
  * Bearer token (registration id {@code werkflow-admin}) on every request and is
