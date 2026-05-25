@@ -287,10 +287,12 @@ public class ConnectorCatalogService {
     }
 
     /**
-     * Deep-copies the definition JSON and replaces auth secret values with {@code "***"}.
-     * The {@code secretKey} reference field is preserved; only a hypothetical plain-text
-     * value field would be redacted.  Per the spec, secrets must not be in the definition,
-     * so this is a defence-in-depth measure.
+     * Deep-copies the definition JSON and replaces any auth secret values with {@code "***"}.
+     * As of 2026-05-25 the connector definition carries NO secret material — {@code auth.profiles[].type}
+     * declares only the supported scheme; the credential is bound per-tenant in OpenBao (ADR-020 B.6,
+     * ADR-024) and the legacy {@code secretKey} field was removed from the schema. This redaction is
+     * pure defence-in-depth against any stray plain-text value (e.g. an inert {@code secretKey} left in
+     * a row migrated by V18).
      */
     private String redactSecrets(String json) {
         try {

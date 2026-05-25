@@ -84,7 +84,7 @@
         },
         "auth": {
           "type": "object",
-          "description": "Auth profiles. A connector can declare multiple profiles; the deployment selects one. Profiles are resolved at runtime via SecretsResolver — never embedded in the connector definition.",
+          "description": "Supported authentication schemes this connector CAN use — a requirement declaration, like OpenAPI `securitySchemes`. It never carries a secret. The connector definition is tenant-agnostic; the actual credential is bound PER TENANT at registration (TenantApiCredential.authScheme + credentialRef) and stored in OpenBao, then resolved server-side at call time (ADR-020 B.6, ADR-024). A connector may declare multiple profiles; the tenant registration selects one.",
           "properties": {
             "profiles": {
               "type": "array",
@@ -133,21 +133,20 @@
     "AuthProfile": {
       "type": "object",
       "required": ["id", "type"],
+      "description": "A supported auth scheme. Werkflow-native vocabulary (not OpenAPI's): the `type` values map 1:1 to the engine's TenantApiCredential.authScheme and to an OpenBao-backed credential-type. No secret material appears here — the tenant binds a credentialRef at registration.",
+      "$comment": "secret-ref, oauth2-client-credentials, and mtls were removed from the type enum 2026-05-25: secret-ref/oauth2 never functioned and were dropped in B.6; mtls is unbuilt (needs a per-tenant client keystore, not header injection) and will be re-added only when implemented. The `secretKey` field was also removed (pre-OpenBao SecretsResolver model).",
+      "additionalProperties": false,
       "properties": {
         "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
         "displayName": { "type": "string" },
         "type": {
           "type": "string",
-          "enum": ["none", "secret-ref", "bearer", "basic", "api-key", "oauth2-client-credentials", "mtls"]
-        },
-        "secretKey": {
-          "type": "string",
-          "description": "Reference to a key in SecretsResolver. The actual credential value is never stored in the connector definition.",
-          "pattern": "^[a-zA-Z0-9_-]+$"
+          "description": "Supported auth scheme. Mapping (authScheme → engine credential-type slug → OpenBao credential fields):\n  • none    → (no auth)\n  • basic   → http-basic-auth   → {username, password}\n  • bearer  → http-bearer-token → {token}\n  • api-key → http-header-auth  → {headerName, headerValue}\nThe credential VALUE lives in OpenBao under the tenant's credentialRef and is resolved server-side at call time (ADR-020 B.6, ADR-024).",
+          "enum": ["none", "basic", "bearer", "api-key"]
         },
         "config": {
           "type": "object",
-          "description": "Auth-type-specific config. For api-key: header/queryParam name. For oauth2-client-credentials: tokenUrl, scopes. For mtls: trustStoreRef.",
+          "description": "Auth-scheme-specific, non-secret config. For api-key: the header name (the value is the OpenBao secret). Reserved for future schemes; never holds secret material.",
           "additionalProperties": true
         }
       }
