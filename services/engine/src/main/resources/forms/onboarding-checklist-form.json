@@ -18,9 +18,10 @@
       }
     },
     {
-      "type": "date",
+      "type": "datetime",
+      "subtype": "date",
       "key": "startDate",
-      "label": "Start Date",
+      "dateLabel": "Start Date",
       "validate": {
         "required": true
       }

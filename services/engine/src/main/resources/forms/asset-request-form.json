@@ -63,7 +63,7 @@
       "type": "datetime",
       "subtype": "date",
       "key": "deliveryDate",
-      "label": "Required By Date (Optional)"
+      "dateLabel": "Required By Date (Optional)"
     },
     {
       "type": "textarea",

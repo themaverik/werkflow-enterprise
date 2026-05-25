@@ -21,9 +21,13 @@ import java.util.*;
 @Slf4j
 public class FormSchemaValidator {
 
+    // NOTE: form-js has no top-level "date" or "time" field type — both are
+    // subtypes of "datetime" (subtype: date|time|datetime). Listing them here
+    // let malformed forms pass validation yet silently fail to render. Date/time
+    // fields must be authored as type "datetime" with the appropriate subtype.
     static final Set<String> VARIABLE_TYPES = Set.of(
             "textfield", "number", "textarea", "checkbox", "radio", "select",
-            "date", "time", "datetime", "email", "checklist", "taglist",
+            "datetime", "email", "checklist", "taglist",
             "group", "columns"
     );
 
