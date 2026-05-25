@@ -103,4 +103,57 @@ public class BundleDeploymentService {
 
         return new BundleDeploymentResponse(process, processKey, bundleVersion, parentDeploymentId, bundled, unbundled);
     }
+
+    /**
+     * Rolls a process back to a prior bundle version by redeploying that version's exact
+     * artifacts (its BPMN and the DMN versions it was bundled with) as a NEW latest bundle
+     * version (ADR-026 Phase 3). Flowable-idiomatic: history is preserved and in-flight
+     * instances are left running on the version they started on (no instance migration).
+     *
+     * @throws ProcessNotFoundException if no bundle with {@code targetBundleVersion} exists
+     */
+    @Transactional
+    public BundleDeploymentResponse rollbackToBundleVersion(
+            String tenantId, String processKey, int targetBundleVersion, String deployedBy) {
+
+        ProcessBundle target = bundleRepository
+                .findByTenantIdAndProcessKeyAndBundleVersion(tenantId, processKey, targetBundleVersion)
+                .orElseThrow(() -> new ProcessNotFoundException(
+                        "No bundle version %d for process '%s'".formatted(targetBundleVersion, processKey)));
+        String sourceParentDeploymentId = target.getParentDeploymentId();
+
+        int newBundleVersion = bundleRepository.findMaxBundleVersion(tenantId, processKey) + 1;
+        String newParentDeploymentId = "%s:%s:bundle:%d".formatted(tenantId, processKey, newBundleVersion);
+
+        // Re-read and redeploy the target version's exact artifacts; the BPMN already carries
+        // its original formKey@version pins, so it is redeployed as-is (no re-pinning).
+        String bpmnXml = processDefinitionService.getBpmnXmlByParentDeployment(sourceParentDeploymentId, tenantId);
+        String resourceName = processKey + ".bpmn20.xml";
+        ProcessDefinitionResponse process = processDefinitionService.deployProcessDefinition(
+                bpmnXml, resourceName, newParentDeploymentId, tenantId);
+
+        List<String> bundled = new ArrayList<>();
+        for (DmnDecisionService.DecisionXml decision : dmnDecisionService.getDecisionsByParentDeployment(sourceParentDeploymentId, tenantId)) {
+            dmnDecisionService.deployDecision(decision.xml(), decision.key(), tenantId, newParentDeploymentId);
+            bundled.add(decision.key());
+        }
+
+        try {
+            bundleRepository.save(ProcessBundle.builder()
+                    .tenantId(tenantId)
+                    .processKey(processKey)
+                    .bundleVersion(newBundleVersion)
+                    .parentDeploymentId(newParentDeploymentId)
+                    .createdBy(deployedBy)
+                    .build());
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalStateException(
+                    "Concurrent bundle deploy for (%s, %s); retry the request".formatted(tenantId, processKey), e);
+        }
+
+        log.info("Rolled back process {} to bundle v{} as new bundle v{} ({})",
+                processKey, targetBundleVersion, newBundleVersion, newParentDeploymentId);
+
+        return new BundleDeploymentResponse(process, processKey, newBundleVersion, newParentDeploymentId, bundled, List.of());
+    }
 }
