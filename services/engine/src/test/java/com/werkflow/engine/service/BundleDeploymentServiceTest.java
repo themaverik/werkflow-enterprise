@@ -3,8 +3,10 @@ package com.werkflow.engine.service;
 import com.werkflow.engine.dto.BundleDeploymentResponse;
 import com.werkflow.engine.dto.ProcessDefinitionResponse;
 import com.werkflow.engine.workflow.BpmnBundleRefExtractor;
+import com.werkflow.engine.workflow.BpmnFormKeyPinner;
 import com.werkflow.engine.workflow.ProcessBundle;
 import com.werkflow.engine.workflow.ProcessBundleRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +20,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,6 +29,7 @@ import static org.mockito.Mockito.when;
 class BundleDeploymentServiceTest {
 
     @Mock private BpmnBundleRefExtractor refExtractor;
+    @Mock private BpmnFormKeyPinner formKeyPinner;
     @Mock private ProcessDefinitionService processDefinitionService;
     @Mock private DmnDecisionService dmnDecisionService;
     @Mock private ProcessBundleRepository bundleRepository;
@@ -34,6 +38,12 @@ class BundleDeploymentServiceTest {
 
     private static final String TENANT = "acme";
     private static final String BPMN = "<bpmn/>";
+
+    @BeforeEach
+    void setUp() {
+        // Form pinning is exercised in BpmnFormKeyPinnerTest; here it passes the XML through.
+        lenient().when(formKeyPinner.pinFormKeys(any())).thenAnswer(inv -> inv.getArgument(0));
+    }
 
     @Test
     @DisplayName("deploys process and each referenced DMN under one shared parentDeploymentId")

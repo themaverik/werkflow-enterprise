@@ -66,7 +66,7 @@ public class TaskFormService {
         }
 
         // Load form schema
-        FormSchema formSchema = formSchemaService.loadFormSchema(formKey);
+        FormSchema formSchema = formSchemaService.loadFormSchemaByRef(formKey);
 
         // Get task variables to populate form
         Map<String, Object> variables = flowableTaskService.getVariables(taskId);
@@ -128,7 +128,7 @@ public class TaskFormService {
             throw new FormNotFoundException("Task " + taskId + " has no associated form");
         }
 
-        FormSchema formSchema = formSchemaService.loadFormSchema(formKey);
+        FormSchema formSchema = formSchemaService.loadFormSchemaByRef(formKey);
 
         // Validate form data against schema
         formSchemaValidator.validateFormData(formSchema.getSchemaJson(), formData);
@@ -162,7 +162,7 @@ public class TaskFormService {
             throw new FormNotFoundException("Task " + taskId + " has no associated form");
         }
 
-        FormSchema formSchema = formSchemaService.loadFormSchema(formKey);
+        FormSchema formSchema = formSchemaService.loadFormSchemaByRef(formKey);
         String processInstanceId = task.getProcessInstanceId();
 
         try {

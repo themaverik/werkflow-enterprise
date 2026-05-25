@@ -390,6 +390,35 @@ class FlowablePropertiesProvider {
                 return options
               },
             },
+            // Binding only matters once the task is actually a DMN task (a decision key is set);
+            // omit it on a plain service task that's only a candidate for promotion.
+            ...(isDmnServiceTask(element)
+              ? [{
+                  id: 'dmnDecisionBinding',
+                  element,
+                  component: SelectEntry,
+                  isEdited: isSelectEntryEdited,
+                  label: translate('Decision Binding'),
+                  description: translate(
+                    'Same deployment (default): evaluates the decision version bundled with this ' +
+                    'process, so in-flight instances are reproducible. Latest: always evaluates the ' +
+                    'newest deployed version of the decision.'
+                  ),
+                  // Flowable DmnActivityBehavior: sameDeployment field absent or "true" => same
+                  // deployment; field "false" => latest. We clear the field for the default and
+                  // write "false" only for the latest opt-in (writeFlowableField('') removes it).
+                  // Any non-"false" stored value reads as same-deployment by design.
+                  getValue: () =>
+                    readFlowableField(element, 'sameDeployment') === 'false' ? 'latest' : 'same-deployment',
+                  setValue: (value: string) => {
+                    writeFlowableField(element, modeling, 'sameDeployment', value === 'latest' ? 'false' : '')
+                  },
+                  getOptions: () => [
+                    { value: 'same-deployment', label: translate('Same deployment (pinned, default)') },
+                    { value: 'latest', label: translate('Latest version') },
+                  ],
+                }]
+              : []),
           ],
         })
       }
