@@ -74,7 +74,11 @@ public class FormSchemaService {
      * @return FormSchema
      * @throws FormNotFoundException if form is not found
      */
-    @Cacheable(value = "formSchemas", key = "#formKey + '_v' + #version")
+    // Separator '@' (not '_v') matches the canonical "formKey@version" pin format and cannot
+    // collide with the unversioned-key entry above: '@' is reserved and rejected in formKeys
+    // (see saveFormSchema), so no formKey ending in "@<n>" can ever equal another key's
+    // versioned cache entry.
+    @Cacheable(value = "formSchemas", key = "#formKey + '@' + #version")
     public FormSchema loadFormSchema(String formKey, Integer version) {
         log.info("Loading form schema for key: {} version: {}", formKey, version);
 

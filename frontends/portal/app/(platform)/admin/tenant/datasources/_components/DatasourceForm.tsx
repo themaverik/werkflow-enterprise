@@ -89,9 +89,11 @@ export function DatasourceForm({ existing }: Props) {
   useEffect(() => {
     listCredentials()
       .then((all) => setJdbcCredentials(all.filter((c) => c.credentialType === 'jdbc-password')))
-      .catch((err) => {
-        console.error('Failed to load credentials for datasource picker', err)
+      .catch((err: unknown) => {
         setJdbcCredentials([])
+        toast.error(
+          `Could not load credentials: ${err instanceof Error ? err.message : 'the picker may be empty.'}`,
+        )
       })
       .finally(() => setCredentialsLoading(false))
   }, [])

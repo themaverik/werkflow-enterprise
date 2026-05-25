@@ -121,7 +121,11 @@ class BundleDeploymentServiceTest {
                         .tenantId(TENANT).processKey("capex-approval").bundleVersion(1)
                         .parentDeploymentId(sourceParent).build()));
         when(bundleRepository.findMaxBundleVersion(TENANT, "capex-approval")).thenReturn(3);
-        when(processDefinitionService.getBpmnXmlByParentDeployment(sourceParent, TENANT)).thenReturn(BPMN);
+        // The source bundle's original resource name (display-name slug), distinct from the
+        // processKey — rollback must redeploy under this same name, not "capex-approval.bpmn20.xml".
+        String originalResourceName = "capital-expenditure-approval.bpmn20.xml";
+        when(processDefinitionService.getBundleBpmnByParentDeployment(sourceParent, TENANT))
+                .thenReturn(new ProcessDefinitionService.BundleBpmn(originalResourceName, BPMN));
         when(processDefinitionService.deployProcessDefinition(eq(BPMN), any(), any(), eq(TENANT)))
                 .thenReturn(new ProcessDefinitionResponse());
         when(dmnDecisionService.getDecisionsByParentDeployment(sourceParent, TENANT))
@@ -134,10 +138,11 @@ class BundleDeploymentServiceTest {
         assertThat(result.parentDeploymentId()).isEqualTo(newParent);
         assertThat(result.bundledDecisions()).containsExactly("doa_routing");
 
-        // Redeploys the re-read BPMN as-is (already pinned) under the new parent, never re-pins.
+        // Redeploys the re-read BPMN as-is (already pinned) under the new parent, never re-pins,
+        // and preserves the source bundle's original resource name (symmetric with deployBundle).
         verify(formKeyPinner, never()).pinFormKeys(any());
         verify(processDefinitionService)
-                .deployProcessDefinition(eq(BPMN), eq("capex-approval.bpmn20.xml"), eq(newParent), eq(TENANT));
+                .deployProcessDefinition(eq(BPMN), eq(originalResourceName), eq(newParent), eq(TENANT));
         verify(dmnDecisionService).deployDecision("<dmn/>", "doa_routing", TENANT, newParent);
 
         ArgumentCaptor<ProcessBundle> saved = ArgumentCaptor.forClass(ProcessBundle.class);

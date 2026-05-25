@@ -32,9 +32,6 @@
               flowable:candidateGroups="FINANCE_APPROVER,SUPER_ADMIN"
               flowable:formKey="budget-request-form">
       <documentation>Finance team member reviews the purchase amount, budget code, and payment terms. Sets decision = approve or reject.</documentation>
-      <extensionElements>
-        <flowable:field name="outcomeVariable"><flowable:string>decision</flowable:string></flowable:field>
-      </extensionElements>
     </userTask>
 
     <!-- Decision Gateway -->
