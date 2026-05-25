@@ -87,6 +87,17 @@ class DmnFacadeControllerTest {
     }
 
     @Test
+    @DisplayName("getDecisionInputs returns 400 for a blank dmnId without calling the engine")
+    void getDecisionInputs_blankDmnId_returnsBadRequest() {
+        ResponseEntity<List<Map<String, String>>> response = controller.getDecisionInputs("  ", jwt);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+        verify(engineClient, org.mockito.Mockito.never())
+                .getDmnDefinitionXml(org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     @DisplayName("getDecisionInputs rejects DOCTYPE/external entities (XXE-safe) without leaking file contents")
     void getDecisionInputs_xxePayload_isNotExpanded(@TempDir Path tmp) throws Exception {
         Path secret = tmp.resolve("secret.txt");
