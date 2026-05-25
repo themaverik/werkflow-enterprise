@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -81,7 +82,7 @@ class RoleGroupMappingServiceTest {
 
     @Test
     void delete_throwsWhenNotFound() {
-        when(repository.existsById(99L)).thenReturn(false);
+        when(repository.findById(99L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.delete(99L))
             .isInstanceOf(RuntimeException.class)
             .hasMessageContaining("99");
@@ -89,8 +90,13 @@ class RoleGroupMappingServiceTest {
 
     @Test
     void delete_deletesById_whenExists() {
-        when(repository.existsById(1L)).thenReturn(true);
-        service.delete(1L);
-        verify(repository).deleteById(1L);
+        RoleGroupMapping mapping = new RoleGroupMapping();
+        mapping.setTenantCode("acme");
+        when(repository.findById(1L)).thenReturn(Optional.of(mapping));
+
+        String tenantCode = service.delete(1L);
+
+        verify(repository).delete(mapping);
+        assertThat(tenantCode).isEqualTo("acme");
     }
 }
