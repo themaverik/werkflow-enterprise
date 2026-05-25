@@ -89,7 +89,8 @@ export default function FormJsEditor({
         // VARIABLE_TYPES — produce process variables on submit
         'textfield', 'textarea', 'number',
         'checkbox', 'radio', 'select', 'checklist', 'taglist',
-        'date', 'time', 'datetime', 'email',
+        // "date"/"time" are subtypes of "datetime", not standalone form-js types
+        'datetime', 'email',
         'group', 'columns',
         // DISPLAY_TYPES — presentational, no key required
         'html', 'text', 'button', 'image', 'spacer', 'separator',

@@ -24,17 +24,19 @@
       }
     },
     {
-      "type": "date",
+      "type": "datetime",
+      "subtype": "date",
       "key": "startDate",
-      "label": "Start Date",
+      "dateLabel": "Start Date",
       "validate": {
         "required": true
       }
     },
     {
-      "type": "date",
+      "type": "datetime",
+      "subtype": "date",
       "key": "endDate",
-      "label": "End Date",
+      "dateLabel": "End Date",
       "validate": {
         "required": true
       }
@@ -137,9 +139,10 @@
       }
     },
     {
-      "type": "date",
+      "type": "datetime",
+      "subtype": "date",
       "key": "medicalCertificateDate",
-      "label": "Medical Certificate Date",
+      "dateLabel": "Medical Certificate Date",
       "conditional": {
         "when": "leaveType",
         "eq": "sick"
