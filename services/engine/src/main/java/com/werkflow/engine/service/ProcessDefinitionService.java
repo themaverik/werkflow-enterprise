@@ -111,13 +111,20 @@ public class ProcessDefinitionService {
     }
 
     /**
-     * Reads the BPMN XML of the process deployed under a bundle's {@code parentDeploymentId}
+     * The BPMN resource of a bundle's process deployment: its original Flowable resource name
+     * plus its XML. Carrying the resource name lets a rollback redeploy under the same name the
+     * bundle was originally deployed with (no naming asymmetry vs {@code deployBundle}).
+     */
+    public record BundleBpmn(String resourceName, String xml) {}
+
+    /**
+     * Reads the BPMN resource of the process deployed under a bundle's {@code parentDeploymentId}
      * (ADR-026 Phase 3 rollback). Flowable retains prior deployments, so a bundle's original
-     * artifacts remain readable for redeploy. Returns the first process deployment's BPMN.
+     * artifacts remain readable for redeploy. Returns the first process deployment's BPMN resource.
      *
      * @throws IllegalStateException if no process deployment exists for the parentDeploymentId
      */
-    public String getBpmnXmlByParentDeployment(String parentDeploymentId, String tenantId) {
+    public BundleBpmn getBundleBpmnByParentDeployment(String parentDeploymentId, String tenantId) {
         List<Deployment> deployments = repositoryService.createDeploymentQuery()
             .parentDeploymentId(parentDeploymentId)
             .deploymentTenantId(tenantId)
@@ -132,7 +139,8 @@ public class ProcessDefinitionService {
                 continue;
             }
             try (InputStream in = repositoryService.getResourceAsStream(deployment.getId(), resourceName)) {
-                return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                String xml = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                return new BundleBpmn(resourceName, xml);
             } catch (IOException e) {
                 throw new IllegalStateException(
                     "Failed to read BPMN XML for bundle " + parentDeploymentId, e);
