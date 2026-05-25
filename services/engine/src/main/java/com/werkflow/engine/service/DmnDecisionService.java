@@ -148,6 +148,42 @@ public class DmnDecisionService {
     }
 
     /**
+     * Reads every DMN deployed under a bundle's {@code parentDeploymentId} (ADR-026 Phase 3
+     * rollback) as {@code (decisionKey, xml)} pairs, so the bundle's exact decision versions
+     * can be redeployed instead of whatever "latest" has since become.
+     */
+    public List<DecisionXml> getDecisionsByParentDeployment(String parentDeploymentId, String tenantId) {
+        List<DmnDeployment> deployments = dmnRepositoryService.createDeploymentQuery()
+                .parentDeploymentId(parentDeploymentId)
+                .deploymentTenantId(tenantId)
+                .list();
+        List<DecisionXml> result = new java.util.ArrayList<>();
+        for (DmnDeployment deployment : deployments) {
+            String resourceName = dmnRepositoryService.getDeploymentResourceNames(deployment.getId()).stream()
+                    .filter(n -> n.endsWith(".dmn"))
+                    .findFirst()
+                    .orElse(null);
+            if (resourceName == null) {
+                continue;
+            }
+            List<DmnDecision> decisions = dmnRepositoryService.createDecisionQuery()
+                    .deploymentId(deployment.getId())
+                    .list();
+            String key = decisions.isEmpty() ? resourceName : decisions.get(0).getKey();
+            try (InputStream in = dmnRepositoryService.getResourceAsStream(deployment.getId(), resourceName)) {
+                result.add(new DecisionXml(key, new String(in.readAllBytes(), StandardCharsets.UTF_8)));
+            } catch (IOException e) {
+                throw new IllegalStateException(
+                        "Failed to read DMN XML for bundle " + parentDeploymentId, e);
+            }
+        }
+        return result;
+    }
+
+    /** A decision's key paired with its raw XML, for bundle rollback redeploy. */
+    public record DecisionXml(String key, String xml) {}
+
+    /**
      * Deletes a deployment by Flowable deployment ID, verifying tenant ownership first.
      *
      * @throws ProcessNotFoundException if the deployment does not exist or belongs to a different tenant
