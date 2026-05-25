@@ -30,9 +30,11 @@ class FormSchemaValidatorTest {
     void variableTypes_containsExpectedTypes() {
         assertThat(FormSchemaValidator.VARIABLE_TYPES).contains(
                 "textfield", "number", "textarea", "checkbox", "radio",
-                "select", "date", "time", "datetime", "email",
+                "select", "datetime", "email",
                 "checklist", "taglist", "group", "columns"
         );
+        // "date"/"time" are NOT top-level form-js types (subtypes of "datetime")
+        assertThat(FormSchemaValidator.VARIABLE_TYPES).doesNotContain("date", "time");
     }
 
     @Test

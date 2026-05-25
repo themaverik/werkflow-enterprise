@@ -71,9 +71,10 @@
       }
     },
     {
-      "type": "date",
+      "type": "datetime",
+      "subtype": "date",
       "key": "requiredDate",
-      "label": "Required By Date",
+      "dateLabel": "Required By Date",
       "validate": {
         "required": true
       }
