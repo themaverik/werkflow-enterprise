@@ -58,7 +58,7 @@ public class DmnFacadeController {
             @AuthenticationPrincipal Jwt jwt) {
         String tenantId = jwtClaimsExtractor.getTenantId(jwt);
 
-        String dmnXml = engineClient.getDmnDefinitionXml(tenantId, dmnId);
+        String dmnXml = engineClient.getDmnDefinitionXml(tenantId, dmnId, jwt.getTokenValue());
         if (dmnXml == null || dmnXml.isBlank()) {
             return ResponseEntity.notFound().build();
         }
@@ -88,7 +88,7 @@ public class DmnFacadeController {
         VariableAtActivityResponse scope = variableScopeService.variablesAt(
                 tenantId, processDefId, activityId, jwt.getTokenValue());
 
-        String dmnXml = engineClient.getDmnDefinitionXml(tenantId, dmnId);
+        String dmnXml = engineClient.getDmnDefinitionXml(tenantId, dmnId, jwt.getTokenValue());
         List<Map<String, String>> inputs = dmnXml != null ? parseDmnInputColumns(dmnXml) : List.of();
 
         List<Map<String, Object>> candidates = inputs.stream().map(input -> {
@@ -116,8 +116,17 @@ public class DmnFacadeController {
     private List<Map<String, String>> parseDmnInputColumns(String dmnXml) {
         List<Map<String, String>> inputs = new ArrayList<>();
         try {
-            Document doc = DocumentBuilderFactory.newInstance()
-                    .newDocumentBuilder()
+            // XXE hardening — mirror ProcessVariableScopeService.parseBpmnXml's security
+            // features. namespaceAware is intentionally left at its default (false): this
+            // method relies on non-namespaced getElementsByTagName fallbacks (incl. the
+            // inputExpression typeRef lookup), so enabling it would regress column parsing.
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            factory.setXIncludeAware(false);
+            factory.setExpandEntityReferences(false);
+            Document doc = factory.newDocumentBuilder()
                     .parse(new InputSource(new StringReader(dmnXml)));
             NodeList inputNodes = doc.getElementsByTagNameNS("https://www.omg.org/spec/DMN/20191111/MODEL/", "input");
             if (inputNodes.getLength() == 0) {

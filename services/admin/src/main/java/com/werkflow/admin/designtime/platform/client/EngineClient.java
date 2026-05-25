@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -31,12 +33,18 @@ public class EngineClient {
 
     /**
      * Fetches the raw DMN XML for a deployed decision by its key and tenant.
+     * <p>The engine endpoint requires an authenticated caller with the
+     * {@code WORKFLOW:MANAGE} permission, so the caller's bearer token must be
+     * threaded through; an unauthenticated call is rejected with 401.
      * Returns null on failure so callers can degrade gracefully.
      */
-    public String getDmnDefinitionXml(String tenantId, String dmnKey) {
+    public String getDmnDefinitionXml(String tenantId, String dmnKey, String bearerToken) {
         try {
             String url = engineBaseUrl + "/api/v1/dmn/decisions/{key}/xml?tenantId={tenantId}";
-            return restTemplate.getForObject(url, String.class, dmnKey, tenantId);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(bearerToken);
+            HttpEntity<?> entity = new HttpEntity<>(headers);
+            return restTemplate.exchange(url, HttpMethod.GET, entity, String.class, dmnKey, tenantId).getBody();
         } catch (Exception e) {
             log.warn("EngineClient: could not fetch DMN XML for key='{}' tenant='{}' — {}",
                     dmnKey, tenantId, e.getMessage());
