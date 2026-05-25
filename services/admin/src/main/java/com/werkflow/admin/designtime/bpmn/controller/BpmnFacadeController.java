@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
  * <p>Exposes accumulated process variable information so the designer can offer
  * context-sensitive variable pickers when configuring a task's input expressions.</p>
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/design/bpmn")
 @RequiredArgsConstructor
@@ -52,7 +54,19 @@ public class BpmnFacadeController {
             @Parameter(description = "BPMN element ID of the target activity")
             @PathVariable String activityId,
             @AuthenticationPrincipal Jwt jwt) {
+        if (processDefId == null || processDefId.isBlank()
+                || activityId == null || activityId.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
         String tenantId = jwtClaimsExtractor.getTenantId(jwt);
+        log.info("DTDS BPMN facade: user='{}' fetched variables-at for processDef='{}' "
+                + "activity='{}' tenant='{}'",
+                jwtClaimsExtractor.getUsername(jwt), safe(processDefId), safe(activityId), tenantId);
         return ResponseEntity.ok(variableScopeService.variablesAt(tenantId, processDefId, activityId, jwt.getTokenValue()));
+    }
+
+    /** Strips CR/LF from user-supplied values before logging to prevent log forging. */
+    private static String safe(String s) {
+        return s == null ? "" : s.replace('\r', '_').replace('\n', '_');
     }
 }

@@ -112,3 +112,36 @@ jobs:
           NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: werkflow-portal
           ENGINE_BASE_URL: http://localhost:8081
         run: npm run build
+
+  connector-schema-parity:
+    # The connector-definition JSON Schema is byte-duplicated in two repos: the
+    # admin service consumes it at runtime (canonical copy) and the public
+    # marketplace mirrors it for community connector authors. This job fails if
+    # the two copies drift. The enterprise copy is authoritative — sync the
+    # public copy to match. (Drift introduced on the public side is caught on the
+    # next enterprise CI run, since public→enterprise checkout is not available.)
+    name: Connector schema — two-repo parity
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: admin-build
+
+    steps:
+      - name: Checkout enterprise
+        uses: actions/checkout@v4
+
+      - name: Checkout public (OSS) repo
+        uses: actions/checkout@v4
+        with:
+          repository: themaverik/werkflow
+          ref: main
+          path: _public
+
+      - name: Verify connector-definition.schema.json is in sync across repos
+        run: |
+          ENT="services/admin/src/main/resources/schemas/connector/v1/connector-definition.schema.json"
+          PUB="_public/marketplace/schema/connector-definition.schema.json"
+          if ! diff -u "$ENT" "$PUB"; then
+            echo "::error::connector-definition.schema.json has drifted between werkflow-enterprise (admin) and werkflow-public (marketplace). The enterprise copy is canonical — sync the public copy."
+            exit 1
+          fi
+          echo "connector-definition.schema.json is byte-identical across both repos."

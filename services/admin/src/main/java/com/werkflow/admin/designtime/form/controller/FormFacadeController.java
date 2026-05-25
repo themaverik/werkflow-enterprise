@@ -49,7 +49,14 @@ public class FormFacadeController {
             @RequestParam String processDefId,
             @RequestParam String taskId,
             @AuthenticationPrincipal Jwt jwt) {
+        if (processDefId == null || processDefId.isBlank()
+                || taskId == null || taskId.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
         String tenantId = jwtClaimsExtractor.getTenantId(jwt);
+        log.info("DTDS form facade: user='{}' fetched binding targets for processDef='{}' "
+                + "task='{}' tenant='{}'",
+                jwtClaimsExtractor.getUsername(jwt), safe(processDefId), safe(taskId), tenantId);
         VariableAtActivityResponse response = variableScopeService.variablesAt(
                 tenantId, processDefId, taskId, jwt.getTokenValue());
         return ResponseEntity.ok(response);
@@ -71,7 +78,14 @@ public class FormFacadeController {
             @PathVariable String connectorKey,
             @PathVariable String operationId,
             @AuthenticationPrincipal Jwt jwt) {
+        if (connectorKey == null || connectorKey.isBlank()
+                || operationId == null || operationId.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
         String tenantId = jwtClaimsExtractor.getTenantId(jwt);
+        log.info("DTDS form facade: user='{}' fetched connector options for connector='{}' "
+                + "operation='{}' tenant='{}'",
+                jwtClaimsExtractor.getUsername(jwt), safe(connectorKey), safe(operationId), tenantId);
         List<FlatField> outputFields = catalogService.getFlatFields(tenantId, connectorKey, operationId, "output");
 
         // Return all scalar output fields as potential select-field options.
@@ -92,5 +106,10 @@ public class FormFacadeController {
                 .toList();
 
         return ResponseEntity.ok(enumFields);
+    }
+
+    /** Strips CR/LF from user-supplied values before logging to prevent log forging. */
+    private static String safe(String s) {
+        return s == null ? "" : s.replace('\r', '_').replace('\n', '_');
     }
 }

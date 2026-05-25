@@ -56,7 +56,12 @@ public class DmnFacadeController {
     public ResponseEntity<List<Map<String, String>>> getDecisionInputs(
             @PathVariable String dmnId,
             @AuthenticationPrincipal Jwt jwt) {
+        if (dmnId == null || dmnId.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
         String tenantId = jwtClaimsExtractor.getTenantId(jwt);
+        log.info("DTDS DMN facade: user='{}' fetched input columns for dmn='{}' tenant='{}'",
+                jwtClaimsExtractor.getUsername(jwt), safe(dmnId), tenantId);
 
         String dmnXml = engineClient.getDmnDefinitionXml(tenantId, dmnId, jwt.getTokenValue());
         if (dmnXml == null || dmnXml.isBlank()) {
@@ -83,7 +88,15 @@ public class DmnFacadeController {
             @RequestParam String activityId,
             @RequestParam String dmnId,
             @AuthenticationPrincipal Jwt jwt) {
+        if (processDefId == null || processDefId.isBlank()
+                || activityId == null || activityId.isBlank()
+                || dmnId == null || dmnId.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
         String tenantId = jwtClaimsExtractor.getTenantId(jwt);
+        log.info("DTDS DMN facade: user='{}' ranked binding candidates for dmn='{}' "
+                + "processDef='{}' activity='{}' tenant='{}'",
+                jwtClaimsExtractor.getUsername(jwt), safe(dmnId), safe(processDefId), safe(activityId), tenantId);
 
         VariableAtActivityResponse scope = variableScopeService.variablesAt(
                 tenantId, processDefId, activityId, jwt.getTokenValue());
@@ -112,6 +125,11 @@ public class DmnFacadeController {
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /** Strips CR/LF from user-supplied values before logging to prevent log forging. */
+    private static String safe(String s) {
+        return s == null ? "" : s.replace('\r', '_').replace('\n', '_');
+    }
 
     private List<Map<String, String>> parseDmnInputColumns(String dmnXml) {
         List<Map<String, String>> inputs = new ArrayList<>();
