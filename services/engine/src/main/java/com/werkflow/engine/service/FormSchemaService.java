@@ -78,6 +78,8 @@ public class FormSchemaService {
     public FormSchema loadFormSchema(String formKey, Integer version) {
         log.info("Loading form schema for key: {} version: {}", formKey, version);
 
+        // Deliberately no is_active filter: a bundle-pinned (ADR-026) or rolled-back version
+        // must still resolve for in-flight instances even after it was later deactivated.
         String sql = """
                 SELECT id, form_key, name, version, schema_json, description, form_type,
                        is_active, created_at, updated_at, created_by, updated_by,
@@ -96,6 +98,33 @@ public class FormSchemaService {
     }
 
     /**
+     * Resolves a form from a possibly version-pinned BPMN formKey (ADR-026 P2 / F1).
+     * Accepts either a bare {@code "formKey"} (→ latest active version) or a pinned
+     * {@code "formKey@version"} (→ that exact version). A trailing {@code @<non-numeric>}
+     * is treated as part of the key, not a pin, so it degrades to a latest lookup.
+     * Bundle deploy embeds the {@code @version} suffix so an in-flight instance resolves
+     * the same form definition it was deployed with.
+     *
+     * @param formKeyRef a BPMN-authored formKey, optionally pinned with {@code @version}
+     * @return the resolved FormSchema
+     * @throws FormNotFoundException if neither the pinned version nor the latest active form exists
+     */
+    public FormSchema loadFormSchemaByRef(String formKeyRef) {
+        if (formKeyRef != null) {
+            int at = formKeyRef.lastIndexOf('@');
+            if (at > 0 && at < formKeyRef.length() - 1) {
+                try {
+                    return loadFormSchema(formKeyRef.substring(0, at),
+                            Integer.valueOf(formKeyRef.substring(at + 1)));
+                } catch (NumberFormatException notAVersionPin) {
+                    // '@' is part of the key, not a version suffix — fall through to latest.
+                }
+            }
+        }
+        return loadFormSchema(formKeyRef);
+    }
+
+    /**
      * Save new form schema
      * @param formKey The form key identifier
      * @param schemaJson The form schema JSON
@@ -110,6 +139,12 @@ public class FormSchemaService {
                                       FormSchema.FormType formType, String createdBy,
                                       String owningDepartment, String createdByDepartment) {
         log.info("Saving form schema for key: {}", formKey);
+
+        if (formKey != null && formKey.indexOf('@') >= 0) {
+            // '@' is reserved for the ADR-026 "formKey@version" pin; a key containing it would
+            // be misparsed by loadFormSchemaByRef.
+            throw new IllegalArgumentException("formKey must not contain '@': " + formKey);
+        }
 
         formSchemaValidator.validateFormSchema(schemaJson);
 

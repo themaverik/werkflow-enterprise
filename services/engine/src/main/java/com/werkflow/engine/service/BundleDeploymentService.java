@@ -4,6 +4,7 @@ import com.werkflow.engine.dto.BundleDeploymentResponse;
 import com.werkflow.engine.dto.ProcessDefinitionResponse;
 import com.werkflow.engine.exception.ProcessNotFoundException;
 import com.werkflow.engine.workflow.BpmnBundleRefExtractor;
+import com.werkflow.engine.workflow.BpmnFormKeyPinner;
 import com.werkflow.engine.workflow.ProcessBundle;
 import com.werkflow.engine.workflow.ProcessBundleRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ import java.util.List;
 public class BundleDeploymentService {
 
     private final BpmnBundleRefExtractor refExtractor;
+    private final BpmnFormKeyPinner formKeyPinner;
     private final ProcessDefinitionService processDefinitionService;
     private final DmnDecisionService dmnDecisionService;
     private final ProcessBundleRepository bundleRepository;
@@ -58,9 +60,14 @@ public class BundleDeploymentService {
         int bundleVersion = bundleRepository.findMaxBundleVersion(tenantId, processKey) + 1;
         String parentDeploymentId = "%s:%s:bundle:%d".formatted(tenantId, processKey, bundleVersion);
 
+        // Pin each static formKey to its current active version so the bundle's forms are
+        // reproducible for in-flight instances (ADR-026 P2 / F1). The standalone /deploy path
+        // intentionally leaves keys bare (resolve-latest).
+        String pinnedBpmn = formKeyPinner.pinFormKeys(bpmnXml);
+
         String resourceName = name.toLowerCase().replaceAll("\\s+", "-") + ".bpmn20.xml";
         ProcessDefinitionResponse process =
-                processDefinitionService.deployProcessDefinition(bpmnXml, resourceName, parentDeploymentId, tenantId);
+                processDefinitionService.deployProcessDefinition(pinnedBpmn, resourceName, parentDeploymentId, tenantId);
 
         List<String> bundled = new ArrayList<>();
         List<String> unbundled = new ArrayList<>();

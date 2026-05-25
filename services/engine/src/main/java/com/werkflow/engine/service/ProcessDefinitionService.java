@@ -312,7 +312,7 @@ public class ProcessDefinitionService {
             throw new RuntimeException("Process definition " + processDefinitionId + " has no start form");
         }
 
-        var formSchema = formSchemaService.loadFormSchema(formKey);
+        var formSchema = formSchemaService.loadFormSchemaByRef(formKey);
 
         return TaskFormResponse.builder()
             .formKey(formSchema.getFormKey())
