@@ -102,6 +102,26 @@ class ConnectorDefinitionValidatorTest {
     }
 
     // -------------------------------------------------------------------------
+    // Inert secretKey on an auth profile (V27 strip migration rationale)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void validate_authProfileWithSecretKey_throws() {
+        // AuthProfile is additionalProperties:false, so the legacy secretKey field
+        // (left inert in V18-seeded rows) makes a stored definition schema-invalid —
+        // this is exactly what migration V27 strips out.
+        assertThatThrownBy(() -> validator.validate(connectorWithAuthProfile(true)))
+                .isInstanceOf(ConnectorDefinitionValidator.ConnectorValidationException.class)
+                .hasMessageContaining("secretKey");
+    }
+
+    @Test
+    void validate_authProfileWithoutSecretKey_passes() {
+        // The post-V27 shape (secretKey removed) validates cleanly.
+        validator.validate(connectorWithAuthProfile(false)); // must not throw
+    }
+
+    // -------------------------------------------------------------------------
     // Malformed JSON
     // -------------------------------------------------------------------------
 
@@ -115,6 +135,31 @@ class ConnectorDefinitionValidatorTest {
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    private static String connectorWithAuthProfile(boolean withSecretKey) {
+        String secretKey = withSecretKey ? ",\n                        \"secretKey\": \"x-connector-secret\"" : "";
+        return """
+            {
+              "apiVersion": "werkflow.io/connector/v1",
+              "kind": "ConnectorDefinition",
+              "metadata": { "key": "x-connector", "displayName": "X", "version": "1.0.0" },
+              "spec": {
+                "transport": { "type": "rest", "config": { "baseUrl": "https://example.com" } },
+                "auth": {
+                  "profiles": [
+                    {
+                      "id": "default",
+                      "type": "bearer"%s
+                    }
+                  ]
+                },
+                "operations": [
+                  { "id": "defaultOp", "displayName": "Default", "transportSpecific": { "method": "GET", "path": "/" } }
+                ]
+              }
+            }
+            """.formatted(secretKey);
+    }
 
     private static String minimalConnector(String key) {
         return """
