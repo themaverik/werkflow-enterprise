@@ -8,6 +8,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
@@ -54,13 +55,21 @@ public class EngineClient {
 
     /**
      * Returns Tier 1 YAML role→groups map from the engine config endpoint.
+     * <p>The engine exposes {@code /api/v1/config/flowable-role-mappings} as
+     * {@code permitAll()}, so this call is intentionally unauthenticated (an explicit
+     * empty entity, never a {@code null} request). If that endpoint is ever secured,
+     * the call would be rejected with 401/403 and PSS would silently degrade to Tier 2
+     * only — so an auth rejection is logged at ERROR (distinct from the engine-unreachable
+     * WARN) to surface the misconfiguration loudly. The remedy at that point is to thread
+     * the caller's bearer token here, as {@link #getDmnDefinitionXml} already does.
      * Returns an empty map on failure so PSS degrades to Tier 2 only.
      */
     @SuppressWarnings("unchecked")
     public Map<String, List<String>> getTier1RoleMappings() {
+        String url = engineBaseUrl + "/api/v1/config/flowable-role-mappings";
         try {
-            String url = engineBaseUrl + "/api/v1/config/flowable-role-mappings";
-            Map<String, Object> response = restTemplate.exchange(url, HttpMethod.GET, null, MAP_TYPE).getBody();
+            Map<String, Object> response =
+                    restTemplate.exchange(url, HttpMethod.GET, HttpEntity.EMPTY, MAP_TYPE).getBody();
             if (response == null) return Map.of();
             List<Map<String, Object>> mappings = (List<Map<String, Object>>) response.get("mappings");
             if (mappings == null) return Map.of();
@@ -71,6 +80,11 @@ public class EngineClient {
                 if (role != null && groups != null) result.put(role, groups);
             }
             return result;
+        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden e) {
+            log.error("EngineClient: engine rejected the unauthenticated role-mappings call ({}). "
+                    + "The endpoint appears to have been secured — PSS is degrading to Tier 2 only. "
+                    + "Thread the caller's bearer token here (see getDmnDefinitionXml).", e.getStatusCode());
+            return Collections.emptyMap();
         } catch (Exception e) {
             log.warn("EngineClient: could not fetch Tier 1 role mappings — {}", e.getMessage());
             return Collections.emptyMap();
