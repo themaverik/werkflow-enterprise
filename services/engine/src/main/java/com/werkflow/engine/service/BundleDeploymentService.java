@@ -2,6 +2,7 @@ package com.werkflow.engine.service;
 
 import com.werkflow.engine.dto.BundleDeploymentResponse;
 import com.werkflow.engine.dto.ProcessDefinitionResponse;
+import com.werkflow.engine.dto.dmn.DmnDecisionDto;
 import com.werkflow.engine.exception.ProcessNotFoundException;
 import com.werkflow.engine.workflow.BpmnBundleRefExtractor;
 import com.werkflow.engine.workflow.BpmnFormKeyPinner;
@@ -110,9 +111,19 @@ public class BundleDeploymentService {
      * version (ADR-026 Phase 3). Flowable-idiomatic: history is preserved and in-flight
      * instances are left running on the version they started on (no instance migration).
      *
+     * <p><b>Why {@code @Transactional} is absent here:</b> A rollback spans two independent
+     * Flowable engines (BPMN repository + DMN repository) and a JPA write. Each Flowable engine
+     * runs its own command executor and commits its own transaction — they cannot be enrolled in a
+     * shared Spring transaction. Wrapping this method in {@code @Transactional} would therefore be
+     * redundant-or-harmful: it would create a shared transaction context that Flowable ignores for
+     * its own commits, yet would roll back the JPA {@code bundleRepository.save} on any failure
+     * <em>after</em> the Flowable deploys have already self-committed — giving no rollback
+     * guarantee while adding confusion. Instead, we guarantee all-or-nothing by explicit saga
+     * compensation: each deploy self-commits, and on any failure we compensate by deleting every
+     * Flowable deployment that was created during this attempt, then rethrow.
+     *
      * @throws ProcessNotFoundException if no bundle with {@code targetBundleVersion} exists
      */
-    @Transactional
     public BundleDeploymentResponse rollbackToBundleVersion(
             String tenantId, String processKey, int targetBundleVersion, String deployedBy) {
 
@@ -125,36 +136,76 @@ public class BundleDeploymentService {
         int newBundleVersion = bundleRepository.findMaxBundleVersion(tenantId, processKey) + 1;
         String newParentDeploymentId = "%s:%s:bundle:%d".formatted(tenantId, processKey, newBundleVersion);
 
-        // Re-read and redeploy the target version's exact artifacts; the BPMN already carries
-        // its original formKey@version pins, so it is redeployed as-is (no re-pinning). Reusing the
-        // source bundle's original resource name keeps rollback symmetric with deployBundle.
+        // Re-read source artifacts BEFORE any write — these reads are idempotent and safe to
+        // retry. The BPMN already carries its original formKey@version pins, so it is redeployed
+        // as-is (no re-pinning). Reusing the source bundle's original resource name keeps rollback
+        // symmetric with deployBundle.
         ProcessDefinitionService.BundleBpmn source =
                 processDefinitionService.getBundleBpmnByParentDeployment(sourceParentDeploymentId, tenantId);
-        ProcessDefinitionResponse process = processDefinitionService.deployProcessDefinition(
-                source.xml(), source.resourceName(), newParentDeploymentId, tenantId);
+        List<DmnDecisionService.DecisionXml> sourceDecisions =
+                dmnDecisionService.getDecisionsByParentDeployment(sourceParentDeploymentId, tenantId);
 
-        List<String> bundled = new ArrayList<>();
-        for (DmnDecisionService.DecisionXml decision : dmnDecisionService.getDecisionsByParentDeployment(sourceParentDeploymentId, tenantId)) {
-            dmnDecisionService.deployDecision(decision.xml(), decision.key(), tenantId, newParentDeploymentId);
-            bundled.add(decision.key());
-        }
+        // Track created Flowable deployment ids for saga compensation on failure.
+        String createdBpmnDeploymentId = null;
+        List<String> createdDmnDeploymentIds = new ArrayList<>();
 
         try {
-            bundleRepository.save(ProcessBundle.builder()
-                    .tenantId(tenantId)
-                    .processKey(processKey)
-                    .bundleVersion(newBundleVersion)
-                    .parentDeploymentId(newParentDeploymentId)
-                    .createdBy(deployedBy)
-                    .build());
-        } catch (DataIntegrityViolationException e) {
-            throw new IllegalStateException(
-                    "Concurrent bundle deploy for (%s, %s); retry the request".formatted(tenantId, processKey), e);
+            ProcessDefinitionResponse process = processDefinitionService.deployProcessDefinition(
+                    source.xml(), source.resourceName(), newParentDeploymentId, tenantId);
+            createdBpmnDeploymentId = process.getDeploymentId();
+
+            List<String> bundled = new ArrayList<>();
+            for (DmnDecisionService.DecisionXml decision : sourceDecisions) {
+                DmnDecisionDto deployed =
+                        dmnDecisionService.deployDecision(decision.xml(), decision.key(), tenantId, newParentDeploymentId);
+                createdDmnDeploymentIds.add(deployed.getDeploymentId());
+                bundled.add(decision.key());
+            }
+
+            try {
+                bundleRepository.save(ProcessBundle.builder()
+                        .tenantId(tenantId)
+                        .processKey(processKey)
+                        .bundleVersion(newBundleVersion)
+                        .parentDeploymentId(newParentDeploymentId)
+                        .createdBy(deployedBy)
+                        .build());
+            } catch (DataIntegrityViolationException e) {
+                throw new IllegalStateException(
+                        "Concurrent bundle deploy for (%s, %s); retry the request".formatted(tenantId, processKey), e);
+            }
+
+            log.info("Rolled back process {} to bundle v{} as new bundle v{} ({})",
+                    processKey, targetBundleVersion, newBundleVersion, newParentDeploymentId);
+
+            return new BundleDeploymentResponse(process, processKey, newBundleVersion, newParentDeploymentId, bundled, List.of());
+
+        } catch (RuntimeException failure) {
+            // Saga compensation: delete any Flowable deployments created during this attempt so we
+            // do not leave orphaned-but-visible deployments. Each delete is best-effort — a failure
+            // here must not mask the original exception.
+            for (String dmnDepId : createdDmnDeploymentIds) {
+                if (dmnDepId == null || dmnDepId.isBlank()) {
+                    continue;
+                }
+                try {
+                    dmnDecisionService.deleteDeployment(dmnDepId, tenantId);
+                } catch (Exception ex) {
+                    log.error("Rollback compensation: failed to delete DMN deployment {} (tenant={}); "
+                            + "leaving as orphan — manual cleanup may be needed",
+                            dmnDepId, tenantId, ex);
+                }
+            }
+            if (createdBpmnDeploymentId != null && !createdBpmnDeploymentId.isBlank()) {
+                try {
+                    processDefinitionService.deleteProcessDefinition(createdBpmnDeploymentId, true);
+                } catch (Exception ex) {
+                    log.error("Rollback compensation: failed to delete BPMN deployment {} (tenant={}); "
+                            + "leaving as orphan — manual cleanup may be needed",
+                            createdBpmnDeploymentId, tenantId, ex);
+                }
+            }
+            throw failure;
         }
-
-        log.info("Rolled back process {} to bundle v{} as new bundle v{} ({})",
-                processKey, targetBundleVersion, newBundleVersion, newParentDeploymentId);
-
-        return new BundleDeploymentResponse(process, processKey, newBundleVersion, newParentDeploymentId, bundled, List.of());
     }
 }

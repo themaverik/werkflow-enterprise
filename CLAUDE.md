@@ -68,7 +68,7 @@ Write code → npm run build → ecc:typescript-review (changed files) → brows
 - DRY + SOLID — no duplicate business logic across services
 - Docstrings on all public methods; no over-commenting obvious code
 - All new logic has corresponding unit tests (success + edge-case failure)
-- No direct calls to `runtimeService.signalEventReceived()` — use `TenantAwareSignalService` only
+- Signals: model them in BPMN (`intermediateThrowEvent`) under tenant-scoped deployments — the engine isolates delivery to the throwing tenant (proven by `SignalTenantIsolationTest`). Do **not** dispatch signals from Java with bare `runtimeService.signalEventReceived()` (a no-op against tenant-scoped subscriptions); if Java dispatch is ever needed, use the `...WithTenantId` variant
 
 ---
 

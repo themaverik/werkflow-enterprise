@@ -2,6 +2,7 @@ package com.werkflow.engine.service;
 
 import com.werkflow.engine.dto.BundleDeploymentResponse;
 import com.werkflow.engine.dto.ProcessDefinitionResponse;
+import com.werkflow.engine.dto.dmn.DmnDecisionDto;
 import com.werkflow.engine.exception.ProcessNotFoundException;
 import com.werkflow.engine.workflow.BpmnBundleRefExtractor;
 import com.werkflow.engine.workflow.BpmnFormKeyPinner;
@@ -26,6 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -126,10 +128,13 @@ class BundleDeploymentServiceTest {
         String originalResourceName = "capital-expenditure-approval.bpmn20.xml";
         when(processDefinitionService.getBundleBpmnByParentDeployment(sourceParent, TENANT))
                 .thenReturn(new ProcessDefinitionService.BundleBpmn(originalResourceName, BPMN));
+        // Stub with a real deploymentId so the saga compensation tracker is non-null.
         when(processDefinitionService.deployProcessDefinition(eq(BPMN), any(), any(), eq(TENANT)))
-                .thenReturn(new ProcessDefinitionResponse());
+                .thenReturn(ProcessDefinitionResponse.builder().deploymentId("bpmn-dep-1").build());
         when(dmnDecisionService.getDecisionsByParentDeployment(sourceParent, TENANT))
                 .thenReturn(List.of(new DmnDecisionService.DecisionXml("doa_routing", "<dmn/>")));
+        when(dmnDecisionService.deployDecision(eq("<dmn/>"), eq("doa_routing"), eq(TENANT), any()))
+                .thenReturn(DmnDecisionDto.builder().deploymentId("dmn-dep-1").key("doa_routing").build());
 
         BundleDeploymentResponse result = service.rollbackToBundleVersion(TENANT, "capex-approval", 1, "carol");
 
@@ -159,5 +164,43 @@ class BundleDeploymentServiceTest {
 
         assertThatThrownBy(() -> service.rollbackToBundleVersion(TENANT, "capex-approval", 99, "carol"))
                 .isInstanceOf(ProcessNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("rollback DMN deploy failure triggers saga compensation: BPMN deleted, no bundle saved, exception rethrown")
+    void rollback_dmn_failure_compensates_bpmn_and_does_not_save() {
+        String sourceParent = "acme:capex-approval:bundle:2";
+        when(bundleRepository.findByTenantIdAndProcessKeyAndBundleVersion(TENANT, "capex-approval", 2))
+                .thenReturn(Optional.of(ProcessBundle.builder()
+                        .tenantId(TENANT).processKey("capex-approval").bundleVersion(2)
+                        .parentDeploymentId(sourceParent).build()));
+        when(bundleRepository.findMaxBundleVersion(TENANT, "capex-approval")).thenReturn(2);
+        when(processDefinitionService.getBundleBpmnByParentDeployment(sourceParent, TENANT))
+                .thenReturn(new ProcessDefinitionService.BundleBpmn("capex.bpmn20.xml", BPMN));
+        // BPMN deploy succeeds and returns a known deploymentId for compensation verification.
+        when(processDefinitionService.deployProcessDefinition(eq(BPMN), any(), any(), eq(TENANT)))
+                .thenReturn(ProcessDefinitionResponse.builder().deploymentId("bpmn-dep-comp").build());
+        // Two decisions; first succeeds, second throws — forcing compensation mid-loop.
+        when(dmnDecisionService.getDecisionsByParentDeployment(sourceParent, TENANT))
+                .thenReturn(List.of(
+                        new DmnDecisionService.DecisionXml("doa_routing", "<dmn1/>"),
+                        new DmnDecisionService.DecisionXml("approval_matrix", "<dmn2/>")));
+        when(dmnDecisionService.deployDecision(eq("<dmn1/>"), eq("doa_routing"), eq(TENANT), any()))
+                .thenReturn(DmnDecisionDto.builder().deploymentId("dmn-dep-comp-1").key("doa_routing").build());
+        when(dmnDecisionService.deployDecision(eq("<dmn2/>"), eq("approval_matrix"), eq(TENANT), any()))
+                .thenThrow(new RuntimeException("simulated DMN deploy failure"));
+
+        assertThatThrownBy(() -> service.rollbackToBundleVersion(TENANT, "capex-approval", 2, "carol"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("simulated DMN deploy failure");
+
+        // bundleRepository.save must never be called — the failure happened before it.
+        verify(bundleRepository, never()).save(any(ProcessBundle.class));
+
+        // Compensation: the successfully deployed DMN must be deleted.
+        verify(dmnDecisionService).deleteDeployment("dmn-dep-comp-1", TENANT);
+
+        // Compensation: the BPMN deployment must be deleted (cascade=true).
+        verify(processDefinitionService).deleteProcessDefinition("bpmn-dep-comp", true);
     }
 }
