@@ -160,9 +160,35 @@ export default function TaskDetailPage() {
     }
   }
 
-  // Escalate action removed: no approval BPMN gateway routes decision='escalate' (no default
-  // flow) → it jams the instance. Time-based SLA escalation (timer boundary events) is a
-  // separate mechanism and is unaffected. Re-add when gateway escalate routing exists.
+  const handleEscalate = async (comment: string) => {
+    try {
+      await completeTaskMutation.mutateAsync({
+        taskId,
+        data: {
+          variables: {
+            decision: 'escalate',
+            escalationComment: comment,
+            escalatedBy: user?.username,
+            escalationTimestamp: new Date().toISOString(),
+          },
+        },
+      })
+
+      toast({
+        title: 'Escalated',
+        description: 'The request has been escalated to a higher authority.',
+      })
+
+      router.push('/tasks')
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'An error occurred while escalating the request.'
+      toast({
+        title: 'Escalation Failed',
+        description: message,
+        variant: 'destructive',
+      })
+    }
+  }
 
   const handleDelegateTask = async (assignee: string, reason: string) => {
     try {
@@ -326,6 +352,7 @@ export default function TaskDetailPage() {
               user={user}
               onApprove={handleApprove}
               onReject={handleReject}
+              onEscalate={handleEscalate}
               isSubmitting={completeTaskMutation.isPending}
             />
           ) : (
