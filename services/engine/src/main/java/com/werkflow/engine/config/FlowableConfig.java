@@ -1,8 +1,6 @@
 package com.werkflow.engine.config;
 
-import com.werkflow.engine.config.flowable.WerkflowScriptTaskQuarantineValidator;
-import com.werkflow.engine.config.flowable.WerkflowSendTaskParseHandler;
-import com.werkflow.engine.config.flowable.WerkflowSendTaskValidator;
+import com.werkflow.engine.config.flowable.WerkflowProcessEngineCustomizer;
 import com.werkflow.engine.listener.GlobalTaskNotificationListener;
 import com.werkflow.engine.security.el.ExpressionAuditLogger;
 import com.werkflow.engine.security.el.ExpressionLimitsConfig;
@@ -12,9 +10,6 @@ import org.flowable.common.engine.api.delegate.event.FlowableEventListener;
 import org.flowable.common.engine.impl.cfg.SpringBeanFactoryProxyMap;
 import org.flowable.spring.SpringProcessEngineConfiguration;
 import org.flowable.spring.boot.EngineConfigurationConfigurer;
-import org.flowable.validation.ProcessValidatorFactory;
-import org.flowable.validation.ProcessValidatorImpl;
-import org.flowable.validation.validator.impl.SendTaskValidator;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -81,23 +76,11 @@ public class FlowableConfig {
                 new RestrictedExpressionManager(expressionLimitsConfig, expressionAuditLogger, beans)
             );
 
-            // Register custom SendTask parse handler so flowable:delegateExpression / class /
-            // expression bindings on <bpmn:sendTask> are wired correctly.
+            // Register Werkflow parse handlers + validator family (SendTask / ScriptTask /
+            // BusinessRuleTask / ManualTask) via the shared customizer, so the production engine
+            // and the in-memory test engine (WerkflowTestProcessEngine) stay in sync.
             // ADR-015 / Send-Task.md §6 D-ST-1.
-            engineConfiguration.setCustomDefaultBpmnParseHandlers(
-                List.of(new WerkflowSendTaskParseHandler())
-            );
-
-            // Replace the default SendTaskValidator with our extended version that also
-            // accepts class / delegateExpression / expression as valid implementation types.
-            ProcessValidatorImpl processValidator = (ProcessValidatorImpl)
-                new ProcessValidatorFactory().createDefaultProcessValidator();
-            processValidator.getValidatorSets().forEach(set -> {
-                set.removeValidator(SendTaskValidator.class);
-                set.addValidator(new WerkflowSendTaskValidator());
-                set.addValidator(new WerkflowScriptTaskQuarantineValidator());
-            });
-            engineConfiguration.setProcessValidator(processValidator);
+            WerkflowProcessEngineCustomizer.applyValidatorsAndParseHandlers(engineConfiguration);
         };
     }
 }

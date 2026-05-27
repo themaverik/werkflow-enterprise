@@ -38,11 +38,11 @@ import {
 
 import FlowablePropertiesProviderModule from '@/lib/bpmn/flowable-properties-module'
 import flowableModdleDescriptor from '@/lib/bpmn/flowable-moddle.json'
-import { setFormSchemaOptions, setNotificationTemplateOptions, setGroupOptions, setProcessDefinitionOptions, setDmnDecisionOptions, setDelegateOptions, setCurrentUserRoles, setConnectorOptions, setProcessVariableOptions, setCustodyVarGroups } from '@/lib/bpmn/flowable-properties-provider'
+import { setFormSchemaOptions, setNotificationTemplateOptions, setGroupOptions, setProcessDefinitionOptions, setDmnDecisionOptions, setDelegateOptions, setCurrentUserRoles, setProcessVariableOptions, setCustodyVarGroups } from '@/lib/bpmn/flowable-properties-provider'
 import { seedComboboxCache } from '@/lib/bpmn/useVariableSources'
 import { getFormDefinitions, getFormDefinition, getNotificationTemplates, getGroups, getProcessDefinitions, getDelegates } from '@/lib/api/flowable'
 import { listDecisions, getDecisionXml } from '@/lib/api/dmn'
-import { listDtdsConnectors, listProcessVariablesAt } from '@/lib/api/dtds'
+import { listProcessVariablesAt } from '@/lib/api/dtds'
 
 // Variables set by Flowable engine infrastructure — present in every process instance
 const STANDARD_EXPRESSION_VARIABLES = [
@@ -585,19 +585,6 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
         })
     }
 
-    const fetchConnectors = () => {
-      listDtdsConnectors()
-        .then((connectors) => {
-          if (!cancelled) {
-            setConnectorOptions(connectors.map((c) => ({ key: c.key, name: c.displayName || c.key })))
-            refreshPropertiesPanel()
-          }
-        })
-        .catch((err: any) => {
-          if (!cancelled) console.error('Failed to load connectors for Message Event panel:', err)
-        })
-    }
-
     const fetchCustodyVarGroups = () => {
       if (!token) return
       platformApi.feelExpressions(token)
@@ -637,7 +624,6 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
     fetchDoaLevels_()
     fetchCustodyMappings_()
     fetchDelegates()
-    fetchConnectors()
     fetchCustodyVarGroups()
     return () => { cancelled = true }
   }, [])
