@@ -131,16 +131,6 @@ export function getDmnDecisionOptions(): Array<{ key: string; name: string }> {
 }
 
 /**
- * Module-level variable for webhook connector options (for Message Event connector picker).
- * Set from BpmnDesigner.tsx after fetching from DTDS connector list.
- */
-let connectorOptions: Array<{ key: string; name: string }> = []
-
-export function setConnectorOptions(options: Array<{ key: string; name: string }>) {
-  connectorOptions = options
-}
-
-/**
  * Flowable properties provider for user tasks, start events, and service tasks.
  * Uses built-in SelectEntry / TextFieldEntry Preact components from @bpmn-io/properties-panel
  * so entries render correctly in the properties panel.
@@ -237,112 +227,6 @@ class FlowablePropertiesProvider {
           id: 'flowable-forms',
           label: 'Forms',
           entries: formEntries,
-        })
-      }
-
-      // --- Signal Events (Flowable-specific: signal name picker + correlation key) ---
-      if (hasSignalDefinition(element)) {
-        // Collect signal names defined in the diagram for the enum picker
-        const definitions = element.businessObject.$parent?.$parent ?? element.businessObject.$parent
-        const signalOptions: Array<{ value: string; label: string }> = [
-          { value: '', label: translate('(select signal)') },
-        ]
-        try {
-          const rootElements = definitions?.rootElements ?? []
-          for (const el of rootElements) {
-            if (el.$type === 'bpmn:Signal' && el.name) {
-              signalOptions.push({ value: el.name, label: el.name })
-            }
-          }
-        } catch {
-          // diagram walk failed — options remain empty (free entry still works via correlationKey)
-        }
-
-        groups.splice(generalIdx + 1, 0, {
-          id: 'flowable-signal',
-          label: 'Signal (Flowable)',
-          entries: [
-            {
-              id: 'signalName',
-              element,
-              component: SelectEntry,
-              isEdited: isSelectEntryEdited,
-              label: translate('Signal Name'),
-              description: translate('Select a signal defined in this diagram.'),
-              getValue: () => element.businessObject.get('flowable:signalName') || '',
-              setValue: (value: string) =>
-                modeling.updateProperties(element, {
-                  'flowable:signalName': value || undefined,
-                }),
-              getOptions: () => signalOptions,
-            },
-            {
-              id: 'signalCorrelationKey',
-              element,
-              component: TextFieldEntry,
-              isEdited: isTextFieldEntryEdited,
-              debounce,
-              label: translate('Correlation Key'),
-              description: translate(
-                'Optional — target a specific process instance. Leave blank for broadcast (global scope).'
-              ),
-              getValue: () =>
-                element.businessObject.get('flowable:correlationKey') || '',
-              setValue: (value: string) =>
-                modeling.updateProperties(element, {
-                  'flowable:correlationKey': value || undefined,
-                }),
-            },
-          ],
-        })
-      }
-
-      // --- Message Events (Webhook correlation config) ---
-      if (hasMessageDefinition(element)) {
-        groups.splice(generalIdx + 1, 0, {
-          id: 'flowable-message',
-          label: 'Message (Webhook)',
-          entries: [
-            {
-              id: 'webhookConnector',
-              element,
-              component: SelectEntry,
-              isEdited: isSelectEntryEdited,
-              label: translate('Connector'),
-              description: translate('Webhook connector that publishes this message'),
-              getValue: () => element.businessObject.get('flowable:webhookConnector') || '',
-              setValue: (value: string) =>
-                modeling.updateProperties(element, {
-                  'flowable:webhookConnector': value || undefined,
-                }),
-              getOptions: () => {
-                const options: Array<{ value: string; label: string }> = [
-                  { value: '', label: translate('(none)') },
-                ]
-                for (const c of connectorOptions) {
-                  options.push({ value: c.key, label: c.name || c.key })
-                }
-                return options
-              },
-            },
-            {
-              id: 'correlationExpression',
-              element,
-              component: TextFieldEntry,
-              isEdited: isTextFieldEntryEdited,
-              debounce,
-              label: translate('Correlation Expression'),
-              description: translate(
-                'FEEL expression evaluated against payload — value used to match the running process instance'
-              ),
-              getValue: () =>
-                element.businessObject.get('flowable:correlationExpression') || '',
-              setValue: (value: string) =>
-                modeling.updateProperties(element, {
-                  'flowable:correlationExpression': value || undefined,
-                }),
-            },
-          ],
         })
       }
 
@@ -503,20 +387,6 @@ function isFormCapableElement(element: any): boolean {
     is(element, 'bpmn:IntermediateThrowEvent') ||
     is(element, 'bpmn:BoundaryEvent')
   )
-}
-
-/**
- * Returns true when the element has a signal event definition.
- * Covers throw (IntermediateThrowEvent, EndEvent) and catch (IntermediateCatchEvent, BoundaryEvent).
- */
-function hasSignalDefinition(element: any): boolean {
-  const defs: any[] = element.businessObject.eventDefinitions || []
-  return defs.some((d: any) => d.$type === 'bpmn:SignalEventDefinition')
-}
-
-function hasMessageDefinition(element: any): boolean {
-  const defs: any[] = element.businessObject.eventDefinitions || []
-  return defs.some((d: any) => d.$type === 'bpmn:MessageEventDefinition')
 }
 
 /**

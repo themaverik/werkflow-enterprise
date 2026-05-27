@@ -19,6 +19,15 @@ import java.util.List;
  * <p>Spring-only concerns stay in {@code FlowableConfig} and are intentionally NOT applied here:
  * the {@code RestrictedExpressionManager} (needs the Spring beans map) and the global
  * task-notification listener (an email side-effect bean).
+ *
+ * <p>Validator registration order within each validator set:
+ * <ol>
+ *   <li>{@link WerkflowSendTaskValidator} — relaxed SendTask rules (replaces Flowable default).</li>
+ *   <li>{@link WerkflowScriptTaskQuarantineValidator} — rejects all script tasks (ADR-016).</li>
+ *   <li>{@link WerkflowBusinessRuleTaskValidator} — rejects businessRuleTask dead-config (ADR-026).</li>
+ *   <li>{@link WerkflowManualTaskValidator} — rejects confirmationRequired on manualTask (ADR-017).</li>
+ *   <li>{@link WerkflowLinkEventValidator} — rejects link events unsupported in Flowable 7.2.</li>
+ * </ol>
  */
 public final class WerkflowProcessEngineCustomizer {
 
@@ -40,6 +49,7 @@ public final class WerkflowProcessEngineCustomizer {
             set.addValidator(new WerkflowScriptTaskQuarantineValidator());
             set.addValidator(new WerkflowBusinessRuleTaskValidator());
             set.addValidator(new WerkflowManualTaskValidator());
+            set.addValidator(new WerkflowLinkEventValidator());
         });
         configuration.setProcessValidator(processValidator);
     }
