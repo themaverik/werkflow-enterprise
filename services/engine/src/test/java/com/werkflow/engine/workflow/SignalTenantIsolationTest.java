@@ -5,7 +5,6 @@ import org.flowable.engine.ProcessEngineConfiguration;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
-import com.werkflow.engine.service.TenantAwareSignalService;
 import org.flowable.engine.impl.cfg.StandaloneInMemProcessEngineConfiguration;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
@@ -25,9 +24,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Probes, against a live in-memory Flowable 7.2 engine, whether a BPMN-modeled signal throw
  * crosses tenant boundaries — the F-EV-1 question raised by the M4.13 event-type audit discovery.
  *
- * <p>Context: the platform's {@code TenantAwareSignalService} wraps the Java
- * {@code RuntimeService.signalEventReceivedWithTenantId(...)} API, but the audit found it has zero
- * production callers — signals are only ever thrown via BPMN {@code <intermediateThrowEvent>} +
+ * <p>Context: the platform once had a {@code TenantAwareSignalService} wrapping the Java
+ * {@code RuntimeService.signalEventReceivedWithTenantId(...)} API, but the audit found it had zero
+ * production callers (and it was subsequently removed) — signals are only ever thrown via BPMN
+ * {@code <intermediateThrowEvent>} +
  * {@code <signalEventDefinition>}, which Flowable routes through its internal
  * {@code ThrowSignalEventActivityBehavior}, NOT that Java API. Both shipped example processes
  * declare their signal with {@code flowable:scope="global"} (engine-wide broadcast). The open
@@ -161,7 +161,7 @@ class SignalTenantIsolationTest {
     void javaApi_tenantScopedVsBare() {
         deployForBothTenants();
 
-        // --- tenant-scoped API (what TenantAwareSignalService wraps) — isolates correctly ---
+        // --- tenant-scoped API (what TenantAwareSignalService wrapped) — isolates correctly ---
         ProcessInstance scopedA = runtimeService.startProcessInstanceByKeyAndTenantId("catcher", TENANT_A);
         ProcessInstance scopedB = runtimeService.startProcessInstanceByKeyAndTenantId("catcher", TENANT_B);
         runtimeService.signalEventReceivedWithTenantId("testSignal", TENANT_A);
@@ -185,25 +185,22 @@ class SignalTenantIsolationTest {
     }
 
     /**
-     * Drives the real {@link TenantAwareSignalService} (Path 1 — the Java dispatch API) against
-     * deployed BPMN catchers, to confirm before any delete-vs-keep decision that the abstraction
-     * does what it claims: a signal is still a BROADCAST (it reaches every matching catch
-     * subscription), but confined to the target tenant — many instances in tenant A all wake, while
-     * tenant B is untouched. ("Broadcast to that tenant's instances only.")
+     * Confirms the tenant-scoped Java dispatch API ({@code signalEventReceivedWithTenantId}) is a
+     * BROADCAST confined to the target tenant: many instances in tenant A all wake, while tenant B
+     * is untouched. ("Broadcast to that tenant's instances only.") This is the behaviour the
+     * (now-removed) {@code TenantAwareSignalService} wrapped — kept here as the engine-contract
+     * characterization since the platform models signals in BPMN rather than dispatching from Java.
      */
     @Test
-    @DisplayName("TenantAwareSignalService.sendSignal broadcasts within one tenant only (real BPMN catchers)")
-    void tenantAwareSignalService_broadcastsWithinTenantOnly() {
+    @DisplayName("signalEventReceivedWithTenantId broadcasts within one tenant only (real BPMN catchers)")
+    void tenantScopedJavaApi_broadcastsWithinTenantOnly() {
         deployForBothTenants();
 
         ProcessInstance a1 = runtimeService.startProcessInstanceByKeyAndTenantId("catcher", TENANT_A);
         ProcessInstance a2 = runtimeService.startProcessInstanceByKeyAndTenantId("catcher", TENANT_A);
         ProcessInstance b1 = runtimeService.startProcessInstanceByKeyAndTenantId("catcher", TENANT_B);
 
-        // The actual production service bean (constructed directly — no Spring proxy needed; the
-        // signal command runs in the standalone engine's own command context).
-        TenantAwareSignalService service = new TenantAwareSignalService(runtimeService);
-        service.sendSignal("testSignal", TENANT_A);
+        runtimeService.signalEventReceivedWithTenantId("testSignal", TENANT_A);
 
         assertThat(caught(a1)).as("first tenant-A catcher wakes (signal is a broadcast within the tenant)").isTrue();
         assertThat(caught(a2)).as("second tenant-A catcher also wakes — broadcast reaches ALL matching subs").isTrue();
