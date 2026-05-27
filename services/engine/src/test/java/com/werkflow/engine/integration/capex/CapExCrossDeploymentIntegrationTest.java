@@ -6,6 +6,7 @@ import org.flowable.task.api.Task;
 import org.flowable.variable.api.history.HistoricVariableInstance;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -22,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Scenario 3: $75,000 Network Infrastructure with Rejection & Resubmission - Level 3 Finance Manager
  * Scenario 4: $250,000 Building Renovation - Level 4 Executive/CFO
  */
+@Tag("requires-openbao")
 @DisplayName("CapEx Cross-Department Integration Tests - Main Orchestrator")
 class CapExCrossDeploymentIntegrationTest extends IntegrationTestBase {
 

@@ -13,20 +13,27 @@
   <signal id="procurementApprovedSignal" name="procurementApproved" flowable:scope="global"/>
 
   <process id="procurement-approval-process" name="Procurement Approval Process" isExecutable="true"
-           flowable:versionTag="1">
-
-    <extensionElements>
-      <flowable:properties>
-        <flowable:property name="category" value="examples"/>
-      </flowable:properties>
-    </extensionElements>
+           flowable:versionTag="2">
 
     <documentation>Purchase request approval workflow with vendor selection and DMN-backed approval routing.
 After calculating total cost, a DMN service task (serviceTask flowable:type="dmn") evaluates the
 procurement_matrix decision table to determine the required approval path (DIRECT_PURCHASE,
 MANAGER_APPROVAL, COMMITTEE_REVIEW, BOARD_APPROVAL).
 An exclusive gateway then routes the request to the appropriate human task. Edit procurement-matrix.dmn
-to adjust spend thresholds and category rules — no code changes required.</documentation>
+to adjust spend thresholds and category rules — no code changes required.
+
+V2 fixes (2026-05-27):
+- procurementRouteGateway gains a default flow so an unknown DMN output fails cleanly (P0).
+- DOA tiers corrected: managerApproval=DOA_L2, committeeApproval=DOA_L3, boardApproval=DOA_L4 (DOA inversion fix).
+- throwProcurementApproved signal is also thrown on the DIRECT_PURCHASE path so asset-request-process
+  never hangs waiting for a signal that was never thrown.
+- Missing BPMNShape entries added for throwProcurementApproved and boundary events (DI fix).</documentation>
+
+    <extensionElements>
+      <flowable:properties>
+        <flowable:property name="category" value="examples"/>
+      </flowable:properties>
+    </extensionElements>
 
     <!-- Start Event -->
     <startEvent id="startEvent" name="Purchase Request Submitted" flowable:formKey="procurement-request-form">
@@ -117,11 +124,15 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
       </extensionElements>
     </serviceTask>
 
-    <!-- Step 8: Route based on DMN output -->
-    <exclusiveGateway id="procurementRouteGateway" name="Route by Procurement Path"/>
+    <!-- Step 8: Route based on DMN output.
+         default flow routes an unrecognised procurementPath to the rejected path so
+         a DMN mis-fire fails cleanly instead of leaving the instance hanging. -->
+    <exclusiveGateway id="procurementRouteGateway" name="Route by Procurement Path"
+                      default="flow_to_rejected_default"/>
 
-    <!-- Branch A: Direct purchase — no human approval needed -->
-    <sequenceFlow id="flow_to_direct" sourceRef="procurementRouteGateway" targetRef="createPurchaseOrder">
+    <!-- Branch A: Direct purchase — throw signal first so asset-request never hangs,
+         then create the PO. -->
+    <sequenceFlow id="flow_to_direct" sourceRef="procurementRouteGateway" targetRef="throwProcurementApproved_direct">
       <conditionExpression xsi:type="tFormalExpression">${procurementPath == 'DIRECT_PURCHASE'}</conditionExpression>
     </sequenceFlow>
 
@@ -140,7 +151,20 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
       <conditionExpression xsi:type="tFormalExpression">${procurementPath == 'BOARD_APPROVAL'}</conditionExpression>
     </sequenceFlow>
 
-    <!-- Approval tasks — candidateGroups reference Keycloak groups via FlowableGroupResolver -->
+    <!-- Branch DEFAULT: unknown DMN output → reject cleanly (P0 fix) -->
+    <sequenceFlow id="flow_to_rejected_default" sourceRef="procurementRouteGateway" targetRef="updateRejected"/>
+
+    <!-- Signal throw on DIRECT_PURCHASE path — ensures asset-request-process is unblocked
+         whenever a PO is created, not just on the human-approval approved path. -->
+    <intermediateThrowEvent id="throwProcurementApproved_direct" name="Signal: Procurement Approved (Direct)">
+      <signalEventDefinition signalRef="procurementApprovedSignal"/>
+    </intermediateThrowEvent>
+    <sequenceFlow id="flow_direct_signal_to_po" sourceRef="throwProcurementApproved_direct" targetRef="createPurchaseOrder"/>
+
+    <!-- Approval tasks — DOA tiers corrected (V2 fix):
+         managerApproval = DOA_L2 (lowest approver tier, correct)
+         committeeApproval = DOA_L3 (higher than manager, fixed from DOA_L1)
+         boardApproval = DOA_L4 (highest tier, fixed from DOA_L1) -->
     <userTask id="managerApproval" name="Manager Approval"
               flowable:candidateGroups="DOA_L2,SUPER_ADMIN"
               flowable:formKey="procurement-approval">
@@ -156,7 +180,7 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
     </boundaryEvent>
 
     <userTask id="committeeApproval" name="Committee Approval"
-              flowable:candidateGroups="DOA_L1,SUPER_ADMIN"
+              flowable:candidateGroups="DOA_L3,SUPER_ADMIN"
               flowable:formKey="procurement-approval">
       <documentation>Procurement committee reviews high-value requests. Sets decision = approve or reject.</documentation>
     </userTask>
@@ -168,7 +192,7 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
     </boundaryEvent>
 
     <userTask id="boardApproval" name="Board Approval"
-              flowable:candidateGroups="DOA_L1,SUPER_ADMIN"
+              flowable:candidateGroups="DOA_L4,SUPER_ADMIN"
               flowable:formKey="procurement-approval">
       <documentation>Board reviews large IT/infrastructure spend. Sets decision = approve or reject.</documentation>
     </userTask>
@@ -182,27 +206,28 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
     <!-- All human approval paths converge here -->
     <exclusiveGateway id="approvalJoin" name="Approval Complete"/>
 
-    <sequenceFlow id="flow_manager_join" sourceRef="managerApproval" targetRef="approvalJoin"/>
+    <sequenceFlow id="flow_manager_join"   sourceRef="managerApproval"   targetRef="approvalJoin"/>
     <sequenceFlow id="flow_committee_join" sourceRef="committeeApproval" targetRef="approvalJoin"/>
-    <sequenceFlow id="flow_board_join" sourceRef="boardApproval" targetRef="approvalJoin"/>
+    <sequenceFlow id="flow_board_join"     sourceRef="boardApproval"     targetRef="approvalJoin"/>
 
     <!-- Final decision gateway after human approval -->
     <exclusiveGateway id="approvalDecisionGateway" name="Approved?"/>
 
     <sequenceFlow id="flow_join_decision" sourceRef="approvalJoin" targetRef="approvalDecisionGateway"/>
 
+    <!-- Human-approval approved path: throw signal then create PO -->
     <sequenceFlow id="approved" sourceRef="approvalDecisionGateway" targetRef="throwProcurementApproved">
       <conditionExpression xsi:type="tFormalExpression">${decision == 'approve'}</conditionExpression>
     </sequenceFlow>
-    <sequenceFlow id="flow_signal_to_po" sourceRef="throwProcurementApproved" targetRef="createPurchaseOrder"/>
     <sequenceFlow id="rejected" sourceRef="approvalDecisionGateway" targetRef="updateRejected">
       <conditionExpression xsi:type="tFormalExpression">${decision == 'reject'}</conditionExpression>
     </sequenceFlow>
 
-    <!-- M5: Signal throw after final approval — ADR-008 -->
+    <!-- M5: Signal throw after human-approval approved path — ADR-008 -->
     <intermediateThrowEvent id="throwProcurementApproved" name="Signal: Procurement Approved">
       <signalEventDefinition signalRef="procurementApprovedSignal"/>
     </intermediateThrowEvent>
+    <sequenceFlow id="flow_signal_to_po" sourceRef="throwProcurementApproved" targetRef="createPurchaseOrder"/>
 
     <!-- Timer reminder tasks (non-interrupting PT48H) -->
     <serviceTask id="sendReminderNotification" name="Send Approval Reminder"
@@ -227,7 +252,7 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
     </serviceTask>
     <endEvent id="endEscalated" name="Escalated"/>
 
-    <!-- Approval path: create and send purchase order -->
+    <!-- Approval path: create and send purchase order (shared by both direct and human-approval paths) -->
     <serviceTask id="createPurchaseOrder" name="Create Purchase Order"
                  flowable:delegateExpression="${externalApiCallDelegate}">
       <documentation>Creates purchase order in Procurement Service</documentation>
@@ -312,26 +337,26 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
     <sequenceFlow id="flow8" sourceRef="evaluateProcurement" targetRef="procurementRouteGateway"/>
 
     <!-- Sequence Flows: approved path -->
-    <sequenceFlow id="flow9" sourceRef="createPurchaseOrder" targetRef="sendPOToVendor"/>
-    <sequenceFlow id="flow10" sourceRef="sendPOToVendor" targetRef="updateApproved"/>
-    <sequenceFlow id="flow11" sourceRef="updateApproved" targetRef="sendApprovalNotification"/>
+    <sequenceFlow id="flow9"  sourceRef="createPurchaseOrder"      targetRef="sendPOToVendor"/>
+    <sequenceFlow id="flow10" sourceRef="sendPOToVendor"           targetRef="updateApproved"/>
+    <sequenceFlow id="flow11" sourceRef="updateApproved"           targetRef="sendApprovalNotification"/>
     <sequenceFlow id="flow12" sourceRef="sendApprovalNotification" targetRef="endEventApproved"/>
 
     <!-- Sequence Flows: rejection path -->
-    <sequenceFlow id="flow13" sourceRef="updateRejected" targetRef="sendRejectionNotification"/>
+    <sequenceFlow id="flow13" sourceRef="updateRejected"           targetRef="sendRejectionNotification"/>
     <sequenceFlow id="flow14" sourceRef="sendRejectionNotification" targetRef="endEventRejected"/>
 
     <!-- Timer reminder flows (non-interrupting PT48H — same notification task, shared) -->
-    <sequenceFlow id="flow_reminder_manager" sourceRef="timerReminder_manager" targetRef="sendReminderNotification"/>
+    <sequenceFlow id="flow_reminder_manager"   sourceRef="timerReminder_manager"   targetRef="sendReminderNotification"/>
     <sequenceFlow id="flow_reminder_committee" sourceRef="timerReminder_committee" targetRef="sendReminderNotification"/>
-    <sequenceFlow id="flow_reminder_board" sourceRef="timerReminder_board" targetRef="sendReminderNotification"/>
-    <sequenceFlow id="flow_reminder_end" sourceRef="sendReminderNotification" targetRef="endReminder"/>
+    <sequenceFlow id="flow_reminder_board"     sourceRef="timerReminder_board"     targetRef="sendReminderNotification"/>
+    <sequenceFlow id="flow_reminder_end"       sourceRef="sendReminderNotification" targetRef="endReminder"/>
 
     <!-- Timer escalation flows (interrupting PT72H) -->
-    <sequenceFlow id="flow_escalate_manager" sourceRef="timerEscalate_manager" targetRef="sendEscalationNotification"/>
+    <sequenceFlow id="flow_escalate_manager"   sourceRef="timerEscalate_manager"   targetRef="sendEscalationNotification"/>
     <sequenceFlow id="flow_escalate_committee" sourceRef="timerEscalate_committee" targetRef="sendEscalationNotification"/>
-    <sequenceFlow id="flow_escalate_board" sourceRef="timerEscalate_board" targetRef="sendEscalationNotification"/>
-    <sequenceFlow id="flow_escalate_end" sourceRef="sendEscalationNotification" targetRef="endEscalated"/>
+    <sequenceFlow id="flow_escalate_board"     sourceRef="timerEscalate_board"     targetRef="sendEscalationNotification"/>
+    <sequenceFlow id="flow_escalate_end"       sourceRef="sendEscalationNotification" targetRef="endEscalated"/>
 
     <!-- Error boundary flows — service task failures notify and terminate -->
     <serviceTask id="notifyServiceError" name="Notify Service Error"
@@ -346,9 +371,9 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
     <endEvent id="endServiceError" name="Process Error"/>
 
     <sequenceFlow id="flow_error_createRequest" sourceRef="errorBoundary_createRequest" targetRef="notifyServiceError"/>
-    <sequenceFlow id="flow_error_createPO" sourceRef="errorBoundary_createPO" targetRef="notifyServiceError"/>
-    <sequenceFlow id="flow_error_sendPO" sourceRef="errorBoundary_sendPO" targetRef="notifyServiceError"/>
-    <sequenceFlow id="flow_error_end" sourceRef="notifyServiceError" targetRef="endServiceError"/>
+    <sequenceFlow id="flow_error_createPO"      sourceRef="errorBoundary_createPO"      targetRef="notifyServiceError"/>
+    <sequenceFlow id="flow_error_sendPO"        sourceRef="errorBoundary_sendPO"        targetRef="notifyServiceError"/>
+    <sequenceFlow id="flow_error_end"           sourceRef="notifyServiceError"          targetRef="endServiceError"/>
 
   </process>
 
@@ -401,7 +426,13 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
         <bpmndi:BPMNLabel><omgdc:Bounds x="1420" y="352" width="122" height="27"/></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
-      <!-- Approval task shapes: 4 vertical lanes -->
+      <!-- Direct purchase: signal throw then PO -->
+      <bpmndi:BPMNShape bpmnElement="throwProcurementApproved_direct" id="BPMNShape_throwProcurementApproved_direct">
+        <omgdc:Bounds x="1576" y="62" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1550" y="38" width="88" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Approval task shapes: 3 vertical lanes -->
       <bpmndi:BPMNShape bpmnElement="managerApproval" id="BPMNShape_managerApproval">
         <omgdc:Bounds x="1576" y="160" width="120" height="80"/>
         <bpmndi:BPMNLabel/>
@@ -427,30 +458,36 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
         <bpmndi:BPMNLabel><omgdc:Bounds x="1871" y="352" width="80" height="14"/></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
+      <!-- Signal throw on human-approval approved path -->
+      <bpmndi:BPMNShape bpmnElement="throwProcurementApproved" id="BPMNShape_throwProcurementApproved">
+        <omgdc:Bounds x="2008" y="182" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1982" y="158" width="88" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
       <!-- Approved path shapes -->
       <bpmndi:BPMNShape bpmnElement="createPurchaseOrder" id="BPMNShape_createPurchaseOrder">
-        <omgdc:Bounds x="2006" y="160" width="120" height="80"/>
+        <omgdc:Bounds x="2106" y="160" width="120" height="80"/>
         <bpmndi:BPMNLabel/>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape bpmnElement="sendPOToVendor" id="BPMNShape_sendPOToVendor">
-        <omgdc:Bounds x="2186" y="160" width="120" height="80"/>
+        <omgdc:Bounds x="2286" y="160" width="120" height="80"/>
         <bpmndi:BPMNLabel/>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape bpmnElement="updateApproved" id="BPMNShape_updateApproved">
-        <omgdc:Bounds x="2366" y="160" width="120" height="80"/>
+        <omgdc:Bounds x="2466" y="160" width="120" height="80"/>
         <bpmndi:BPMNLabel/>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape bpmnElement="sendApprovalNotification" id="BPMNShape_sendApprovalNotification">
-        <omgdc:Bounds x="2546" y="160" width="120" height="80"/>
+        <omgdc:Bounds x="2646" y="160" width="120" height="80"/>
         <bpmndi:BPMNLabel/>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape bpmnElement="endEventApproved" id="BPMNShape_endEventApproved">
-        <omgdc:Bounds x="2728" y="182" width="36" height="36"/>
-        <bpmndi:BPMNLabel><omgdc:Bounds x="2706" y="225" width="80" height="14"/></bpmndi:BPMNLabel>
+        <omgdc:Bounds x="2828" y="182" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="2806" y="225" width="80" height="14"/></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
       <!-- Rejection path shapes -->
@@ -467,6 +504,42 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
       <bpmndi:BPMNShape bpmnElement="endEventRejected" id="BPMNShape_endEventRejected">
         <omgdc:Bounds x="2368" y="422" width="36" height="36"/>
         <bpmndi:BPMNLabel><omgdc:Bounds x="2344" y="465" width="84" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Boundary event shapes (previously missing — DI fix) -->
+      <bpmndi:BPMNShape bpmnElement="timerReminder_manager" id="BPMNShape_timerReminder_manager">
+        <omgdc:Bounds x="1626" y="222" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1618" y="265" width="52" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="timerEscalate_manager" id="BPMNShape_timerEscalate_manager">
+        <omgdc:Bounds x="1666" y="222" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1658" y="265" width="52" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="timerReminder_committee" id="BPMNShape_timerReminder_committee">
+        <omgdc:Bounds x="1626" y="342" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1618" y="385" width="52" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="timerEscalate_committee" id="BPMNShape_timerEscalate_committee">
+        <omgdc:Bounds x="1666" y="342" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1658" y="385" width="52" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="timerReminder_board" id="BPMNShape_timerReminder_board">
+        <omgdc:Bounds x="1626" y="462" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1618" y="505" width="52" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="timerEscalate_board" id="BPMNShape_timerEscalate_board">
+        <omgdc:Bounds x="1666" y="462" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1658" y="505" width="52" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Error boundary shapes (previously missing) -->
+      <bpmndi:BPMNShape bpmnElement="errorBoundary_createPO" id="BPMNShape_errorBoundary_createPO">
+        <omgdc:Bounds x="2156" y="222" width="36" height="36"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="errorBoundary_sendPO" id="BPMNShape_errorBoundary_sendPO">
+        <omgdc:Bounds x="2336" y="222" width="36" height="36"/>
+        <bpmndi:BPMNLabel/>
       </bpmndi:BPMNShape>
 
       <!-- Edges: initial pipeline -->
@@ -496,15 +569,22 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
       </bpmndi:BPMNEdge>
 
       <!-- Edges: route gateway branches -->
+      <!-- DIRECT_PURCHASE: procurementRouteGateway → throwProcurementApproved_direct -->
       <bpmndi:BPMNEdge bpmnElement="flow_to_direct" id="BPMNEdge_flow_to_direct">
         <omgdi:waypoint x="1481" y="295"/>
-        <omgdi:waypoint x="1481" y="200"/>
-        <omgdi:waypoint x="2066" y="200"/>
+        <omgdi:waypoint x="1481" y="80"/>
+        <omgdi:waypoint x="1576" y="80"/>
+      </bpmndi:BPMNEdge>
+      <!-- throwProcurementApproved_direct → createPurchaseOrder -->
+      <bpmndi:BPMNEdge bpmnElement="flow_direct_signal_to_po" id="BPMNEdge_flow_direct_signal_to_po">
+        <omgdi:waypoint x="1612" y="80"/>
+        <omgdi:waypoint x="2166" y="80"/>
+        <omgdi:waypoint x="2166" y="160"/>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow_to_manager" id="BPMNEdge_flow_to_manager">
         <omgdi:waypoint x="1481" y="295"/>
         <omgdi:waypoint x="1481" y="200"/>
-        <omgdi:waypoint x="1636" y="200"/>
+        <omgdi:waypoint x="1576" y="200"/>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow_to_committee" id="BPMNEdge_flow_to_committee">
         <omgdi:waypoint x="1506" y="320"/>
@@ -514,6 +594,12 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
         <omgdi:waypoint x="1481" y="345"/>
         <omgdi:waypoint x="1481" y="440"/>
         <omgdi:waypoint x="1576" y="440"/>
+      </bpmndi:BPMNEdge>
+      <!-- Default flow → updateRejected -->
+      <bpmndi:BPMNEdge bpmnElement="flow_to_rejected_default" id="BPMNEdge_flow_to_rejected_default">
+        <omgdi:waypoint x="1481" y="345"/>
+        <omgdi:waypoint x="1481" y="440"/>
+        <omgdi:waypoint x="2066" y="440"/>
       </bpmndi:BPMNEdge>
 
       <!-- Edges: approval tasks join -->
@@ -540,7 +626,7 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
       <bpmndi:BPMNEdge bpmnElement="approved" id="BPMNEdge_approved">
         <omgdi:waypoint x="1911" y="295"/>
         <omgdi:waypoint x="1911" y="200"/>
-        <omgdi:waypoint x="2006" y="200"/>
+        <omgdi:waypoint x="2008" y="200"/>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="rejected" id="BPMNEdge_rejected">
         <omgdi:waypoint x="1911" y="345"/>
@@ -548,18 +634,24 @@ Also sets requiresCommittee boolean. Thresholds and category rules are defined i
         <omgdi:waypoint x="2006" y="440"/>
       </bpmndi:BPMNEdge>
 
+      <!-- throwProcurementApproved (human-approval path) → createPurchaseOrder -->
+      <bpmndi:BPMNEdge bpmnElement="flow_signal_to_po" id="BPMNEdge_flow_signal_to_po">
+        <omgdi:waypoint x="2044" y="200"/>
+        <omgdi:waypoint x="2106" y="200"/>
+      </bpmndi:BPMNEdge>
+
       <!-- Edges: approved path -->
       <bpmndi:BPMNEdge bpmnElement="flow9" id="BPMNEdge_flow9">
-        <omgdi:waypoint x="2126" y="200"/><omgdi:waypoint x="2186" y="200"/>
+        <omgdi:waypoint x="2226" y="200"/><omgdi:waypoint x="2286" y="200"/>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow10" id="BPMNEdge_flow10">
-        <omgdi:waypoint x="2306" y="200"/><omgdi:waypoint x="2366" y="200"/>
+        <omgdi:waypoint x="2406" y="200"/><omgdi:waypoint x="2466" y="200"/>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow11" id="BPMNEdge_flow11">
-        <omgdi:waypoint x="2486" y="200"/><omgdi:waypoint x="2546" y="200"/>
+        <omgdi:waypoint x="2586" y="200"/><omgdi:waypoint x="2646" y="200"/>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge bpmnElement="flow12" id="BPMNEdge_flow12">
-        <omgdi:waypoint x="2666" y="200"/><omgdi:waypoint x="2728" y="200"/>
+        <omgdi:waypoint x="2766" y="200"/><omgdi:waypoint x="2828" y="200"/>
       </bpmndi:BPMNEdge>
 
       <!-- Edges: rejected path -->

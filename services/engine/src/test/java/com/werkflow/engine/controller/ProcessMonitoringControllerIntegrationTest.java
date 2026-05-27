@@ -1,10 +1,13 @@
 package com.werkflow.engine.controller;
 
+import com.werkflow.engine.config.SecurityConfig;
 import com.werkflow.engine.dto.*;
 import com.werkflow.engine.exception.ProcessNotFoundException;
 import com.werkflow.engine.exception.UnauthorizedTaskAccessException;
+import com.werkflow.engine.security.WerkflowPermissionEvaluator;
 import com.werkflow.engine.service.ProcessMonitoringService;
 import com.werkflow.engine.util.JwtClaimsExtractor;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,6 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Integration tests for ProcessMonitoringController
  */
 @WebMvcTest(ProcessMonitoringController.class)
+@Import(SecurityConfig.class)
 class ProcessMonitoringControllerIntegrationTest {
 
     @Autowired
@@ -44,6 +48,10 @@ class ProcessMonitoringControllerIntegrationTest {
 
     @MockBean
     private JwtDecoder jwtDecoder;
+
+    // Required by SecurityConfig.methodSecurityExpressionHandler when @Import(SecurityConfig.class) is used
+    @MockBean
+    private WerkflowPermissionEvaluator werkflowPermissionEvaluator;
 
     private JwtUserContext userContext;
     private Jwt mockJwt;

@@ -48,7 +48,8 @@ class TaskControllerAuthTest {
     @BeforeEach
     void setUp() {
         JwtUserContext ctx = JwtUserContext.builder().userId("user-1").build();
-        when(jwt.getClaimAsString("preferred_username")).thenReturn("user-1");
+        // Production code uses jwt.getSubject() (L-4: stable Keycloak UUID), not preferred_username
+        when(jwt.getSubject()).thenReturn("user-1");
         when(jwtClaimsExtractor.extractUserContext(jwt)).thenReturn(ctx);
         when(groupResolver.resolveGroups(ctx)).thenReturn(List.of("DOA_L1"));
         when(flowableTaskService.createTaskQuery()).thenReturn(taskQuery);
@@ -64,7 +65,7 @@ class TaskControllerAuthTest {
     void unclaim_unauthorizedUser_throws403() {
         JwtUserContext otherCtx = JwtUserContext.builder().userId("user-2").build();
         Jwt otherJwt = mock(Jwt.class);
-        when(otherJwt.getClaimAsString("preferred_username")).thenReturn("user-2");
+        when(otherJwt.getSubject()).thenReturn("user-2");
         when(jwtClaimsExtractor.extractUserContext(otherJwt)).thenReturn(otherCtx);
         when(groupResolver.resolveGroups(otherCtx)).thenReturn(List.of("EMPLOYEE"));
 
@@ -84,7 +85,7 @@ class TaskControllerAuthTest {
     void getTaskHistory_unauthorizedUser_throws403() {
         JwtUserContext otherCtx = JwtUserContext.builder().userId("user-2").build();
         Jwt otherJwt = mock(Jwt.class);
-        when(otherJwt.getClaimAsString("preferred_username")).thenReturn("user-2");
+        when(otherJwt.getSubject()).thenReturn("user-2");
         when(jwtClaimsExtractor.extractUserContext(otherJwt)).thenReturn(otherCtx);
         when(groupResolver.resolveGroups(otherCtx)).thenReturn(List.of("EMPLOYEE"));
         when(taskService.findActiveTask("task-1")).thenReturn(task);

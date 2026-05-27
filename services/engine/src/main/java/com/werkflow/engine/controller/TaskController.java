@@ -329,6 +329,9 @@ public class TaskController {
      * Throws 403 if the check fails. Used by claim, complete, and variable endpoints (C1/C2/C3).
      */
     private void verifyTaskAccess(String taskId, String userId, List<String> userGroups) {
+        if (userId == null || userId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No authenticated user identity");
+        }
         Task task = flowableTaskService.createTaskQuery().taskId(taskId).singleResult();
         if (task == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found: " + taskId);

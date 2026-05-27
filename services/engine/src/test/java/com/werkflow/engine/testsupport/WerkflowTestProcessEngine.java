@@ -9,6 +9,8 @@ import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngineConfiguration;
 import org.flowable.engine.impl.cfg.StandaloneInMemProcessEngineConfiguration;
 
+import java.util.Map;
+
 /**
  * Builds a standalone in-memory Flowable process engine that mirrors the production engine's
  * deploy-time behaviour, for use in BPMN unit tests that need to actually deploy and execute
@@ -68,6 +70,27 @@ public final class WerkflowTestProcessEngine {
      * @return a fully configured and started {@link WerkflowTestProcessEngine}
      */
     public static WerkflowTestProcessEngine build(String dbName) {
+        return build(dbName, Map.of());
+    }
+
+    /**
+     * Builds and returns a {@link WerkflowTestProcessEngine} with stub beans injected into the
+     * engine's expression context. Use this overload when the BPMN under test contains
+     * {@code flowable:delegateExpression="${beanName}"} service tasks that need stub
+     * {@code JavaDelegate} implementations to execute in the bare in-memory engine.
+     *
+     * <p>The {@code beans} map is registered via
+     * {@link org.flowable.common.engine.impl.AbstractEngineConfiguration#setBeans}, which is how
+     * {@code ${beanName}} EL expressions are resolved when no Spring context is present.
+     *
+     * <p>All other settings are identical to {@link #build(String)}.
+     *
+     * @param dbName a short, URL-safe name for the H2 in-memory database
+     * @param beans  a map of bean name to bean instance (e.g. {@code Map.of("myDelegate", new MyStub())});
+     *               use {@code Map.of()} to register no additional beans (same as {@link #build(String)})
+     * @return a fully configured and started {@link WerkflowTestProcessEngine}
+     */
+    public static WerkflowTestProcessEngine build(String dbName, Map<Object, Object> beans) {
         DmnEngineConfigurator dmnConfigurator = new DmnEngineConfigurator();
 
         StandaloneInMemProcessEngineConfiguration cfg = new StandaloneInMemProcessEngineConfiguration();
@@ -83,6 +106,13 @@ public final class WerkflowTestProcessEngine {
         // Apply the same parse handlers + validator family as FlowableConfig does in production.
         // See WerkflowProcessEngineCustomizer for what is intentionally excluded (Spring-only).
         WerkflowProcessEngineCustomizer.applyValidatorsAndParseHandlers(cfg);
+
+        // Register stub beans so ${beanName} delegate expressions resolve without Spring.
+        // This is the same mechanism FlowableConfig uses via SpringBeanFactoryProxyMap;
+        // here we supply a plain map, sufficient for test stubs.
+        if (!beans.isEmpty()) {
+            cfg.setBeans(beans);
+        }
 
         ProcessEngine processEngine = cfg.buildProcessEngine();
 

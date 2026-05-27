@@ -5,6 +5,7 @@ import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -17,6 +18,7 @@ import static org.mockito.Mockito.verify;
  * Notification Integration Tests for CapEx Workflow
  * Tests all notification touchpoints throughout the CapEx lifecycle
  */
+@Tag("requires-openbao")
 @DisplayName("CapEx Notification Integration Tests")
 class CapExNotificationIntegrationTest extends IntegrationTestBase {
 

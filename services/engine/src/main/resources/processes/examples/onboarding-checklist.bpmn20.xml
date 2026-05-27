@@ -10,7 +10,14 @@
              targetNamespace="http://werkflow.com/bpmn/examples">
 
   <process id="onboarding-checklist" name="Onboarding Checklist" isExecutable="true"
-           flowable:versionTag="1">
+           flowable:versionTag="2">
+
+    <documentation>Employee onboarding workflow — V2 (2026-05-27).
+HR submits the new hire details (including buddyRequired and employeeEmail as declared form
+properties). IT and Facilities tasks run in parallel; once both are complete an exclusive
+gateway routes to assignBuddy only when buddyRequired == true, skipping directly to
+sendWelcomeEmail otherwise. Demonstrates parallel gateway usage. Engine-internal — no
+external API calls.</documentation>
 
     <extensionElements>
       <flowable:properties>
@@ -18,16 +25,23 @@
       </flowable:properties>
     </extensionElements>
 
-    <documentation>Employee onboarding workflow. HR submits the new hire details; IT and Facilities tasks run in parallel; once both are complete a manager assigns a buddy. Demonstrates parallel gateway usage. Engine-internal — no external API calls.</documentation>
-
     <!-- Start -->
     <startEvent id="startEvent" name="Onboarding Started" flowable:initiator="initiator" />
 
-    <!-- Step 1: HR fills in new hire details -->
+    <!-- Step 1: HR fills in new hire details.
+         buddyRequired and employeeEmail are declared here as form inputs so they are
+         guaranteed to exist as process variables before the buddy-check gateway. -->
     <userTask id="hrSubmit" name="HR: Submit Onboarding"
               flowable:candidateGroups="SUPER_ADMIN"
               flowable:formKey="onboarding-checklist-form">
       <documentation>HR provides new hire name, email, department, start date, and equipment needs</documentation>
+      <extensionElements>
+        <flowable:formProperty id="employeeName"  name="Employee Name"  type="string"  required="true"/>
+        <flowable:formProperty id="employeeEmail" name="Employee Email" type="string"  required="true"/>
+        <flowable:formProperty id="department"    name="Department"     type="string"  required="true"/>
+        <flowable:formProperty id="startDate"     name="Start Date"     type="date"    required="true"/>
+        <flowable:formProperty id="buddyRequired" name="Buddy Required" type="boolean" required="true"/>
+      </extensionElements>
     </userTask>
 
     <!-- Parallel fork: IT and Facilities work happens simultaneously -->
@@ -48,13 +62,16 @@
     <!-- Parallel join: both branches must complete before continuing -->
     <parallelGateway id="joinGateway" name="Setup Complete" />
 
-    <!-- Step 2: Manager assigns a buddy (only if buddyRequired == true) -->
+    <!-- Buddy check: only route to assignBuddy when buddyRequired == true -->
+    <exclusiveGateway id="buddyGateway" name="Buddy Required?" />
+
+    <!-- Step 2 (conditional): Manager assigns a buddy -->
     <userTask id="assignBuddy" name="Assign Manager Buddy"
               flowable:candidateGroups="SUPER_ADMIN">
       <documentation>Manager assigns a buddy to guide the new hire through their first weeks</documentation>
     </userTask>
 
-    <!-- Final notification: welcome email to new hire -->
+    <!-- Final notification: welcome email to new hire (${employeeEmail} set by hrSubmit) -->
     <serviceTask id="sendWelcomeEmail" name="Send Welcome Email"
                  flowable:actionType="NOTIFICATION"
                  flowable:delegateExpression="${notificationDelegate}">
@@ -68,18 +85,34 @@
     <endEvent id="endEvent" name="Onboarding Complete" />
 
     <!-- Sequence flows -->
-    <sequenceFlow id="flow1" sourceRef="startEvent"       targetRef="hrSubmit" />
-    <sequenceFlow id="flow2" sourceRef="hrSubmit"         targetRef="forkGateway" />
-    <sequenceFlow id="flow3" sourceRef="forkGateway"      targetRef="itSetup" />
-    <sequenceFlow id="flow4" sourceRef="forkGateway"      targetRef="facilitiesSetup" />
-    <sequenceFlow id="flow5" sourceRef="itSetup"          targetRef="joinGateway" />
-    <sequenceFlow id="flow6" sourceRef="facilitiesSetup"  targetRef="joinGateway" />
-    <sequenceFlow id="flow7" sourceRef="joinGateway"      targetRef="assignBuddy" />
-    <sequenceFlow id="flow8" sourceRef="assignBuddy"      targetRef="sendWelcomeEmail" />
+    <sequenceFlow id="flow1" sourceRef="startEvent"      targetRef="hrSubmit" />
+    <sequenceFlow id="flow2" sourceRef="hrSubmit"        targetRef="forkGateway" />
+    <sequenceFlow id="flow3" sourceRef="forkGateway"     targetRef="itSetup" />
+    <sequenceFlow id="flow4" sourceRef="forkGateway"     targetRef="facilitiesSetup" />
+    <sequenceFlow id="flow5" sourceRef="itSetup"         targetRef="joinGateway" />
+    <sequenceFlow id="flow6" sourceRef="facilitiesSetup" targetRef="joinGateway" />
+    <sequenceFlow id="flow7" sourceRef="joinGateway"     targetRef="buddyGateway" />
+
+    <!-- buddyGateway: route to assignBuddy when buddyRequired == true -->
+    <sequenceFlow id="flowBuddyYes" sourceRef="buddyGateway" targetRef="assignBuddy">
+      <conditionExpression xsi:type="tFormalExpression">${buddyRequired == true}</conditionExpression>
+    </sequenceFlow>
+    <!-- buddyGateway: skip to sendWelcomeEmail when buddyRequired != true (default) -->
+    <sequenceFlow id="flowBuddyNo" sourceRef="buddyGateway" targetRef="sendWelcomeEmail">
+      <conditionExpression xsi:type="tFormalExpression">${buddyRequired != true}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flow8" sourceRef="assignBuddy"     targetRef="sendWelcomeEmail" />
     <sequenceFlow id="flow9" sourceRef="sendWelcomeEmail" targetRef="endEvent" />
 
   </process>
 
+  <!--
+    BPMNDI — left-to-right layout.
+    buddyGateway replaces the old direct join→assignBuddy edge.
+    assignBuddy stays at x=890; sendWelcomeEmail shifts right to x=1050.
+    buddyGateway at x=785.
+  -->
   <bpmndi:BPMNDiagram id="BPMNDiagram_onboarding-checklist">
     <bpmndi:BPMNPlane id="BPMNPlane_onboarding-checklist" bpmnElement="onboarding-checklist">
 
@@ -113,19 +146,25 @@
         <bpmndi:BPMNLabel><omgdc:Bounds x="655" y="312" width="90" height="27" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
+      <!-- New buddy-check gateway -->
+      <bpmndi:BPMNShape id="buddyGateway_di" bpmnElement="buddyGateway" isMarkerVisible="true">
+        <omgdc:Bounds x="785" y="255" width="50" height="50" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="760" y="312" width="100" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
       <bpmndi:BPMNShape id="assignBuddy_di" bpmnElement="assignBuddy">
-        <omgdc:Bounds x="785" y="240" width="100" height="80" />
+        <omgdc:Bounds x="900" y="150" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="sendWelcomeEmail_di" bpmnElement="sendWelcomeEmail">
-        <omgdc:Bounds x="945" y="240" width="100" height="80" />
+        <omgdc:Bounds x="1060" y="240" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNShape id="endEvent_di" bpmnElement="endEvent">
-        <omgdc:Bounds x="1107" y="262" width="36" height="36" />
-        <bpmndi:BPMNLabel><omgdc:Bounds x="1082" y="305" width="86" height="27" /></bpmndi:BPMNLabel>
+        <omgdc:Bounds x="1222" y="262" width="36" height="36" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1197" y="305" width="86" height="27" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
       <bpmndi:BPMNEdge id="flow1_di" bpmnElement="flow1">
@@ -146,14 +185,24 @@
       <bpmndi:BPMNEdge id="flow6_di" bpmnElement="flow6">
         <omgdi:waypoint x="610" y="360" /><omgdi:waypoint x="700" y="360" /><omgdi:waypoint x="700" y="305" />
       </bpmndi:BPMNEdge>
+      <!-- joinGateway → buddyGateway -->
       <bpmndi:BPMNEdge id="flow7_di" bpmnElement="flow7">
         <omgdi:waypoint x="725" y="280" /><omgdi:waypoint x="785" y="280" />
       </bpmndi:BPMNEdge>
+      <!-- buddyGateway: true → assignBuddy (upper branch) -->
+      <bpmndi:BPMNEdge id="flowBuddyYes_di" bpmnElement="flowBuddyYes">
+        <omgdi:waypoint x="810" y="255" /><omgdi:waypoint x="810" y="190" /><omgdi:waypoint x="900" y="190" />
+      </bpmndi:BPMNEdge>
+      <!-- buddyGateway: false → sendWelcomeEmail (skip buddy) -->
+      <bpmndi:BPMNEdge id="flowBuddyNo_di" bpmnElement="flowBuddyNo">
+        <omgdi:waypoint x="835" y="280" /><omgdi:waypoint x="1060" y="280" />
+      </bpmndi:BPMNEdge>
+      <!-- assignBuddy → sendWelcomeEmail -->
       <bpmndi:BPMNEdge id="flow8_di" bpmnElement="flow8">
-        <omgdi:waypoint x="885" y="280" /><omgdi:waypoint x="945" y="280" />
+        <omgdi:waypoint x="1000" y="190" /><omgdi:waypoint x="1110" y="190" /><omgdi:waypoint x="1110" y="240" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow9_di" bpmnElement="flow9">
-        <omgdi:waypoint x="1045" y="280" /><omgdi:waypoint x="1107" y="280" />
+        <omgdi:waypoint x="1160" y="280" /><omgdi:waypoint x="1222" y="280" />
       </bpmndi:BPMNEdge>
 
     </bpmndi:BPMNPlane>
