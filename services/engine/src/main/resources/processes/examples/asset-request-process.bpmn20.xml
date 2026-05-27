@@ -15,13 +15,13 @@
   <process id="asset-request-process" name="Asset Request" isExecutable="true"
            flowable:versionTag="1">
 
+    <documentation>Asset request workflow with custodian review, stock check, and procurement escalation</documentation>
+
     <extensionElements>
       <flowable:properties>
         <flowable:property name="category" value="examples"/>
       </flowable:properties>
     </extensionElements>
-
-    <documentation>Asset request workflow with custodian review, stock check, and procurement escalation</documentation>
 
     <!-- Start Event -->
     <startEvent id="start" name="Asset Request Submitted"
@@ -81,8 +81,8 @@
       </extensionElements>
     </serviceTask>
 
-    <!-- Exclusive Gateway: Stock Available? -->
-    <exclusiveGateway id="stockGateway" name="Stock Available?"/>
+    <!-- Exclusive Gateway: Stock Available? (default=stockUnavailable guards missing/non-boolean variable) -->
+    <exclusiveGateway id="stockGateway" name="Stock Available?" default="stockUnavailable"/>
 
     <!-- Service Task: Fulfill Request -->
     <serviceTask id="fulfillRequest" name="Fulfill Request"
@@ -112,8 +112,8 @@
       <timerEventDefinition><timeDuration>PT72H</timeDuration></timerEventDefinition>
     </boundaryEvent>
 
-    <!-- Exclusive Gateway: Procurement? -->
-    <exclusiveGateway id="procurementGateway" name="Procurement?"/>
+    <!-- Exclusive Gateway: Procurement? (default=noProcure guards missing/non-boolean procure variable) -->
+    <exclusiveGateway id="procurementGateway" name="Procurement?" default="noProcure"/>
 
     <!-- Service Task: Initiate Procurement -->
     <serviceTask id="initiateProcurement" name="Initiate Procurement"
@@ -167,24 +167,24 @@
 
     <sequenceFlow id="flow4" sourceRef="checkStock" targetRef="stockGateway"/>
 
-    <!-- Stock Gateway Flows -->
+    <!-- Stock Gateway Flows.
+         stockAvailable has an explicit condition; stockUnavailable is the default (no condition
+         on the default flow — BPMN spec prohibits conditionExpression on the default flow). -->
     <sequenceFlow id="stockAvailable" sourceRef="stockGateway" targetRef="fulfillRequest">
-      <conditionExpression xsi:type="tFormalExpression">${stockAvailable}</conditionExpression>
+      <conditionExpression xsi:type="tFormalExpression">${stockAvailable == true}</conditionExpression>
     </sequenceFlow>
-    <sequenceFlow id="stockUnavailable" sourceRef="stockGateway" targetRef="procurementDecision">
-      <conditionExpression xsi:type="tFormalExpression">${!stockAvailable}</conditionExpression>
-    </sequenceFlow>
+    <sequenceFlow id="stockUnavailable" sourceRef="stockGateway" targetRef="procurementDecision"/>
 
     <sequenceFlow id="flow5" sourceRef="fulfillRequest" targetRef="endFulfilled"/>
     <sequenceFlow id="flow6" sourceRef="procurementDecision" targetRef="procurementGateway"/>
 
-    <!-- Procurement Gateway Flows -->
+    <!-- Procurement Gateway Flows.
+         doProcure has an explicit condition; noProcure is the default (no condition on the
+         default flow — BPMN spec prohibits conditionExpression on the default flow). -->
     <sequenceFlow id="doProcure" sourceRef="procurementGateway" targetRef="initiateProcurement">
-      <conditionExpression xsi:type="tFormalExpression">${procure}</conditionExpression>
+      <conditionExpression xsi:type="tFormalExpression">${procure == true}</conditionExpression>
     </sequenceFlow>
-    <sequenceFlow id="noProcure" sourceRef="procurementGateway" targetRef="endNoStock">
-      <conditionExpression xsi:type="tFormalExpression">${!procure}</conditionExpression>
-    </sequenceFlow>
+    <sequenceFlow id="noProcure" sourceRef="procurementGateway" targetRef="endNoStock"/>
 
     <sequenceFlow id="flow7" sourceRef="initiateProcurement" targetRef="catchProcurementApproved"/>
     <sequenceFlow id="flow7b" sourceRef="catchProcurementApproved" targetRef="endProcurement"/>
@@ -321,10 +321,7 @@
         <omgdi:waypoint x="310.0" y="200.0"/>
       </bpmndi:BPMNEdge>
 
-      <bpmndi:BPMNEdge bpmnElement="flow2" id="BPMNEdge_flow2">
-        <omgdi:waypoint x="300.0" y="200.0"/>
-        <omgdi:waypoint x="360.0" y="200.0"/>
-      </bpmndi:BPMNEdge>
+      <!-- BPMNEdge_flow2 removed: referenced non-existent sequenceFlow 'flow2' (orphan DI fix) -->
 
       <bpmndi:BPMNEdge bpmnElement="flow3" id="BPMNEdge_flow3">
         <omgdi:waypoint x="480.0" y="200.0"/>
@@ -380,6 +377,11 @@
 
       <bpmndi:BPMNEdge bpmnElement="flow7" id="BPMNEdge_flow7">
         <omgdi:waypoint x="1240.0" y="340.0"/>
+        <omgdi:waypoint x="1290.0" y="340.0"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge bpmnElement="flow7b" id="BPMNEdge_flow7b">
+        <omgdi:waypoint x="1318.0" y="340.0"/>
         <omgdi:waypoint x="1290.0" y="340.0"/>
       </bpmndi:BPMNEdge>
 
