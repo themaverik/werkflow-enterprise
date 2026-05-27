@@ -21,7 +21,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "spring.flyway.enabled=false",
     "flowable.database-schema-update=false",
     "flowable.async-executor-activate=false",
-    "flowable.check-process-definitions=false"
+    "flowable.check-process-definitions=false",
+    "werkflow.vault.token=test-token"
 })
 class SecurityConfigTest {
 
