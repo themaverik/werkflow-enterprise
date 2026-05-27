@@ -4,20 +4,24 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { AlertCircle, CheckCircle2, TrendingUp } from "lucide-react"
+import type { DoaLevel } from '@/lib/api/doa'
 
 export interface DOAIndicatorProps {
   userDoaLevel: number
   requestAmount: number
   requiredDoaLevel: number
   userApprovalLimit: number
+  /**
+   * Whether the current user can approve this request.
+   * Must be the parent's resolved value — passed in so the indicator stays in sync
+   * with the full canApprove formula (including requestAmount, userApprovalLimit > 0, etc.)
+   * rather than recomputing a simplified version locally.
+   */
+  canApprove: boolean
+  /** Role label for the next approver in the configured DOA hierarchy. */
   nextApproverRole?: string
-}
-
-const DOA_LIMITS: Record<number, { limit: number; role: string }> = {
-  1: { limit: 1000, role: 'Department Manager' },
-  2: { limit: 10000, role: 'Department Head' },
-  3: { limit: 50000, role: 'Finance Manager' },
-  4: { limit: 250000, role: 'CFO' },
+  /** Full list of configured DOA levels (used to render the reference table), pre-sorted ascending by level. */
+  configuredLevels?: DoaLevel[]
 }
 
 export function DOAIndicator({
@@ -25,12 +29,15 @@ export function DOAIndicator({
   requestAmount,
   requiredDoaLevel,
   userApprovalLimit,
+  canApprove,
   nextApproverRole,
+  configuredLevels,
 }: DOAIndicatorProps) {
-  const canApprove = userDoaLevel >= requiredDoaLevel
-  const utilizationPercent = Math.min((requestAmount / userApprovalLimit) * 100, 100)
+  const utilizationPercent = userApprovalLimit > 0
+    ? Math.min((requestAmount / userApprovalLimit) * 100, 100)
+    : 100
 
-  const getStatusColor = () => {
+  const getStatusColor = (): 'destructive' | 'default' | 'secondary' | 'outline' => {
     if (!canApprove) return 'destructive'
     if (utilizationPercent >= 90) return 'default'
     if (utilizationPercent >= 70) return 'secondary'
@@ -45,7 +52,8 @@ export function DOAIndicator({
 
   const getStatusMessage = () => {
     if (!canApprove) {
-      return `This request exceeds your approval authority. Required level: ${requiredDoaLevel} (${DOA_LIMITS[requiredDoaLevel]?.role || 'Unknown'})`
+      const nextRole = nextApproverRole ?? `Level ${requiredDoaLevel}`
+      return `This request exceeds your approval authority. Required level: ${requiredDoaLevel} (${nextRole})`
     }
     if (utilizationPercent >= 90) {
       return 'Request amount is near your approval limit'
@@ -53,14 +61,13 @@ export function DOAIndicator({
     return 'Within your approval authority'
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount)
-  }
 
   return (
     <Card>
@@ -111,19 +118,21 @@ export function DOAIndicator({
             </div>
           )}
 
-          <div className="pt-2 border-t">
-            <div className="text-xs text-muted-foreground">
-              <div className="font-semibold mb-1">DOA Levels:</div>
-              <div className="space-y-1">
-                {Object.entries(DOA_LIMITS).map(([level, info]) => (
-                  <div key={level} className="flex justify-between">
-                    <span>Level {level}: {info.role}</span>
-                    <span>{formatCurrency(info.limit)}</span>
-                  </div>
-                ))}
+          {configuredLevels && configuredLevels.length > 0 && (
+            <div className="pt-2 border-t">
+              <div className="text-xs text-muted-foreground">
+                <div className="font-semibold mb-1">DOA Levels:</div>
+                <div className="space-y-1">
+                  {configuredLevels.map((level) => (
+                    <div key={level.id} className="flex justify-between">
+                      <span>{level.label}</span>
+                      <span>{formatCurrency(level.maxAmount)}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </CardContent>
     </Card>

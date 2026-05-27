@@ -25,6 +25,12 @@ export interface Task {
   delegationState?: 'pending' | 'resolved'
   category?: string
   tenantId?: string
+  /**
+   * Whether the BPMN gateway following this task routes decision='escalate'.
+   * Populated only by the single-task getTaskById endpoint; null/undefined on list responses.
+   * Treat null or undefined as false (fail-closed).
+   */
+  canEscalate?: boolean
 }
 
 export interface TaskListResponse {

@@ -43,4 +43,13 @@ public class TaskResponse {
     private List<String> candidateUsers;
     private Long executionDuration; // milliseconds since creation
     private String department; // department associated with task
+
+    /**
+     * Whether the BPMN gateway immediately following this task routes
+     * {@code decision='escalate'} to a next-level approver.
+     *
+     * <p>Populated only on the single-task {@code getTaskById} endpoint.
+     * List endpoints leave this null — callers must treat null as false (fail-closed).
+     */
+    private Boolean canEscalate;
 }

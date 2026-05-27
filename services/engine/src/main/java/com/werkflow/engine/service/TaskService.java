@@ -5,6 +5,11 @@ import com.werkflow.engine.dto.TaskResponse;
 import com.werkflow.engine.exception.TaskNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.bpmn.model.ExclusiveGateway;
+import org.flowable.bpmn.model.FlowElement;
+import org.flowable.bpmn.model.SequenceFlow;
+import org.flowable.bpmn.model.UserTask;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.identitylink.api.IdentityLink;
@@ -136,7 +141,11 @@ public class TaskService {
     }
 
     /**
-     * Get task by ID
+     * Get task by ID.
+     *
+     * <p>This is the only endpoint that populates {@link TaskResponse#getCanEscalate()}.
+     * List endpoints use {@link #mapToResponse(Task)} directly and leave it null to avoid
+     * N process-definition model lookups across potentially large task lists.
      */
     public TaskResponse getTaskById(String taskId) {
         log.debug("Fetching task by ID: {}", taskId);
@@ -149,7 +158,72 @@ public class TaskService {
             throw new TaskNotFoundException(taskId);
         }
 
-        return mapToResponse(task);
+        TaskResponse response = mapToResponse(task);
+        response.setCanEscalate(computeCanEscalate(task));
+        return response;
+    }
+
+    /**
+     * Determines whether the BPMN gateway immediately following this task routes
+     * {@code decision='escalate'} to a next-level approver.
+     *
+     * <p>Algorithm:
+     * <ol>
+     *   <li>Resolve the {@link UserTask} flow element by the task's definition key.</li>
+     *   <li>Follow its single outgoing {@link SequenceFlow} to the target element.</li>
+     *   <li>If the target is an {@link ExclusiveGateway}, inspect its outgoing flows.</li>
+     *   <li>Return {@code true} iff at least one outgoing condition contains the token
+     *       {@code "escalate"}.</li>
+     * </ol>
+     *
+     * <p>Fail-closed: returns {@code false} on any exception, null process definition, or
+     * ambiguous topology. Never throws.
+     *
+     * @param task the active Flowable task to inspect
+     * @return {@code true} if an escalate route exists; {@code false} otherwise
+     */
+    private boolean computeCanEscalate(Task task) {
+        try {
+            if (task.getProcessDefinitionId() == null || task.getTaskDefinitionKey() == null) {
+                return false;
+            }
+
+            BpmnModel model = repositoryService.getBpmnModel(task.getProcessDefinitionId());
+            if (model == null) {
+                return false;
+            }
+
+            FlowElement rawUserTask = model.getFlowElement(task.getTaskDefinitionKey());
+            if (!(rawUserTask instanceof UserTask userTask)) {
+                return false;
+            }
+
+            List<SequenceFlow> outgoing = userTask.getOutgoingFlows();
+            if (outgoing == null || outgoing.size() != 1) {
+                // Unexpected topology — fail-closed.
+                return false;
+            }
+
+            FlowElement target = outgoing.get(0).getTargetFlowElement();
+            if (!(target instanceof ExclusiveGateway gateway)) {
+                return false;
+            }
+
+            List<SequenceFlow> gatewayFlows = gateway.getOutgoingFlows();
+            if (gatewayFlows == null) {
+                return false;
+            }
+
+            return gatewayFlows.stream()
+                .map(SequenceFlow::getConditionExpression)
+                .filter(expr -> expr != null && !expr.isBlank())
+                .anyMatch(expr -> expr.contains("escalate"));
+
+        } catch (Exception ex) {
+            log.warn("computeCanEscalate: could not inspect BPMN model for task {} (def={}): {}",
+                task.getId(), task.getProcessDefinitionId(), ex.getMessage());
+            return false;
+        }
     }
 
     /**
