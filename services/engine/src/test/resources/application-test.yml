@@ -49,6 +49,13 @@ flowable:
   process-definition-cache-limit: 10
 
 werkflow:
+  vault:
+    # Dummy non-empty token so the Spring Vault beans instantiate in CI (no OpenBao here).
+    # No test exercises Vault under this profile; Testcontainers ITs override addr/token
+    # via @DynamicPropertySource against a real OpenBao container.
+    addr: http://localhost:8200
+    token: test-token
+
   notification:
     email:
       enabled: false
