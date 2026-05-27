@@ -4,6 +4,7 @@ import com.werkflow.engine.fixtures.IntegrationTestBase;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -15,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Inventory Asset Tracking Tests for CapEx Workflow
  * Tests asset reception, tagging, depreciation, and capitalization
  */
+@Tag("requires-openbao")
 @DisplayName("CapEx Inventory Asset Tracking Tests")
 class CapExInventoryAssetTrackingTest extends IntegrationTestBase {
 

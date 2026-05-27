@@ -8,6 +8,7 @@ import org.flowable.task.api.Task;
 import org.flowable.task.api.history.HistoricTaskInstance;
 import org.flowable.variable.api.history.HistoricVariableInstance;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -19,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Process Monitoring Tests for CapEx Workflow
  * Tests process history, audit trail, and monitoring APIs
  */
+@Tag("requires-openbao")
 @DisplayName("CapEx Process Monitoring Tests")
 class CapExProcessMonitoringTest extends IntegrationTestBase {
 
