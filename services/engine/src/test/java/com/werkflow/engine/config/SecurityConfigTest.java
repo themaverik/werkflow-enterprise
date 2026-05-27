@@ -6,23 +6,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+// Uses the shared "test" profile (application-test.yml) for the datasource/schema/vault
+// config, exactly like IntegrationTestBase. The only test-specific override is disabling
+// management-endpoint exposure, which is what these two assertions exercise.
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 @TestPropertySource(properties = {
-    "werkflow.security.expose-management-endpoints=false",
-    "spring.datasource.url=jdbc:postgresql://localhost:5433/werkflow",
-    "spring.jpa.hibernate.ddl-auto=none",
-    "spring.flyway.enabled=false",
-    "flowable.database-schema-update=false",
-    "flowable.async-executor-activate=false",
-    "flowable.check-process-definitions=false",
-    "werkflow.vault.token=test-token"
+    "werkflow.security.expose-management-endpoints=false"
 })
 class SecurityConfigTest {
 

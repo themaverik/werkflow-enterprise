@@ -1,7 +1,9 @@
 package com.werkflow.engine.controller;
 
+import com.werkflow.engine.config.SecurityConfig;
 import com.werkflow.engine.dto.JwtUserContext;
 import com.werkflow.engine.dto.TaskListResponse;
+import com.werkflow.engine.security.WerkflowPermissionEvaluator;
 import com.werkflow.engine.service.TaskService;
 import com.werkflow.engine.service.WorkflowTaskService;
 import com.werkflow.engine.util.JwtClaimsExtractor;
@@ -10,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -31,6 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Integration tests for WorkflowTaskController
  */
 @WebMvcTest(WorkflowTaskController.class)
+@Import(SecurityConfig.class)
 class WorkflowTaskControllerIntegrationTest {
 
     @Autowired
@@ -47,6 +51,10 @@ class WorkflowTaskControllerIntegrationTest {
 
     @MockBean
     private JwtDecoder jwtDecoder;
+
+    // Required by SecurityConfig.methodSecurityExpressionHandler when @Import(SecurityConfig.class) is used
+    @MockBean
+    private WerkflowPermissionEvaluator werkflowPermissionEvaluator;
 
     private JwtUserContext userContext;
     private Jwt jwt;

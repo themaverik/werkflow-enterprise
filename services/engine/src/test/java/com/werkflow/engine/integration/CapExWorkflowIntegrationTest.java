@@ -10,6 +10,7 @@ import org.flowable.task.api.Task;
 import org.flowable.task.api.history.HistoricTaskInstance;
 import org.flowable.variable.api.history.HistoricVariableInstance;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -27,6 +28,7 @@ import static org.mockito.Mockito.*;
  * 2. $5,000 request with delegation - Level 2 approval with task delegation
  * 3. $100,000 request rejection - Level 4 rejection by Executive
  */
+@Tag("requires-openbao")
 @DisplayName("CapEx Workflow Integration Tests")
 class CapExWorkflowIntegrationTest extends IntegrationTestBase {
 

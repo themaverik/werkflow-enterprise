@@ -43,7 +43,8 @@ jobs:
 
       - name: Build & test engine service
         working-directory: services/engine
-        run: mvn clean verify -B
+        # OpenBao-dependent CapEx ITs run at milestone-end, not the fast lane.
+        run: mvn clean verify -DexcludedGroups=requires-openbao -B
 
       - name: Upload engine test reports
         if: always()
