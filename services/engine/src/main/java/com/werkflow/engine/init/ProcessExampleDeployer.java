@@ -48,7 +48,7 @@ public class ProcessExampleDeployer {
             String filename = resource.getFilename();
             try {
                 String bpmnXml = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-                processDefinitionService.deployProcessDefinition(bpmnXml, filename);
+                processDefinitionService.deployExampleProcessDefinition(bpmnXml, filename);
                 log.info("Deployed example process: {}", filename);
             } catch (Exception e) {
                 log.error("Failed to deploy example process '{}': {}", filename, e.getMessage());

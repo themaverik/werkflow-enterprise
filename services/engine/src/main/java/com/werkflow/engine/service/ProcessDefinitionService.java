@@ -111,6 +111,48 @@ public class ProcessDefinitionService {
     }
 
     /**
+     * Deploy an example process definition with Flowable duplicate filtering enabled.
+     * If the BPMN content is identical to the last deployment under the same name,
+     * Flowable will skip creating a new version — stopping version numbers from climbing
+     * on every restart (e.g. event-ticket reaching v104+).
+     *
+     * <p>IMPORTANT: this path must NOT be used for bundle/rollback deployments (ADR-026).
+     * Those deployments intentionally create a new version on each deploy. This method is
+     * exclusively for {@link com.werkflow.engine.init.ProcessExampleDeployer}.
+     *
+     * @param bpmnXml      the BPMN XML content
+     * @param resourceName the filename used as both the deployment name and the resource
+     *                     name — must be stable across restarts for deduplication to work
+     */
+    @Transactional
+    public ProcessDefinitionResponse deployExampleProcessDefinition(String bpmnXml, String resourceName) {
+        validateBpmnExpressions(bpmnXml);
+        log.info("Deploying example process definition with duplicate filtering: {}", resourceName);
+
+        try (InputStream inputStream = new java.io.ByteArrayInputStream(
+                bpmnXml.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+
+            Deployment deployment = repositoryService.createDeployment()
+                .name(resourceName)
+                .addInputStream(resourceName, inputStream)
+                .enableDuplicateFiltering()
+                .deploy();
+
+            log.info("Example process definition deployed/reused. Deployment ID: {}", deployment.getId());
+
+            ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
+                .deploymentId(deployment.getId())
+                .singleResult();
+
+            return mapToResponse(processDefinition);
+
+        } catch (IOException e) {
+            log.error("Error deploying example process definition", e);
+            throw new RuntimeException("Failed to deploy example process definition: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * The BPMN resource of a bundle's process deployment: its original Flowable resource name
      * plus its XML. Carrying the resource name lets a rollback redeploy under the same name the
      * bundle was originally deployed with (no naming asymmetry vs {@code deployBundle}).

@@ -5,6 +5,7 @@ import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
 import org.flowable.variable.api.history.HistoricVariableInstance;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -15,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Delegation and Audit Trail Tests for CapEx Approval
  * Tests Scenario 2: $7,500 Marketing equipment with delegation to CFO
  */
+@Tag("requires-openbao")
 @DisplayName("CapEx Delegation and Audit Tests")
 class CapExDelegationAuditTest extends IntegrationTestBase {
 

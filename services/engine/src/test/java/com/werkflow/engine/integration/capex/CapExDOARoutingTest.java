@@ -4,6 +4,7 @@ import com.werkflow.engine.fixtures.IntegrationTestBase;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -21,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * - Level 3: $10,001 - $100,000 (Finance Manager)
  * - Level 4: $100,001+ (Executive/CFO)
  */
+@Tag("requires-openbao")
 @DisplayName("CapEx DOA Routing Tests")
 class CapExDOARoutingTest extends IntegrationTestBase {
 

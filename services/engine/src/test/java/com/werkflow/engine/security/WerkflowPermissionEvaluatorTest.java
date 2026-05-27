@@ -42,6 +42,9 @@ class WerkflowPermissionEvaluatorTest {
                 permissionConfig, roleExtractor, adminServiceClient,
                 List.of(assetRequestGuard, taskGuard, hubManagerGuard));
         evaluator.buildRegistry();
+        // buildRegistry() calls guard.supports() to populate the registry; clear those
+        // interactions so verifyNoInteractions() in tests only sees decision-path calls.
+        clearInvocations(assetRequestGuard, taskGuard, hubManagerGuard);
 
         // Default: no tenant-specific permissions (tests that fall through YAML check get false)
         lenient().when(adminServiceClient.getTenantRolePermissions(any(), any())).thenReturn(Set.of());
