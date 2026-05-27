@@ -150,6 +150,7 @@ The engine auto-deploys example processes on startup from `services/engine/src/m
 - [Deployment Configuration](./docs/Deployment-Configuration-Guide.md)
 - [Keycloak Setup](./docs/Keycloak-Implementation-Guide.md)
 - [Architecture Decisions](./docs/Architecture/)
+- **Release readiness (pre-MVP):** compliance/legal (privacy, terms, cookies, GDPR), authoring↔engine validators, and Netlify-demo + prod CI/CD deploy checklist are tracked in the master roadmap **Pre-MVP Execution Sequence → Tier 5** (`werkflow-platform/docs/Roadmap.md`)
 
 ## License
 
