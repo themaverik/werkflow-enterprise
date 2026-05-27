@@ -1,5 +1,7 @@
 package com.werkflow.engine.config;
 
+import com.werkflow.engine.config.flowable.WerkflowBusinessRuleTaskValidator;
+import com.werkflow.engine.config.flowable.WerkflowManualTaskValidator;
 import com.werkflow.engine.config.flowable.WerkflowScriptTaskQuarantineValidator;
 import com.werkflow.engine.config.flowable.WerkflowSendTaskParseHandler;
 import com.werkflow.engine.config.flowable.WerkflowSendTaskValidator;
@@ -96,6 +98,8 @@ public class FlowableConfig {
                 set.removeValidator(SendTaskValidator.class);
                 set.addValidator(new WerkflowSendTaskValidator());
                 set.addValidator(new WerkflowScriptTaskQuarantineValidator());
+                set.addValidator(new WerkflowBusinessRuleTaskValidator());
+                set.addValidator(new WerkflowManualTaskValidator());
             });
             engineConfiguration.setProcessValidator(processValidator);
         };
