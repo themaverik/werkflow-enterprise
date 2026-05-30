@@ -76,6 +76,12 @@ class CanEscalateComputationTest {
         runtimeService   = testEngine.getProcessEngine().getRuntimeService();
         taskService      = testEngine.getProcessEngine().getTaskService();
 
+        // capex-approval-process v3 has three DMN service tasks — deploy DMN first (ADR-029 Phase 2).
+        repositoryService.createDeployment()
+                .addClasspathResource("dmn/capex-approver-resolution.dmn")
+                .name("canEscalate-capex-dmn")
+                .deploy();
+
         repositoryService.createDeployment()
                 .addClasspathResource("processes/examples/capex-approval-process.bpmn20.xml")
                 .name("canEscalate-capex-test")
@@ -209,9 +215,11 @@ class CanEscalateComputationTest {
     @DisplayName("4. runtime capex instance — managerApproval canEscalate=true; " +
                  "after escalating, vpApproval also canEscalate=true")
     void capex_runtimeTask_canEscalate_matchesTopology() {
+        // capex-approval-process v3 (ADR-029 Phase 2) resolves candidateGroups via DMN;
+        // capexOwner is required by the DMN expression #{capexOwner == "FIN"}.
         ProcessInstance pi = runtimeService.startProcessInstanceByKey(
                 "capex-approval-process",
-                Map.of("requestAmount", 10_000));
+                Map.of("requestAmount", 10_000, "capexOwner", "FIN"));
 
         Task managerTask = taskService.createTaskQuery()
                 .processInstanceId(pi.getId())
