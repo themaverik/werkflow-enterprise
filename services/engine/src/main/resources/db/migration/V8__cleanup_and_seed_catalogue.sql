@@ -7,46 +7,50 @@
 --   upserts all 8 canonical processes + 12 canonical forms
 --   with full schema content.
 --
--- Application: Apply MANUALLY via psql to the running DB.
---   psql -U werkflow_admin -d werkflow -f V8__cleanup_and_seed_catalogue.sql
---
--- Does NOT touch: Flyway schema_version checksum of V1 or V2.
 -- Safe to re-run: All writes use ON CONFLICT DO UPDATE/NOTHING.
+-- act_re_* cleanup is wrapped in DO/EXCEPTION blocks — on a fresh DB
+-- Flyway runs before Flowable initialises act_* tables, so deletions
+-- are silently skipped (nothing to clean up on a fresh schema anyway).
 -- ============================================================
-
-BEGIN;
 
 -- ============================================================
 -- 3a. Remove stale Flowable process deployments
 -- Flowable cascades: delete act_re_procdef first (FK to deployment),
 -- then act_re_deployment. act_ru_* and act_hi_* tables also have
 -- FKs — this targets only definition-level cleanup (no running instances).
+-- On a fresh DB these tables don't exist yet; the DO block skips silently.
 -- ============================================================
 
-DELETE FROM act_re_procdef
-WHERE key_ IN (
-    'asset-transfer-approval-process',
-    'document-review',
-    'sla-escalation',           -- actual deployed key (not sla-escalation-process)
-    'sla-escalation-process',   -- guard: in case older deploy used this key
-    'doa-routing-process',
-    'parallel-committee-approval',
-    'capex-approval-process-v2' -- old v2 suffix deploy; replaced by capex-approval-process
-);
+DO $$ BEGIN
+    DELETE FROM act_re_procdef
+    WHERE key_ IN (
+        'asset-transfer-approval-process',
+        'document-review',
+        'sla-escalation',
+        'sla-escalation-process',
+        'doa-routing-process',
+        'parallel-committee-approval',
+        'capex-approval-process-v2'
+    );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
 
-DELETE FROM act_re_deployment
-WHERE id_ NOT IN (
-    SELECT DISTINCT deployment_id_ FROM act_re_procdef
-)
-AND name_ IN (
-    'asset-transfer-approval-process',
-    'document-review',
-    'sla-escalation',
-    'sla-escalation-process',
-    'doa-routing-process',
-    'parallel-committee-approval',
-    'capex-approval-process-v2'
-);
+DO $$ BEGIN
+    DELETE FROM act_re_deployment
+    WHERE id_ NOT IN (
+        SELECT DISTINCT deployment_id_ FROM act_re_procdef
+    )
+    AND name_ IN (
+        'asset-transfer-approval-process',
+        'document-review',
+        'sla-escalation',
+        'sla-escalation-process',
+        'doa-routing-process',
+        'parallel-committee-approval',
+        'capex-approval-process-v2'
+    );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
 
 -- ============================================================
 -- 3b. Remove stale process_draft entries
@@ -1620,8 +1624,6 @@ ON CONFLICT (process_key) DO UPDATE
         bpmn_xml   = EXCLUDED.bpmn_xml,
         updated_by = 'system',
         updated_at = now();
-
-COMMIT;
 
 -- ============================================================
 -- POST-APPLY VERIFICATION QUERIES
