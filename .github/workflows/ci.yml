@@ -156,6 +156,7 @@ jobs:
         with:
           name: portal-next
           path: frontends/portal/.next/
+          include-hidden-files: true
           retention-days: 1
 
   connector-schema-parity:
