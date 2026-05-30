@@ -44,9 +44,9 @@
     },
     {
       "type": "textfield",
-      "key": "department",
+      "key": "capexOwner",
       "label": "Department",
-      "placeholder": "Enter department",
+      "placeholder": "Enter department code (e.g. FIN, OPS, HR)",
       "validate": {
         "required": true
       }
