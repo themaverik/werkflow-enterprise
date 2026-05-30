@@ -57,6 +57,10 @@ public final class DmnTestRunner {
      * @return a {@link DecisionRunner} bound to this decision key, ready to evaluate inputs
      */
     public DecisionRunner deploy(String classpathResource, String decisionKey) {
+        if (!decisionKey.matches("[A-Za-z0-9_]+")) {
+            throw new IllegalArgumentException(
+                "decisionKey must match [A-Za-z0-9_] to be safe in XML and process keys: " + decisionKey);
+        }
         repositoryService.createDeployment()
             .addClasspathResource(classpathResource)
             .addString("dmn-wrapper-" + decisionKey + ".bpmn20.xml", buildWrapperBpmn(decisionKey))

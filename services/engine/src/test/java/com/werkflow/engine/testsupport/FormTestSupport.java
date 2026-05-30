@@ -57,11 +57,12 @@ public final class FormTestSupport {
     }
 
     private static JsonNode load(String classpathResource) throws IOException {
-        InputStream is = FormTestSupport.class.getClassLoader()
-            .getResourceAsStream(classpathResource);
-        if (is == null) {
-            throw new IllegalArgumentException("Classpath resource not found: " + classpathResource);
+        try (InputStream is = FormTestSupport.class.getClassLoader()
+                .getResourceAsStream(classpathResource)) {
+            if (is == null) {
+                throw new IllegalArgumentException("Classpath resource not found: " + classpathResource);
+            }
+            return MAPPER.readTree(is);
         }
-        return MAPPER.readTree(is);
     }
 }
