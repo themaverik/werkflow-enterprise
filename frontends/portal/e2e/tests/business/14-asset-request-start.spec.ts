@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { STORAGE_STATES } from '../fixtures/auth'
+import { STORAGE_STATES } from '../../fixtures/auth'
 
 async function navigateToAssetRequestForm(page: any) {
   await page.goto('/processes')
