@@ -12,6 +12,13 @@ on:
       - "shared/**/pom.xml"
       - "frontends/portal/package*.json"
       - "frontends/portal/.npmrc"
+  pull_request:
+    branches: [main]
+    paths:
+      - "services/**/pom.xml"
+      - "shared/**/pom.xml"
+      - "frontends/portal/package*.json"
+      - "frontends/portal/.npmrc"
 
 jobs:
   owasp-java:
@@ -40,8 +47,6 @@ jobs:
       # Add entries to .github/owasp-suppressions.xml for accepted/false-positive findings.
       - name: OWASP Dependency-Check — engine
         uses: dependency-check/Dependency-Check_Action@main
-        env:
-          JAVA_HOME: /opt/hostedtoolcache/Java_Temurin_jdk/21.0.0-0/x64
         with:
           project: "werkflow-engine"
           path: "services/engine"
