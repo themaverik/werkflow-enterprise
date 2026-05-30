@@ -18,7 +18,8 @@
 | Active milestone | Pre-MVP Tier 5 (release hardening) per master Roadmap |
 | M4.11 / M4.12 | Complete (P3 11/11; Phase A + B.1a–B.6 + B.4/B.5-portal + item 8 sidebar gate) |
 | Tier 1–3 done | All Tier-1 (mechanical cleanups, facade hardening, schema hygiene); item 7 approval-escalation cluster (BPMN + engine + 7c-UI, ADR-027) shipped |
-| Next | Master Tier 5: item 10 compliance/legal · item 11 process test harness (ADR-028) · item 12 Netlify + prod CI/CD · item 13 deploy-time validators · **item 14 candidate-group routing correctness (ADR-029 — DOA emission Phase 1 foundational + capex compound migration Phase 2)** → then item 9 E2E last |
+| Done this session | ✅ **item 11 Werkflow Process Test Harness (ADR-028)** — `5e33822` — 16 tests GREEN, 5 phases |
+| Next | Master Tier 5: item 10 compliance/legal · item 12 Netlify + prod CI/CD · item 13 deploy-time validators (after 11 ✅) · **item 14 Phase 2 capex compound migration (pairs with item 11 ✅)** → then item 9 E2E last |
 | Branch | main (all merged + pushed) |
 | Operational | dev/live admin DBs need `mvn flyway:repair` (V6 + V24); `leave-request.bpmn20.xml` XSD element-ordering bug subsumed by item 13 |
 
