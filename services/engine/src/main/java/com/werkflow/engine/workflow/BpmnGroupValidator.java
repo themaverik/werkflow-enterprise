@@ -80,7 +80,11 @@ public class BpmnGroupValidator {
                         .filter(group -> !group.isEmpty())
                         .filter(group -> !group.startsWith("${")) // skip EL expressions
                         .forEach(group -> {
-                            if (!isValidGroup(group)) {
+                            if (isDeprecatedCompoundGroup(group)) {
+                                log.warn("BpmnGroupValidator: [{}] task '{}' ({}) uses deprecated compound candidateGroup '{}'" +
+                                    " — no user will match this group; migrate to DMN-resolved groups (ADR-029 Phase 2)",
+                                    definition.getKey(), userTask.getName(), userTask.getId(), group);
+                            } else if (!isValidGroup(group)) {
                                 violations.add(String.format(
                                     "  [%s] task '%s' (%s): unknown candidateGroup '%s'",
                                     definition.getKey(), userTask.getName(),
@@ -119,6 +123,11 @@ public class BpmnGroupValidator {
             || group.equals(FlowableGroups.SUPER_ADMIN)
             || group.equals(FlowableGroups.WORKFLOW_DESIGNER)
             || group.startsWith("DOA_L")
-            || group.startsWith("DEPT:");
+            || (group.startsWith("DEPT:") && !group.contains("::"));
+    }
+
+    /** Detects deprecated compound format (e.g. DEPT:FIN::DOA:L2) pending ADR-029 Phase 2 migration. */
+    private boolean isDeprecatedCompoundGroup(String group) {
+        return group.startsWith("DEPT:") && group.contains("::");
     }
 }
