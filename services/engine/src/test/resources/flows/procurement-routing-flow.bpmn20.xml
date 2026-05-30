@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Capstone flow test: form variables feed a DMN evaluation whose output drives gateway routing.
+  Exercises the BPMN + DMN + candidateGroup integration without timer/signal events (ADR-028 Phase 4).
+-->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://werkflow.com/bpmn/test">
+  <process id="procurement-routing-flow" name="Procurement Routing Flow" isExecutable="true">
+
+    <startEvent id="start"/>
+    <sequenceFlow id="f1" sourceRef="start" targetRef="evaluatePath"/>
+
+    <!-- DMN: amount + category → procurementPath + requiresCommittee -->
+    <serviceTask id="evaluatePath" name="Evaluate Procurement Path" flowable:type="dmn">
+      <extensionElements>
+        <flowable:field name="decisionTableReferenceKey">
+          <flowable:string>procurement_matrix</flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+    <sequenceFlow id="f2" sourceRef="evaluatePath" targetRef="routeGateway"/>
+
+    <exclusiveGateway id="routeGateway" name="Route by Path" default="f_default"/>
+    <sequenceFlow id="f_direct"    sourceRef="routeGateway" targetRef="directApproval">
+      <conditionExpression>${procurementPath == 'DIRECT_PURCHASE'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_manager"   sourceRef="routeGateway" targetRef="managerApproval">
+      <conditionExpression>${procurementPath == 'MANAGER_APPROVAL'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_committee" sourceRef="routeGateway" targetRef="committeeApproval">
+      <conditionExpression>${procurementPath == 'COMMITTEE_REVIEW'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_board"     sourceRef="routeGateway" targetRef="boardApproval">
+      <conditionExpression>${procurementPath == 'BOARD_APPROVAL'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f_default"   sourceRef="routeGateway" targetRef="end"/>
+
+    <userTask id="directApproval"    name="Direct Purchase"   flowable:candidateGroups="DOA_L1,SUPER_ADMIN"/>
+    <userTask id="managerApproval"   name="Manager Approval"  flowable:candidateGroups="DOA_L2,SUPER_ADMIN"/>
+    <userTask id="committeeApproval" name="Committee Review"  flowable:candidateGroups="DOA_L3,SUPER_ADMIN"/>
+    <userTask id="boardApproval"     name="Board Approval"    flowable:candidateGroups="DOA_L4,SUPER_ADMIN"/>
+
+    <sequenceFlow id="f_d_end" sourceRef="directApproval"    targetRef="end"/>
+    <sequenceFlow id="f_m_end" sourceRef="managerApproval"   targetRef="end"/>
+    <sequenceFlow id="f_c_end" sourceRef="committeeApproval" targetRef="end"/>
+    <sequenceFlow id="f_b_end" sourceRef="boardApproval"     targetRef="end"/>
+    <endEvent id="end"/>
+
+  </process>
+</definitions>

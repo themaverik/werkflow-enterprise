@@ -90,7 +90,7 @@ public final class WerkflowTestProcessEngine {
      *               use {@code Map.of()} to register no additional beans (same as {@link #build(String)})
      * @return a fully configured and started {@link WerkflowTestProcessEngine}
      */
-    public static WerkflowTestProcessEngine build(String dbName, Map<Object, Object> beans) {
+    public static WerkflowTestProcessEngine build(String dbName, Map<String, Object> beans) {
         DmnEngineConfigurator dmnConfigurator = new DmnEngineConfigurator();
 
         StandaloneInMemProcessEngineConfiguration cfg = new StandaloneInMemProcessEngineConfiguration();
@@ -111,7 +111,8 @@ public final class WerkflowTestProcessEngine {
         // This is the same mechanism FlowableConfig uses via SpringBeanFactoryProxyMap;
         // here we supply a plain map, sufficient for test stubs.
         if (!beans.isEmpty()) {
-            cfg.setBeans(beans);
+            // Flowable's setBeans expects Map<Object,Object>; copy to widen key type.
+            cfg.setBeans(new java.util.HashMap<>(beans));
         }
 
         ProcessEngine processEngine = cfg.buildProcessEngine();

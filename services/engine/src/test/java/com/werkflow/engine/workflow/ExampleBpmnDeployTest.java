@@ -31,7 +31,7 @@ class ExampleBpmnDeployTest {
     private static final org.flowable.engine.delegate.JavaDelegate STUB =
             execution -> { /* no-op */ };
 
-    private static final Map<Object, Object> STUB_BEANS = Map.of(
+    private static final Map<String, Object> STUB_BEANS = Map.of(
             "externalApiCallDelegate", STUB,
             "notificationDelegate",    STUB
     );

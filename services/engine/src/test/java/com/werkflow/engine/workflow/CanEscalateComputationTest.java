@@ -59,7 +59,7 @@ class CanEscalateComputationTest {
     private static final org.flowable.engine.delegate.JavaDelegate NOTIFICATION_STUB =
             execution -> { /* no-op */ };
 
-    private static final Map<Object, Object> STUB_BEANS = Map.of(
+    private static final Map<String, Object> STUB_BEANS = Map.of(
             "externalApiCallDelegate", EXTERNAL_API_STUB,
             "notificationDelegate", NOTIFICATION_STUB
     );
