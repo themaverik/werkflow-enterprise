@@ -43,7 +43,7 @@ class GeneralApprovalRoutingTest {
     private static final org.flowable.engine.delegate.JavaDelegate NOTIFICATION_STUB =
             execution -> { /* intentional no-op */ };
 
-    private static final Map<Object, Object> STUB_BEANS = Map.of(
+    private static final Map<String, Object> STUB_BEANS = Map.of(
             "notificationDelegate", NOTIFICATION_STUB
     );
 

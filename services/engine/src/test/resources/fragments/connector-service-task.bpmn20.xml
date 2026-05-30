@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://werkflow.com/bpmn/test">
+  <process id="connector-service-task" name="Connector Service Task Fragment" isExecutable="true">
+    <startEvent id="start"/>
+    <sequenceFlow id="f1" sourceRef="start" targetRef="connectorTask"/>
+    <serviceTask id="connectorTask" name="Call REST Connector"
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <extensionElements>
+        <flowable:field name="connector"><flowable:string>test-api</flowable:string></flowable:field>
+        <flowable:field name="path"><flowable:string>/api/test/resource</flowable:string></flowable:field>
+        <flowable:field name="method"><flowable:string>POST</flowable:string></flowable:field>
+        <flowable:field name="outputVariable"><flowable:string>connectorResult</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+    <sequenceFlow id="f2" sourceRef="connectorTask" targetRef="end"/>
+    <endEvent id="end"/>
+  </process>
+</definitions>
