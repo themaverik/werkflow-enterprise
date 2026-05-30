@@ -48,7 +48,7 @@ class FlowableGroupResolverTest {
     @Test
     void step2_dbRoleMappings_mergedWithYaml() {
         when(adminServiceClient.getRoleMappings("default"))
-            .thenReturn(Map.of("finance_approver", List.of("DOA:L2")));
+            .thenReturn(Map.of("finance_approver", List.of("DOA_L2")));
         when(adminServiceClient.getUserProfile("user-1", "default"))
             .thenReturn(new UserProfileDto("user-1", "default", null, "FIN"));
 
@@ -57,8 +57,8 @@ class FlowableGroupResolverTest {
 
         List<String> groups = resolver.resolveGroups(ctx);
 
-        assertThat(groups).contains("DOA:L2");
-        assertThat(groups).doesNotContain("DOA_L1", "DOA_L2"); // old cumulative format removed
+        assertThat(groups).contains("DOA_L2");
+        assertThat(groups).doesNotContain("DOA:L2");
     }
 
     @Test
@@ -100,6 +100,46 @@ class FlowableGroupResolverTest {
 
         assertThat(groups).contains("ADMIN", "SUPER_ADMIN");
         assertThat(groups).doesNotContain("DOA:L1");
+    }
+
+    @Test
+    void step4_doaLevel_emitsDoaUnderscoreGroup() {
+        when(adminServiceClient.getUserProfile("user-1", "default"))
+            .thenReturn(new UserProfileDto("user-1", "default", null, null));
+
+        JwtUserContext ctx = JwtUserContext.builder()
+            .userId("user-1").tenantCode("default").roles(List.of()).doaLevel(2).build();
+
+        List<String> groups = resolver.resolveGroups(ctx);
+
+        assertThat(groups).contains("DOA_L2");
+        assertThat(groups).doesNotContain("DOA:L2");
+    }
+
+    @Test
+    void step4_nullDoaLevel_emitsNoDoaGroup() {
+        when(adminServiceClient.getUserProfile("user-1", "default"))
+            .thenReturn(new UserProfileDto("user-1", "default", null, null));
+
+        JwtUserContext ctx = JwtUserContext.builder()
+            .userId("user-1").tenantCode("default").roles(List.of()).build();
+
+        List<String> groups = resolver.resolveGroups(ctx);
+
+        assertThat(groups).noneMatch(g -> g.startsWith("DOA_L"));
+    }
+
+    @Test
+    void step4_doaLevel_emittedEvenWhenAdminServiceUnavailable() {
+        when(adminServiceClient.getUserProfile("user-1", "default"))
+            .thenThrow(new RuntimeException("admin-service unavailable"));
+
+        JwtUserContext ctx = JwtUserContext.builder()
+            .userId("user-1").tenantCode("default").roles(List.of()).doaLevel(3).build();
+
+        List<String> groups = resolver.resolveGroups(ctx);
+
+        assertThat(groups).contains("DOA_L3");
     }
 
     @Test

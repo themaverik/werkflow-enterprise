@@ -14,16 +14,18 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Resolves Flowable candidateGroup identifiers for a user — three-step pipeline.
+ * Resolves Flowable candidateGroup identifiers for a user — four-step pipeline.
  *
  * Step 1: fetch user profile from admin-service (for department attribution only).
  * Step 2: emit groups from YAML role-mappings merged with DB role-group mappings.
  * Step 3: emit department visibility group (DEPT:{code}) for query-layer scoping.
+ * Step 4: emit DOA authorization group (DOA_L{level}) from JWT doa_level claim (ADR-029).
  *
  * ADR-003: role→group mapping is DB-backed per tenant (role_group_mappings table),
  * merged with YAML fallback entries (admin, super_admin, workflow_designer).
  * ADR-010: department-derived approval routing groups ({deptCode}_APPROVER) removed.
  * Routing is handled entirely by DMN with role-mapped groups.
+ * ADR-029: DOA_L* (underscore) is canonical; DOA:L* (colon) format retired.
  */
 @Service
 @RequiredArgsConstructor
@@ -68,8 +70,14 @@ public class FlowableGroupResolver implements UserGroupLookupProxy {
             }
         }
 
+        // Step 4: emit DOA authorization group from JWT doa_level claim — independent of ERP profile (ADR-029)
+        Integer doaLevel = userContext.getDoaLevel();
+        if (doaLevel != null) {
+            resolved.add("DOA_L" + doaLevel);
+        }
+
         if (profile == null) {
-            log.debug("FlowableGroupResolver: no profile for user {} — returning mapped groups only", userId);
+            log.debug("FlowableGroupResolver: no profile for user {} — skipping DEPT group", userId);
             return new ArrayList<>(resolved);
         }
 

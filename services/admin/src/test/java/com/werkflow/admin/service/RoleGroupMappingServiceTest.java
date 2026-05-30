@@ -39,8 +39,8 @@ class RoleGroupMappingServiceTest {
     @Test
     void listByTenant_returnsOrderedMappings() {
         when(repository.findByTenantCodeOrderByRoleName("default")).thenReturn(List.of(
-            mapping(1L, "default", "finance_approver", "DOA:L2"),
-            mapping(2L, "default", "hr_approver",      "DOA:L1")
+            mapping(1L, "default", "finance_approver", "DOA_L2"),
+            mapping(2L, "default", "hr_approver",      "DOA_L1")
         ));
 
         List<RoleGroupMappingResponse> result = service.listByTenant("default");
@@ -53,31 +53,31 @@ class RoleGroupMappingServiceTest {
     @Test
     void getGroupsByRole_returnsMergedMap() {
         when(repository.findByTenantCodeOrderByRoleName("default")).thenReturn(List.of(
-            mapping(1L, "default", "finance_approver", "DOA:L2"),
-            mapping(2L, "default", "finance_approver", "DOA:L1"),
-            mapping(3L, "default", "hr_approver",      "DOA:L1")
+            mapping(1L, "default", "finance_approver", "DOA_L2"),
+            mapping(2L, "default", "finance_approver", "DOA_L1"),
+            mapping(3L, "default", "hr_approver",      "DOA_L1")
         ));
 
         Map<String, List<String>> result = service.getGroupsByRole("default");
 
         assertThat(result).containsKey("finance_approver");
-        assertThat(result.get("finance_approver")).containsExactlyInAnyOrder("DOA:L2", "DOA:L1");
-        assertThat(result.get("hr_approver")).containsExactly("DOA:L1");
+        assertThat(result.get("finance_approver")).containsExactlyInAnyOrder("DOA_L2", "DOA_L1");
+        assertThat(result.get("hr_approver")).containsExactly("DOA_L1");
     }
 
     @Test
     void create_savesMapping_whenNotDuplicate() {
-        RoleGroupMappingRequest req = new RoleGroupMappingRequest("default", "finance_approver", "DOA:L2");
-        when(repository.existsByTenantCodeAndRoleNameAndGroupName("default", "finance_approver", "DOA:L2"))
+        RoleGroupMappingRequest req = new RoleGroupMappingRequest("default", "finance_approver", "DOA_L2");
+        when(repository.existsByTenantCodeAndRoleNameAndGroupName("default", "finance_approver", "DOA_L2"))
             .thenReturn(false);
-        RoleGroupMapping saved = mapping(5L, "default", "finance_approver", "DOA:L2");
+        RoleGroupMapping saved = mapping(5L, "default", "finance_approver", "DOA_L2");
         when(repository.save(any(RoleGroupMapping.class))).thenReturn(saved);
 
         RoleGroupMappingResponse result = service.create(req);
 
         assertThat(result.id()).isEqualTo(5L);
         assertThat(result.roleName()).isEqualTo("finance_approver");
-        assertThat(result.groupName()).isEqualTo("DOA:L2");
+        assertThat(result.groupName()).isEqualTo("DOA_L2");
     }
 
     @Test

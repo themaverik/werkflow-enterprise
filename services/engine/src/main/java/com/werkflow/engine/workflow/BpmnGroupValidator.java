@@ -21,9 +21,8 @@ import java.util.List;
  * that every static candidateGroup value matches one of the recognised structural patterns:
  *
  *   - Exact administrative roles: ADMIN, SUPER_ADMIN, WORKFLOW_DESIGNER
- *   - DOA colon format:      DOA:L* (e.g. DOA:L1, DOA:L3)
- *   - DOA underscore format: DOA_L* (e.g. DOA_L1) — backward compatible during Phase 2
- *   - Department groups:     DEPT:* (e.g. DEPT:IT, DEPT:FIN::DOA:L2)
+ *   - DOA underscore format: DOA_L* (e.g. DOA_L1, DOA_L3) — canonical per ADR-029
+ *   - Department groups:     DEPT:* (e.g. DEPT:IT, DEPT:FIN)
  *
  * Dynamic EL expressions (${...}) are skipped — they are resolved at runtime.
  *
@@ -101,7 +100,7 @@ public class BpmnGroupValidator {
                 "BpmnGroupValidator: " + violations.size() + " unknown candidateGroup value(s) found in " +
                 "deployed BPMNs — these will never match any user's resolved groups. " +
                 "Fix the BPMN or ensure the group matches a recognised structural pattern " +
-                "(ADMIN, SUPER_ADMIN, WORKFLOW_DESIGNER, DOA:L*, DOA_L*, DEPT:*) before starting:\n" +
+                "(ADMIN, SUPER_ADMIN, WORKFLOW_DESIGNER, DOA_L*, DEPT:*) before starting:\n" +
                 String.join("\n", violations)
             );
         }
@@ -112,15 +111,13 @@ public class BpmnGroupValidator {
      *
      * Accepted patterns:
      *   - Exact administrative constants:   ADMIN, SUPER_ADMIN, WORKFLOW_DESIGNER
-     *   - DOA colon format (new):           DOA:L*
-     *   - DOA underscore format (Phase 2):  DOA_L*
+     *   - DOA underscore format (ADR-029):  DOA_L*
      *   - Department groups:                DEPT:*
      */
     private boolean isValidGroup(String group) {
         return group.equals(FlowableGroups.ADMIN)
             || group.equals(FlowableGroups.SUPER_ADMIN)
             || group.equals(FlowableGroups.WORKFLOW_DESIGNER)
-            || group.startsWith("DOA:L")
             || group.startsWith("DOA_L")
             || group.startsWith("DEPT:");
     }
