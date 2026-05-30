@@ -53,6 +53,8 @@ jobs:
           FLYWAY_ENABLED: "true"
           EXPOSE_MANAGEMENT_ENDPOINTS: "true"
           POSTGRES_PASSWORD: werkflow_secure_pass
+          WERKFLOW_VAULT_TOKEN: ci-dummy-token
+          WERKFLOW_VAULT_ADDR: http://localhost:8200
         run: |
           java -jar target/*.jar &
           echo "Waiting for engine on port 8081..."
