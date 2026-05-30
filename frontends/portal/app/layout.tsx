@@ -5,6 +5,7 @@ import { getMessages } from "next-intl/server"
 import { Toaster } from "sonner"
 import "./globals.css"
 import { Providers } from "./providers"
+import { CookieConsentBanner } from "@/components/cookie-consent-banner"
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -31,6 +32,7 @@ export default async function RootLayout({
         <NextIntlClientProvider messages={messages}>
           <Providers>{children}</Providers>
           <Toaster richColors position="top-right" />
+          <CookieConsentBanner />
         </NextIntlClientProvider>
       </body>
     </html>

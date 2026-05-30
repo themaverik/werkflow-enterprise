@@ -105,9 +105,9 @@ export default async function LoginPage() {
 
           <p style={{ marginTop: 24, fontSize: 12, color: '#94a8b3', textAlign: 'center', lineHeight: 1.6 }}>
             By signing in you agree to the{' '}
-            <a href="#" style={{ color: '#149ba5', textDecoration: 'none', fontWeight: 500 }}>Terms of Service</a>
+            <a href="/legal/terms" style={{ color: '#149ba5', textDecoration: 'none', fontWeight: 500 }}>Terms of Use</a>
             {' '}and{' '}
-            <a href="#" style={{ color: '#149ba5', textDecoration: 'none', fontWeight: 500 }}>Privacy Policy</a>.
+            <a href="/legal/privacy" style={{ color: '#149ba5', textDecoration: 'none', fontWeight: 500 }}>Privacy Policy</a>.
           </p>
         </div>
       </div>
