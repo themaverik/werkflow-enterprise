@@ -32,6 +32,7 @@ public abstract class WerkflowProcessTest {
 
     private WerkflowTestProcessEngine engine;
     protected ProcessTestDsl dsl;
+    protected DmnTestRunner dmnRunner;
 
     protected void startEngine(String dbName) {
         startEngine(dbName, Map.of());
@@ -40,6 +41,7 @@ public abstract class WerkflowProcessTest {
     protected void startEngine(String dbName, Map<Object, Object> beans) {
         engine = WerkflowTestProcessEngine.build(dbName, beans);
         dsl = new ProcessTestDsl(engine.getProcessEngine());
+        dmnRunner = new DmnTestRunner(engine.getProcessEngine());
     }
 
     @AfterAll
