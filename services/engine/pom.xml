@@ -331,12 +331,17 @@
                 <version>${flyway.version}</version>
             </plugin>
 
-            <!-- Default: exclude harness process tests; run them via -Pprocess-tests (ADR-028 Phase 5) -->
+            <!-- Default: exclude harness process tests + OpenBao-dependent ITs.
+                 CI runs: mvn clean verify -B  (no -DexcludedGroups override needed;
+                 Surefire 3.2.x does not reliably propagate system property overrides
+                 when the XML <configuration> block is present).
+                 Run OpenBao ITs locally via: mvn test -Pprocess-tests (fragment+flow)
+                 or with a live OpenBao container: mvn test -Dgroups=requires-openbao. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <excludedGroups>fragment,flow</excludedGroups>
+                    <excludedGroups>fragment,flow,requires-openbao</excludedGroups>
                 </configuration>
             </plugin>
         </plugins>

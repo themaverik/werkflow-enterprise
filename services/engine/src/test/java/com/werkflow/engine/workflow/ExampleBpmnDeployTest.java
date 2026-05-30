@@ -14,8 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
- * Sanity-checks that every BPMN edited as part of the ADR-027/FIX 1-4 work
- * deploys and parses cleanly on the in-memory engine.
+ * Sanity-checks that all eight example BPMNs deploy and parse cleanly on the
+ * in-memory engine.
  *
  * <p>Does NOT execute processes — deployment alone confirms that:
  * <ul>
@@ -23,9 +23,12 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  *   <li>Flowable's BPMN parser accepts it (parse handlers, validators).</li>
  *   <li>All element IDs referenced in sequence flows exist (parse-time wiring).</li>
  * </ul>
+ *
+ * <p>For the deploy+start quality gate (including DMN execution), see
+ * {@link AllProcessesDeployAndStartTest}.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@DisplayName("Example BPMN deploy-sanity — all four edited files parse and deploy cleanly")
+@DisplayName("Example BPMN deploy-sanity — all eight example files parse and deploy cleanly")
 class ExampleBpmnDeployTest {
 
     private static final org.flowable.engine.delegate.JavaDelegate STUB =
@@ -95,6 +98,54 @@ class ExampleBpmnDeployTest {
             var deployment = repositoryService.createDeployment()
                     .addClasspathResource("processes/examples/onboarding-checklist.bpmn20.xml")
                     .name("sanity-onboarding-checklist")
+                    .deploy();
+            assertThat(deployment.getId()).isNotNull();
+        }).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("capex-approval-process.bpmn20.xml deploys without error")
+    void capexApprovalDeploys() {
+        assertThatCode(() -> {
+            var deployment = repositoryService.createDeployment()
+                    .addClasspathResource("processes/examples/capex-approval-process.bpmn20.xml")
+                    .name("sanity-capex-approval")
+                    .deploy();
+            assertThat(deployment.getId()).isNotNull();
+        }).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("event-ticket-request.bpmn20.xml deploys without error")
+    void eventTicketRequestDeploys() {
+        assertThatCode(() -> {
+            var deployment = repositoryService.createDeployment()
+                    .addClasspathResource("processes/examples/event-ticket-request.bpmn20.xml")
+                    .name("sanity-event-ticket-request")
+                    .deploy();
+            assertThat(deployment.getId()).isNotNull();
+        }).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("finance-approval-process.bpmn20.xml deploys without error")
+    void financeApprovalDeploys() {
+        assertThatCode(() -> {
+            var deployment = repositoryService.createDeployment()
+                    .addClasspathResource("processes/examples/finance-approval-process.bpmn20.xml")
+                    .name("sanity-finance-approval")
+                    .deploy();
+            assertThat(deployment.getId()).isNotNull();
+        }).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("leave-request.bpmn20.xml deploys without error")
+    void leaveRequestDeploys() {
+        assertThatCode(() -> {
+            var deployment = repositoryService.createDeployment()
+                    .addClasspathResource("processes/examples/leave-request.bpmn20.xml")
+                    .name("sanity-leave-request")
                     .deploy();
             assertThat(deployment.getId()).isNotNull();
         }).doesNotThrowAnyException();
