@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  *   <li>P1-9 — reflection denied at a general evaluation site (String method invocation)</li>
  *   <li>P1-10 — reflection denied at a sequence-flow condition site (execution method invocation)</li>
  *   <li>P1-11 — function-bundle scoping: DATE bundle allows dateUtil, rejects stringUtil</li>
- *   <li>P1-12 — DMN regression: doa-routing DMN evaluates correctly under restricted manager</li>
+ *   <li>P1-12 — DMN regression: procurement-matrix DMN evaluates correctly under restricted manager</li>
  *   <li>P1-13 — capex BPMN happy-path regression: process deploys and reaches first user task</li>
  * </ul>
  *
@@ -317,82 +317,89 @@ class ELSecurityVerificationSuiteTest extends IntegrationTestBase {
     }
 
     // =========================================================================
-    // P1-12: DMN regression — doa-routing evaluates under restricted manager
+    // P1-12: DMN regression — procurement-matrix evaluates under restricted manager
     // =========================================================================
 
     @Nested
-    @DisplayName("P1-12 — DMN regression: doa-routing FEEL unaffected by EL hardening")
+    @DisplayName("P1-12 — DMN regression: procurement-matrix FEEL unaffected by EL hardening")
     class P1_12_DmnRegression {
 
         /**
-         * The {@code doa_routing} DMN must evaluate end-to-end with the
+         * The {@code procurement_matrix} DMN must evaluate end-to-end with the
          * {@link DmnModeCommandInterceptor} active (which sets the
          * {@link SecurityELResolver#dmnMode} ThreadLocal flag for the duration of the DMN
          * command). This proves FEEL expressions are not blocked by the BPMN EL guard.
          *
-         * <p>Inputs: requestAmount=300000, department="FINANCE".
-         * Per doa-routing.dmn rule_vp (amounts > 250,000): approverGroup="VP",
-         * requiresDirector=true, requiresVP=true.
+         * <p>Inputs: amount=600000, category="IT".
+         * Per procurement-matrix.dmn rule_board_it (amount > 500,000 AND category == "IT"):
+         * procurementPath="BOARD_APPROVAL", requiresCommittee=true.
          *
          * <p>The DMN is auto-deployed from {@code src/main/resources/dmn/} by Flowable's
-         * DMN auto-deployment on boot. We look it up by key {@code doa_routing}.
+         * DMN auto-deployment on boot. We look it up by key {@code procurement_matrix}.
          */
         @Test
-        @DisplayName("doa_routing DMN evaluates requestAmount=300000 to VP approver group")
-        void doaRoutingDmn_amount300k_returnsVpApproverGroup() {
+        @DisplayName("procurement_matrix DMN evaluates amount=600000 category=IT to BOARD_APPROVAL")
+        void procurementMatrixDmn_amount600kCategoryIt_returnsBoardApproval() {
             // Arrange
             Map<String, Object> inputs = Map.of(
-                    "requestAmount", new BigDecimal("300000"),
-                    "department", "FINANCE"
+                    "amount", new BigDecimal("600000"),
+                    "category", "IT"
             );
 
-            // Act — use DmnDecisionService.testDecision (tenant-unscoped path)
+            // Act — use DmnDecisionService.executeDecision (tenant-unscoped path)
             // The DMN is auto-deployed without a tenantId; query directly via DmnRepositoryService
-            List<Map<String, Object>> results = evaluateDoaRoutingDirectly(inputs);
+            List<Map<String, Object>> results = evaluateProcurementMatrixDirectly(inputs);
 
-            // Assert — rule_vp fires: amounts > 250,000 → VP
+            // Assert — rule_board_it fires: amount > 500,000 AND category == "IT" → BOARD_APPROVAL
             assertThat(results)
                     .isNotEmpty()
                     .first()
                     .satisfies(row -> {
-                        assertThat(row.get("approverGroup")).isEqualTo("VP");
-                        assertThat(row.get("requiresVP")).isEqualTo(true);
-                        assertThat(row.get("requiresDirector")).isEqualTo(true);
+                        assertThat(row.get("procurementPath")).isEqualTo("BOARD_APPROVAL");
+                        assertThat(row.get("requiresCommittee")).isEqualTo(true);
                     });
         }
 
         /**
-         * Evaluates doa-routing for a small amount to confirm rule_staff fires,
+         * Evaluates procurement-matrix for a small amount to confirm rule_direct fires,
          * further proving that FEEL evaluation across multiple rules works without
          * interference from the EL security resolver.
+         *
+         * <p>Inputs: amount=10000, category="SUPPLIES" (matches the blank catch-all input entry).
+         * Per procurement-matrix.dmn rule_direct (amount <= 50,000, any category):
+         * procurementPath="DIRECT_PURCHASE", requiresCommittee=false.
          */
         @Test
-        @DisplayName("doa_routing DMN evaluates requestAmount=500 to STAFF approver group")
-        void doaRoutingDmn_amount500_returnsStaffApproverGroup() {
+        @DisplayName("procurement_matrix DMN evaluates amount=10000 to DIRECT_PURCHASE")
+        void procurementMatrixDmn_amount10k_returnsDirectPurchase() {
             // Arrange
             Map<String, Object> inputs = Map.of(
-                    "requestAmount", new BigDecimal("500"),
-                    "department", "IT"
+                    "amount", new BigDecimal("10000"),
+                    "category", "SUPPLIES"
             );
 
             // Act
-            List<Map<String, Object>> results = evaluateDoaRoutingDirectly(inputs);
+            List<Map<String, Object>> results = evaluateProcurementMatrixDirectly(inputs);
 
-            // Assert — rule_staff fires: amounts >= 0 not matched by higher rules → STAFF
+            // Assert — rule_direct fires: amount <= 50,000, any category → DIRECT_PURCHASE
             assertThat(results)
                     .isNotEmpty()
                     .first()
-                    .satisfies(row -> assertThat(row.get("approverGroup")).isEqualTo("STAFF"));
+                    .satisfies(row -> {
+                        assertThat(row.get("procurementPath")).isEqualTo("DIRECT_PURCHASE");
+                        assertThat(row.get("requiresCommittee")).isEqualTo(false);
+                    });
         }
 
         /**
-         * Evaluates the doa_routing decision directly via Flowable's injected DmnDecisionService.
-         * The DMN is auto-deployed at boot from {@code dmn/doa-routing.dmn} without a tenantId.
+         * Evaluates the {@code procurement_matrix} decision directly via Flowable's injected
+         * DmnDecisionService. The DMN is auto-deployed at boot from
+         * {@code dmn/procurement-matrix.dmn} without a tenantId.
          * Uses {@code executeDecision()} (non-deprecated since Flowable 7.2).
          */
-        private List<Map<String, Object>> evaluateDoaRoutingDirectly(Map<String, Object> inputs) {
+        private List<Map<String, Object>> evaluateProcurementMatrixDirectly(Map<String, Object> inputs) {
             return flowableDmnDecisionService.createExecuteDecisionBuilder()
-                    .decisionKey("doa_routing")
+                    .decisionKey("procurement_matrix")
                     .variables(inputs)
                     .executeDecision();
         }

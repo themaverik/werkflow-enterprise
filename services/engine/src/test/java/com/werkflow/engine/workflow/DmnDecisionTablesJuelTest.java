@@ -85,20 +85,28 @@ class DmnDecisionTablesJuelTest {
     }
 
     @Test
-    @DisplayName("doa-routing.dmn routes by amount and department")
-    void doaRouting_routes() {
-        deploy("dmn/doa-routing.dmn", "doa_routing");
+    @DisplayName("procurement-matrix.dmn routes by amount and category")
+    void procurementMatrix_routes() {
+        deploy("dmn/procurement-matrix.dmn", "procurement_matrix");
 
-        assertThat(route(Map.of("requestAmount", 50000, "department", "OPS"), "approverGroup"))
-                .as("small → staff").isEqualTo("STAFF");
-        assertThat(route(Map.of("requestAmount", 120000, "department", "OPS"), "approverGroup"))
-                .as("> 100k non-finance → manager").isEqualTo("MANAGER");
-        assertThat(route(Map.of("requestAmount", 180000, "department", "FINANCE"), "approverGroup"))
-                .as("> 150k finance → finance director").isEqualTo("FINANCE_DIRECTOR");
-        assertThat(route(Map.of("requestAmount", 180000, "department", "OPS"), "approverGroup"))
-                .as("> 150k non-finance → manager (finance rule needs FINANCE)").isEqualTo("MANAGER");
-        assertThat(route(Map.of("requestAmount", 300000, "department", "FINANCE"), "approverGroup"))
-                .as("> 250k → VP regardless of department").isEqualTo("VP");
+        assertThat(route(Map.of("amount", 10000, "category", "SUPPLIES"), "procurementPath"))
+                .as("<= 50k → direct purchase").isEqualTo("DIRECT_PURCHASE");
+        assertThat(route(Map.of("amount", 10000, "category", "SUPPLIES"), "requiresCommittee"))
+                .as("direct purchase → no committee").isEqualTo(false);
+        assertThat(route(Map.of("amount", 75000, "category", "OFFICE"), "procurementPath"))
+                .as("> 50k → manager approval").isEqualTo("MANAGER_APPROVAL");
+        assertThat(route(Map.of("amount", 75000, "category", "OFFICE"), "requiresCommittee"))
+                .as("manager approval → no committee").isEqualTo(false);
+        assertThat(route(Map.of("amount", 250000, "category", "LOGISTICS"), "procurementPath"))
+                .as("> 200k any category → committee review").isEqualTo("COMMITTEE_REVIEW");
+        assertThat(route(Map.of("amount", 250000, "category", "LOGISTICS"), "requiresCommittee"))
+                .as("committee review → committee required").isEqualTo(true);
+        assertThat(route(Map.of("amount", 600000, "category", "IT"), "procurementPath"))
+                .as("> 500k IT → board approval").isEqualTo("BOARD_APPROVAL");
+        assertThat(route(Map.of("amount", 600000, "category", "IT"), "requiresCommittee"))
+                .as("board approval → committee required").isEqualTo(true);
+        assertThat(route(Map.of("amount", 600000, "category", "INFRASTRUCTURE"), "procurementPath"))
+                .as("> 500k infrastructure → board approval").isEqualTo("BOARD_APPROVAL");
     }
 
     private void deploy(String dmnResource, String decisionKey) {
