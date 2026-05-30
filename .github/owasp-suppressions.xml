@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!--
+    Add CVE suppressions here when a finding is:
+      (a) a false positive — the vulnerable code path is not reachable, OR
+      (b) a known, accepted risk with a compensating control documented below.
+
+    Format:
+    <suppress>
+        <notes>Reason: false positive / mitigated by X / tracked in issue #N</notes>
+        <cve>CVE-YYYY-NNNNN</cve>
+    </suppress>
+
+    Do NOT suppress CVEs to make the build green without understanding the risk.
+    Each suppression requires a <notes> entry explaining the rationale.
+    -->
+</suppressions>
