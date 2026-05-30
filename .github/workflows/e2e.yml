@@ -58,6 +58,19 @@ jobs:
           echo "Waiting for engine on port 8081..."
           timeout 60 bash -c 'until curl -sf http://localhost:8081/actuator/health; do sleep 2; done'
 
+      - name: Build admin service
+        working-directory: services/admin
+        run: mvn -q package -DskipTests
+
+      - name: Start admin service
+        working-directory: services/admin
+        env:
+          POSTGRES_PASSWORD: werkflow_secure_pass
+        run: |
+          java -jar target/*.jar &
+          echo "Waiting for admin on port 8083..."
+          timeout 60 bash -c 'until curl -sf http://localhost:8083/actuator/health; do sleep 2; done'
+
       - name: Install portal dependencies
         working-directory: frontends/portal
         run: npm ci
