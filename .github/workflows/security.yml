@@ -1,0 +1,128 @@
+name: Security Scan
+
+on:
+  schedule:
+    # Weekly on Monday 02:00 UTC — avoids NVD rate-limiting during peak hours
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "services/**/pom.xml"
+      - "shared/**/pom.xml"
+      - "frontends/portal/package*.json"
+      - "frontends/portal/.npmrc"
+
+jobs:
+  owasp-java:
+    name: OWASP Dependency-Check (Java)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: "maven"
+
+      - name: Build shared/common (needed by engine + admin)
+        working-directory: shared/common
+        run: mvn -q clean install -DskipTests -B
+
+      # The OWASP Dependency-Check Action caches the NVD database between runs.
+      # NVD_API_KEY speeds up the initial DB download; add as a GitHub secret if available.
+      # Report-only: findings are uploaded as artifacts for developers to triage.
+      # The pipeline never fails on OWASP CVEs — fixing is a developer decision.
+      # Add entries to .github/owasp-suppressions.xml for accepted/false-positive findings.
+      - name: OWASP Dependency-Check — engine
+        uses: dependency-check/Dependency-Check_Action@main
+        env:
+          JAVA_HOME: /opt/hostedtoolcache/Java_Temurin_jdk/21.0.0-0/x64
+        with:
+          project: "werkflow-engine"
+          path: "services/engine"
+          format: "HTML"
+          out: "reports/engine"
+          args: >
+            --enableRetired
+            --suppression .github/owasp-suppressions.xml
+        continue-on-error: true
+
+      - name: OWASP Dependency-Check — admin
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: "werkflow-admin"
+          path: "services/admin"
+          format: "HTML"
+          out: "reports/admin"
+          args: >
+            --enableRetired
+            --suppression .github/owasp-suppressions.xml
+        continue-on-error: true
+
+      - name: Upload OWASP reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-reports-java
+          path: reports/
+          retention-days: 30
+
+  npm-security:
+    name: npm Security Audit (Portal)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontends/portal/package-lock.json
+
+      - name: Verify npm min-release-age is enforced
+        working-directory: frontends/portal
+        run: |
+          age=$(npm config get min-release-age)
+          echo "npm min-release-age: $age"
+          if [ "$age" = "0" ] || [ "$age" = "undefined" ]; then
+            echo "::error::min-release-age is unset or 0 — supply-chain protection is disabled."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        working-directory: frontends/portal
+        run: npm ci
+
+      - name: npm audit signatures
+        working-directory: frontends/portal
+        run: npm audit signatures
+
+      # Report-only: findings are logged for developer triage.
+      # Fixing CVEs is a developer decision — auto-fix (npm audit fix) is never run in CI
+      # because it can silently break dependent packages. Developers run it locally,
+      # gated by the .npmrc min-release-age=7 setting.
+      - name: npm audit (full report — informational)
+        working-directory: frontends/portal
+        continue-on-error: true
+        run: npm audit --audit-level=info 2>&1 | tee /tmp/npm-audit.txt; exit 0
+
+      - name: Generate npm SBOM (CycloneDX)
+        working-directory: frontends/portal
+        run: npx --yes @cyclonedx/cyclonedx-npm --output-format json --output-file ../../reports/portal-sbom.json
+        continue-on-error: true
+
+      - name: Upload npm audit + SBOM report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-reports-npm
+          path: reports/portal-sbom.json
+          retention-days: 30

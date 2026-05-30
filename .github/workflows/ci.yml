@@ -92,9 +92,36 @@ jobs:
           cache: "npm"
           cache-dependency-path: frontends/portal/package-lock.json
 
+      # min-release-age is also enforced by frontends/portal/.npmrc (7 days).
+      # This step makes the enforcement visible and auditable in CI logs.
+      # npm audit fix, if ever run, also respects this setting — only packages
+      # older than 7 days are eligible, guarding against supply-chain attacks.
+      - name: Verify npm min-release-age is enforced
+        working-directory: frontends/portal
+        run: |
+          age=$(npm config get min-release-age)
+          echo "npm min-release-age: $age"
+          if [ "$age" = "0" ] || [ "$age" = "undefined" ]; then
+            echo "::error::min-release-age is unset or 0. Set it in .npmrc to protect against supply-chain attacks."
+            exit 1
+          fi
+
       - name: Install dependencies
         working-directory: frontends/portal
         run: npm ci
+
+      - name: npm audit signatures
+        working-directory: frontends/portal
+        run: npm audit signatures
+
+      # Report-only: findings are visible in CI logs for triage.
+      # npm audit fix is never run in CI — it can break dependent packages silently.
+      # Developers run it locally, gated by .npmrc min-release-age=7.
+      # Full OWASP + SBOM report runs in security.yml (weekly + on pom/package changes).
+      - name: npm audit (informational)
+        working-directory: frontends/portal
+        continue-on-error: true
+        run: npm audit --audit-level=info 2>&1 || true
 
       - name: Type-check
         working-directory: frontends/portal

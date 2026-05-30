@@ -1,0 +1,47 @@
+# Netlify configuration for Werkflow Enterprise Portal
+# The Next.js portal (frontends/portal/) is deployed here.
+# The Spring Boot backend (engine + admin) must be deployed separately
+# and reachable at ENGINE_BASE_URL / ADMIN_BASE_URL.
+
+[build]
+  base    = "frontends/portal"
+  publish = ".next"
+  command = "npm ci && npm run build"
+
+[build.environment]
+  NODE_VERSION  = "20"
+  # Do NOT set DOCKER_BUILD here — omitting it keeps output as standard Next.js
+  # output, which Netlify's Next.js plugin requires.
+
+# Netlify Next.js plugin (SSR + API routes + image optimisation)
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Redirect bare /api/** to Next.js API routes (handled by plugin by default,
+# kept here as documentation so route expectations are explicit).
+[[redirects]]
+  from   = "/api/*"
+  to     = "/api/:splat"
+  status = 200
+
+# Legal pages are statically pre-rendered — no special rules needed,
+# but document the route group here for clarity.
+# /legal/privacy  → app/(legal)/privacy/page.tsx
+# /legal/terms    → app/(legal)/terms/page.tsx
+# /legal/cookies  → app/(legal)/cookies/page.tsx
+
+# ------------------------------------------------------------------
+# Required Netlify environment variables (set in Netlify UI or CLI):
+# ------------------------------------------------------------------
+# ENGINE_BASE_URL          — URL of the deployed Werkflow Engine service
+#                            e.g. https://api.werkflow.io or https://engine.yourserver.com
+# ADMIN_BASE_URL           — URL of the deployed Werkflow Admin service
+# NEXTAUTH_URL             — Public URL of the Netlify deployment
+#                            e.g. https://werkflow-demo.netlify.app
+# NEXTAUTH_SECRET          — Random secret (openssl rand -base64 32)
+# KEYCLOAK_CLIENT_ID       — e.g. werkflow-portal
+# KEYCLOAK_CLIENT_SECRET   — from Keycloak admin console
+# KEYCLOAK_ISSUER          — e.g. https://auth.yourserver.com/realms/werkflow
+# NEXT_PUBLIC_KEYCLOAK_ISSUER_BROWSER — same as above (browser-visible)
+# NEXT_PUBLIC_KEYCLOAK_CLIENT_ID      — same as KEYCLOAK_CLIENT_ID
+# ------------------------------------------------------------------

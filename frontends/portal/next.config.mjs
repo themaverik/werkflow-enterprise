@@ -2,11 +2,18 @@ import createNextIntlPlugin from 'next-intl/plugin'
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
 
+// 'standalone' bundles the server for Docker; Netlify's Next.js plugin handles its own output.
+const isDockerBuild = process.env.DOCKER_BUILD === 'true'
+
+// Backend base URLs — override in Netlify env vars to point at the deployed backend.
+const engineBaseUrl = process.env.ENGINE_BASE_URL || 'http://localhost:8081'
+const adminBaseUrl = process.env.ADMIN_BASE_URL || 'http://localhost:8083'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  output: 'standalone',
+  ...(isDockerBuild ? { output: 'standalone' } : {}),
   env: {
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME || 'Werkflow Portal',
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api',
@@ -35,11 +42,11 @@ const nextConfig = {
     return [
       {
         source: '/api/engine/:path*',
-        destination: 'http://localhost:8081/api/:path*',
+        destination: `${engineBaseUrl}/api/:path*`,
       },
       {
         source: '/api/admin/:path*',
-        destination: 'http://localhost:8083/api/:path*',
+        destination: `${adminBaseUrl}/api/:path*`,
       },
     ]
   },

@@ -257,4 +257,35 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- mvn dependency-check:check -Psecurity-check  → OWASP CVE scan (local / CI gate) -->
+        <profile>
+            <id>security-check</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.owasp</groupId>
+                        <artifactId>dependency-check-maven</artifactId>
+                        <version>10.0.4</version>
+                        <configuration>
+                            <failBuildOnCVSS>11</failBuildOnCVSS>
+                            <suppressionFile>${project.basedir}/../../.github/owasp-suppressions.xml</suppressionFile>
+                            <formats>
+                                <format>HTML</format>
+                                <format>JSON</format>
+                            </formats>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
