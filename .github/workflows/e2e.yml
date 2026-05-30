@@ -68,6 +68,8 @@ jobs:
         working-directory: services/admin
         env:
           POSTGRES_PASSWORD: werkflow_secure_pass
+          WERKFLOW_VAULT_TOKEN: ci-dummy-token
+          WERKFLOW_VAULT_ADDR: http://localhost:8200
         run: |
           java -jar target/*.jar &
           echo "Waiting for admin on port 8083..."
