@@ -1,4 +1,4 @@
-name: CI
+name: CI / E2E Pipeline
 
 on:
   push:
@@ -48,6 +48,13 @@ jobs:
         # OpenBao-dependent ITs run via: mvn test -Dgroups=requires-openbao (milestone gate only).
         run: mvn clean verify -B
 
+      - name: Upload engine JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: engine-jar
+          path: services/engine/target/engine-service.jar
+          retention-days: 1
+
       - name: Upload engine test reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -79,6 +86,13 @@ jobs:
         working-directory: services/admin
         run: mvn clean verify -B
 
+      - name: Upload admin JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-jar
+          path: services/admin/target/admin-service.jar
+          retention-days: 1
+
   portal-build:
     name: Portal — Type-check & Build
     runs-on: ubuntu-latest
@@ -96,8 +110,6 @@ jobs:
 
       # min-release-age is also enforced by frontends/portal/.npmrc (7 days).
       # This step makes the enforcement visible and auditable in CI logs.
-      # npm audit fix, if ever run, also respects this setting — only packages
-      # older than 7 days are eligible, guarding against supply-chain attacks.
       - name: Verify npm min-release-age is enforced
         working-directory: frontends/portal
         run: |
@@ -117,9 +129,6 @@ jobs:
         run: npm audit signatures
 
       # Report-only: findings are visible in CI logs for triage.
-      # npm audit fix is never run in CI — it can break dependent packages silently.
-      # Developers run it locally, gated by .npmrc min-release-age=7.
-      # Full OWASP + SBOM report runs in security.yml (weekly + on pom/package changes).
       - name: npm audit (informational)
         working-directory: frontends/portal
         continue-on-error: true
@@ -132,7 +141,6 @@ jobs:
       - name: Build portal
         working-directory: frontends/portal
         env:
-          # Dummy values — build-time only, no real backend needed
           NEXTAUTH_SECRET: ci-build-secret
           NEXTAUTH_URL: http://localhost:4000
           KEYCLOAK_CLIENT_ID: werkflow-portal
@@ -143,13 +151,14 @@ jobs:
           ENGINE_BASE_URL: http://localhost:8081
         run: npm run build
 
+      - name: Upload portal build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: portal-next
+          path: frontends/portal/.next/
+          retention-days: 1
+
   connector-schema-parity:
-    # The connector-definition JSON Schema is byte-duplicated in two repos: the
-    # admin service consumes it at runtime (canonical copy) and the public
-    # marketplace mirrors it for community connector authors. This job fails if
-    # the two copies drift. The enterprise copy is authoritative — sync the
-    # public copy to match. (Drift introduced on the public side is caught on the
-    # next enterprise CI run, since public→enterprise checkout is not available.)
     name: Connector schema — two-repo parity
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -175,3 +184,122 @@ jobs:
             exit 1
           fi
           echo "connector-definition.schema.json is byte-identical across both repos."
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [engine-build, admin-build, portal-build]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontends/portal/package-lock.json
+
+      - name: Download engine JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: engine-jar
+          path: services/engine/target/
+
+      - name: Download admin JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: admin-jar
+          path: services/admin/target/
+
+      - name: Download portal build output
+        uses: actions/download-artifact@v4
+        with:
+          name: portal-next
+          path: frontends/portal/.next/
+
+      - name: Start infrastructure stack
+        run: |
+          docker compose -f infrastructure/docker/docker-compose.yml up -d --wait postgres keycloak
+
+      - name: Configure Keycloak realm
+        env:
+          KEYCLOAK_URL: http://localhost:8090
+          KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET || 'REDACTED_KC_SECRET' }}
+        run: |
+          chmod +x infrastructure/keycloak/setup-ci-realm.sh
+          infrastructure/keycloak/setup-ci-realm.sh
+
+      - name: Start engine service
+        working-directory: services/engine
+        env:
+          FLYWAY_ENABLED: "true"
+          EXPOSE_MANAGEMENT_ENDPOINTS: "true"
+          POSTGRES_PASSWORD: werkflow_secure_pass
+          WERKFLOW_VAULT_TOKEN: ci-dummy-token
+          WERKFLOW_VAULT_ADDR: http://localhost:8200
+        run: |
+          java -jar target/*.jar &
+          echo "Waiting for engine on port 8081..."
+          timeout 60 bash -c 'until curl -sf http://localhost:8081/actuator/health; do sleep 2; done'
+
+      - name: Start admin service
+        working-directory: services/admin
+        env:
+          POSTGRES_PASSWORD: werkflow_secure_pass
+          WERKFLOW_VAULT_TOKEN: ci-dummy-token
+          WERKFLOW_VAULT_ADDR: http://localhost:8200
+        run: |
+          java -jar target/*.jar &
+          echo "Waiting for admin on port 8083..."
+          timeout 60 bash -c 'until curl -sf http://localhost:8083/actuator/health; do sleep 2; done'
+
+      - name: Install portal dependencies
+        working-directory: frontends/portal
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: frontends/portal
+        run: npx playwright install --with-deps chromium
+
+      - name: Start portal
+        working-directory: frontends/portal
+        env:
+          NEXTAUTH_SECRET: ci-secret-for-tests
+          NEXTAUTH_URL: http://localhost:4000
+          KEYCLOAK_CLIENT_ID: ${{ secrets.KEYCLOAK_CLIENT_ID || 'werkflow-portal' }}
+          KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET || 'REDACTED_KC_SECRET' }}
+          KEYCLOAK_ISSUER: http://localhost:8090/realms/werkflow
+          NEXT_PUBLIC_KEYCLOAK_ISSUER_BROWSER: http://localhost:8090/realms/werkflow
+          NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: ${{ secrets.KEYCLOAK_CLIENT_ID || 'werkflow-portal' }}
+          ENGINE_BASE_URL: http://localhost:8081
+        run: |
+          npm start &
+          echo "Waiting for portal on port 4000..."
+          timeout 60 bash -c 'until curl -sf http://localhost:4000; do sleep 2; done'
+
+      - name: Run Playwright E2E tests
+        working-directory: frontends/portal
+        env:
+          E2E_ADMIN_USER: admin
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD || 'REDACTED_PASSWORD' }}
+          E2E_MANAGER_USER: john.manager
+          E2E_MANAGER_PASSWORD: ${{ secrets.E2E_MANAGER_PASSWORD || 'manager123' }}
+          E2E_EMPLOYEE_USER: jane.employee
+          E2E_EMPLOYEE_PASSWORD: ${{ secrets.E2E_EMPLOYEE_PASSWORD || 'employee123' }}
+        run: npm run e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontends/portal/playwright-report/
+          retention-days: 7
