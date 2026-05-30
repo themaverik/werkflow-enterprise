@@ -2,7 +2,7 @@
 
 **Repo scope**: Enterprise-only engine, admin-service, and portal features
 **Master Roadmap**: `~/Projects/werkflow-platform/docs/Roadmap.md` (authoritative for all future tasks)
-**Last Updated**: 2026-05-23
+**Last Updated**: 2026-05-30
 **Target**: Internal Enterprise Demo — June 2026
 
 > Future tasks in this file are synced from the master Roadmap. Do not add tasks here without adding them to master first.
@@ -13,14 +13,14 @@
 
 | Item | Status |
 |------|--------|
-| E2E quality gate | 7/7 specs passing |
-| ADRs | ADR-001 through ADR-022 (in master `docs/adr/`); ADR-020 has B.5 amendment |
-| Active milestone | M4.12 — Connector Architecture Maturity (Phase B credentials) |
-| M4.11 P3 | Complete — 11 of 11 element audits |
-| M4.12 done | A.1/A.2 (ADR-019); B.1a/B.2/B.3/B.4/B.4-portal; **B.5 backend (DB credential migration AES→OpenBao, `674018a`)** |
-| Next session | **M4.12 B.5-portal** — datasources-page credential picker + B.5 rotation pool-eviction wiring (D7) |
-| Branch | main (B.5 backend merged) |
-| Operational | dev/live admin DBs need `mvn flyway:repair` (V6 + V24); unmerged `fix/m4.12-datasources-role-gate` |
+| E2E quality gate | 7/7 specs passing (full milestone-end re-run = master item 9, last) |
+| ADRs | ADR-001 through ADR-029 (in master `docs/adr/`) — latest: ADR-027 (approval escalation), ADR-028 (process test harness), ADR-029 (DOA emission + routing patterns) |
+| Active milestone | Pre-MVP Tier 5 (release hardening) per master Roadmap |
+| M4.11 / M4.12 | Complete (P3 11/11; Phase A + B.1a–B.6 + B.4/B.5-portal + item 8 sidebar gate) |
+| Tier 1–3 done | All Tier-1 (mechanical cleanups, facade hardening, schema hygiene); item 7 approval-escalation cluster (BPMN + engine + 7c-UI, ADR-027) shipped |
+| Next | Master Tier 5: item 10 compliance/legal · item 11 process test harness (ADR-028) · item 12 Netlify + prod CI/CD · item 13 deploy-time validators · **item 14 candidate-group routing correctness (ADR-029 — DOA emission Phase 1 foundational + capex compound migration Phase 2)** → then item 9 E2E last |
+| Branch | main (all merged + pushed) |
+| Operational | dev/live admin DBs need `mvn flyway:repair` (V6 + V24); `leave-request.bpmn20.xml` XSD element-ordering bug subsumed by item 13 |
 
 ---
 

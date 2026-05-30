@@ -150,7 +150,8 @@ The engine auto-deploys example processes on startup from `services/engine/src/m
 - [Deployment Configuration](./docs/Deployment-Configuration-Guide.md)
 - [Keycloak Setup](./docs/Keycloak-Implementation-Guide.md)
 - [Architecture Decisions](./docs/Architecture/)
-- **Release readiness (pre-MVP):** compliance/legal (privacy, terms, cookies, GDPR), authoring↔engine validators, and Netlify-demo + prod CI/CD deploy checklist are tracked in the master roadmap **Pre-MVP Execution Sequence → Tier 5** (`werkflow-platform/docs/Roadmap.md`)
+- **Release readiness (pre-MVP):** compliance/legal (privacy, terms, cookies, GDPR), process test harness, Netlify-demo + prod CI/CD deploy checklist, authoring↔engine deploy-time validators, and candidate-group routing correctness (DOA emission + capex compound migration) are tracked in the master roadmap **Pre-MVP Execution Sequence → Tier 5** (`werkflow-platform/docs/Roadmap.md`)
+- [Authorization, Routing & Visibility Model](../docs/reference/Authorization-Routing-Visibility-Model.md) — one-page distillation of ADR-002/003/004/005/010/029 (Department vs Custody vs DOA vs role-mappings; visibility vs routing; candidate-group formats)
 
 ## License
 
