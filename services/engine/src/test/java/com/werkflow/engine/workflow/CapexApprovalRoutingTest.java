@@ -86,6 +86,12 @@ class CapexApprovalRoutingTest {
         taskService      = testEngine.getProcessEngine().getTaskService();
         historyService   = testEngine.getProcessEngine().getHistoryService();
 
+        // Deploy DMN first — the BPMN's DMN service tasks reference these decision keys.
+        repositoryService.createDeployment()
+                .addClasspathResource("dmn/capex-approver-resolution.dmn")
+                .name("capex-approver-resolution")
+                .deploy();
+
         // Deploy the REAL capex BPMN from classpath — same file as production uses.
         repositoryService.createDeployment()
                 .addClasspathResource("processes/examples/capex-approval-process.bpmn20.xml")
@@ -104,11 +110,11 @@ class CapexApprovalRoutingTest {
     // Helpers
     // -------------------------------------------------------------------------
 
-    /** Starts a process instance with requestAmount and returns it. */
+    /** Starts a process instance with requestAmount and capexOwner="FIN". */
     private ProcessInstance start(int requestAmount) {
         return runtimeService.startProcessInstanceByKey(
                 "capex-approval-process",
-                Map.of("requestAmount", requestAmount));
+                Map.of("requestAmount", requestAmount, "capexOwner", "FIN"));
     }
 
     /** Completes the single active task on this instance with the given decision value. */

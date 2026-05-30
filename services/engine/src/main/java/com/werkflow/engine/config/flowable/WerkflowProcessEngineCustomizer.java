@@ -27,6 +27,7 @@ import java.util.List;
  *   <li>{@link WerkflowBusinessRuleTaskValidator} — rejects businessRuleTask dead-config (ADR-026).</li>
  *   <li>{@link WerkflowManualTaskValidator} — rejects confirmationRequired on manualTask (ADR-017).</li>
  *   <li>{@link WerkflowLinkEventValidator} — rejects link events unsupported in Flowable 7.2.</li>
+ *   <li>{@link WerkflowDeadExtensionAttrValidator} — rejects F-EV-2 dead flowable:* attrs (ADR-009).</li>
  * </ol>
  */
 public final class WerkflowProcessEngineCustomizer {
@@ -50,6 +51,7 @@ public final class WerkflowProcessEngineCustomizer {
             set.addValidator(new WerkflowBusinessRuleTaskValidator());
             set.addValidator(new WerkflowManualTaskValidator());
             set.addValidator(new WerkflowLinkEventValidator());
+            set.addValidator(new WerkflowDeadExtensionAttrValidator());
         });
         configuration.setProcessValidator(processValidator);
     }

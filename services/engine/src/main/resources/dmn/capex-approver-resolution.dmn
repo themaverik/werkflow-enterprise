@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
+             xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/"
+             id="capex_approver_resolution_definitions"
+             name="CapEx Approver Resolution"
+             namespace="http://werkflow.com/dmn">
+
+  <!--
+    Resolves the DOA candidate group for each approval level based on the capex owner department.
+    Three separate decisions — one per tier — so each DMN service task in the BPMN can write
+    the same output variable name (approverGroup) without collision.
+
+    Input:  capexOwner (string) — department code, e.g. "FIN"
+    Output: approverGroup (string) — DOA_L{level} group, e.g. "DOA_L2"
+
+    Flowable 7.x evaluates DMN input entries as JUEL (not FEEL). Comma-separated "one of" lists
+    are not valid; add explicit rules per department code.
+
+    Phase 2 supports FIN only. Add per-department rules here when additional departments adopt
+    the capex workflow.
+  -->
+
+  <!-- ===== Manager level (DOA L2) ===== -->
+  <decision id="capex_manager_group" name="CapEx Manager Approver Group">
+    <description>Resolves the DOA L2 candidate group for manager-level capex approval.</description>
+    <decisionTable id="capex_manager_group_table" hitPolicy="FIRST">
+
+      <input id="cmg_input_owner" label="CapEx Owner Department">
+        <inputExpression id="cmg_input_owner_expr" typeRef="string">
+          <text>capexOwner</text>
+        </inputExpression>
+      </input>
+
+      <output id="cmg_output_group" label="Approver Group" name="approverGroup" typeRef="string"/>
+
+      <rule id="cmg_rule_fin">
+        <description>Finance department — L2 approvers</description>
+        <inputEntry id="cmg_rule_fin_in"><text>== "FIN"</text></inputEntry>
+        <outputEntry id="cmg_rule_fin_out"><text>"DOA_L2"</text></outputEntry>
+      </rule>
+
+      <!-- Fallback: unknown department defaults to L2 -->
+      <rule id="cmg_rule_default">
+        <description>Default fallback — L2</description>
+        <inputEntry id="cmg_rule_default_in"><text></text></inputEntry>
+        <outputEntry id="cmg_rule_default_out"><text>"DOA_L2"</text></outputEntry>
+      </rule>
+
+    </decisionTable>
+  </decision>
+
+  <!-- ===== VP level (DOA L3) ===== -->
+  <decision id="capex_vp_group" name="CapEx VP Approver Group">
+    <description>Resolves the DOA L3 candidate group for VP-level capex approval.</description>
+    <decisionTable id="capex_vp_group_table" hitPolicy="FIRST">
+
+      <input id="cvg_input_owner" label="CapEx Owner Department">
+        <inputExpression id="cvg_input_owner_expr" typeRef="string">
+          <text>capexOwner</text>
+        </inputExpression>
+      </input>
+
+      <output id="cvg_output_group" label="Approver Group" name="approverGroup" typeRef="string"/>
+
+      <rule id="cvg_rule_fin">
+        <description>Finance department — L3 approvers</description>
+        <inputEntry id="cvg_rule_fin_in"><text>== "FIN"</text></inputEntry>
+        <outputEntry id="cvg_rule_fin_out"><text>"DOA_L3"</text></outputEntry>
+      </rule>
+
+      <rule id="cvg_rule_default">
+        <description>Default fallback — L3</description>
+        <inputEntry id="cvg_rule_default_in"><text></text></inputEntry>
+        <outputEntry id="cvg_rule_default_out"><text>"DOA_L3"</text></outputEntry>
+      </rule>
+
+    </decisionTable>
+  </decision>
+
+  <!-- ===== CFO level (DOA L4) ===== -->
+  <decision id="capex_cfo_group" name="CapEx CFO Approver Group">
+    <description>Resolves the DOA L4 candidate group for CFO-level capex approval.</description>
+    <decisionTable id="capex_cfo_group_table" hitPolicy="FIRST">
+
+      <input id="ccg_input_owner" label="CapEx Owner Department">
+        <inputExpression id="ccg_input_owner_expr" typeRef="string">
+          <text>capexOwner</text>
+        </inputExpression>
+      </input>
+
+      <output id="ccg_output_group" label="Approver Group" name="approverGroup" typeRef="string"/>
+
+      <rule id="ccg_rule_fin">
+        <description>Finance department — L4 approvers</description>
+        <inputEntry id="ccg_rule_fin_in"><text>== "FIN"</text></inputEntry>
+        <outputEntry id="ccg_rule_fin_out"><text>"DOA_L4"</text></outputEntry>
+      </rule>
+
+      <rule id="ccg_rule_default">
+        <description>Default fallback — L4</description>
+        <inputEntry id="ccg_rule_default_in"><text></text></inputEntry>
+        <outputEntry id="ccg_rule_default_out"><text>"DOA_L4"</text></outputEntry>
+      </rule>
+
+    </decisionTable>
+  </decision>
+
+</definitions>

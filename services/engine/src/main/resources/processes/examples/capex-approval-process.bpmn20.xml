@@ -10,12 +10,14 @@
              targetNamespace="http://werkflow.com/bpmn/capex">
 
   <process id="capex-approval-process" name="Capital Expenditure Approval" isExecutable="true"
-           flowable:versionTag="2">
+           flowable:versionTag="3">
 
-    <documentation>Capital Expenditure approval workflow — V3 per-level decision routing (ADR-027).
-    Each approval level has its own decision gateway (approve/reject/escalate), fixing the
-    last-write-wins defect and enabling early-exit on reject. CFO is the top level; no escalate
-    route from CFO (portal suppresses the Escalate button at that level).</documentation>
+    <documentation>Capital Expenditure approval workflow — V4 DMN-resolved approver groups (ADR-029 Phase 2).
+    A DMN service task before each user task evaluates capex-approver-resolution.dmn to set the
+    approverGroup process variable. candidateGroups uses ${approverGroup} instead of hardcoded
+    DEPT:FIN::DOA:L{n} compound strings. Each approval level has its own decision gateway
+    (approve/reject/escalate), fixing the last-write-wins defect from V2 and enabling early-exit
+    on reject (ADR-027). CFO is the top level; no escalate route from CFO.</documentation>
 
     <extensionElements>
       <flowable:properties>
@@ -25,7 +27,8 @@
 
     <!-- Start Event -->
     <startEvent id="startEvent" name="CapEx Request Submitted" flowable:formKey="capex-request-form">
-      <documentation>Employee submits a capital expenditure request</documentation>
+      <documentation>Employee submits a capital expenditure request. Required form fields:
+requestAmount (number), category (string), capexOwner (string — department code, e.g. FIN).</documentation>
     </startEvent>
 
     <!-- Action Block: Create CapEx Request via external API -->
@@ -56,13 +59,24 @@
       </extensionElements>
     </serviceTask>
 
-    <!-- Budget precondition gateway (unchanged from V2) -->
+    <!-- Budget precondition gateway -->
     <exclusiveGateway id="budgetGateway" name="Budget Available?" />
 
-    <!-- Action Block: Manager Review (DOA:L2) -->
+    <!-- DMN: Resolve manager-level approver group (DOA L2) -->
+    <!-- Flowable 7.2: DMN evaluated only via serviceTask flowable:type="dmn" (not businessRuleTask). -->
+    <!-- Output variable: approverGroup — read by managerApproval candidateGroups. -->
+    <serviceTask id="resolveManagerGroup" name="Resolve Manager Approver Group" flowable:type="dmn">
+      <extensionElements>
+        <flowable:field name="decisionTableReferenceKey">
+          <flowable:string>capex_manager_group</flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Action Block: Manager Review -->
     <userTask id="managerApproval" name="Manager Review"
               flowable:actionType="HUMAN_APPROVAL"
-              flowable:candidateGroups="DEPT:FIN::DOA:L2,SUPER_ADMIN"
+              flowable:candidateGroups="${approverGroup},SUPER_ADMIN"
               flowable:formKey="capex-request-form">
       <documentation>Finance manager reviews and approves, rejects, or escalates the CapEx request</documentation>
     </userTask>
@@ -73,10 +87,20 @@
     <!-- Amount threshold after manager approve -->
     <exclusiveGateway id="managerAmountGateway" name="Amount > $50,000?" />
 
-    <!-- Action Block: VP Review (DOA:L3) -->
+    <!-- DMN: Resolve VP-level approver group (DOA L3) -->
+    <!-- Receives flow from both managerDecision escalate and managerAmountGateway >50k. -->
+    <serviceTask id="resolveVpGroup" name="Resolve VP Approver Group" flowable:type="dmn">
+      <extensionElements>
+        <flowable:field name="decisionTableReferenceKey">
+          <flowable:string>capex_vp_group</flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Action Block: VP Review -->
     <userTask id="vpApproval" name="VP Review"
               flowable:actionType="HUMAN_APPROVAL"
-              flowable:candidateGroups="DEPT:FIN::DOA:L3,SUPER_ADMIN"
+              flowable:candidateGroups="${approverGroup},SUPER_ADMIN"
               flowable:formKey="capex-request-form">
       <documentation>Finance VP reviews CapEx requests over $50,000 or escalated from manager</documentation>
     </userTask>
@@ -87,10 +111,20 @@
     <!-- Amount threshold after VP approve -->
     <exclusiveGateway id="vpAmountGateway" name="Amount > $250,000?" />
 
-    <!-- Action Block: CFO Review (DOA:L4) -->
+    <!-- DMN: Resolve CFO-level approver group (DOA L4) -->
+    <!-- Receives flow from both vpDecision escalate and vpAmountGateway >250k. -->
+    <serviceTask id="resolveCfoGroup" name="Resolve CFO Approver Group" flowable:type="dmn">
+      <extensionElements>
+        <flowable:field name="decisionTableReferenceKey">
+          <flowable:string>capex_cfo_group</flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Action Block: CFO Review -->
     <userTask id="cfoApproval" name="CFO Review"
               flowable:actionType="HUMAN_APPROVAL"
-              flowable:candidateGroups="DEPT:FIN::DOA:L4,SUPER_ADMIN"
+              flowable:candidateGroups="${approverGroup},SUPER_ADMIN"
               flowable:formKey="capex-request-form">
       <documentation>CFO reviews CapEx requests over $250,000 or escalated from VP</documentation>
     </userTask>
@@ -98,8 +132,7 @@
     <!-- Per-level decision gateway: CFO (top level — no escalate route) -->
     <exclusiveGateway id="cfoDecision" name="CFO Decision" />
 
-    <!-- Action Block: Update CapEx Status to Approved + Reserve Budget
-         Receives flows from: managerAmountGateway (<=50k), vpAmountGateway (<=250k), cfoDecision (approve) -->
+    <!-- Action Block: Update CapEx Status to Approved + Reserve Budget -->
     <serviceTask id="updateApproved" name="Update Status: Approved"
                  flowable:actionType="EXTERNAL_API_CALL"
                  flowable:delegateExpression="${externalApiCallDelegate}">
@@ -123,8 +156,7 @@
       </extensionElements>
     </serviceTask>
 
-    <!-- Action Block: Update CapEx Status to Rejected
-         Receives flows from: managerDecision (reject), vpDecision (reject), cfoDecision (reject) -->
+    <!-- Action Block: Update CapEx Status to Rejected -->
     <serviceTask id="updateRejected" name="Update Status: Rejected"
                  flowable:actionType="EXTERNAL_API_CALL"
                  flowable:delegateExpression="${externalApiCallDelegate}">
@@ -159,13 +191,16 @@
     <sequenceFlow id="flow1" sourceRef="createCapExRequest" targetRef="checkBudget" />
     <sequenceFlow id="flow2" sourceRef="checkBudget" targetRef="budgetGateway" />
 
-    <!-- Budget gate (unchanged) -->
-    <sequenceFlow id="flow3" sourceRef="budgetGateway" targetRef="managerApproval">
+    <!-- Budget gate -->
+    <sequenceFlow id="flow3" sourceRef="budgetGateway" targetRef="resolveManagerGroup">
       <conditionExpression xsi:type="tFormalExpression">${budgetAvailable == true}</conditionExpression>
     </sequenceFlow>
     <sequenceFlow id="flow4" sourceRef="budgetGateway" targetRef="endEventNoBudget">
       <conditionExpression xsi:type="tFormalExpression">${budgetAvailable != true}</conditionExpression>
     </sequenceFlow>
+
+    <!-- Manager DMN → Manager task -->
+    <sequenceFlow id="flowRM" sourceRef="resolveManagerGroup" targetRef="managerApproval" />
 
     <!-- Manager → managerDecision -->
     <sequenceFlow id="flow5" sourceRef="managerApproval" targetRef="managerDecision" />
@@ -177,17 +212,20 @@
     <sequenceFlow id="flow6b" sourceRef="managerDecision" targetRef="managerAmountGateway">
       <conditionExpression xsi:type="tFormalExpression">${decision == 'approve'}</conditionExpression>
     </sequenceFlow>
-    <sequenceFlow id="flow6c" sourceRef="managerDecision" targetRef="vpApproval">
+    <sequenceFlow id="flow6c" sourceRef="managerDecision" targetRef="resolveVpGroup">
       <conditionExpression xsi:type="tFormalExpression">${decision == 'escalate'}</conditionExpression>
     </sequenceFlow>
 
     <!-- managerAmountGateway branches -->
-    <sequenceFlow id="flow7a" sourceRef="managerAmountGateway" targetRef="vpApproval">
+    <sequenceFlow id="flow7a" sourceRef="managerAmountGateway" targetRef="resolveVpGroup">
       <conditionExpression xsi:type="tFormalExpression">${requestAmount > 50000}</conditionExpression>
     </sequenceFlow>
     <sequenceFlow id="flow7b" sourceRef="managerAmountGateway" targetRef="updateApproved">
       <conditionExpression xsi:type="tFormalExpression">${requestAmount &lt;= 50000}</conditionExpression>
     </sequenceFlow>
+
+    <!-- VP DMN → VP task -->
+    <sequenceFlow id="flowRVP" sourceRef="resolveVpGroup" targetRef="vpApproval" />
 
     <!-- VP → vpDecision -->
     <sequenceFlow id="flow8" sourceRef="vpApproval" targetRef="vpDecision" />
@@ -199,17 +237,20 @@
     <sequenceFlow id="flow9b" sourceRef="vpDecision" targetRef="vpAmountGateway">
       <conditionExpression xsi:type="tFormalExpression">${decision == 'approve'}</conditionExpression>
     </sequenceFlow>
-    <sequenceFlow id="flow9c" sourceRef="vpDecision" targetRef="cfoApproval">
+    <sequenceFlow id="flow9c" sourceRef="vpDecision" targetRef="resolveCfoGroup">
       <conditionExpression xsi:type="tFormalExpression">${decision == 'escalate'}</conditionExpression>
     </sequenceFlow>
 
     <!-- vpAmountGateway branches -->
-    <sequenceFlow id="flow10a" sourceRef="vpAmountGateway" targetRef="cfoApproval">
+    <sequenceFlow id="flow10a" sourceRef="vpAmountGateway" targetRef="resolveCfoGroup">
       <conditionExpression xsi:type="tFormalExpression">${requestAmount > 250000}</conditionExpression>
     </sequenceFlow>
     <sequenceFlow id="flow10b" sourceRef="vpAmountGateway" targetRef="updateApproved">
       <conditionExpression xsi:type="tFormalExpression">${requestAmount &lt;= 250000}</conditionExpression>
     </sequenceFlow>
+
+    <!-- CFO DMN → CFO task -->
+    <sequenceFlow id="flowRCFO" sourceRef="resolveCfoGroup" targetRef="cfoApproval" />
 
     <!-- CFO → cfoDecision -->
     <sequenceFlow id="flow11" sourceRef="cfoApproval" targetRef="cfoDecision" />
@@ -233,19 +274,16 @@
   </process>
 
   <!--
-    BPMNDI — left-to-right laddered layout.
-    Main flow at y=280. VP level at y=150. CFO level at y=30.
-    updateApproved/updateRejected at x=1880 (y=200/350). Notifications at x=2040. Ends at x=2220.
-    Removed: amountGateway_di, cfoGateway_di, mergeGateway_di, decisionGateway_di
-              flow5_di, flow6_di, flow7_di, flow8_di, flow9_di, flow10_di, flow11_di, flow12_di,
-              flow13_di, flow14_di
-    Added: managerDecision_di, managerAmountGateway_di, vpDecision_di, vpAmountGateway_di,
-           cfoDecision_di and the new sequence-flow edges.
+    BPMNDI — left-to-right laddered layout (V4).
+    Budget/preamble unchanged (x≤595). Manager row y≈280, VP row y≈170, CFO row y≈60.
+    Three DMN resolver tasks inserted before each user task.
+    All elements from managerApproval shifted +180px on x-axis; VP section +250; CFO section +340.
+    Outcome tasks/notifications/ends shifted +360px from their V3 positions.
   -->
   <bpmndi:BPMNDiagram id="BPMNDiagram_capex-approval-process">
     <bpmndi:BPMNPlane id="BPMNPlane_capex-approval-process" bpmnElement="capex-approval-process">
 
-      <!-- Shapes preserved from V2 -->
+      <!-- Preamble shapes (unchanged) -->
       <bpmndi:BPMNShape id="startEvent_di" bpmnElement="startEvent">
         <omgdc:Bounds x="152" y="262" width="36" height="36" />
         <bpmndi:BPMNLabel><omgdc:Bounds x="128" y="305" width="84" height="27" /></bpmndi:BPMNLabel>
@@ -262,74 +300,88 @@
         <omgdc:Bounds x="545" y="255" width="50" height="50" />
         <bpmndi:BPMNLabel><omgdc:Bounds x="526" y="312" width="88" height="14" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="managerApproval_di" bpmnElement="managerApproval">
-        <omgdc:Bounds x="650" y="240" width="100" height="80" />
-        <bpmndi:BPMNLabel />
-      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="endEventNoBudget_di" bpmnElement="endEventNoBudget">
         <omgdc:Bounds x="547" y="392" width="36" height="36" />
         <bpmndi:BPMNLabel><omgdc:Bounds x="520" y="435" width="90" height="27" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
-      <!-- New per-level gateways -->
+      <!-- Manager tier -->
+      <bpmndi:BPMNShape id="resolveManagerGroup_di" bpmnElement="resolveManagerGroup">
+        <omgdc:Bounds x="660" y="255" width="100" height="60" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="managerApproval_di" bpmnElement="managerApproval">
+        <omgdc:Bounds x="830" y="240" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="managerDecision_di" bpmnElement="managerDecision" isMarkerVisible="true">
-        <omgdc:Bounds x="810" y="255" width="50" height="50" />
-        <bpmndi:BPMNLabel><omgdc:Bounds x="792" y="312" width="86" height="14" /></bpmndi:BPMNLabel>
+        <omgdc:Bounds x="990" y="255" width="50" height="50" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="972" y="312" width="86" height="14" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="managerAmountGateway_di" bpmnElement="managerAmountGateway" isMarkerVisible="true">
-        <omgdc:Bounds x="970" y="255" width="50" height="50" />
-        <bpmndi:BPMNLabel><omgdc:Bounds x="948" y="312" width="94" height="14" /></bpmndi:BPMNLabel>
+        <omgdc:Bounds x="1100" y="255" width="50" height="50" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1078" y="312" width="94" height="14" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
+      <!-- VP tier -->
+      <bpmndi:BPMNShape id="resolveVpGroup_di" bpmnElement="resolveVpGroup">
+        <omgdc:Bounds x="1230" y="145" width="100" height="60" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="vpApproval_di" bpmnElement="vpApproval">
-        <omgdc:Bounds x="1110" y="130" width="100" height="80" />
+        <omgdc:Bounds x="1390" y="130" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="vpDecision_di" bpmnElement="vpDecision" isMarkerVisible="true">
-        <omgdc:Bounds x="1270" y="145" width="50" height="50" />
-        <bpmndi:BPMNLabel><omgdc:Bounds x="1257" y="202" width="76" height="14" /></bpmndi:BPMNLabel>
+        <omgdc:Bounds x="1550" y="145" width="50" height="50" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1537" y="202" width="76" height="14" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="vpAmountGateway_di" bpmnElement="vpAmountGateway" isMarkerVisible="true">
-        <omgdc:Bounds x="1430" y="145" width="50" height="50" />
-        <bpmndi:BPMNLabel><omgdc:Bounds x="1408" y="202" width="94" height="14" /></bpmndi:BPMNLabel>
+        <omgdc:Bounds x="1670" y="145" width="50" height="50" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1648" y="202" width="94" height="14" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
+      <!-- CFO tier -->
+      <bpmndi:BPMNShape id="resolveCfoGroup_di" bpmnElement="resolveCfoGroup">
+        <omgdc:Bounds x="1780" y="35" width="100" height="60" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="cfoApproval_di" bpmnElement="cfoApproval">
-        <omgdc:Bounds x="1570" y="20" width="100" height="80" />
+        <omgdc:Bounds x="1940" y="20" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="cfoDecision_di" bpmnElement="cfoDecision" isMarkerVisible="true">
-        <omgdc:Bounds x="1730" y="35" width="50" height="50" />
-        <bpmndi:BPMNLabel><omgdc:Bounds x="1718" y="92" width="74" height="14" /></bpmndi:BPMNLabel>
+        <omgdc:Bounds x="2100" y="35" width="50" height="50" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="2088" y="92" width="74" height="14" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
-      <!-- Outcome service tasks and end events -->
+      <!-- Outcome tasks and end events -->
       <bpmndi:BPMNShape id="updateApproved_di" bpmnElement="updateApproved">
-        <omgdc:Bounds x="1880" y="170" width="100" height="80" />
+        <omgdc:Bounds x="2240" y="170" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="sendApprovalNotification_di" bpmnElement="sendApprovalNotification">
-        <omgdc:Bounds x="2040" y="170" width="100" height="80" />
+        <omgdc:Bounds x="2400" y="170" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="endEventApproved_di" bpmnElement="endEventApproved">
-        <omgdc:Bounds x="2202" y="192" width="36" height="36" />
-        <bpmndi:BPMNLabel><omgdc:Bounds x="2180" y="235" width="80" height="27" /></bpmndi:BPMNLabel>
+        <omgdc:Bounds x="2562" y="192" width="36" height="36" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="2540" y="235" width="80" height="27" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="updateRejected_di" bpmnElement="updateRejected">
-        <omgdc:Bounds x="1880" y="350" width="100" height="80" />
+        <omgdc:Bounds x="2240" y="350" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="sendRejectionNotification_di" bpmnElement="sendRejectionNotification">
-        <omgdc:Bounds x="2040" y="350" width="100" height="80" />
+        <omgdc:Bounds x="2400" y="350" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="endEventRejected_di" bpmnElement="endEventRejected">
-        <omgdc:Bounds x="2202" y="372" width="36" height="36" />
-        <bpmndi:BPMNLabel><omgdc:Bounds x="2180" y="415" width="80" height="27" /></bpmndi:BPMNLabel>
+        <omgdc:Bounds x="2562" y="372" width="36" height="36" />
+        <bpmndi:BPMNLabel><omgdc:Bounds x="2540" y="415" width="80" height="27" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
 
-      <!-- Sequence Flow Edges -->
+      <!-- Preamble edges (unchanged) -->
       <bpmndi:BPMNEdge id="flow0_di" bpmnElement="flow0">
         <omgdi:waypoint x="188" y="280" /><omgdi:waypoint x="240" y="280" />
       </bpmndi:BPMNEdge>
@@ -340,85 +392,99 @@
         <omgdi:waypoint x="490" y="280" /><omgdi:waypoint x="545" y="280" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow3_di" bpmnElement="flow3">
-        <omgdi:waypoint x="595" y="280" /><omgdi:waypoint x="650" y="280" />
+        <omgdi:waypoint x="595" y="280" /><omgdi:waypoint x="660" y="285" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow4_di" bpmnElement="flow4">
         <omgdi:waypoint x="565" y="305" /><omgdi:waypoint x="565" y="410" /><omgdi:waypoint x="547" y="410" />
       </bpmndi:BPMNEdge>
-      <!-- managerApproval → managerDecision -->
+
+      <!-- Manager tier edges -->
+      <bpmndi:BPMNEdge id="flowRM_di" bpmnElement="flowRM">
+        <omgdi:waypoint x="760" y="285" /><omgdi:waypoint x="830" y="280" />
+      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow5_di" bpmnElement="flow5">
-        <omgdi:waypoint x="750" y="280" /><omgdi:waypoint x="810" y="280" />
+        <omgdi:waypoint x="930" y="280" /><omgdi:waypoint x="990" y="280" />
       </bpmndi:BPMNEdge>
       <!-- managerDecision: reject → updateRejected -->
       <bpmndi:BPMNEdge id="flow6a_di" bpmnElement="flow6a">
-        <omgdi:waypoint x="835" y="305" /><omgdi:waypoint x="835" y="390" /><omgdi:waypoint x="1880" y="390" />
+        <omgdi:waypoint x="1015" y="305" /><omgdi:waypoint x="1015" y="390" /><omgdi:waypoint x="2240" y="390" />
       </bpmndi:BPMNEdge>
       <!-- managerDecision: approve → managerAmountGateway -->
       <bpmndi:BPMNEdge id="flow6b_di" bpmnElement="flow6b">
-        <omgdi:waypoint x="860" y="280" /><omgdi:waypoint x="970" y="280" />
+        <omgdi:waypoint x="1040" y="280" /><omgdi:waypoint x="1100" y="280" />
       </bpmndi:BPMNEdge>
-      <!-- managerDecision: escalate → vpApproval -->
+      <!-- managerDecision: escalate → resolveVpGroup -->
       <bpmndi:BPMNEdge id="flow6c_di" bpmnElement="flow6c">
-        <omgdi:waypoint x="835" y="255" /><omgdi:waypoint x="835" y="170" /><omgdi:waypoint x="1110" y="170" />
+        <omgdi:waypoint x="1015" y="255" /><omgdi:waypoint x="1015" y="175" /><omgdi:waypoint x="1230" y="175" />
       </bpmndi:BPMNEdge>
-      <!-- managerAmountGateway: >50k → vpApproval -->
+      <!-- managerAmountGateway: >50k → resolveVpGroup -->
       <bpmndi:BPMNEdge id="flow7a_di" bpmnElement="flow7a">
-        <omgdi:waypoint x="995" y="255" /><omgdi:waypoint x="995" y="170" /><omgdi:waypoint x="1110" y="170" />
+        <omgdi:waypoint x="1125" y="255" /><omgdi:waypoint x="1125" y="175" /><omgdi:waypoint x="1230" y="175" />
       </bpmndi:BPMNEdge>
       <!-- managerAmountGateway: <=50k → updateApproved -->
       <bpmndi:BPMNEdge id="flow7b_di" bpmnElement="flow7b">
-        <omgdi:waypoint x="1020" y="280" /><omgdi:waypoint x="1880" y="280" /><omgdi:waypoint x="1880" y="250" />
+        <omgdi:waypoint x="1150" y="280" /><omgdi:waypoint x="2240" y="280" /><omgdi:waypoint x="2240" y="250" />
       </bpmndi:BPMNEdge>
-      <!-- vpApproval → vpDecision -->
+
+      <!-- VP tier edges -->
+      <bpmndi:BPMNEdge id="flowRVP_di" bpmnElement="flowRVP">
+        <omgdi:waypoint x="1330" y="175" /><omgdi:waypoint x="1390" y="170" />
+      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow8_di" bpmnElement="flow8">
-        <omgdi:waypoint x="1210" y="170" /><omgdi:waypoint x="1270" y="170" />
+        <omgdi:waypoint x="1490" y="170" /><omgdi:waypoint x="1550" y="170" />
       </bpmndi:BPMNEdge>
       <!-- vpDecision: reject → updateRejected -->
       <bpmndi:BPMNEdge id="flow9a_di" bpmnElement="flow9a">
-        <omgdi:waypoint x="1295" y="195" /><omgdi:waypoint x="1295" y="390" /><omgdi:waypoint x="1880" y="390" />
+        <omgdi:waypoint x="1575" y="195" /><omgdi:waypoint x="1575" y="390" /><omgdi:waypoint x="2240" y="390" />
       </bpmndi:BPMNEdge>
       <!-- vpDecision: approve → vpAmountGateway -->
       <bpmndi:BPMNEdge id="flow9b_di" bpmnElement="flow9b">
-        <omgdi:waypoint x="1320" y="170" /><omgdi:waypoint x="1430" y="170" />
+        <omgdi:waypoint x="1600" y="170" /><omgdi:waypoint x="1670" y="170" />
       </bpmndi:BPMNEdge>
-      <!-- vpDecision: escalate → cfoApproval -->
+      <!-- vpDecision: escalate → resolveCfoGroup -->
       <bpmndi:BPMNEdge id="flow9c_di" bpmnElement="flow9c">
-        <omgdi:waypoint x="1295" y="145" /><omgdi:waypoint x="1295" y="60" /><omgdi:waypoint x="1570" y="60" />
+        <omgdi:waypoint x="1575" y="145" /><omgdi:waypoint x="1575" y="65" /><omgdi:waypoint x="1780" y="65" />
       </bpmndi:BPMNEdge>
-      <!-- vpAmountGateway: >250k → cfoApproval -->
+      <!-- vpAmountGateway: >250k → resolveCfoGroup -->
       <bpmndi:BPMNEdge id="flow10a_di" bpmnElement="flow10a">
-        <omgdi:waypoint x="1455" y="145" /><omgdi:waypoint x="1455" y="60" /><omgdi:waypoint x="1570" y="60" />
+        <omgdi:waypoint x="1695" y="145" /><omgdi:waypoint x="1695" y="65" /><omgdi:waypoint x="1780" y="65" />
       </bpmndi:BPMNEdge>
       <!-- vpAmountGateway: <=250k → updateApproved -->
       <bpmndi:BPMNEdge id="flow10b_di" bpmnElement="flow10b">
-        <omgdi:waypoint x="1480" y="170" /><omgdi:waypoint x="1880" y="210" />
+        <omgdi:waypoint x="1720" y="170" /><omgdi:waypoint x="2240" y="210" />
       </bpmndi:BPMNEdge>
-      <!-- cfoApproval → cfoDecision -->
+
+      <!-- CFO tier edges -->
+      <bpmndi:BPMNEdge id="flowRCFO_di" bpmnElement="flowRCFO">
+        <omgdi:waypoint x="1880" y="65" /><omgdi:waypoint x="1940" y="60" />
+      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow11_di" bpmnElement="flow11">
-        <omgdi:waypoint x="1670" y="60" /><omgdi:waypoint x="1730" y="60" />
+        <omgdi:waypoint x="2040" y="60" /><omgdi:waypoint x="2100" y="60" />
       </bpmndi:BPMNEdge>
       <!-- cfoDecision: approve → updateApproved -->
       <bpmndi:BPMNEdge id="flow12a_di" bpmnElement="flow12a">
-        <omgdi:waypoint x="1755" y="85" /><omgdi:waypoint x="1755" y="210" /><omgdi:waypoint x="1880" y="210" />
+        <omgdi:waypoint x="2125" y="85" /><omgdi:waypoint x="2125" y="210" /><omgdi:waypoint x="2240" y="210" />
       </bpmndi:BPMNEdge>
       <!-- cfoDecision: reject → updateRejected -->
       <bpmndi:BPMNEdge id="flow12b_di" bpmnElement="flow12b">
-        <omgdi:waypoint x="1780" y="60" /><omgdi:waypoint x="1880" y="60" /><omgdi:waypoint x="1880" y="350" />
+        <omgdi:waypoint x="2150" y="60" /><omgdi:waypoint x="2240" y="60" /><omgdi:waypoint x="2240" y="350" />
       </bpmndi:BPMNEdge>
+
       <!-- Approved path -->
       <bpmndi:BPMNEdge id="flow13_di" bpmnElement="flow13">
-        <omgdi:waypoint x="1980" y="210" /><omgdi:waypoint x="2040" y="210" />
+        <omgdi:waypoint x="2340" y="210" /><omgdi:waypoint x="2400" y="210" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow14_di" bpmnElement="flow14">
-        <omgdi:waypoint x="2140" y="210" /><omgdi:waypoint x="2202" y="210" />
+        <omgdi:waypoint x="2500" y="210" /><omgdi:waypoint x="2562" y="210" />
       </bpmndi:BPMNEdge>
       <!-- Rejected path -->
       <bpmndi:BPMNEdge id="flow15_di" bpmnElement="flow15">
-        <omgdi:waypoint x="1980" y="390" /><omgdi:waypoint x="2040" y="390" />
+        <omgdi:waypoint x="2340" y="390" /><omgdi:waypoint x="2400" y="390" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow16_di" bpmnElement="flow16">
-        <omgdi:waypoint x="2140" y="390" /><omgdi:waypoint x="2202" y="390" />
+        <omgdi:waypoint x="2500" y="390" /><omgdi:waypoint x="2562" y="390" />
       </bpmndi:BPMNEdge>
+
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </definitions>
