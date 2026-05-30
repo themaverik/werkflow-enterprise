@@ -43,8 +43,10 @@ jobs:
 
       - name: Build & test engine service
         working-directory: services/engine
-        # OpenBao-dependent CapEx ITs run at milestone-end, not the fast lane.
-        run: mvn clean verify -DexcludedGroups=requires-openbao -B
+        # requires-openbao / fragment / flow groups are excluded in pom.xml <excludedGroups>
+        # (Surefire 3.2.x does not reliably honour -DexcludedGroups override of pom config).
+        # OpenBao-dependent ITs run via: mvn test -Dgroups=requires-openbao (milestone gate only).
+        run: mvn clean verify -B
 
       - name: Upload engine test reports
         if: always()

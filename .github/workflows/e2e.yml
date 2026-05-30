@@ -52,6 +52,7 @@ jobs:
         env:
           FLYWAY_ENABLED: "true"
           EXPOSE_MANAGEMENT_ENDPOINTS: "true"
+          POSTGRES_PASSWORD: werkflow_secure_pass
         run: |
           java -jar target/*.jar &
           echo "Waiting for engine on port 8081..."

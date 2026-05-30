@@ -12,13 +12,13 @@
   <process id="event-ticket-request" name="Event Ticket Request" isExecutable="true"
            flowable:versionTag="1">
 
+    <documentation>Event ticket request workflow. An employee submits a request to attend or participate in an event; the event coordinator reviews and either approves or rejects it. Engine-internal — no external API calls.</documentation>
+
     <extensionElements>
       <flowable:properties>
         <flowable:property name="category" value="examples"/>
       </flowable:properties>
     </extensionElements>
-
-    <documentation>Event ticket request workflow. An employee submits a request to attend or participate in an event; the event coordinator reviews and either approves or rejects it. Engine-internal — no external API calls.</documentation>
 
     <!-- Start Event -->
     <startEvent id="startEvent" name="Ticket Request Submitted"
