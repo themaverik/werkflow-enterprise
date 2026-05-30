@@ -54,17 +54,17 @@ public class JwtUserContext {
         String tc = jwt.getClaimAsString("tenant_code");
         this.tenantCode = (tc != null && !tc.isBlank()) ? tc : "default";
 
-        // Parse doaLevel as Integer
+        // Parse doaLevel as Integer — JWT numerics arrive as Long from Spring Security
         Object doaLevelClaim = jwt.getClaim("doa_level");
-        if (doaLevelClaim != null) {
-            if (doaLevelClaim instanceof Integer) {
-                this.doaLevel = (Integer) doaLevelClaim;
-            } else if (doaLevelClaim instanceof String) {
-                try {
-                    this.doaLevel = Integer.parseInt((String) doaLevelClaim);
-                } catch (NumberFormatException e) {
-                    this.doaLevel = null;
-                }
+        if (doaLevelClaim instanceof Integer i) {
+            this.doaLevel = i;
+        } else if (doaLevelClaim instanceof Long l) {
+            this.doaLevel = l.intValue();
+        } else if (doaLevelClaim instanceof String s) {
+            try {
+                this.doaLevel = Integer.parseInt(s);
+            } catch (NumberFormatException e) {
+                this.doaLevel = null;
             }
         }
     }

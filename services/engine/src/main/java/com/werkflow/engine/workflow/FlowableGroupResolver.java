@@ -18,8 +18,8 @@ import java.util.Set;
  *
  * Step 1: fetch user profile from admin-service (for department attribution only).
  * Step 2: emit groups from YAML role-mappings merged with DB role-group mappings.
- * Step 3: emit department visibility group (DEPT:{code}) for query-layer scoping.
- * Step 4: emit DOA authorization group (DOA_L{level}) from JWT doa_level claim (ADR-029).
+ * Step 3: emit DOA authorization group (DOA_L{level}) from JWT doa_level claim (ADR-029).
+ * Step 4: emit department visibility group (DEPT:{code}) for query-layer scoping.
  *
  * ADR-003: role→group mapping is DB-backed per tenant (role_group_mappings table),
  * merged with YAML fallback entries (admin, super_admin, workflow_designer).
@@ -70,7 +70,7 @@ public class FlowableGroupResolver implements UserGroupLookupProxy {
             }
         }
 
-        // Step 4: emit DOA authorization group from JWT doa_level claim — independent of ERP profile (ADR-029)
+        // Step 3: emit DOA authorization group from JWT doa_level claim — independent of ERP profile (ADR-029)
         Integer doaLevel = userContext.getDoaLevel();
         if (doaLevel != null) {
             resolved.add("DOA_L" + doaLevel);
@@ -81,7 +81,7 @@ public class FlowableGroupResolver implements UserGroupLookupProxy {
             return new ArrayList<>(resolved);
         }
 
-        // Step 3: emit department visibility group (scoping only, not approval routing — ADR-010)
+        // Step 4: emit department visibility group (scoping only, not approval routing — ADR-010)
         String deptCode = profile.getDepartmentCode();
         if (deptCode != null && !deptCode.isBlank()) {
             resolved.add("DEPT:" + deptCode);
