@@ -8,10 +8,17 @@
  *
  * Key facts:
  *   - Admin API: http://localhost:8083/api/connectors
- *   - ConnectorForm requires: displayName, connectorKey, baseUrl (General tab) + secretRef (Auth tab)
- *   - Save button is disabled until all four required fields are filled
- *   - No DELETE endpoint exists on the backend — delete tests log as missing feature
- *   - Connectors are tenant-scoped; NEXT_PUBLIC_TENANT_CODE defaults to "default"
+ *   - ConnectorForm requires: displayName, connectorKey, baseUrl (General tab)
+ *     + Auth Scheme selection (Authentication tab; defaults to BEARER which requires a credential).
+ *     These tests select "None" to avoid pre-creating credentials.
+ *   - Save button is disabled until displayName, connectorKey, baseUrl are filled
+ *     and authScheme is NONE (or a credentialRef is selected for other schemes).
+ *   - No DELETE endpoint exists on the backend — delete tests log as missing feature.
+ *   - Connectors are tenant-scoped; NEXT_PUBLIC_TENANT_CODE defaults to "default".
+ *
+ * M4.12 B.6: secretRef field removed. Auth tab now has:
+ *   - authScheme Select (BEARER / API_KEY / BASIC / NONE)
+ *   - credentialRef Select (shown when authScheme != NONE)
  */
 
 import { test, expect } from '@playwright/test'
@@ -26,14 +33,12 @@ const CONNECTOR_MOCK_API = {
   key: 'mock-api',
   displayName: 'Mock API',
   baseUrl: 'https://httpbin.org',
-  secretRef: 'mock.api.key',
 }
 
 const CONNECTOR_NOTIFICATION = {
   key: 'notification-service',
   displayName: 'Notification Service',
   baseUrl: 'https://httpbin.org/post',
-  secretRef: 'notification.service.key',
 }
 
 // ── API helpers ───────────────────────────────────────────────────────────────
@@ -72,34 +77,38 @@ async function connectorExistsApi(token: string, key: string): Promise<boolean> 
 }
 
 // ── Helper: fill and submit the connector creation dialog ────────────────────
+//
+// Auth tab defaults to BEARER (requires a credentialRef). We select "None" so
+// E2E tests don't need to pre-create credentials. The Save button becomes
+// enabled once displayName + connectorKey + baseUrl are filled and authScheme
+// is NONE (credentialOk = authScheme === 'NONE' || credentialRef !== '').
 
 async function createConnectorViaUI(
   page: any,
-  connector: { key: string; displayName: string; baseUrl: string; secretRef: string }
+  connector: { key: string; displayName: string; baseUrl: string }
 ): Promise<void> {
-  // Open dialog
   const newBtn = page.getByRole('button', { name: /new connector/i })
   await expect(newBtn).toBeVisible({ timeout: 5000 })
   await newBtn.click()
 
-  // Dialog should open
   await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
 
-  // General tab is active by default — fill required fields
+  // General tab — fill required fields
   await page.getByLabel('Display Name').fill(connector.displayName)
   await page.getByLabel('Connector Key').fill(connector.key)
   await page.getByLabel('Base URL').fill(connector.baseUrl)
 
-  // Switch to Authentication tab and fill secretRef
-  await page.getByRole('tab', { name: /auth/i }).click()
-  await page.getByLabel('Secret Ref').fill(connector.secretRef)
+  // Authentication tab — switch scheme to None (default BEARER blocks save without a credential)
+  await page.getByRole('tab', { name: /authentication/i }).click()
+  await page.locator('#authScheme').click()
+  await page.getByRole('option', { name: 'None' }).click()
 
   // Save button should now be enabled
   const saveBtn = page.getByRole('button', { name: /save connector/i })
   await expect(saveBtn).toBeEnabled({ timeout: 3000 })
   await saveBtn.click()
 
-  // Dialog closes on success (or shows an error toast for duplicate key)
+  // Dialog closes on success (or stays open for duplicate key — handled by callers)
   await page.waitForTimeout(1500)
 }
 
@@ -125,10 +134,8 @@ test.describe('22 — Connector Setup — admin', () => {
 
     await createConnectorViaUI(page, CONNECTOR_MOCK_API)
 
-    // After save: dialog closed (success) or still open (duplicate key — acceptable if connector already exists)
     const dialogStillOpen = await page.getByRole('dialog').isVisible({ timeout: 2000 }).catch(() => false)
     if (dialogStillOpen) {
-      // Close dialog — connector likely already exists from a previous run
       await page.keyboard.press('Escape')
       test.info().annotations.push({ type: 'note', description: 'mock-api dialog still open — connector may already exist (idempotent)' })
     } else {
@@ -141,7 +148,6 @@ test.describe('22 — Connector Setup — admin', () => {
   test('22.3 — mock-api appears in connector list', async ({ page }) => {
     await page.goto('/admin/connectors')
     await expect(page.getByText(/connectors/i).first()).toBeVisible({ timeout: 10000 })
-    // Wait for the list to load (spinner resolves)
     await expect(page.getByText(/loading/i)).not.toBeVisible({ timeout: 10000 }).catch(() => {})
     await expect(page.getByText(/mock.?api|mock api/i).first()).toBeVisible({ timeout: 10000 })
   })
@@ -172,25 +178,34 @@ test.describe('22 — Connector Setup — admin', () => {
     await expect(page.getByText(/notification.?service|notification service/i).first()).toBeVisible({ timeout: 10000 })
   })
 
-  // ── 22.6 — Validation: Save disabled with empty required fields ────────────
+  // ── 22.6 — Validation: Save disabled with incomplete required fields ────────
+  //
+  // With authScheme = NONE (selected in this test), Save requires only
+  // displayName + connectorKey + baseUrl. With only displayName filled the
+  // button must remain disabled.
 
   test('22.6 — Save Connector button disabled when required fields are empty', async ({ page }) => {
     await page.goto('/admin/connectors')
     await expect(page.getByRole('button', { name: /new connector/i })).toBeVisible({ timeout: 10000 })
 
-    // Open dialog
     await page.getByRole('button', { name: /new connector/i }).click()
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
 
-    // Save button should be disabled with no fields filled
     const saveBtn = page.getByRole('button', { name: /save connector/i })
+
+    // No fields filled — disabled
     await expect(saveBtn).toBeDisabled({ timeout: 3000 })
 
-    // Fill only displayName — still disabled (missing connectorKey, baseUrl, secretRef)
+    // Switch auth to None so credential gate is cleared (only General fields remain)
+    await page.getByRole('tab', { name: /authentication/i }).click()
+    await page.locator('#authScheme').click()
+    await page.getByRole('option', { name: 'None' }).click()
+
+    // Back to General — only displayName filled; still disabled (connectorKey + baseUrl empty)
+    await page.getByRole('tab', { name: /general/i }).click()
     await page.getByLabel('Display Name').fill('Partial Test')
     await expect(saveBtn).toBeDisabled({ timeout: 1000 })
 
-    // Close dialog without saving
     await page.keyboard.press('Escape')
   })
 
@@ -201,25 +216,22 @@ test.describe('22 — Connector Setup — admin', () => {
     await expect(page.getByText(/connectors/i).first()).toBeVisible({ timeout: 10000 })
     await expect(page.getByText(/loading/i)).not.toBeVisible({ timeout: 10000 }).catch(() => {})
 
-    // Look for a Delete button or kebab menu on the notification-service card
     const deleteBtn = page.getByRole('button', { name: /delete/i }).first()
     const hasDeleteBtn = await deleteBtn.isVisible({ timeout: 3000 }).catch(() => false)
 
     if (hasDeleteBtn) {
       await deleteBtn.click()
-      // Confirm dialog
       const confirmBtn = page.getByRole('button', { name: /confirm|yes|delete/i }).last()
       if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await confirmBtn.click()
         await page.waitForTimeout(1000)
       }
-      // Verify removed
       await expect(page.getByText(/notification.?service/i)).not.toBeVisible({ timeout: 5000 })
       test.info().annotations.push({ type: 'note', description: 'notification-service deleted via UI' })
     } else {
       test.info().annotations.push({
         type: 'bug',
-        description: 'Delete button not found on connector cards — delete connector feature not yet implemented in UI. Backend ConnectorController has no DELETE endpoint either. Log as GitHub issue.',
+        description: 'Delete button not found on connector cards — delete connector feature not yet implemented in UI. Backend ConnectorController has no DELETE endpoint. Log as GitHub issue.',
       })
     }
   })
@@ -227,7 +239,6 @@ test.describe('22 — Connector Setup — admin', () => {
   // ── 22.8 — Ensure notification-service exists (re-create if deleted) ───────
 
   test('22.8 — notification-service exists after delete/re-create cycle', async ({ page }) => {
-    // Check via API whether connector still exists; create if not
     const token = await getAdminToken()
     const exists = await connectorExistsApi(token, CONNECTOR_NOTIFICATION.key)
 
@@ -241,12 +252,11 @@ test.describe('22 — Connector Setup — admin', () => {
       test.info().annotations.push({ type: 'note', description: 'notification-service already exists — no re-create needed' })
     }
 
-    // Verify via API
     const existsNow = await connectorExistsApi(token, CONNECTOR_NOTIFICATION.key)
     expect(existsNow).toBe(true)
   })
 
-  // ── 22.9 — Both connectors accessible via API (used by BPMN service panel) ─
+  // ── 22.9 — Both connectors accessible via API ─────────────────────────────
 
   test('22.9 — Both connectors returned by admin API (required for BPMN connector dropdown)', async () => {
     const token = await getAdminToken()
@@ -262,7 +272,6 @@ test.describe('22 — Connector Setup — admin', () => {
   test('22.10 — /processes/new renders BPMN designer', async ({ page }) => {
     await page.goto('/processes/new')
     await expect(page).not.toHaveURL(/login|403/, { timeout: 5000 })
-    // BPMN designer renders a canvas element (bpmn-js renders SVG)
     const canvas = page.locator('canvas, .bjs-container, svg.djs-overlay-container, [class*="bpmn"]').first()
     await expect(canvas).toBeVisible({ timeout: 15000 })
   })
