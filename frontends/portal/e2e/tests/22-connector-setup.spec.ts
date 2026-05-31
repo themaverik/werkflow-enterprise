@@ -26,7 +26,7 @@ import { STORAGE_STATES, TEST_USERS } from '../fixtures/auth'
 
 const ADMIN_URL = process.env.E2E_ADMIN_SERVICE_URL ?? 'http://localhost:8083'
 const KEYCLOAK_URL = process.env.E2E_KEYCLOAK_URL ?? 'http://localhost:8090'
-const PORTAL_CLIENT_SECRET = process.env.E2E_PORTAL_CLIENT_SECRET ?? 'REDACTED_KC_PORTAL_SECRET'
+const PORTAL_CLIENT_SECRET = process.env.E2E_PORTAL_CLIENT_SECRET ?? 'REDACTED_KC_SECRET'
 const TENANT_CODE = process.env.E2E_TENANT_CODE ?? 'default'
 
 const CONNECTOR_MOCK_API = {
