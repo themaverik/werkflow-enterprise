@@ -55,7 +55,7 @@ async function startProcess(token: string, variables: Record<string, unknown> = 
 
 async function getTasksForProcess(token: string, processInstanceId: string): Promise<any[]> {
   const res = await fetch(
-    `${ENGINE_URL}/api/tasks?processInstanceId=${processInstanceId}`,
+    `${ENGINE_URL}/api/tasks/process-instance/${processInstanceId}`,
     { headers: { Authorization: `Bearer ${token}` } }
   )
   if (!res.ok) throw new Error(`Get tasks failed: ${res.status}`)
@@ -209,7 +209,7 @@ test.describe('21 — Approval flow', () => {
         title: 'E2E Approval Test',
         description: 'Automated E2E test request',
         amount: 20000,
-        category: 'IT',
+        requestType: 'expense',
       })
       test.info().annotations.push({ type: 'note', description: 'Submit task completed via API fallback' })
     }
@@ -222,7 +222,7 @@ test.describe('21 — Approval flow', () => {
         title: 'E2E Approval Test',
         description: 'Automated E2E test request',
         amount: 20000,
-        category: 'IT',
+        requestType: 'expense',
       })
     } catch {
       // Already completed — ignore
@@ -441,15 +441,15 @@ test.describe('21 — Process Monitoring — admin', () => {
   test('21.15 — /monitoring loads without error', async ({ page }) => {
     await page.goto('/monitoring')
     await expect(page).not.toHaveURL(/login|403/, { timeout: 5000 })
-    await expect(page.getByText(/monitoring|process instances|running/i).first()).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/process health/i).first()).toBeVisible({ timeout: 10000 })
   })
 
-  test('21.16 — monitoring page lists process instances', async ({ page }) => {
+  test('21.16 — monitoring page shows service health status', async ({ page }) => {
     await page.goto('/monitoring')
-    await expect(page.getByText(/monitoring|process/i).first()).toBeVisible({ timeout: 10000 })
-    // Either a table with rows or an empty state is acceptable
-    const hasContent = await page.locator('table tbody tr').first().isVisible({ timeout: 5000 }).catch(() => false)
-    const hasEmptyState = await page.getByText(/no.*instance|no.*process|empty/i).first().isVisible({ timeout: 3000 }).catch(() => false)
-    expect(hasContent || hasEmptyState).toBeTruthy()
+    await expect(page.getByText(/process health/i).first()).toBeVisible({ timeout: 10000 })
+    // Either health status indicators or a loading state is acceptable
+    const hasStatus = await page.getByText(/healthy|down|degraded/i).first().isVisible({ timeout: 5000 }).catch(() => false)
+    const hasLoading = await page.locator('.animate-pulse').first().isVisible({ timeout: 3000 }).catch(() => false)
+    expect(hasStatus || hasLoading).toBeTruthy()
   })
 })

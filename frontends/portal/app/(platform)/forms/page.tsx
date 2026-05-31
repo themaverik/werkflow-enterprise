@@ -439,7 +439,7 @@ export default function FormsPage() {
                 </Link>
                 {editable && (
                   <>
-                    <Link href={`/forms/edit/${form.key}`} title="Edit">
+                    <Link href={`/forms/edit/${form.key}`} title="Edit" aria-label="Edit">
                       <IconBtn title="Edit">
                         <Edit2 size={14} />
                       </IconBtn>

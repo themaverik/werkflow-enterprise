@@ -769,9 +769,9 @@ function DeployedCard({
       {/* Divider */}
       <div style={{ height: 1, background: T.border }} />
 
-      {/* Action row: Start Workflow + icon buttons */}
+      {/* Action row: Start Process + icon buttons */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        {/* Start Workflow */}
+        {/* Start Process */}
         <Link
           href={`/processes/start/${processKey}`}
           style={{
@@ -790,7 +790,7 @@ function DeployedCard({
           }}
         >
           <Play size={11} strokeWidth={2.5} />
-          Start Workflow
+          Start Process
         </Link>
 
         <div style={{ flex: 1 }} />

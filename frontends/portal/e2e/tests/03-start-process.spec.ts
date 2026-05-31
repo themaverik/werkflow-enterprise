@@ -94,6 +94,6 @@ test.describe('03 — Start a process', () => {
     // Form Key should show the pre-linked form, not (none)
     // The dropdown is a native <select>; options are hidden until opened.
     // Assert the option is attached (exists and selected) rather than visible.
-    await expect(page.locator('option[value="capex-request"]')).toBeAttached({ timeout: 5000 })
+    await expect(page.locator('option[value="capex-request-form"]')).toBeAttached({ timeout: 5000 })
   })
 })
