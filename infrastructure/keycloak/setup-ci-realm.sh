@@ -1,6 +1,7 @@
 #!/bin/bash
-# CI-only script: creates the werkflow realm, client, roles, and test users
-# from scratch via the Keycloak Admin REST API.
+# CI-only script: creates/updates the werkflow realm, client, roles, and test users
+# via the Keycloak Admin REST API. Idempotent — safe to run against a realm that was
+# pre-imported from werkflow-realm.json.
 #
 # Usage: ./setup-ci-realm.sh
 # Env:
@@ -85,7 +86,21 @@ curl -sf -X POST "${KEYCLOAK_URL}/admin/realms/werkflow/clients" \
     \"attributes\": {\"post.logout.redirect.uris\": \"http://localhost:4000/*\"}
   }" || echo "  client may already exist"
 
-# ── Helper: create user and assign roles ──────────────────────────────────────
+# Always force-update the client secret so it matches CI expectations regardless of
+# what was imported from werkflow-realm.json (which may carry a different secret).
+echo "Updating 'werkflow-portal' client secret to CI value..."
+CLIENT_UUID=$(curl -sf "${KEYCLOAK_URL}/admin/realms/werkflow/clients?clientId=werkflow-portal" \
+  -H "$(auth)" | jq -r '.[0].id')
+if [ -n "$CLIENT_UUID" ] && [ "$CLIENT_UUID" != "null" ]; then
+  curl -sf -X POST "${KEYCLOAK_URL}/admin/realms/werkflow/clients/${CLIENT_UUID}/client-secret" \
+    -H "$(auth)" -H "Content-Type: application/json" \
+    -d "{\"value\": \"${CLIENT_SECRET}\"}"
+  echo "  client secret updated (uuid=${CLIENT_UUID})"
+else
+  echo "  WARNING: could not find werkflow-portal client UUID to update secret"
+fi
+
+# ── Helper: create user, assign roles, and reset password ─────────────────────
 create_user() {
   local username="$1" password="$2" email="$3" first="$4" last="$5"
   shift 5
@@ -103,10 +118,21 @@ create_user() {
       \"credentials\": [{\"type\": \"password\", \"value\": \"${password}\", \"temporary\": false}]
     }" || echo "  user ${username} may already exist"
 
-  # Fetch user ID
+  # Fetch user ID (works whether user was just created or already existed)
   local uid
   uid=$(curl -sf "${KEYCLOAK_URL}/admin/realms/werkflow/users?username=${username}" \
     -H "$(auth)" | jq -r '.[0].id')
+
+  if [ -z "$uid" ] || [ "$uid" = "null" ]; then
+    echo "  ERROR: could not resolve uid for ${username}"
+    return 1
+  fi
+
+  # Always reset the password — ensures CI credentials override anything from realm JSON
+  curl -sf -X PUT "${KEYCLOAK_URL}/admin/realms/werkflow/users/${uid}/reset-password" \
+    -H "$(auth)" -H "Content-Type: application/json" \
+    -d "{\"type\": \"password\", \"value\": \"${password}\", \"temporary\": false}" \
+    && echo "  password set for ${username}" || echo "  WARNING: could not reset password for ${username}"
 
   # Fetch and assign roles
   for role in "${roles[@]}"; do
@@ -126,4 +152,4 @@ create_user "jane.employee" "employee123" "jane.employee@werkflow.com" "Jane" "E
 create_user "mike.it"      "it123"      "mike.it@werkflow.com"       "Mike" "IT"       "employee"
 
 echo ""
-echo "Realm setup complete. Realm: werkflow, Client: werkflow-portal"
+echo "Realm setup complete. Realm: werkflow, Client: werkflow-portal (secret updated)"
