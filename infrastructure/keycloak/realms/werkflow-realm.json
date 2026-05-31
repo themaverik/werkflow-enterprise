@@ -10,7 +10,7 @@
       "clientId": "werkflow-portal",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "REDACTED_KC_PORTAL_SECRET",
+      "secret": "ci-client-secret",
       "redirectUris": [
         "http://localhost:4000/*",
         "http://localhost:4000/api/auth/callback/keycloak"
