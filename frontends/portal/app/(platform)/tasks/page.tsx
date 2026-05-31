@@ -15,9 +15,9 @@ import { useToast } from '@/hooks/use-toast'
 
 const TAB_OPTIONS = [
   { key: 'all',        label: 'All' },
-  { key: 'myTasks',    label: 'Mine' },
+  { key: 'myTasks',    label: 'My Tasks' },
   { key: 'overdue',    label: 'Overdue' },
-  { key: 'unassigned', label: 'Unassigned' },
+  { key: 'unassigned', label: 'Team Tasks' },
 ]
 
 export default function TasksPage() {

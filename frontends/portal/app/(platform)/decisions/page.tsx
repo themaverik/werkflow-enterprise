@@ -424,7 +424,7 @@ function DecisionRow({
           <IconBtn label="Test decision" color={ACCENT}>
             <Play size={13} />
           </IconBtn>
-          <Link href={`/decisions/${decision.key}/edit`} style={{ textDecoration: 'none' }}>
+          <Link href={`/decisions/${decision.key}/edit`} style={{ textDecoration: 'none' }} aria-label="Edit decision">
             <IconBtn label="Edit decision">
               <Edit2 size={13} />
             </IconBtn>
