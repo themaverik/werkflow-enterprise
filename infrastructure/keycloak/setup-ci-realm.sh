@@ -86,16 +86,20 @@ curl -sf -X POST "${KEYCLOAK_URL}/admin/realms/werkflow/clients" \
     \"attributes\": {\"post.logout.redirect.uris\": \"http://localhost:4000/*\"}
   }" || echo "  client may already exist"
 
-# Always force-update the client secret so it matches CI expectations regardless of
-# what was imported from werkflow-realm.json (which may carry a different secret).
+# Always force-update the client secret via PUT /clients/{id} so it matches CI
+# expectations regardless of what was imported from werkflow-realm.json.
+# NOTE: POST /clients/{id}/client-secret REGENERATES a random secret (ignores body).
+#       The correct approach is GET the representation, patch the secret, then PUT.
 echo "Updating 'werkflow-portal' client secret to CI value..."
-CLIENT_UUID=$(curl -sf "${KEYCLOAK_URL}/admin/realms/werkflow/clients?clientId=werkflow-portal" \
-  -H "$(auth)" | jq -r '.[0].id')
-if [ -n "$CLIENT_UUID" ] && [ "$CLIENT_UUID" != "null" ]; then
-  curl -sf -X POST "${KEYCLOAK_URL}/admin/realms/werkflow/clients/${CLIENT_UUID}/client-secret" \
+CLIENT_UUID=$(curl -s "${KEYCLOAK_URL}/admin/realms/werkflow/clients?clientId=werkflow-portal" \
+  -H "$(auth)" | jq -r '.[0].id // empty')
+if [ -n "$CLIENT_UUID" ]; then
+  CLIENT_REP=$(curl -sf "${KEYCLOAK_URL}/admin/realms/werkflow/clients/${CLIENT_UUID}" \
+    -H "$(auth)")
+  UPDATED_REP=$(echo "$CLIENT_REP" | jq --arg s "$CLIENT_SECRET" '. + {secret: $s}')
+  curl -sf -X PUT "${KEYCLOAK_URL}/admin/realms/werkflow/clients/${CLIENT_UUID}" \
     -H "$(auth)" -H "Content-Type: application/json" \
-    -d "{\"value\": \"${CLIENT_SECRET}\"}"
-  echo "  client secret updated (uuid=${CLIENT_UUID})"
+    -d "$UPDATED_REP" && echo "  client secret set to CI value (uuid=${CLIENT_UUID})"
 else
   echo "  WARNING: could not find werkflow-portal client UUID to update secret"
 fi
