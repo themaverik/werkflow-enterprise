@@ -160,7 +160,6 @@ create_user() {
 create_user "admin"        "admin123"   "admin@werkflow.com"       "Admin"  "User"    "super_admin" "admin" "doa_approver_level4"
 create_user "john.manager" "manager123" "john.manager@werkflow.com" "John"  "Manager" "doa_approver_level2"
 create_user "jane.employee" "employee123" "jane.employee@werkflow.com" "Jane" "Employee" "employee"
-create_user "mike.it"      "it123"      "mike.it@werkflow.com"       "Mike" "IT"       "employee"
 
 echo ""
 echo "Realm setup complete. Realm: werkflow, Client: werkflow-portal (secret updated)"

@@ -4,7 +4,6 @@ export const STORAGE_STATES = {
   admin: path.join(__dirname, '../.auth/admin.json'),
   manager: path.join(__dirname, '../.auth/manager.json'),
   employee: path.join(__dirname, '../.auth/employee.json'),
-  itUser: path.join(__dirname, '../.auth/it-user.json'),
 }
 
 export const TEST_USERS = {
@@ -28,12 +27,5 @@ export const TEST_USERS = {
     roles: ['employee'],
     doaLevel: 0,
     department: 'HR',
-  },
-  itUser: {
-    username: process.env.E2E_IT_USER || 'mike.it',
-    password: process.env.E2E_IT_PASSWORD || 'it123',  // set via setup-ci-realm.sh
-    roles: ['employee'],
-    doaLevel: 0,
-    department: 'IT',
   },
 }
