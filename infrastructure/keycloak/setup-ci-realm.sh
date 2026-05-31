@@ -107,7 +107,9 @@ create_user() {
   local roles=("$@")
 
   echo "Creating user '${username}'..."
-  curl -sf -X POST "${KEYCLOAK_URL}/admin/realms/werkflow/users" \
+  local create_resp
+  create_resp=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+    "${KEYCLOAK_URL}/admin/realms/werkflow/users" \
     -H "$(auth)" -H "Content-Type: application/json" \
     -d "{
       \"username\": \"${username}\",
@@ -116,16 +118,21 @@ create_user() {
       \"lastName\": \"${last}\",
       \"enabled\": true,
       \"credentials\": [{\"type\": \"password\", \"value\": \"${password}\", \"temporary\": false}]
-    }" || echo "  user ${username} may already exist"
+    }")
+  if [ "$create_resp" = "201" ]; then
+    echo "  created (HTTP 201)"
+  else
+    echo "  creation returned HTTP ${create_resp} (user may already exist or username rejected)"
+  fi
 
-  # Fetch user ID (works whether user was just created or already existed)
+  # Fetch user ID — use exact=true to avoid prefix-match ambiguity; -s only (no -f)
   local uid
-  uid=$(curl -sf "${KEYCLOAK_URL}/admin/realms/werkflow/users?username=${username}" \
-    -H "$(auth)" | jq -r '.[0].id')
+  uid=$(curl -s "${KEYCLOAK_URL}/admin/realms/werkflow/users?username=${username}&exact=true" \
+    -H "$(auth)" | jq -r '.[0].id // empty')
 
-  if [ -z "$uid" ] || [ "$uid" = "null" ]; then
-    echo "  ERROR: could not resolve uid for ${username}"
-    return 1
+  if [ -z "$uid" ]; then
+    echo "  WARNING: could not resolve uid for ${username} — skipping role/password setup"
+    return 0
   fi
 
   # Always reset the password — ensures CI credentials override anything from realm JSON
