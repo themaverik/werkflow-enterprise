@@ -35,7 +35,7 @@ import { getLatestEmail } from '../fixtures/mailpit'
 
 const ENGINE_URL           = process.env.E2E_ENGINE_URL           ?? 'http://localhost:8081'
 const KEYCLOAK_URL         = process.env.E2E_KEYCLOAK_URL         ?? 'http://localhost:8090'
-const PORTAL_CLIENT_SECRET = process.env.E2E_PORTAL_CLIENT_SECRET ?? 'REDACTED_KC_PORTAL_SECRET'
+const PORTAL_CLIENT_SECRET = process.env.E2E_PORTAL_CLIENT_SECRET ?? 'ci-client-secret'
 
 const PROCESS_KEY = 'event-ticket-request'
 
@@ -62,17 +62,17 @@ const EVENT_TICKET_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
                 flowable:initiator="initiator"
                 flowable:formKey="event-ticket-form" />
 
-    <businessRuleTask id="routeByTicketType" name="Route by Ticket Type"
-                      flowable:decisionRef="ticket-routing"
-                      flowable:mapDecisionResult="outputVariables" />
+    <serviceTask id="routeByTicketType" name="Route by Ticket Type" flowable:type="dmn">
+      <extensionElements>
+        <flowable:field name="decisionTableReferenceKey">
+          <flowable:string>ticket-routing</flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
 
     <exclusiveGateway id="ticketRouteGateway" name="Ticket Route?" />
 
-    <!-- Free path: auto-set decision=approved then notify -->
-    <scriptTask id="setDecisionApproved" name="Set Decision: Approved" scriptFormat="javascript">
-      <script>execution.setVariable('decision', 'approved')</script>
-    </scriptTask>
-
+    <!-- Free path: DMN sets approvalRequired=false → notify directly -->
     <serviceTask id="notifyFree" name="Send Ticket Confirmation"
                  flowable:delegateExpression="\${notificationDelegate}">
       <extensionElements>
@@ -84,7 +84,7 @@ const EVENT_TICKET_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
 
     <endEvent id="endConfirmed" name="Ticket Confirmed" />
 
-    <!-- Paid/VIP path: organiser reviews, decision set by task completion form -->
+    <!-- Paid/VIP path: organiser reviews -->
     <userTask id="organiserReview" name="Organiser Review"
               flowable:candidateGroups="DOA_L1,DOA_L2,SUPER_ADMIN" />
 
@@ -99,20 +99,19 @@ const EVENT_TICKET_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
 
     <endEvent id="endDecisionMade" name="Ticket Decision Made" />
 
-    <sequenceFlow id="flow1"     sourceRef="startEvent"          targetRef="routeByTicketType" />
-    <sequenceFlow id="flow2"     sourceRef="routeByTicketType"   targetRef="ticketRouteGateway" />
+    <sequenceFlow id="flow1"    sourceRef="startEvent"         targetRef="routeByTicketType" />
+    <sequenceFlow id="flow2"    sourceRef="routeByTicketType"  targetRef="ticketRouteGateway" />
 
-    <sequenceFlow id="flowFree"  sourceRef="ticketRouteGateway"  targetRef="setDecisionApproved">
+    <sequenceFlow id="flowFree" sourceRef="ticketRouteGateway" targetRef="notifyFree">
       <conditionExpression xsi:type="tFormalExpression">\${approvalRequired == false}</conditionExpression>
     </sequenceFlow>
-    <sequenceFlow id="flowPaid"  sourceRef="ticketRouteGateway"  targetRef="organiserReview">
+    <sequenceFlow id="flowPaid" sourceRef="ticketRouteGateway" targetRef="organiserReview">
       <conditionExpression xsi:type="tFormalExpression">\${approvalRequired == true}</conditionExpression>
     </sequenceFlow>
 
-    <sequenceFlow id="flow3"     sourceRef="setDecisionApproved" targetRef="notifyFree" />
-    <sequenceFlow id="flow4"     sourceRef="notifyFree"          targetRef="endConfirmed" />
-    <sequenceFlow id="flow5"     sourceRef="organiserReview"     targetRef="notifyPaid" />
-    <sequenceFlow id="flow6"     sourceRef="notifyPaid"          targetRef="endDecisionMade" />
+    <sequenceFlow id="flow4"    sourceRef="notifyFree"         targetRef="endConfirmed" />
+    <sequenceFlow id="flow5"    sourceRef="organiserReview"    targetRef="notifyPaid" />
+    <sequenceFlow id="flow6"    sourceRef="notifyPaid"         targetRef="endDecisionMade" />
 
   </process>
 
@@ -127,14 +126,11 @@ const EVENT_TICKET_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
       <bpmndi:BPMNShape id="ticketRouteGateway_di" bpmnElement="ticketRouteGateway" isMarkerVisible="true">
         <omgdc:Bounds x="395" y="275" width="50" height="50" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="setDecisionApproved_di" bpmnElement="setDecisionApproved">
+      <bpmndi:BPMNShape id="notifyFree_di" bpmnElement="notifyFree">
         <omgdc:Bounds x="490" y="160" width="100" height="80" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="notifyFree_di" bpmnElement="notifyFree">
-        <omgdc:Bounds x="640" y="160" width="100" height="80" />
-      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="endConfirmed_di" bpmnElement="endConfirmed">
-        <omgdc:Bounds x="792" y="182" width="36" height="36" />
+        <omgdc:Bounds x="642" y="182" width="36" height="36" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="organiserReview_di" bpmnElement="organiserReview">
         <omgdc:Bounds x="490" y="260" width="100" height="80" />
@@ -157,11 +153,8 @@ const EVENT_TICKET_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
       <bpmndi:BPMNEdge id="flowPaid_di" bpmnElement="flowPaid">
         <omgdi:waypoint x="445" y="300" /><omgdi:waypoint x="490" y="300" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="flow3_di" bpmnElement="flow3">
-        <omgdi:waypoint x="590" y="200" /><omgdi:waypoint x="640" y="200" />
-      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow4_di" bpmnElement="flow4">
-        <omgdi:waypoint x="740" y="200" /><omgdi:waypoint x="792" y="200" />
+        <omgdi:waypoint x="590" y="200" /><omgdi:waypoint x="642" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow5_di" bpmnElement="flow5">
         <omgdi:waypoint x="590" y="300" /><omgdi:waypoint x="640" y="300" />
@@ -648,7 +641,7 @@ test.describe('25 — Event Ticket Request', () => {
     // Ensure event-ticket-form schema exists (created by spec 24; pre-create here if missing)
     await ensureFormExists(adminToken, 'event-ticket-form', EVENT_TICKET_FORM_SCHEMA, 'Event Ticket Request Form')
 
-    // Ensure ticket-routing DMN is deployed (referenced by businessRuleTask decisionRef in the BPMN)
+    // Ensure ticket-routing DMN is deployed (referenced by serviceTask flowable:type="dmn" in the BPMN)
     await ensureDmnDeployed(adminToken, 'ticket-routing', TICKET_ROUTING_DMN, 'Ticket Routing')
 
     // Deploy idempotently — always redeploy to pick up latest BPMN structure

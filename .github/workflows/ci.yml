@@ -295,6 +295,7 @@ jobs:
           E2E_MANAGER_PASSWORD: ${{ secrets.E2E_MANAGER_PASSWORD || 'manager123' }}
           E2E_EMPLOYEE_USER: jane.employee
           E2E_EMPLOYEE_PASSWORD: ${{ secrets.E2E_EMPLOYEE_PASSWORD || 'employee123' }}
+          E2E_PORTAL_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET || 'ci-client-secret' }}
         run: npm run e2e
 
       - name: Upload Playwright report

@@ -36,7 +36,7 @@ import { getLatestEmail } from '../fixtures/mailpit'
 
 const ENGINE_URL           = process.env.E2E_ENGINE_URL           ?? 'http://localhost:8081'
 const KEYCLOAK_URL         = process.env.E2E_KEYCLOAK_URL         ?? 'http://localhost:8090'
-const PORTAL_CLIENT_SECRET = process.env.E2E_PORTAL_CLIENT_SECRET ?? 'REDACTED_KC_PORTAL_SECRET'
+const PORTAL_CLIENT_SECRET = process.env.E2E_PORTAL_CLIENT_SECRET ?? 'ci-client-secret'
 
 const PROCESS_KEY = 'leave-request'
 
@@ -63,10 +63,13 @@ const LEAVE_REQUEST_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
                 flowable:initiator="initiator"
                 flowable:formKey="leave-request-form" />
 
-    <businessRuleTask id="routeLeave" name="Route Leave"
-                      flowable:decisionRef="leave-routing"
-                      flowable:mapDecisionResult="singleEntry"
-                      flowable:resultVariable="approverLevel" />
+    <serviceTask id="routeLeave" name="Route Leave" flowable:type="dmn">
+      <extensionElements>
+        <flowable:field name="decisionTableReferenceKey">
+          <flowable:string>leave-routing</flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
 
     <exclusiveGateway id="leaveRouteGateway" name="Leave Route?" />
 
@@ -673,12 +676,12 @@ test.describe('26 — Leave Request', () => {
     // Ensure leave-request-form schema exists (created by spec 24; pre-create here if missing)
     await ensureFormExists(adminToken, 'leave-request-form', LEAVE_REQUEST_FORM_SCHEMA, 'Leave Request Form')
 
-    // Ensure leave-routing DMN is deployed (referenced by businessRuleTask decisionRef in the BPMN)
+    // Ensure leave-routing DMN is deployed (referenced by serviceTask flowable:type="dmn" in the BPMN)
     await ensureDmnDeployed(adminToken, 'leave-routing', LEAVE_ROUTING_DMN, 'Leave Routing')
 
-    // Always redeploy — ensures latest BPMN (businessRuleTask + native decisionRef) is active
+    // Always redeploy — ensures latest BPMN (serviceTask flowable:type="dmn" + decisionTableReferenceKey) is active
     await deployProcessApi(adminToken)
-    test.info().annotations.push({ type: 'note', description: `${PROCESS_KEY} deployed with native businessRuleTask + leave-routing DMN` })
+    test.info().annotations.push({ type: 'note', description: `${PROCESS_KEY} deployed with serviceTask flowable:type="dmn" + leave-routing DMN` })
   })
 
   test.afterAll(async () => {
