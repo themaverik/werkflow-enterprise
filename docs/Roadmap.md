@@ -2,7 +2,7 @@
 
 **Repo scope**: Enterprise-only engine, admin-service, and portal features
 **Master Roadmap**: `~/Projects/werkflow-platform/docs/Roadmap.md` (authoritative for all future tasks)
-**Last Updated**: 2026-05-30
+**Last Updated**: 2026-05-31
 **Target**: Internal Enterprise Demo — June 2026
 
 > Future tasks in this file are synced from the master Roadmap. Do not add tasks here without adding them to master first.
@@ -18,10 +18,10 @@
 | Active milestone | Pre-MVP Tier 5 (release hardening) per master Roadmap |
 | M4.11 / M4.12 | Complete (P3 11/11; Phase A + B.1a–B.6 + B.4/B.5-portal + item 8 sidebar gate) |
 | Tier 1–3 done | All Tier-1 (mechanical cleanups, facade hardening, schema hygiene); item 7 approval-escalation cluster (BPMN + engine + 7c-UI, ADR-027) shipped |
-| Done this session | ✅ **item 11 Werkflow Process Test Harness (ADR-028)** — `5e33822` — 16 tests GREEN, 5 phases |
-| Next | Master Tier 5: item 10 compliance/legal · item 12 Netlify + prod CI/CD · item 13 deploy-time validators (after 11 ✅) · **item 14 Phase 2 capex compound migration (pairs with item 11 ✅)** → then item 9 E2E last |
-| Branch | main (all merged + pushed) |
-| Operational | dev/live admin DBs need `mvn flyway:repair` (V6 + V24); `leave-request.bpmn20.xml` XSD element-ordering bug subsumed by item 13 |
+| Done this session | ✅ **E2E test + portal fixes (2026-05-31)** — portal: "Start Workflow"→"Start Process" (`0532fe1`), tasks tab labels + decisions link a11y + `/admin` route guard (`0532fe1`/`1d16df7`); spec fixes: spec 21 tasks API path + monitoring page + category key; spec 03 form-key selector; spec 26 confirmed correct. ✅ **V12 seed alignment** (`fb0ab52`) — `capex-request-form` `department`→`capexOwner`, `leave-request-form` `totalDays`→`leaveDays` + label "Number of Days" |
+| Next | Push this session's commits when ready; CI hardening notes archived (2026-05-30) |
+| Branch | main (3 commits ahead of origin — push when ready) |
+| Operational | dev/live admin DBs need `mvn flyway:repair` (V6 + V24); V12 is additive (UPDATE only) — safe on live schemas |
 
 ---
 
