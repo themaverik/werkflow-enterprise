@@ -177,6 +177,17 @@ export const authConfig = {
         return true
       }
 
+      // Admin routes require authentication + ADMIN or SUPER_ADMIN role
+      if (pathname.startsWith('/admin')) {
+        if (!isLoggedIn) return false
+        const roles: string[] = ((auth?.user as any)?.roles ?? []) as string[]
+        const isAdmin = roles.some(r => r.toUpperCase() === 'ADMIN' || r.toUpperCase() === 'SUPER_ADMIN')
+        if (!isAdmin) {
+          return Response.redirect(new URL('/dashboard', nextUrl))
+        }
+        return true
+      }
+
       // All app routes require authentication
       const isProtectedRoute =
         pathname.startsWith('/dashboard') ||
