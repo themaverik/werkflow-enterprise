@@ -47,7 +47,14 @@ import java.util.List;
 public class DmnExampleDeployer {
 
     private static final String DEFAULT_TENANT = "default";
-    private static final String DMN_RESOURCE_PATTERN = "classpath:dmn/*.dmn";
+    /**
+     * Examples are kept under {@code dmn-examples/} (not the conventional {@code dmn/})
+     * so Flowable's spring-boot {@code SpringBootAutoDeployment} cannot find them and
+     * re-deploy as tenantless duplicates. This deployer is the sole owner of example
+     * DMN seeding.
+     */
+    private static final String DMN_RESOURCE_PATTERN = "classpath:dmn-examples/*.dmn";
+    private static final String DMN_RESOURCE_PREFIX = "dmn-examples/";
 
     private final DmnRepositoryService dmnRepositoryService;
     private final ResourcePatternResolver resourcePatternResolver;
@@ -89,7 +96,7 @@ public class DmnExampleDeployer {
                         .name(filename)
                         .tenantId(DEFAULT_TENANT)
                         .enableDuplicateFiltering()
-                        .addClasspathResource("dmn/" + filename)
+                        .addClasspathResource(DMN_RESOURCE_PREFIX + filename)
                         .deploy();
                 log.info("Deployed example DMN: {}", filename);
             } catch (Exception e) {
