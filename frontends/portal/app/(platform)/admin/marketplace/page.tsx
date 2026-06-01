@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,8 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Download, ExternalLink, RefreshCw, ShieldCheck } from 'lucide-react'
-import { createConnector } from '@/lib/api/connectors'
+import { Check, Download, ExternalLink, Info, RefreshCw, ShieldCheck } from 'lucide-react'
+import { createConnector, listConnectors } from '@/lib/api/connectors'
 import {
   listCredentials,
   getCredentialType,
@@ -60,6 +61,7 @@ interface InstallModalProps {
 }
 
 function InstallModal({ connector, open, onOpenChange, onInstalled }: InstallModalProps) {
+  const queryClient = useQueryClient()
   const [baseUrl, setBaseUrl] = useState('')
   const [credentialRef, setCredentialRef] = useState('')
   const [credentials, setCredentials] = useState<TenantCredentialResponse[]>([])
@@ -116,6 +118,7 @@ function InstallModal({ connector, open, onOpenChange, onInstalled }: InstallMod
         environment,
       })
       await createConnector({ ...payload, active: true })
+      queryClient.invalidateQueries({ queryKey: ['marketplace.installed'] })
       onInstalled()
       onOpenChange(false)
       resetForm()
@@ -245,10 +248,11 @@ function InstallModal({ connector, open, onOpenChange, onInstalled }: InstallMod
 
 interface ConnectorCardProps {
   connector: MarketplaceConnector
+  installed: boolean
   onInstall: (connector: MarketplaceConnector) => void
 }
 
-function ConnectorCard({ connector, onInstall }: ConnectorCardProps) {
+function ConnectorCard({ connector, installed, onInstall }: ConnectorCardProps) {
   return (
     <Card className="flex flex-col">
       <CardHeader className="pb-2">
@@ -263,6 +267,12 @@ function ConnectorCard({ connector, onInstall }: ConnectorCardProps) {
                   style={{ background: 'hsl(var(--primary))' }}
                 >
                   Official
+                </Badge>
+              )}
+              {installed && (
+                <Badge variant="secondary" className="text-xs shrink-0 gap-1">
+                  <Check className="h-3 w-3" />
+                  Installed
                 </Badge>
               )}
             </div>
@@ -315,10 +325,17 @@ function ConnectorCard({ connector, onInstall }: ConnectorCardProps) {
           ) : (
             <span />
           )}
-          <Button size="sm" className="h-7 text-xs gap-1.5" onClick={() => onInstall(connector)}>
-            <Download className="h-3.5 w-3.5" />
-            Install
-          </Button>
+          {installed ? (
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" disabled>
+              <Check className="h-3.5 w-3.5" />
+              Installed
+            </Button>
+          ) : (
+            <Button size="sm" className="h-7 text-xs gap-1.5" onClick={() => onInstall(connector)}>
+              <Download className="h-3.5 w-3.5" />
+              Install
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -330,7 +347,17 @@ function ConnectorCard({ connector, onInstall }: ConnectorCardProps) {
 export default function MarketplacePage() {
   const { status } = useSession()
   const [installing, setInstalling] = useState<MarketplaceConnector | null>(null)
-  const [installedKeys, setInstalledKeys] = useState<Set<string>>(new Set())
+
+  const { data: installedConnectors = [] } = useQuery({
+    queryKey: ['marketplace.installed'],
+    queryFn: listConnectors,
+    enabled: status === 'authenticated',
+  })
+
+  const installedKeys = useMemo(
+    () => new Set(installedConnectors.map((c) => c.connectorKey)),
+    [installedConnectors],
+  )
 
   if (status === 'loading') {
     return (
@@ -343,10 +370,6 @@ export default function MarketplacePage() {
   const official = MARKETPLACE_CATALOG.filter((c) => c.source === 'official')
   const community = MARKETPLACE_CATALOG.filter((c) => c.source === 'community')
 
-  const handleInstalled = (key: string) => {
-    setInstalledKeys((prev) => new Set(Array.from(prev).concat(key)))
-  }
-
   return (
     <PageSurface>
     <div className="space-y-8">
@@ -356,6 +379,16 @@ export default function MarketplacePage() {
         <p className="text-muted-foreground mt-1">
           Browse and install connector definitions maintained by the Werkflow core team and community.
         </p>
+      </div>
+
+      {/* Info banner */}
+      <div className="rounded-md border border-amber-200 bg-amber-50 p-3 flex items-start gap-2">
+        <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+        <div className="text-xs text-amber-900 leading-relaxed">
+          <strong>Catalog is curated for this release.</strong> Connector definitions
+          below reflect the current bundled list; refreshing will not pull updates.
+          Community contributions via GitHub PRs are planned for a future release.
+        </div>
       </div>
 
       {/* Official connectors */}
@@ -369,20 +402,12 @@ export default function MarketplacePage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {official.map((connector) => (
-            <div key={connector.key} className="relative">
-              <ConnectorCard connector={connector} onInstall={setInstalling} />
-              {installedKeys.has(connector.key) && (
-                <div className="absolute inset-0 rounded-xl bg-background/60 flex items-center justify-center">
-                  <Badge
-                    variant="default"
-                    className="text-sm px-4 py-1.5"
-                    style={{ background: 'hsl(var(--primary))' }}
-                  >
-                    Installed
-                  </Badge>
-                </div>
-              )}
-            </div>
+            <ConnectorCard
+              key={connector.key}
+              connector={connector}
+              installed={installedKeys.has(connector.key)}
+              onInstall={setInstalling}
+            />
           ))}
         </div>
       </section>
@@ -398,44 +423,15 @@ export default function MarketplacePage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {community.map((connector) => (
-            <div key={connector.key} className="relative">
-              <ConnectorCard connector={connector} onInstall={setInstalling} />
-              {installedKeys.has(connector.key) && (
-                <div className="absolute inset-0 rounded-xl bg-background/60 flex items-center justify-center">
-                  <Badge
-                    variant="default"
-                    className="text-sm px-4 py-1.5"
-                    style={{ background: 'hsl(var(--primary))' }}
-                  >
-                    Installed
-                  </Badge>
-                </div>
-              )}
-            </div>
+            <ConnectorCard
+              key={connector.key}
+              connector={connector}
+              installed={installedKeys.has(connector.key)}
+              onInstall={setInstalling}
+            />
           ))}
         </div>
       </section>
-
-      {/* Contribute CTA */}
-      <Card className="border-dashed">
-        <CardContent className="pt-6 pb-6 text-center space-y-3">
-          <p className="font-semibold text-foreground">Want to contribute a connector?</p>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            The marketplace is open-source. Follow the contribution guide to submit your connector
-            definition via pull request.
-          </p>
-          <a
-            href="https://github.com/werkflow-platform/werkflow-public/blob/main/marketplace/CONTRIBUTING.md"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Button variant="outline" size="sm" className="gap-2">
-              <ExternalLink className="h-4 w-4" />
-              Contribution Guide
-            </Button>
-          </a>
-        </CardContent>
-      </Card>
 
       {/* Install modal */}
       <InstallModal
@@ -444,9 +440,7 @@ export default function MarketplacePage() {
         onOpenChange={(open) => {
           if (!open) setInstalling(null)
         }}
-        onInstalled={() => {
-          if (installing) handleInstalled(installing.key)
-        }}
+        onInstalled={() => setInstalling(null)}
       />
     </div>
     </PageSurface>
