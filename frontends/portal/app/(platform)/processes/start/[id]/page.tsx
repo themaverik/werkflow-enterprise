@@ -186,9 +186,9 @@ export default function StartProcessPage() {
   return (
     <div className="container py-6 max-w-3xl">
       <Button variant="ghost" asChild className="mb-4">
-        <Link href="/processes">
+        <Link href={backHref}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Processes
+          {backLabel}
         </Link>
       </Button>
 
