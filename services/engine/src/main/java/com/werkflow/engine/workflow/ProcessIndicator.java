@@ -31,6 +31,9 @@ public class ProcessIndicator {
     @Column(name = "has_connector", nullable = false)
     private boolean hasConnector;
 
+    @Column(name = "has_notification", nullable = false)
+    private boolean hasNotification;
+
     @CreationTimestamp
     @Column(name = "computed_at", updatable = false)
     private Instant computedAt;

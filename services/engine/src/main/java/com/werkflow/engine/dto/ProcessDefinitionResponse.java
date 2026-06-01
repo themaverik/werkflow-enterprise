@@ -29,5 +29,6 @@ public class ProcessDefinitionResponse {
     private String startFormKey;
     private boolean hasDmn;
     private boolean hasConnector;
+    private boolean hasNotification;
     private String owningDepartment;
 }

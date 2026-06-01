@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import {
   Play, Pencil, Trash2, Plus, ChevronRight,
-  Search, GitBranch, SlidersHorizontal, GitMerge, Rocket, Workflow,
+  Search, GitBranch, SlidersHorizontal, GitMerge, Rocket, Workflow, Bell,
   Link2, FileText, History,
 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -634,6 +634,7 @@ interface ProcessDef {
   startFormKey?: string
   hasDmn?: boolean
   hasConnector?: boolean
+  hasNotification?: boolean
 }
 
 function DeployedCard({
@@ -656,6 +657,7 @@ function DeployedCard({
   const [hoverDel, setHoverDel] = useState(false)
   const [hoverConn, setHoverConn] = useState(false)
   const [hoverDmn, setHoverDmn] = useState(false)
+  const [hoverNotif, setHoverNotif] = useState(false)
   const [hoverForm, setHoverForm] = useState(false)
 
   const tags = getProcessTags(latest)
@@ -663,6 +665,7 @@ function DeployedCard({
   const hasForm = Boolean(latest.hasStartFormKey || latest.startFormKey)
   const hasDmn = Boolean(latest.hasDmn)
   const hasConnector = Boolean(latest.hasConnector)
+  const hasNotification = Boolean(latest.hasNotification)
 
   return (
     <div
@@ -858,6 +861,28 @@ function DeployedCard({
             title="No DMN configured"
           >
             <Workflow size={13} color={T.light} strokeWidth={2} />
+          </span>
+        )}
+
+        {/* Notification — enabled only if process invokes the notification delegate */}
+        {hasNotification ? (
+          <Link
+            href="/admin/email-templates"
+            style={{ ...iconBtn, background: hoverNotif ? T.bg : '#fff', textDecoration: 'none' }}
+            title="View notification templates"
+            onMouseEnter={() => setHoverNotif(true)}
+            onMouseLeave={() => setHoverNotif(false)}
+          >
+            <Bell size={13} color={T.muted} strokeWidth={2} />
+          </Link>
+        ) : (
+          <span
+            role="img"
+            aria-label="No notifications configured"
+            style={{ ...iconBtn, opacity: 0.3, cursor: 'not-allowed' }}
+            title="No notifications configured"
+          >
+            <Bell size={13} color={T.light} strokeWidth={2} />
           </span>
         )}
 
