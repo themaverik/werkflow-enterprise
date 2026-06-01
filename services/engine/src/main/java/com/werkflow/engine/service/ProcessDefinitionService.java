@@ -501,6 +501,7 @@ public class ProcessDefinitionService {
             .startFormKey(startFormKey)
             .hasDmn(ind != null && ind.isHasDmn())
             .hasConnector(ind != null && ind.isHasConnector())
+            .hasNotification(ind != null && ind.isHasNotification())
             .build();
     }
 
@@ -513,6 +514,7 @@ public class ProcessDefinitionService {
             .processDefinitionId(processDefinitionId)
             .hasDmn(ind.hasDmn())
             .hasConnector(ind.hasConnector())
+            .hasNotification(ind.hasNotification())
             .build());
     }
 }
