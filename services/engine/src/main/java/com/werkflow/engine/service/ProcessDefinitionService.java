@@ -3,6 +3,10 @@ package com.werkflow.engine.service;
 import com.werkflow.engine.dto.ProcessDefinitionResponse;
 import com.werkflow.engine.dto.TaskFormResponse;
 import com.werkflow.engine.exception.FormNotFoundException;
+import com.werkflow.engine.workflow.BpmnIndicatorScanner;
+import com.werkflow.engine.workflow.BpmnIndicatorScanner.Indicators;
+import com.werkflow.engine.workflow.ProcessIndicator;
+import com.werkflow.engine.workflow.ProcessIndicatorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BpmnModel;
@@ -17,8 +21,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.LinkedHashSet;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -44,6 +50,8 @@ public class ProcessDefinitionService {
 
     private final RepositoryService repositoryService;
     private final FormSchemaService formSchemaService;
+    private final BpmnIndicatorScanner indicatorScanner;
+    private final ProcessIndicatorRepository indicatorRepository;
 
     /**
      * Deploy a new process definition from BPMN XML string.
@@ -103,6 +111,8 @@ public class ProcessDefinitionService {
                 .deploymentId(deployment.getId())
                 .singleResult();
 
+            persistIndicators(bpmnXml, processDefinition.getId());
+
             return mapToResponse(processDefinition);
 
         } catch (IOException e) {
@@ -144,6 +154,8 @@ public class ProcessDefinitionService {
             ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
                 .deploymentId(deployment.getId())
                 .singleResult();
+
+            persistIndicators(bpmnXml, processDefinition.getId());
 
             return mapToResponse(processDefinition);
 
@@ -193,7 +205,8 @@ public class ProcessDefinitionService {
     }
 
     /**
-     * Get all process definitions (latest versions)
+     * Get all process definitions (latest versions).
+     * Indicator flags are loaded in a single batch query to avoid N+1 per row.
      */
     public List<ProcessDefinitionResponse> getAllProcessDefinitions() {
         log.debug("Fetching all process definitions");
@@ -202,8 +215,16 @@ public class ProcessDefinitionService {
             .latestVersion()
             .list();
 
+        List<String> ids = definitions.stream()
+            .map(ProcessDefinition::getId)
+            .collect(Collectors.toList());
+
+        Map<String, ProcessIndicator> indicatorMap = indicatorRepository.findAllById(ids)
+            .stream()
+            .collect(Collectors.toMap(ProcessIndicator::getProcessDefinitionId, Function.identity()));
+
         return definitions.stream()
-            .map(this::mapToResponse)
+            .map(pd -> mapToResponse(pd, indicatorMap.get(pd.getId())))
             .collect(Collectors.toList());
     }
 
@@ -445,9 +466,20 @@ public class ProcessDefinitionService {
     }
 
     /**
-     * Map ProcessDefinition entity to response DTO
+     * Map ProcessDefinition entity to response DTO (single-row path; does a per-row indicator lookup).
+     * Used by all single-result GET endpoints. For the list endpoint use the overload that accepts
+     * a pre-loaded {@link ProcessIndicator} to avoid N+1 queries.
      */
     private ProcessDefinitionResponse mapToResponse(ProcessDefinition pd) {
+        ProcessIndicator ind = indicatorRepository.findById(pd.getId()).orElse(null);
+        return mapToResponse(pd, ind);
+    }
+
+    /**
+     * Map ProcessDefinition entity to response DTO using a pre-loaded indicator (may be {@code null}).
+     * A null indicator is treated as both flags false (mirrors the LEFT JOIN / missing-row semantic).
+     */
+    private ProcessDefinitionResponse mapToResponse(ProcessDefinition pd, ProcessIndicator ind) {
         String startFormKey = null;
         if (pd.hasStartFormKey()) {
             startFormKey = extractStartFormKey(pd.getId());
@@ -467,6 +499,20 @@ public class ProcessDefinitionService {
             .hasStartFormKey(pd.hasStartFormKey())
             .hasGraphicalNotation(pd.hasGraphicalNotation())
             .startFormKey(startFormKey)
+            .hasDmn(ind != null && ind.isHasDmn())
+            .hasConnector(ind != null && ind.isHasConnector())
             .build();
+    }
+
+    /**
+     * Scans {@code bpmnXml} for indicators and upserts the row for {@code processDefinitionId}.
+     */
+    private void persistIndicators(String bpmnXml, String processDefinitionId) {
+        Indicators ind = indicatorScanner.scan(bpmnXml);
+        indicatorRepository.save(ProcessIndicator.builder()
+            .processDefinitionId(processDefinitionId)
+            .hasDmn(ind.hasDmn())
+            .hasConnector(ind.hasConnector())
+            .build());
     }
 }
