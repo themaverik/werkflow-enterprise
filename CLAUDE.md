@@ -7,16 +7,38 @@
 
 ---
 
-## Execution Workflow
+## Core Principles (read first)
 
-**Primary stack:** ECC + Caveman + Graphify + Claude-mem
+> These govern every change and override speed. Full guidelines in `karpathy-guidelines` skill.
+
+* **Surgical changes:** Touch only what the task requires. Do NOT improve, refactor, or restyle adjacent code. Match existing patterns and style.
+* **Simplicity first:** Minimum code that solves the problem. No speculative features, abstractions, state, or dependencies that weren't asked for.
+* **Think before coding:** State assumptions explicitly. Surface ambiguity. Ask before guessing.
+* **Goal-driven execution:** Define verifiable success criteria before starting. Loop until verified — no scope creep.
+
+---
+
+## Scope Tiers
+
+Pick the tier first; it decides how much process applies.
+
+* **Trivial** — single component, no new deps/state/abstractions, no API or schema change. Implement directly, run the relevant build/test gate, done. **Skip** graphify, claude-mem, and the agent pipeline.
+* **Standard / Milestone** — everything else. Follow the full Execution Workflow below.
+
+If unsure which tier, default to Trivial and ask before escalating.
+
+---
+
+## Execution Workflow (Standard / Milestone)
+
+**Primary stack:** ECC + Graphify + Claude-mem
 
 Strict lifecycle per task:
 
 1. **Discover** — `graphify` to map affected files before touching anything
 2. **Recall** — query `claude-mem` for past decisions on this domain
 3. **Plan** — one paragraph max; no long multi-phase blocks
-4. **Execute** — `caveman` for boilerplate; `ecc` skills for complex logic
+4. **Implement** — surgical changes only; touch only what the task requires; match existing style (see Core Principles)
 5. **Verify** — see Milestone Verification section below
 6. **Record** — save decisions to `claude-mem` immediately after task
 7. **Purge** — `/compact` after each milestone phase
@@ -72,14 +94,16 @@ Write code → npm run build → ecc:typescript-review (changed files) → brows
 
 ---
 
-## Coding Behavior (Karpathy Principles)
+## Code Changes and Review
 
-> Full guidelines in `karpathy-guidelines` skill. These bias toward caution over speed.
+Applies to **Standard / Milestone** tier. Trivial-tier changes skip the agent pipeline.
 
-* **Think before coding:** State assumptions explicitly. Surface ambiguity. Ask before guessing.
-* **Simplicity first:** Minimum code that solves the problem. No speculative features or abstractions.
-* **Surgical changes:** Touch only what the task requires. Don't improve adjacent code. Match existing style.
-* **Goal-driven execution:** Define verifiable success criteria before starting. Loop until verified.
+- **staff-engineer** agent: all code implementations.
+- **frontend-developer** agent: reviews all front-end changes made by staff-engineer.
+- **system-architect** agent: architecture review, only on architecture changes / major refactors.
+- For any other change, pick the most appropriate agent for the task.
+
+**MUST NOT** start coding while ambiguity persists. Ask and surface any ambiguity about who does the change and what the change is.
 
 ---
 
