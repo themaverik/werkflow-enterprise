@@ -401,7 +401,7 @@ export default function ServiceCatalogPage() {
                         {/* Action row: Submit Request (consumer label; button styling matches /processes DeployedCard) */}
                         <div style={{ display: 'flex', alignItems: 'center' }}>
                           <Link
-                            href={`/processes/start/${process.key}`}
+                            href={`/processes/start/${process.key}?from=services`}
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
