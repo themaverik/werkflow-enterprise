@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.repository.Deployment;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.dao.DataAccessException;
@@ -30,6 +31,7 @@ import java.util.List;
  */
 @Slf4j
 @Component
+@DependsOn("dmnExampleDeployer")
 public class ProcessExampleDeployer {
 
     private static final String BPMN_SUFFIX = ".bpmn20.xml";
