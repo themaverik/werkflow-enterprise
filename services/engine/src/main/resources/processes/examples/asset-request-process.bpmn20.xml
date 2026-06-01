@@ -53,8 +53,6 @@
           <flowable:value id="reject" name="Reject"/>
         </flowable:formProperty>
         <flowable:formProperty id="comments" name="Comments" type="string" required="false"/>
-        <flowable:taskListener event="complete"
-          expression="${execution.setVariable('approvedByUserId', task.assignee != null ? task.assignee : 'system')}"/>
       </extensionElements>
     </userTask>
     <!-- PT48H non-interrupting reminder -->
