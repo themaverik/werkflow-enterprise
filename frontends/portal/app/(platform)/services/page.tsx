@@ -15,6 +15,8 @@ interface ProcessDef {
   key: string
   name: string | null
   category: string | undefined
+  hasStartFormKey?: boolean
+  startFormKey?: string
 }
 
 interface VisibleProcessEntry {
@@ -325,6 +327,7 @@ export default function ServiceCatalogPage() {
                   {group.items.map((process) => {
                     const rawCategory = process.category ?? ''
                     const categoryTag = rawCategory ? slugifyTag(rawCategory) : null
+                    const hasStartForm = Boolean(process.hasStartFormKey || process.startFormKey)
 
                     return (
                       <div
@@ -395,31 +398,36 @@ export default function ServiceCatalogPage() {
                           Start this workflow to submit a request.
                         </p>
 
-                        {/* Divider */}
-                        <div style={{ height: 1, background: T.border }} />
+                        {/* Divider + action row: only rendered when the process has a start form */}
+                        {hasStartForm && (
+                          <>
+                            {/* Divider */}
+                            <div style={{ height: 1, background: T.border }} />
 
-                        {/* Action row: Submit Request (consumer label; button styling matches /processes DeployedCard) */}
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                          <Link
-                            href={`/processes/start/${process.key}?from=services`}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 5,
-                              background: catColor,
-                              color: '#fff',
-                              borderRadius: 7,
-                              padding: '6px 12px',
-                              fontSize: 12,
-                              fontWeight: 600,
-                              textDecoration: 'none',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            Submit Request
-                            <ChevronRight size={13} strokeWidth={2.5} aria-hidden="true" />
-                          </Link>
-                        </div>
+                            {/* Action row: Submit Request (consumer label; button styling matches /processes DeployedCard) */}
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                              <Link
+                                href={`/processes/start/${process.key}?from=services`}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 5,
+                                  background: catColor,
+                                  color: '#fff',
+                                  borderRadius: 7,
+                                  padding: '6px 12px',
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  textDecoration: 'none',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                Submit Request
+                                <ChevronRight size={13} strokeWidth={2.5} aria-hidden="true" />
+                              </Link>
+                            </div>
+                          </>
+                        )}
                       </div>
                     )
                   })}

@@ -101,7 +101,6 @@ export default function StartProcessPage() {
     if (!changedKey || !startForm) return
 
     const changedValue = currentValues[changedKey]
-    const accessToken = (session as any)?.accessToken
     const dependentData = await resolveDependentData(
       startForm.schema,
       changedKey,
