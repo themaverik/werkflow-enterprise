@@ -18,10 +18,10 @@
 | Active milestone | Pre-MVP Tier 5 (release hardening) per master Roadmap |
 | M4.11 / M4.12 | Complete (P3 11/11; Phase A + B.1a–B.6 + B.4/B.5-portal + item 8 sidebar gate) |
 | Tier 1–3 done | All Tier-1 (mechanical cleanups, facade hardening, schema hygiene); item 7 approval-escalation cluster (BPMN + engine + 7c-UI, ADR-027) shipped |
-| Done this session | ✅ **E2E test + portal fixes (2026-05-31)** — portal: "Start Workflow"→"Start Process" (`0532fe1`), tasks tab labels + decisions link a11y + `/admin` route guard (`0532fe1`/`1d16df7`); spec fixes: spec 21 tasks API path + monitoring page + category key; spec 03 form-key selector; spec 26 confirmed correct. ✅ **V12 seed alignment** (`fb0ab52`) — `capex-request-form` `department`→`capexOwner`, `leave-request-form` `totalDays`→`leaveDays` + label "Number of Days" |
-| Next | Push this session's commits when ready; CI hardening notes archived (2026-05-30) |
-| Branch | main (3 commits ahead of origin — push when ready) |
-| Operational | dev/live admin DBs need `mvn flyway:repair` (V6 + V24); V12 is additive (UPDATE only) — safe on live schemas |
+| Done this session | ✅ **Session 18 — portal UX + engine semantics (2026-06-01, 9 enterprise commits `e09e023`→`e694c1e` + platform `8b1674f`)** — ProcessExampleDeployer reset-on-startup mode (versions cleared Leave v119/Event v104→v1) + JdbcTemplate cleanup + V13/V14 migrations; asset-request BPMN exec-keyword fix; `/services` card styling parity with `/processes` (T tokens, slugifyTag/tagColor, search+filter bar, deptPill helper) — NO PageSurface; source-aware back nav via `?from=services` query param; "Start Process Anyway" fallback for no-start-form processes; V14 bare-`"type":"date"` fix in 3 missed forms (procurement, capex, onboarding); hide Submit Request when no start form (`hasStartFormKey`); React Query `retry:false` on start-form fetch (15s→<1s); `FormNotFoundException`→404; CLAUDE.md updates (mandate staff-engineer + frontend-developer review) |
+| Next | **Item 3 — DMN + connector indicator icons on /processes cards (Option 2)**: V15 `process_indicators` table + `BpmnIndicatorScanner` + DTO + portal icons (DMN: `GitMerge`; connector: make existing `Link2` conditional). **Item 1** — `/services` description ternary (`hasStartForm ? "Start this workflow…" : "${name} workflow"`). **Item 2** — `/admin/marketplace` Approach 2: state-aware Installed badge + visible info banner that catalog is hardcoded. All three queued for next session. See [active-focus](../../../../.claude/projects/-Users-lamteiwahlang-Projects-werkflow-platform/memory/active-focus.md) for full contract |
+| Branch | main (all pushed through `e694c1e`) |
+| Operational | dev/live admin DBs need `mvn flyway:repair` (V6 + V24); V12/V13/V14 are additive — safe on live schemas. Engine container rebuild PENDING for `29fe6d5` (404 semantics) — user-owned |
 
 ---
 
