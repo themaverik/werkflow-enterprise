@@ -128,15 +128,14 @@ flowable:
   create-diagram-on-deploy: ${FLOWABLE_CREATE_DIAGRAM_ON_DEPLOY:false}
 
   # DMN Decision Table Support
-  # deployment-resources points at a no-op path because Werkflow's
-  # DmnExampleDeployer owns example DMN seeding under the 'default'
-  # tenant. Flowable's spring-boot autoscan would otherwise re-create
-  # tenantless duplicates of every .dmn under classpath:dmn/ on each
-  # restart (SpringBootAutoDeployment rows), which the BPMN designer's
-  # tenant-strict listDecisions query then hides from the dropdown.
+  # Example DMNs live under classpath:dmn-examples/ (not the conventional dmn/)
+  # so Flowable's SpringBootAutoDeployment scan of classpath*:dmn/*.dmn finds
+  # nothing. Werkflow's DmnExampleDeployer is the sole owner of example DMN
+  # seeding under tenantId='default' — the BPMN designer's tenant-strict
+  # listDecisions query then resolves them in the Decision Key dropdown.
   dmn:
     enabled: true
-    deployment-resources: classpath*:dmn-autoscan-disabled/*.dmn
+    deployment-resources: classpath*:dmn/*.dmn
     history-level: full
 
   # CMMN Case Management — kept for S31 Premium tier
