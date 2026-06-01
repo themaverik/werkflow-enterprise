@@ -2,6 +2,7 @@ package com.werkflow.engine.service;
 
 import com.werkflow.engine.dto.ProcessDefinitionResponse;
 import com.werkflow.engine.dto.TaskFormResponse;
+import com.werkflow.engine.exception.FormNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BpmnModel;
@@ -390,7 +391,7 @@ public class ProcessDefinitionService {
         String formKey = extractStartFormKey(resolvedId);
 
         if (formKey == null || formKey.isEmpty()) {
-            throw new RuntimeException("Process definition " + processDefinitionId + " has no start form");
+            throw new FormNotFoundException("start-form for process: " + processDefinitionId);
         }
 
         var formSchema = formSchemaService.loadFormSchemaByRef(formKey);
