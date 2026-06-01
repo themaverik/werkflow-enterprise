@@ -36,6 +36,7 @@ export default function StartProcessPage() {
     queryKey: ['processStartForm', processDefinitionId],
     queryFn: () => getProcessStartForm(processDefinitionId),
     enabled: status === 'authenticated' && !!processDefinitionId,
+    retry: false,
   })
 
   const { data: initialFormData } = useQuery({
