@@ -1,6 +1,6 @@
 'use client'
 
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
@@ -18,11 +18,19 @@ import { useSession } from 'next-auth/react'
 export default function StartProcessPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const { status, data: session } = useSession()
   const prevFormValues = useRef<Record<string, any>>({})
   const processDefinitionId = decodeURIComponent(params.id as string)
   const [formData, setFormData] = useState<Record<string, any>>({})
+
+  // Source-aware back navigation: consumers landing here from /services should
+  // bounce back to /services on cancel (not /processes, which is admin-gated and
+  // 403s for non-admin employees). The link source is passed as ?from=services.
+  const fromSource = searchParams.get('from')
+  const backHref = fromSource === 'services' ? '/services' : '/processes'
+  const backLabel = fromSource === 'services' ? 'Back to Services' : 'Back to Processes'
 
   const { data: startForm, isLoading, error } = useQuery({
     queryKey: ['processStartForm', processDefinitionId],
@@ -142,20 +150,33 @@ export default function StartProcessPage() {
   }
 
   if (error || !startForm) {
+    // No-start-form case: many BPMNs collect data on the first user task
+    // instead of the start event (e.g. general-approval, onboarding-checklist).
+    // Offer to start the process directly so the user lands on /requests and
+    // can claim the first task from there.
     return (
       <div className="container py-6">
         <Card>
           <CardContent className="py-12 text-center">
-            <h3 className="text-lg font-semibold mb-2">Start Form Not Available</h3>
-            <p className="text-muted-foreground mb-4">
-              {error instanceof Error ? error.message : 'This process does not have a start form configured.'}
+            <h3 className="text-lg font-semibold mb-2">No Start Form</h3>
+            <p className="text-muted-foreground mb-6">
+              This process collects details on its first task. Start it now and complete
+              the first step from your tasks list.
             </p>
-            <Button asChild>
-              <Link href="/processes">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Processes
-              </Link>
-            </Button>
+            <div className="flex gap-2 justify-center">
+              <Button asChild variant="outline">
+                <Link href={backHref}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  {backLabel}
+                </Link>
+              </Button>
+              <Button
+                onClick={() => startProcessMutation.mutate({})}
+                disabled={startProcessMutation.isPending}
+              >
+                {startProcessMutation.isPending ? 'Starting…' : 'Start Process Anyway'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
