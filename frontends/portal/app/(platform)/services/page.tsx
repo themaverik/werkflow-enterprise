@@ -397,7 +397,7 @@ export default function ServiceCatalogPage() {
                         <p style={{ fontSize: 12, color: T.muted, lineHeight: 1.5, margin: 0, flex: 1 }}>
                           {hasStartForm
                             ? 'Start this workflow to submit a request.'
-                            : `${process.name || process.key} workflow`}
+                            : 'No intake form.'}
                         </p>
 
                         {/* Divider + action row: only rendered when the process has a start form */}

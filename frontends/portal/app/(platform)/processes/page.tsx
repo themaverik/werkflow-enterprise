@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import {
   Play, Pencil, Trash2, Plus, ChevronRight,
-  Search, GitBranch, SlidersHorizontal, GitMerge, Rocket,
+  Search, GitBranch, SlidersHorizontal, GitMerge, Rocket, Workflow,
   Link2, FileText, History,
 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -632,6 +632,8 @@ interface ProcessDef {
   category?: string
   hasStartFormKey?: boolean
   startFormKey?: string
+  hasDmn?: boolean
+  hasConnector?: boolean
 }
 
 function DeployedCard({
@@ -653,11 +655,14 @@ function DeployedCard({
   const [hoverEdit, setHoverEdit] = useState(false)
   const [hoverDel, setHoverDel] = useState(false)
   const [hoverConn, setHoverConn] = useState(false)
+  const [hoverDmn, setHoverDmn] = useState(false)
   const [hoverForm, setHoverForm] = useState(false)
 
   const tags = getProcessTags(latest)
   const primaryColor = primaryColorForProcess(tags)
   const hasForm = Boolean(latest.hasStartFormKey || latest.startFormKey)
+  const hasDmn = Boolean(latest.hasDmn)
+  const hasConnector = Boolean(latest.hasConnector)
 
   return (
     <div
@@ -812,20 +817,49 @@ function DeployedCard({
           </span>
         )}
 
-        {/* Connector — links to /admin/connectors */}
-        <Link
-          href="/admin/connectors"
-          style={{
-            ...iconBtn,
-            background: hoverConn ? T.bg : '#fff',
-            textDecoration: 'none',
-          }}
-          title="View connectors"
-          onMouseEnter={() => setHoverConn(true)}
-          onMouseLeave={() => setHoverConn(false)}
-        >
-          <Link2 size={13} color={T.muted} strokeWidth={2} />
-        </Link>
+        {/* Connector — enabled only if process invokes a connector delegate */}
+        {hasConnector ? (
+          <Link
+            href="/admin/connectors"
+            style={{ ...iconBtn, background: hoverConn ? T.bg : '#fff', textDecoration: 'none' }}
+            title="View connectors"
+            onMouseEnter={() => setHoverConn(true)}
+            onMouseLeave={() => setHoverConn(false)}
+          >
+            <Link2 size={13} color={T.muted} strokeWidth={2} />
+          </Link>
+        ) : (
+          <span
+            role="img"
+            aria-label="No connectors configured"
+            style={{ ...iconBtn, opacity: 0.3, cursor: 'not-allowed' }}
+            title="No connectors configured"
+          >
+            <Link2 size={13} color={T.light} strokeWidth={2} />
+          </span>
+        )}
+
+        {/* DMN — enabled only if process invokes a DMN decision */}
+        {hasDmn ? (
+          <Link
+            href="/decisions"
+            style={{ ...iconBtn, background: hoverDmn ? T.bg : '#fff', textDecoration: 'none' }}
+            title="View DMN decisions"
+            onMouseEnter={() => setHoverDmn(true)}
+            onMouseLeave={() => setHoverDmn(false)}
+          >
+            <Workflow size={13} color={T.muted} strokeWidth={2} />
+          </Link>
+        ) : (
+          <span
+            role="img"
+            aria-label="No DMN configured"
+            style={{ ...iconBtn, opacity: 0.3, cursor: 'not-allowed' }}
+            title="No DMN configured"
+          >
+            <Workflow size={13} color={T.light} strokeWidth={2} />
+          </span>
+        )}
 
         {/* Form — enabled only if process has a start form */}
         {hasForm ? (
@@ -839,7 +873,12 @@ function DeployedCard({
             <FileText size={13} color={T.muted} strokeWidth={2} />
           </Link>
         ) : (
-          <span style={{ ...iconBtn, opacity: 0.3, cursor: 'not-allowed' }} title="No form configured">
+          <span
+            role="img"
+            aria-label="No form configured"
+            style={{ ...iconBtn, opacity: 0.3, cursor: 'not-allowed' }}
+            title="No form configured"
+          >
             <FileText size={13} color={T.light} strokeWidth={2} />
           </span>
         )}
