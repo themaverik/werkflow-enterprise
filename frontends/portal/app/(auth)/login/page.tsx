@@ -24,7 +24,7 @@ export default async function LoginPage() {
         {/* Logo */}
         <div style={{ position: 'relative' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/werkflow-logo.png" alt="Werkflow" style={{ height: 80, width: 'auto', objectFit: 'contain' }} />
+          <img src="/werkflow-logo.png" alt="Werkflow" style={{ height: 100, width: 'auto', objectFit: 'contain' }} />
         </div>
 
         {/* Center copy */}
