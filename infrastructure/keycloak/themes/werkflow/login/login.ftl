@@ -17,8 +17,7 @@ html, body { height: 100%; }
 .wf-geo-bg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .wf-glow { position: absolute; top: 35%; left: 30%; width: 320px; height: 320px; border-radius: 50%; background: radial-gradient(circle, rgba(20,155,165,0.16) 0%, transparent 70%); pointer-events: none; }
 .wf-brand-top { position: relative; display: flex; align-items: center; gap: 10px; }
-.wf-logomark { width: 34px; height: 34px; border-radius: 8px; background: #149ba5; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.wf-wordmark { font-size: 18px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+.wf-process-bg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; mask-image: radial-gradient(ellipse 95% 80% at 45% 42%,#000 45%,transparent 92%); -webkit-mask-image: radial-gradient(ellipse 95% 80% at 45% 42%,#000 45%,transparent 92%); }
 .wf-brand-copy { position: relative; }
 .wf-eyebrow { font-size: 11px; font-weight: 600; color: #149ba5; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 14px; }
 .wf-headline { font-size: 32px; font-weight: 700; color: #fff; line-height: 1.25; margin-bottom: 16px; letter-spacing: -0.5px; }
@@ -81,35 +80,81 @@ html, body { height: 100%; }
 
     <!-- Left: Brand panel -->
     <div class="wf-brand">
-        <svg class="wf-geo-bg" viewBox="0 0 360 700" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-            <polygon points="0,0 180,0 90,140"        fill="rgba(255,255,255,0.03)"  stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
-            <polygon points="180,0 360,0 270,140"      fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
-            <polygon points="90,140 270,140 180,280"   fill="rgba(255,255,255,0.04)"  stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
-            <polygon points="0,140 90,140 0,280"       fill="rgba(255,255,255,0.02)"  stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
-            <polygon points="270,140 360,140 360,280"  fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
-            <polygon points="0,280 180,280 90,420"     fill="rgba(255,255,255,0.03)"  stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
-            <polygon points="180,280 360,280 270,420"  fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
-            <polygon points="0,420 180,420 90,560"     fill="rgba(255,255,255,0.04)"  stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
-            <polygon points="180,420 360,420 270,560"  fill="rgba(255,255,255,0.02)"  stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
-            <polygon points="90,560 270,560 180,700"   fill="rgba(255,255,255,0.03)"  stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
-            <polygon points="0,560 90,560 0,700"       fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
-            <polygon points="270,560 360,560 360,700"  fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
-            <polygon points="160,100 280,60 240,200"   fill="#149ba518"/>
-            <polygon points="40,300 140,260 100,400"   fill="#149ba510"/>
-            <polygon points="200,380 320,340 280,480"  fill="#149ba514"/>
-            <polygon points="60,500 200,480 130,620"   fill="#149ba50d"/>
+        <svg class="wf-process-bg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1024" preserveAspectRatio="xMidYMid slice">
+<defs>
+  <marker id="pf-arr" markerWidth="6" markerHeight="6" refX="5" refY="2" orient="auto"><path d="M 0 0 L 6 2 L 0 4 Z" fill="rgba(255,255,255,0.10)"/></marker>
+  <marker id="pf-arr-s" markerWidth="6" markerHeight="6" refX="5" refY="2" orient="auto"><path d="M 0 0 L 6 2 L 0 4 Z" fill="rgba(255,255,255,0.055)"/></marker>
+</defs>
+<line x1="133" y1="190" x2="251" y2="190" stroke="rgba(255,255,255,0.10)" stroke-width="1.2" marker-end="url(#pf-arr)"/>
+<line x1="359" y1="190" x2="474" y2="190" stroke="rgba(255,255,255,0.10)" stroke-width="1.2" marker-end="url(#pf-arr)"/>
+<path d="M 526,190 L 589,190 L 589,110 L 652,110" fill="none" stroke="rgba(255,255,255,0.055)" stroke-width="1.2" marker-end="url(#pf-arr-s)"/>
+<path d="M 526,190 L 589,190 L 589,270 L 652,270" fill="none" stroke="rgba(255,255,255,0.055)" stroke-width="1.2" marker-end="url(#pf-arr-s)"/>
+<path d="M 748,110 L 811,110 L 811,190 L 874,190" fill="none" stroke="rgba(255,255,255,0.055)" stroke-width="1.2" marker-end="url(#pf-arr-s)"/>
+<path d="M 748,270 L 811,270 L 811,190 L 874,190" fill="none" stroke="rgba(255,255,255,0.055)" stroke-width="1.2" marker-end="url(#pf-arr-s)"/>
+<line x1="926" y1="190" x2="1032" y2="190" stroke="rgba(255,255,255,0.10)" stroke-width="1.2" marker-end="url(#pf-arr)"/>
+<line x1="1140" y1="190" x2="1285" y2="190" stroke="rgba(255,255,255,0.10)" stroke-width="1.2" marker-end="url(#pf-arr)"/>
+<line x1="111" y1="560" x2="234" y2="560" stroke="rgba(255,255,255,0.10)" stroke-width="1.2" marker-end="url(#pf-arr)"/>
+<line x1="342" y1="560" x2="462" y2="560" stroke="rgba(255,255,255,0.10)" stroke-width="1.2" marker-end="url(#pf-arr)"/>
+<path d="M 514,560 L 577,560 L 577,478 L 640,478" fill="none" stroke="rgba(255,255,255,0.055)" stroke-width="1.2" marker-end="url(#pf-arr-s)"/>
+<path d="M 514,560 L 577,560 L 577,642 L 640,642" fill="none" stroke="rgba(255,255,255,0.055)" stroke-width="1.2" marker-end="url(#pf-arr-s)"/>
+<path d="M 736,478 L 799,478 L 799,560 L 862,560" fill="none" stroke="rgba(255,255,255,0.055)" stroke-width="1.2" marker-end="url(#pf-arr-s)"/>
+<path d="M 736,642 L 799,642 L 799,560 L 862,560" fill="none" stroke="rgba(255,255,255,0.055)" stroke-width="1.2" marker-end="url(#pf-arr-s)"/>
+<line x1="914" y1="560" x2="1026" y2="560" stroke="rgba(255,255,255,0.10)" stroke-width="1.2" marker-end="url(#pf-arr)"/>
+<line x1="1134" y1="560" x2="1285" y2="560" stroke="rgba(255,255,255,0.10)" stroke-width="1.2" marker-end="url(#pf-arr)"/>
+<line x1="221" y1="884" x2="354" y2="884" stroke="rgba(255,255,255,0.10)" stroke-width="1.2" marker-end="url(#pf-arr)"/>
+<line x1="462" y1="884" x2="586" y2="884" stroke="rgba(255,255,255,0.10)" stroke-width="1.2" marker-end="url(#pf-arr)"/>
+<path d="M 638,884 L 705,884 L 705,804 L 772,804" fill="none" stroke="rgba(255,255,255,0.055)" stroke-width="1.2" marker-end="url(#pf-arr-s)"/>
+<path d="M 638,884 L 705,884 L 705,968 L 772,968" fill="none" stroke="rgba(255,255,255,0.055)" stroke-width="1.2" marker-end="url(#pf-arr-s)"/>
+<path d="M 868,804 L 948.5,804 L 948.5,884 L 1029,884" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="1.2" marker-end="url(#pf-arr)"/>
+<circle cx="118" cy="190" r="15" fill="rgba(255,255,255,0.015)" stroke="rgba(20,155,165,0.42)" stroke-width="2"/>
+<rect x="251" y="167" width="108" height="46" rx="11" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.13)" stroke-width="1.4"/>
+<path d="M 500,164 L 526,190 L 500,216 L 474,190 Z" fill="rgba(255,255,255,0.015)" stroke="rgba(20,155,165,0.42)" stroke-width="1.4"/>
+<line x1="491.16" y1="181.16" x2="508.84" y2="198.84" stroke="rgba(255,255,255,0.22)" stroke-width="1.4"/>
+<line x1="508.84" y1="181.16" x2="491.16" y2="198.84" stroke="rgba(255,255,255,0.22)" stroke-width="1.4"/>
+<rect x="652" y="88" width="96" height="44" rx="11" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.13)" stroke-width="1.4"/>
+<rect x="652" y="248" width="96" height="44" rx="11" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.13)" stroke-width="1.4"/>
+<path d="M 900,164 L 926,190 L 900,216 L 874,190 Z" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.13)" stroke-width="1.4"/>
+<line x1="891.16" y1="190" x2="908.84" y2="190" stroke="rgba(255,255,255,0.22)" stroke-width="1.4"/>
+<line x1="900" y1="181.16" x2="900" y2="198.84" stroke="rgba(255,255,255,0.22)" stroke-width="1.4"/>
+<rect x="1032" y="167" width="108" height="46" rx="11" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.13)" stroke-width="1.4"/>
+<circle cx="1300" cy="190" r="15" fill="rgba(255,255,255,0.015)" stroke="rgba(20,155,165,0.42)" stroke-width="3.2"/>
+<circle cx="96" cy="560" r="15" fill="rgba(255,255,255,0.015)" stroke="rgba(20,155,165,0.42)" stroke-width="2"/>
+<rect x="234" y="537" width="108" height="46" rx="11" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.13)" stroke-width="1.4"/>
+<path d="M 488,534 L 514,560 L 488,586 L 462,560 Z" fill="rgba(255,255,255,0.015)" stroke="rgba(20,155,165,0.42)" stroke-width="1.4"/>
+<line x1="479.16" y1="551.16" x2="496.84" y2="568.84" stroke="rgba(255,255,255,0.22)" stroke-width="1.4"/>
+<line x1="496.84" y1="551.16" x2="479.16" y2="568.84" stroke="rgba(255,255,255,0.22)" stroke-width="1.4"/>
+<rect x="640" y="456" width="96" height="44" rx="11" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.13)" stroke-width="1.4"/>
+<rect x="640" y="620" width="96" height="44" rx="11" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.13)" stroke-width="1.4"/>
+<path d="M 888,534 L 914,560 L 888,586 L 862,560 Z" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.13)" stroke-width="1.4"/>
+<line x1="879.16" y1="560" x2="896.84" y2="560" stroke="rgba(255,255,255,0.22)" stroke-width="1.4"/>
+<line x1="888" y1="551.16" x2="888" y2="568.84" stroke="rgba(255,255,255,0.22)" stroke-width="1.4"/>
+<rect x="1026" y="537" width="108" height="46" rx="11" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.13)" stroke-width="1.4"/>
+<circle cx="1300" cy="560" r="15" fill="rgba(255,255,255,0.015)" stroke="rgba(20,155,165,0.42)" stroke-width="3.2"/>
+<circle cx="206" cy="884" r="15" fill="rgba(255,255,255,0.015)" stroke="rgba(20,155,165,0.42)" stroke-width="2"/>
+<rect x="354" y="861" width="108" height="46" rx="11" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.13)" stroke-width="1.4"/>
+<path d="M 612,858 L 638,884 L 612,910 L 586,884 Z" fill="rgba(255,255,255,0.015)" stroke="rgba(20,155,165,0.42)" stroke-width="1.4"/>
+<line x1="603.16" y1="875.16" x2="620.84" y2="892.84" stroke="rgba(255,255,255,0.22)" stroke-width="1.4"/>
+<line x1="620.84" y1="875.16" x2="603.16" y2="892.84" stroke="rgba(255,255,255,0.22)" stroke-width="1.4"/>
+<rect x="772" y="782" width="96" height="44" rx="11" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.13)" stroke-width="1.4"/>
+<rect x="772" y="946" width="96" height="44" rx="11" fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.13)" stroke-width="1.4"/>
+<circle cx="1044" cy="884" r="15" fill="rgba(255,255,255,0.015)" stroke="rgba(20,155,165,0.42)" stroke-width="3.2"/>
+<circle r="3.4" fill="#149ba5">
+  <animateMotion dur="18s" begin="-1s" repeatCount="indefinite" path="M 118,190 L 305,190 L 500,190 L 600,190 L 600,110 L 700,110 L 800,110 L 800,190 L 900,190 L 1086,190 L 1300,190"/>
+  <animate attributeName="opacity" values="0;0.55;0.55;0" keyTimes="0;0.07;0.9;1" dur="18s" begin="-1s" repeatCount="indefinite"/>
+</circle>
+<circle r="3.4" fill="#149ba5">
+  <animateMotion dur="23s" begin="-7s" repeatCount="indefinite" path="M 96,560 L 288,560 L 488,560 L 588,560 L 588,642 L 688,642 L 788,642 L 788,560 L 888,560 L 1080,560 L 1300,560"/>
+  <animate attributeName="opacity" values="0;0.55;0.55;0" keyTimes="0;0.07;0.9;1" dur="23s" begin="-7s" repeatCount="indefinite"/>
+</circle>
+<circle r="3.4" fill="#149ba5">
+  <animateMotion dur="28s" begin="-13s" repeatCount="indefinite" path="M 206,884 L 408,884 L 612,884 L 716,884 L 716,804 L 820,804 L 932,804 L 932,884 L 1044,884"/>
+  <animate attributeName="opacity" values="0;0.55;0.55;0" keyTimes="0;0.07;0.9;1" dur="28s" begin="-13s" repeatCount="indefinite"/>
+</circle>
         </svg>
         <div class="wf-glow"></div>
 
         <div class="wf-brand-top">
-            <div class="wf-logomark">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                    <path d="M2 17l10 5 10-5"/>
-                    <path d="M2 12l10 5 10-5"/>
-                </svg>
-            </div>
-            <span class="wf-wordmark">Werkflow</span>
+            <img src="${url.resourcesPath}/img/werkflow-logo.png" alt="Werkflow" style="height:34px;width:auto;object-fit:contain;" />
         </div>
 
         <div class="wf-brand-copy">

@@ -64,6 +64,8 @@ export default function HomePage() {
         <div style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'rgba(20,155,165,0.07)', bottom: 40, left: '20%', filter: 'blur(80px)', pointerEvents: 'none' }} />
 
         <div style={{ position: 'relative', maxWidth: 760 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/werkflow-logo.png" alt="Werkflow" style={{ height: 52, width: 'auto', objectFit: 'contain', marginBottom: 28 }} />
           <p style={{ fontSize: 12, fontWeight: 600, color: '#94a8b3', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 24 }}>
             Enterprise Workflow Platform
           </p>
@@ -157,23 +159,84 @@ export default function HomePage() {
         </Link>
       </section>
 
+      {/* Powered by */}
+      <section style={{ background: '#0f1e2a', padding: '80px 40px', textAlign: 'center' }}>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: 14 }}>
+          Built on open standards
+        </p>
+        <h2 style={{ fontSize: 28, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em', marginBottom: 10 }}>
+          Powered by best-in-class open source
+        </h2>
+        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 48 }}>
+          Werkflow stands on the shoulders of proven, battle-tested open source technology.
+        </p>
+        <div style={{ display: 'flex', alignItems: 'stretch', justifyContent: 'center', gap: 20, flexWrap: 'wrap', maxWidth: 900, margin: '0 auto' }}>
+
+          {/* bpmn-io */}
+          <a href="https://bpmn.io/" target="_blank" rel="noopener noreferrer" style={{
+            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 14, padding: '28px 32px', display: 'flex', flexDirection: 'column',
+            alignItems: 'center', gap: 12, textDecoration: 'none', flex: 1, minWidth: 220, maxWidth: 280, textAlign: 'center',
+          }}>
+            <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M9 6.5C13 6.5 11 17.5 15 17.5"/>
+              </svg>
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>bpmn-io</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 1.55 }}>
+              BPMN, DMN and CMMN modelling toolkits that power the Werkflow visual process designer.
+            </div>
+            <span style={{ background: 'rgba(59,130,246,0.15)', color: '#93c5fd', fontSize: 10, fontWeight: 600, padding: '3px 10px', borderRadius: 99 }}>bpmn.io ↗</span>
+          </a>
+
+          {/* Flowable OSS */}
+          <a href="https://www.flowable.com/open-source" target="_blank" rel="noopener noreferrer" style={{
+            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 14, padding: '28px 32px', display: 'flex', flexDirection: 'column',
+            alignItems: 'center', gap: 12, textDecoration: 'none', flex: 1, minWidth: 220, maxWidth: 280, textAlign: 'center',
+          }}>
+            <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(249,115,22,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+              </svg>
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>Flowable OSS</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 1.55 }}>
+              The open source BPMN 2.0 process engine that executes and orchestrates all Werkflow business processes.
+            </div>
+            <span style={{ background: 'rgba(249,115,22,0.15)', color: '#fdba74', fontSize: 10, fontWeight: 600, padding: '3px 10px', borderRadius: 99 }}>flowable.com ↗</span>
+          </a>
+
+          {/* Unlayer */}
+          <a href="https://github.com/unlayer/react-email-editor" target="_blank" rel="noopener noreferrer" style={{
+            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 14, padding: '28px 32px', display: 'flex', flexDirection: 'column',
+            alignItems: 'center', gap: 12, textDecoration: 'none', flex: 1, minWidth: 220, maxWidth: 280, textAlign: 'center',
+          }}>
+            <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(20,155,165,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#149ba5" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="3" width="20" height="4" rx="1"/><rect x="2" y="11" width="20" height="4" rx="1"/><rect x="2" y="19" width="10" height="4" rx="1"/>
+              </svg>
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>Unlayer</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 1.55 }}>
+              The drag-and-drop React email editor embedded in Werkflow&apos;s form and template builder experience.
+            </div>
+            <span style={{ background: 'rgba(20,155,165,0.15)', color: '#5eead4', fontSize: 10, fontWeight: 600, padding: '3px 10px', borderRadius: 99 }}>unlayer/react-email-editor ↗</span>
+          </a>
+
+        </div>
+      </section>
+
       {/* Footer */}
       <footer style={{ background: DARK, padding: '32px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
         <div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/werkflow-logo.png" alt="Werkflow" style={{ height: 28, width: 'auto', objectFit: 'contain' }} />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>
-          <span>Powered by</span>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 20" style={{ height: 16, opacity: 0.5 }}>
-            <rect width="80" height="20" rx="3" fill="#0A6EC5" />
-            <text x="6" y="14" fontFamily="monospace" fontSize="11" fontWeight="700" fill="white">bpmn-io</text>
-          </svg>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 20" style={{ height: 16, opacity: 0.5 }}>
-            <rect width="90" height="20" rx="3" fill="#E87B00" />
-            <text x="6" y="14" fontFamily="sans-serif" fontSize="11" fontWeight="700" fill="white">Flowable</text>
-          </svg>
-        </div>
+        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>Powered by bpmn-io · Flowable OSS · Unlayer</p>
         <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)' }}>© 2026 Werkflow. All rights reserved.</p>
       </footer>
     </div>
