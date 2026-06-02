@@ -36,7 +36,7 @@ export default async function LoginPage() {
             Automate the work.<br />
             <span style={{ color: '#149ba5' }}>Own the outcome.</span>
           </h1>
-          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, maxWidth: 300, marginBottom: 28 }}>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, maxWidth: 370, marginBottom: 28 }}>
             Design, deploy and monitor business processes — procurement, onboarding, approvals and more — all in one place.
           </p>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
