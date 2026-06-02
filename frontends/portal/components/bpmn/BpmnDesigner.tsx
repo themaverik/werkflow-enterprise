@@ -198,7 +198,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
   const t = useTranslations('bpmn')
   const { toast } = useToast()
   const { user, token } = useAuth()
-  const { data: capabilities } = usePlatformCapabilities()
+  const { capabilitiesUnavailable } = usePlatformCapabilities()
   const containerRef = useRef<HTMLDivElement>(null)
   const propertiesPanelRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -844,8 +844,6 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
     const canvas = modeler.get('canvas')
     canvas.zoom('fit-viewport')
   }
-
-  const capabilitiesUnavailable = !capabilities
 
   return (
     <div className="flex flex-col h-screen">
