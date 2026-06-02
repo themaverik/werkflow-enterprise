@@ -92,7 +92,8 @@ COPY frontends/portal/components.json* ./
 # Copy source code
 COPY frontends/portal/ ./
 
-# Build the application
+# Build the application (standalone mode required for Docker runtime stage)
+ENV DOCKER_BUILD=true
 RUN npm run build
 
 # ================================================================
