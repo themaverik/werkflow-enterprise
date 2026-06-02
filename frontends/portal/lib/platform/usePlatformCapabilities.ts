@@ -19,7 +19,7 @@ export function usePlatformCapabilities() {
   const { data: session, status } = useSession()
   const token = (session?.accessToken as string) ?? ''
 
-  return useQuery<PlatformCapabilityResponse, Error>({
+  const result = useQuery<PlatformCapabilityResponse, Error>({
     queryKey: ['pss', 'capabilities'],
     queryFn: () => platformApi.capabilities(token),
     enabled: status === 'authenticated',
@@ -27,6 +27,11 @@ export function usePlatformCapabilities() {
     gcTime: FIVE_MINUTES,
     retry: 1,
   })
+
+  return {
+    ...result,
+    capabilitiesUnavailable: result.isError || (result.isSuccess && !result.data),
+  }
 }
 
 /** Hook for the unified candidate-groups list. */
