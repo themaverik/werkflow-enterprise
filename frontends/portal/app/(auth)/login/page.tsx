@@ -37,20 +37,24 @@ export default async function LoginPage() {
             <span style={{ color: '#149ba5' }}>Own the outcome.</span>
           </h1>
           <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, maxWidth: 300, marginBottom: 28 }}>
-            Design, deploy, and manage enterprise workflows — approvals, procurement, onboarding — from one unified platform.
+            Design, deploy and monitor business processes — procurement, onboarding, approvals and more — all in one place.
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
             {[
-              'BPMN 2.0 Process Automation',
-              'DMN Decision Tables',
-              'Role-Based Task Routing',
-            ].map((text) => (
-              <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#149ba5', flexShrink: 0 }} />
-                <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>{text}</span>
-              </div>
+              { label: 'BPMN process designer', icon: <path d="M20 6L9 17l-5-5" /> },
+              { label: 'Role-based task routing', icon: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></> },
+              { label: 'Live instance monitoring', icon: <path d="M23 6l-9.5 9.5-5-5L1 18" /> },
+            ].map(({ label, icon }) => (
+              <li key={label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 22, height: 22, borderRadius: 6, background: 'rgba(20,155,165,0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#149ba5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    {icon}
+                  </svg>
+                </span>
+                <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>{label}</span>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
 
         {/* Bottom version */}
