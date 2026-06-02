@@ -32,7 +32,7 @@ export default function HomePage() {
       }}>
         <div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/werkflow-logo.png" alt="Werkflow" style={{ height: 28, width: 'auto', objectFit: 'contain' }} />
+          <img src="/werkflow-logo.png" alt="Werkflow" style={{ height: 44, width: 'auto', objectFit: 'contain' }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
           {[['Processes', '/processes'], ['Tasks', '/tasks'], ['Decisions', '/decisions']].map(([label, href]) => (
@@ -65,7 +65,7 @@ export default function HomePage() {
 
         <div style={{ position: 'relative', maxWidth: 760 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/werkflow-logo.png" alt="Werkflow" style={{ height: 52, width: 'auto', objectFit: 'contain', marginBottom: 28 }} />
+          <img src="/werkflow-logo.png" alt="Werkflow" style={{ height: 110, width: 'auto', objectFit: 'contain', marginBottom: 28 }} />
           <p style={{ fontSize: 12, fontWeight: 600, color: '#94a8b3', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 24 }}>
             Enterprise Workflow Platform
           </p>
