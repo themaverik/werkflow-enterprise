@@ -1,4 +1,5 @@
 import { signIn } from "@/auth"
+import { ProcessFlowBackdrop } from '@/components/layout/process-flow-backdrop'
 
 export default async function LoginPage() {
   return (
@@ -11,6 +12,7 @@ export default async function LoginPage() {
         justifyContent: 'space-between', padding: '40px 44px',
         flexShrink: 0,
       }}>
+        <ProcessFlowBackdrop variant="onDark" />
         {/* Radial glow */}
         <div style={{
           position: 'absolute', top: '35%', left: '30%', width: 320, height: 320,
@@ -18,14 +20,6 @@ export default async function LoginPage() {
           background: 'radial-gradient(circle, rgba(20,155,165,0.18) 0%, transparent 70%)',
           pointerEvents: 'none',
         }} />
-        {/* Geometric mesh overlay */}
-        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.06 }}
-          xmlns="http://www.w3.org/2000/svg">
-          <polygon points="0,0 200,0 100,160" fill="white" />
-          <polygon points="200,0 400,0 300,160" fill="white" opacity="0.5" />
-          <polygon points="0,160 200,160 100,320" fill="white" opacity="0.4" />
-          <polygon points="100,0 300,0 200,200" fill="white" opacity="0.3" />
-        </svg>
 
         {/* Logo */}
         <div style={{ position: 'relative' }}>

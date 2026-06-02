@@ -1,51 +1,16 @@
 import Link from "next/link"
+import { ProcessFlowBackdrop } from '@/components/layout/process-flow-backdrop'
 
 const ACCENT = '#149ba5'
 const DARK = '#111c27'
 
-const features = [
-  {
-    icon: 'M9 3H5a2 2 0 0 0-2 2v4m6-6h10l4 4v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V3zm0 0',
-    title: 'Process Automation',
-    desc: 'Design end-to-end workflows with BPMN 2.0. Route tasks, trigger approvals, and automate multi-step operations visually.',
-    color: '#149ba5',
-    href: '/processes',
-  },
-  {
-    icon: 'M3 3h18M3 9h18M3 15h18M3 21h18',
-    title: 'Decision Tables',
-    desc: 'Model complex business rules with DMN. Separate logic from process flows for clear, auditable decision management.',
-    color: '#0891b2',
-    href: '/decisions',
-  },
-  {
-    icon: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm0 0v6h6',
-    title: 'Dynamic Forms',
-    desc: 'Build rich forms with conditional logic, file uploads, and workflow task binding — no code required.',
-    color: '#16a34a',
-    href: '/forms',
-  },
-  {
-    icon: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
-    title: 'Task Management',
-    desc: 'Unified task inbox for every role. Claim, complete, delegate, and track work across all active processes.',
-    color: '#c27b00',
-    href: '/tasks',
-  },
-  {
-    icon: 'M18 20V10M12 20V4M6 20v-6',
-    title: 'Analytics & SLA',
-    desc: 'Track process throughput, SLA compliance, and identify bottlenecks with real-time dashboards and CSV export.',
-    color: '#1d4ed8',
-    href: '/analytics',
-  },
-  {
-    icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
-    title: 'Role-Based Access',
-    desc: 'Fine-grained authority with DOA levels, department routing, and Keycloak-backed SSO for enterprise identity.',
-    color: '#dc2626',
-    href: '/dashboard',
-  },
+const CAPABILITIES = [
+  { n: '01', title: 'Multitenant Process Platform',   desc: 'Isolated process definitions, execution and user assignments per tenant.' },
+  { n: '02', title: 'Visual Workflow Authoring',       desc: 'Browser-based BPMN, DMN and Form designers — no local tooling required.' },
+  { n: '03', title: 'Connector-native Integration',    desc: 'Built-in HTTP/REST, database and webhook connectors for any system.' },
+  { n: '04', title: 'Intelligent Approval Routing',    desc: 'Multi-level approvals driven by DMN decision logic and thresholds.' },
+  { n: '05', title: 'Enterprise Identity & Access',    desc: 'Keycloak-backed role-based access with custody-group routing.' },
+  { n: '06', title: 'Process Monitoring & Analytics',  desc: 'Real-time process health with connector and DMN usage insights.' },
 ]
 
 const steps = [
@@ -54,14 +19,6 @@ const steps = [
   { n: '03', title: 'Deploy', desc: 'Publish to the Flowable engine. Live instantly — no downtime.' },
   { n: '04', title: 'Monitor', desc: 'Track SLA compliance and process health from the analytics dashboard.' },
 ]
-
-function Icon({ d, size = 20, stroke = 'currentColor' }: { d: string; size?: number; stroke?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-      <path d={d} />
-    </svg>
-  )
-}
 
 export default function HomePage() {
   return (
@@ -73,10 +30,7 @@ export default function HomePage() {
         padding: '0 40px', background: DARK, borderBottom: '1px solid rgba(255,255,255,0.07)',
         position: 'sticky', top: 0, zIndex: 50,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Icon d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" size={16} stroke="#fff" />
-          </div>
+        <div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/werkflow-logo.png" alt="Werkflow" style={{ height: 28, width: 'auto', objectFit: 'contain' }} />
         </div>
@@ -101,23 +55,15 @@ export default function HomePage() {
         minHeight: 'calc(100vh - 60px)', display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         padding: '100px 40px 80px', textAlign: 'center', position: 'relative', overflow: 'hidden',
-        backgroundImage: 'linear-gradient(rgba(20,155,165,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(20,155,165,0.04) 1px, transparent 1px)',
+        backgroundImage: 'linear-gradient(rgba(20,155,165,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(20,155,165,0.025) 1px, transparent 1px)',
         backgroundSize: '48px 48px',
       }}>
+        <ProcessFlowBackdrop variant="onLight" />
         {/* Blobs */}
         <div style={{ position: 'absolute', width: 500, height: 400, borderRadius: '50%', background: 'rgba(20,155,165,0.10)', top: -80, left: -100, filter: 'blur(80px)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'rgba(20,155,165,0.07)', bottom: 40, left: '20%', filter: 'blur(80px)', pointerEvents: 'none' }} />
 
         <div style={{ position: 'relative', maxWidth: 760 }}>
-          {/* Overlapping circles logo */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, marginBottom: 14 }}>
-            {[{ bg: '#2dcc85', ml: 0, mr: -20 }, { bg: ACCENT, ml: 0, mr: 0, zIndex: 1 }, { bg: '#5bc6db', ml: -20, mr: 0 }].map(({ bg, ml, mr, zIndex }, i) => (
-              <div key={i} style={{ width: 64, height: 64, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: '#fff', marginLeft: ml, marginRight: mr, zIndex }}>
-                {['W', 'ER', 'F'][i]}
-              </div>
-            ))}
-          </div>
-
           <p style={{ fontSize: 12, fontWeight: 600, color: '#94a8b3', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 24 }}>
             Enterprise Workflow Platform
           </p>
@@ -161,28 +107,19 @@ export default function HomePage() {
         ))}
       </div>
 
-      {/* Features */}
-      <section style={{ padding: '96px 40px', maxWidth: 1100, margin: '0 auto' }}>
-        <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: ACCENT, marginBottom: 12, letterSpacing: '0.1em' }}>Platform Capabilities</p>
-        <h2 style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.2, marginBottom: 16 }}>Everything your enterprise needs</h2>
-        <p style={{ fontSize: 16, color: '#6b7e8c', lineHeight: 1.65, maxWidth: 560, marginBottom: 56 }}>
-          From initial process design to real-time monitoring — Werkflow covers the full lifecycle.
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
-          {features.map(({ icon, title, desc, color, href }) => (
-            <Link key={title} href={href} style={{
-              background: '#fff', border: '1px solid #e2eaee', borderRadius: 14, padding: 28,
-              textDecoration: 'none', color: 'inherit', display: 'block', transition: 'all .2s',
-            }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
-                <Icon d={icon} size={22} stroke={color} />
-              </div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#0f1e2a', marginBottom: 8 }}>{title}</div>
-              <p style={{ fontSize: 13.5, color: '#6b7e8c', lineHeight: 1.65, margin: 0 }}>{desc}</p>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 600, color: ACCENT, marginTop: 16 }}>
-                Explore <span>→</span>
-              </div>
-            </Link>
+      {/* Platform Capabilities */}
+      <section style={{ padding: '88px 40px', maxWidth: 1100, margin: '0 auto' }}>
+        <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: ACCENT, marginBottom: 10, letterSpacing: '0.1em' }}>Platform Capabilities</p>
+        <h2 style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.2, marginBottom: 48, color: '#0f1e2a' }}>Built for enterprise-grade process operations</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '28px 36px' }}>
+          {CAPABILITIES.map(({ n, title, desc }) => (
+            <div key={n} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 9, paddingTop: 20, borderTop: '1.5px solid #e2eaee' }}>
+              {/* teal accent tab */}
+              <div style={{ position: 'absolute', top: -1.5, left: 0, width: 40, height: 1.5, background: ACCENT }} />
+              <div style={{ fontSize: 12, fontWeight: 700, color: ACCENT, fontVariantNumeric: 'tabular-nums' }}>{n}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#0f1e2a', letterSpacing: '-0.01em', lineHeight: 1.3 }}>{title}</div>
+              <p style={{ fontSize: 13.5, color: '#6b7e8c', lineHeight: 1.6, margin: 0 }}>{desc}</p>
+            </div>
           ))}
         </div>
       </section>
@@ -222,11 +159,9 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer style={{ background: DARK, padding: '32px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 7, background: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Icon d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" size={14} stroke="#fff" />
-          </div>
-          <span style={{ fontSize: 14, fontWeight: 700, color: '#fff', letterSpacing: '-0.2px' }}>Werkflow</span>
+        <div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/werkflow-logo.png" alt="Werkflow" style={{ height: 28, width: 'auto', objectFit: 'contain' }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>
           <span>Powered by</span>
