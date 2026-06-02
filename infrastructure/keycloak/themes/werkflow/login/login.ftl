@@ -154,7 +154,7 @@ html, body { height: 100%; }
         <div class="wf-glow"></div>
 
         <div class="wf-brand-top">
-            <img src="${url.resourcesPath}/img/werkflow-logo.png" alt="Werkflow" style="height:34px;width:auto;object-fit:contain;" />
+            <img src="${url.resourcesPath}/img/werkflow-logo.png" alt="Werkflow" style="height:80px;width:auto;object-fit:contain;" />
         </div>
 
         <div class="wf-brand-copy">
