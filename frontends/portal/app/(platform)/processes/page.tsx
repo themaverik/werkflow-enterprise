@@ -170,7 +170,6 @@ export default function ProcessesPage() {
     data: processes,
     isLoading,
     error: processesError,
-    refetch,
   } = useQuery({
     queryKey: ['processDefinitions'],
     queryFn: getProcessDefinitions,
@@ -233,8 +232,6 @@ export default function ProcessesPage() {
   })
 
   // ── Grouping ─────────────────────────────────────────────────────────────────
-  type ProcessDef = NonNullable<typeof processes>[number]
-
   const groupedProcesses = (processes ?? []).reduce<Record<string, ProcessDef[]>>(
     (acc, process) => {
       if (!acc[process.key]) acc[process.key] = []

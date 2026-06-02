@@ -1,8 +1,11 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
-
 type Variant = 'onDark' | 'onLight'
+
+/**
+ * Renders an animated BPMN-style SVG backdrop.
+ * The parent element MUST have `position: relative` (or any non-static positioning).
+ */
 interface Props { variant: Variant }
 
 const ON_DARK = {
@@ -117,12 +120,6 @@ function nodeEdgeX(n: Node, side: 'right' | 'left'): number {
   return side === 'right' ? n.x + n.s : n.x - n.s
 }
 
-function nodeEdgeY(n: Node, side: 'bottom' | 'top'): number {
-  if (n.kind === 'event') return side === 'bottom' ? n.y + 15 : n.y - 15
-  if (n.kind === 'task')  return side === 'bottom' ? n.y + n.h / 2 : n.y - n.h / 2
-  // gate
-  return side === 'bottom' ? n.y + n.s : n.y - n.s
-}
 
 // ─── SVG generation ───────────────────────────────────────────────────────────
 function renderEvent(n: EventNode, T: Theme): string {
@@ -256,9 +253,12 @@ ${tokensSvg}
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export function ProcessFlowBackdrop({ variant }: Props) {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (ref.current) ref.current.innerHTML = buildSvg(variant === 'onDark' ? ON_DARK : ON_LIGHT)
-  }, [variant])
-  return <div ref={ref} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
+  const svg = buildSvg(variant === 'onDark' ? ON_DARK : ON_LIGHT)
+  return (
+    <div
+      aria-hidden="true"
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  )
 }

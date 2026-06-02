@@ -41,10 +41,10 @@ export default async function LoginPage() {
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {[
-              ['BPMN 2.0 Process Automation', 'M9 3H5a2 2 0 0 0-2 2v4m6-6h10l4 4v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V3zm0 0'],
-              ['DMN Decision Tables', 'M3 3h18M3 9h18M3 15h18M3 21h18'],
-              ['Role-Based Task Routing', 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm13 8-3 3-1.5-1.5'],
-            ].map(([text]) => (
+              'BPMN 2.0 Process Automation',
+              'DMN Decision Tables',
+              'Role-Based Task Routing',
+            ].map((text) => (
               <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#149ba5', flexShrink: 0 }} />
                 <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>{text}</span>
