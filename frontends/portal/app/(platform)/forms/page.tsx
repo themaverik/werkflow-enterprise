@@ -39,15 +39,6 @@ interface FormDefinition {
   updatedAt?: string
 }
 
-// ─── Field types section data ─────────────────────────────────────────────────
-const FIELD_TYPES = [
-  { label: 'Short Text', icon: 'M4 6h16M4 12h16M4 18h7',                                                                   color: '#149ba5' },
-  { label: 'Long Text',  icon: 'M4 6h16M4 12h16M4 18h16',                                                                  color: '#7c3aed' },
-  { label: 'Number',     icon: 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',                              color: '#0891b2' },
-  { label: 'Date',       icon: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', color: '#f59e0b' },
-  { label: 'Dropdown',   icon: 'M6 9l6 6 6-6',                                                                             color: '#dc2626' },
-  { label: 'File Upload',icon: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',                        color: '#84cc16' },
-]
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 function StatusPill({ status }: { status: string }) {
@@ -475,8 +466,7 @@ export default function FormsPage() {
             textAlign: 'center',
           }}>
             <FileText size={40} strokeWidth={1.5} style={{ color: T.light, marginBottom: 12 }} />
-            <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>No forms yet</div>
-            <div style={{ fontSize: 12, color: T.muted, marginBottom: 16 }}>Design a form to attach to your process workflows.</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 16 }}>Create a form to start a process</div>
             {isManagerOrAbove && (
               <Link
                 href="/forms/new"
@@ -502,30 +492,6 @@ export default function FormsPage() {
         )}
       </div>
 
-      {/* ── Available Field Types ──────────────────────────────────────────── */}
-      <div style={{ marginBottom: 8 }}>
-        <h2 style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 12 }}>Available Field Types</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 10 }}>
-          {FIELD_TYPES.map(({ label, icon, color }) => (
-            <div key={label} style={{
-              background: T.card, border: '1px solid ' + T.border, borderRadius: 10,
-              padding: '14px 12px', display: 'flex', flexDirection: 'column',
-              alignItems: 'center', gap: 8,
-            }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 8, background: color + '18',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                  stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d={icon} />
-                </svg>
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 500, color: T.muted, textAlign: 'center' }}>{label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* ── Confirm dialog ────────────────────────────────────────────────── */}
       {pendingConfirm && (
