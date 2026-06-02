@@ -146,18 +146,7 @@ export default function FormsPage() {
     },
   })
 
-  // ── Download ─────────────────────────────────────────────────────────────
-  const handleDownload = (formKey: string, formJson: string) => {
-    const blob = new Blob([formJson], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${formKey}.json`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
+
 
   // ── Derived stats ────────────────────────────────────────────────────────
   const allForms: FormDefinition[] = forms ?? []
