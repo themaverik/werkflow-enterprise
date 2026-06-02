@@ -20,7 +20,7 @@ html, body { height: 100%; }
 .wf-process-bg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; mask-image: radial-gradient(ellipse 95% 80% at 45% 42%,#000 45%,transparent 92%); -webkit-mask-image: radial-gradient(ellipse 95% 80% at 45% 42%,#000 45%,transparent 92%); }
 .wf-brand-copy { position: relative; }
 .wf-eyebrow { font-size: 11px; font-weight: 600; color: #149ba5; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 14px; }
-.wf-headline { font-size: 32px; font-weight: 700; color: #fff; line-height: 1.25; margin-bottom: 16px; letter-spacing: -0.5px; }
+.wf-headline { font-size: 30px; font-weight: 700; color: #fff; line-height: 1.25; margin-bottom: 16px; letter-spacing: -0.5px; }
 .wf-headline span { color: #149ba5; }
 .wf-tagline { font-size: 14px; color: rgba(255,255,255,0.52); line-height: 1.7; max-width: 320px; margin-bottom: 28px; }
 .wf-features { list-style: none; display: flex; flex-direction: column; gap: 12px; }
@@ -154,7 +154,7 @@ html, body { height: 100%; }
         <div class="wf-glow"></div>
 
         <div class="wf-brand-top">
-            <img src="${url.resourcesPath}/img/werkflow-logo.png" alt="Werkflow" style="height:80px;width:auto;object-fit:contain;" />
+            <img src="${url.resourcesPath}/img/werkflow-logo.png" alt="Werkflow" style="height:100px;width:auto;object-fit:contain;" />
         </div>
 
         <div class="wf-brand-copy">

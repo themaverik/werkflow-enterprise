@@ -63,9 +63,9 @@ export default function HomePage() {
         <div style={{ position: 'absolute', width: 500, height: 400, borderRadius: '50%', background: 'rgba(20,155,165,0.10)', top: -80, left: -100, filter: 'blur(80px)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'rgba(20,155,165,0.07)', bottom: 40, left: '20%', filter: 'blur(80px)', pointerEvents: 'none' }} />
 
-        <div style={{ position: 'relative', maxWidth: 760 }}>
+        <div style={{ position: 'relative', maxWidth: 760, width: '100%' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/werkflow-logo.png" alt="Werkflow" style={{ height: 110, width: 'auto', objectFit: 'contain', marginBottom: 28 }} />
+          <img src="/werkflow-logo.png" alt="Werkflow" style={{ height: 140, width: 'auto', objectFit: 'contain', display: 'block', margin: '0 auto 28px' }} />
           <p style={{ fontSize: 12, fontWeight: 600, color: '#94a8b3', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 24 }}>
             Enterprise Workflow Platform
           </p>
