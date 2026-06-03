@@ -32,18 +32,20 @@
       },
       "protocolMappers": [
         {
-          "name": "tenant-id-hardcoded",
+          "name": "tenant-id-attribute",
           "protocol": "openid-connect",
-          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
           "consentRequired": false,
           "config": {
+            "user.attribute": "tenant_id",
             "claim.name": "tenant_id",
-            "claim.value": "default",
             "jsonType.label": "String",
             "id.token.claim": "true",
             "access.token.claim": "true",
             "userinfo.token.claim": "true",
-            "access.tokenResponse.claim": "false"
+            "access.tokenResponse.claim": "false",
+            "multivalued": "false",
+            "aggregate.attrs": "false"
           }
         }
       ]
@@ -181,6 +183,7 @@
       "firstName": "Admin",
       "lastName": "User",
       "email": "admin@werkflow.local",
+      "attributes": { "tenant_id": ["default"] },
       "credentials": [{ "type": "password", "value": "REDACTED_PASSWORD", "temporary": false }],
       "realmRoles": ["admin", "super_admin", "doa_approver_level4"]
     },
@@ -191,6 +194,7 @@
       "firstName": "Demo",
       "lastName": "Admin",
       "email": "demo.admin@company.com",
+      "attributes": { "tenant_id": ["default"] },
       "credentials": [{ "type": "password", "value": "Demo1234!", "temporary": false }],
       "realmRoles": ["admin", "doa_approver_level4"]
     },
@@ -201,6 +205,7 @@
       "firstName": "Demo",
       "lastName": "Employee",
       "email": "demo.employee@company.com",
+      "attributes": { "tenant_id": ["default"] },
       "credentials": [{ "type": "password", "value": "Demo1234!", "temporary": false }],
       "realmRoles": ["user", "employee"]
     },
@@ -211,6 +216,7 @@
       "firstName": "Demo",
       "lastName": "Manager",
       "email": "demo.manager@company.com",
+      "attributes": { "tenant_id": ["default"] },
       "credentials": [{ "type": "password", "value": "Demo1234!", "temporary": false }],
       "realmRoles": ["user", "employee", "doa_approver_level2"]
     },
@@ -221,6 +227,7 @@
       "firstName": "John",
       "lastName": "Manager",
       "email": "john.manager@company.com",
+      "attributes": { "tenant_id": ["default"] },
       "credentials": [{ "type": "password", "value": "Demo1234!", "temporary": false }],
       "realmRoles": ["user", "employee", "asset_request_approver", "doa_approver_level1"]
     },
@@ -231,6 +238,7 @@
       "firstName": "Sarah",
       "lastName": "Finance",
       "email": "sarah.finance@company.com",
+      "attributes": { "tenant_id": ["default"] },
       "credentials": [{ "type": "password", "value": "Demo1234!", "temporary": false }],
       "realmRoles": ["user", "employee", "doa_approver_level3", "finance_head", "doa_approver_level4"]
     },
@@ -241,6 +249,7 @@
       "firstName": "Jane",
       "lastName": "Employee",
       "email": "jane.employee@company.com",
+      "attributes": { "tenant_id": ["default"] },
       "credentials": [{ "type": "password", "value": "Demo1234!", "temporary": false }],
       "realmRoles": ["employee", "asset_request_requester"]
     },
@@ -251,6 +260,7 @@
       "firstName": "Mike",
       "lastName": "IT",
       "email": "mike.it@company.com",
+      "attributes": { "tenant_id": ["default"] },
       "credentials": [{ "type": "password", "value": "Demo1234!", "temporary": false }],
       "realmRoles": ["employee", "asset_request_approver", "doa_approver_level1", "department_poc"]
     },
@@ -261,6 +271,7 @@
       "firstName": "Bob",
       "lastName": "Driver",
       "email": "bob.driver@company.com",
+      "attributes": { "tenant_id": ["default"] },
       "credentials": [{ "type": "password", "value": "Demo1234!", "temporary": false }],
       "realmRoles": ["employee", "driver"]
     },
@@ -271,6 +282,7 @@
       "firstName": "Lisa",
       "lastName": "Hub",
       "email": "lisa.hub@company.com",
+      "attributes": { "tenant_id": ["default"] },
       "credentials": [{ "type": "password", "value": "Demo1234!", "temporary": false }],
       "realmRoles": ["employee", "central_hub_manager"]
     },
@@ -281,6 +293,7 @@
       "firstName": "Tom",
       "lastName": "Procurement",
       "email": "tom.procurement@company.com",
+      "attributes": { "tenant_id": ["default"] },
       "credentials": [{ "type": "password", "value": "Demo1234!", "temporary": false }],
       "realmRoles": ["employee", "procurement_approver", "department_poc"]
     },
@@ -289,7 +302,7 @@
       "enabled": true,
       "serviceAccountClientId": "werkflow-portal",
       "clientRoles": {
-        "realm-management": ["view-realm", "query-users"]
+        "realm-management": ["view-realm", "query-users", "manage-users", "manage-groups"]
       }
     },
     {
