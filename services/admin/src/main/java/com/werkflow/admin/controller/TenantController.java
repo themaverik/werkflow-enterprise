@@ -1,15 +1,55 @@
 package com.werkflow.admin.controller;
 
+import com.werkflow.admin.dto.TenantProvisioningRequest;
+import com.werkflow.admin.dto.TenantResponse;
+import com.werkflow.admin.repository.TenantRepository;
+import com.werkflow.admin.service.TenantProvisioningService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
- * Tenant internal endpoints. cross-dept-threshold removed (ADR-002) —
- * DOA thresholds are now stored as configuration_variables per tenant.
+ * Platform management endpoints for tenant lifecycle (ADR-030).
+ * All endpoints are restricted to SUPER_ADMIN.
  */
 @RestController
-@RequestMapping("/api/internal/tenants")
+@RequestMapping("/api/v1/platform/tenants")
 @RequiredArgsConstructor
 public class TenantController {
-    // Retained as placeholder; individual tenant operations delegated to service-specific controllers.
+
+    private final TenantProvisioningService tenantProvisioningService;
+    private final TenantRepository tenantRepository;
+
+    /**
+     * Lists all tenants in the platform.
+     *
+     * @return list of tenant summaries
+     */
+    @GetMapping
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<List<TenantResponse>> listTenants() {
+        List<TenantResponse> tenants = tenantRepository.findAll()
+                .stream()
+                .map(TenantResponse::from)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(tenants);
+    }
+
+    /**
+     * Provisions a new tenant and its initial Keycloak admin user.
+     *
+     * @param request the provisioning request (validated)
+     * @return the created tenant summary
+     */
+    @PostMapping
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<TenantResponse> createTenant(@Valid @RequestBody TenantProvisioningRequest request) {
+        TenantResponse response = tenantProvisioningService.provision(request);
+        return ResponseEntity.status(201).body(response);
+    }
 }
