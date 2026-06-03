@@ -1,5 +1,6 @@
 package com.werkflow.engine.init;
 
+import com.werkflow.engine.dto.ProcessDefinitionResponse;
 import com.werkflow.engine.service.ProcessDefinitionService;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -79,11 +80,31 @@ public class ProcessExampleDeployer {
                     resetExampleDeployments(filename);
                 }
                 String bpmnXml = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-                processDefinitionService.deployExampleProcessDefinition(bpmnXml, filename);
+                ProcessDefinitionResponse def = processDefinitionService.deployExampleProcessDefinition(bpmnXml, filename);
+                upsertCatalogEntry(def.getKey(), def.getName(), bpmnXml);
                 log.info("Deployed example process: {}", filename);
             } catch (Exception e) {
                 log.error("Failed to deploy example process '{}': {}", filename, e.getMessage());
             }
+        }
+    }
+
+    /**
+     * Ensures a process_draft catalog entry exists for a deployed example. Uses
+     * ON CONFLICT DO NOTHING so admin-edited drafts are never overwritten.
+     * Skips silently if process_draft is absent (e.g. Flyway not yet applied).
+     */
+    private void upsertCatalogEntry(String processKey, String name, String bpmnXml) {
+        try {
+            jdbcTemplate.update(
+                """
+                INSERT INTO process_draft (process_key, name, bpmn_xml, created_by, updated_by, department_code)
+                VALUES (?, ?, ?, 'system', 'system', NULL)
+                ON CONFLICT (process_key) DO NOTHING
+                """,
+                processKey, name, bpmnXml);
+        } catch (DataAccessException e) {
+            log.debug("Catalog entry skipped for '{}': {}", processKey, e.getMessage());
         }
     }
 
