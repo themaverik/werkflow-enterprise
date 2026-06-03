@@ -317,10 +317,14 @@
       "config": {
         "clientId": "946266379427-quk1e84mtj72o8caeaidsp4msdfb00li.apps.googleusercontent.com",
         "clientSecret": "REDACTED_GOOGLE_SECRET",
-        "discoveryEndpoint": "https://accounts.google.com/.well-known/openid-configuration",
+        "authorizationUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+        "tokenUrl": "https://oauth2.googleapis.com/token",
+        "jwksUrl": "https://www.googleapis.com/oauth2/v3/certs",
+        "userInfoUrl": "https://openidconnect.googleapis.com/v1/userinfo",
+        "logoutUrl": "https://oauth2.googleapis.com/revoke",
+        "useJwksUrl": "true",
         "defaultScope": "openid email profile",
-        "syncMode": "IMPORT",
-        "useJwksUrl": "true"
+        "syncMode": "IMPORT"
       }
     }
   ],
