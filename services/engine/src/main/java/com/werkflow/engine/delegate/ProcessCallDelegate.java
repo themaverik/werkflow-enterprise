@@ -43,7 +43,7 @@ public class ProcessCallDelegate implements ExecutionListener {
 
         Map<String, Object> vars = execution.getVariables();
         try {
-            runtimeService.startProcessInstanceByKey(key, vars);
+            runtimeService.startProcessInstanceByKeyAndTenantId(key, vars, execution.getTenantId());
             log.info("ProcessCallDelegate: started process '{}' from element '{}'",
                 key, flowElement.getId());
         } catch (FlowableObjectNotFoundException e) {
