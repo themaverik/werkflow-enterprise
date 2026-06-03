@@ -99,6 +99,7 @@ export const authConfig = {
           token.preferred_username = (decodedToken as any).preferred_username;
           token.given_name = (decodedToken as any).given_name;
           token.family_name = (decodedToken as any).family_name;
+          token.tenantId = (decodedToken as any).tenant_id ?? 'default';
 
         } catch (error) {
           console.error("Error decoding access token with jose:", error);
@@ -156,6 +157,7 @@ export const authConfig = {
       s.groups = token.groups as string[]
       s.doa_level = token.doa_level
       s.department = token.department
+      s.tenantId = token.tenantId as string
       if (token.error) {
         s.error = token.error
       }

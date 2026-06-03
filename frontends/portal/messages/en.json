@@ -34,7 +34,9 @@
     "processHealth": "Process Health",
     "datasources": "Data Sources",
     "marketplace": "Marketplace",
-    "credentials": "Credentials"
+    "credentials": "Credentials",
+    "platformManagement": "Platform",
+    "platformTenants": "Tenants"
   },
   "dashboard": {
     "title": "Dashboard",
