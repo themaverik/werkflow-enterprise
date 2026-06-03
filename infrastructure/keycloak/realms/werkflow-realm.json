@@ -321,7 +321,6 @@
         "tokenUrl": "https://oauth2.googleapis.com/token",
         "jwksUrl": "https://www.googleapis.com/oauth2/v3/certs",
         "userInfoUrl": "https://openidconnect.googleapis.com/v1/userinfo",
-        "logoutUrl": "https://oauth2.googleapis.com/revoke",
         "useJwksUrl": "true",
         "defaultScope": "openid email profile",
         "syncMode": "IMPORT"
