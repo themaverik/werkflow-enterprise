@@ -350,7 +350,7 @@
     {
       "name": "google-user-role-mapper",
       "identityProviderAlias": "google",
-      "identityProviderMapper": "hardcoded-role-idp-mapper",
+      "identityProviderMapper": "oidc-hardcoded-role-idp-mapper",
       "config": { "syncMode": "INHERIT", "role": "user" }
     }
   ]
