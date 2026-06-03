@@ -323,7 +323,8 @@
         "userInfoUrl": "https://openidconnect.googleapis.com/v1/userinfo",
         "useJwksUrl": "true",
         "defaultScope": "openid email profile",
-        "syncMode": "IMPORT"
+        "syncMode": "IMPORT",
+        "prompt": "select_account"
       }
     }
   ],
