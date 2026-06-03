@@ -90,6 +90,11 @@ services:
       # Admin Credentials
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: REDACTED_PASSWORD
+
+      # Google OIDC IdP credentials — used in werkflow-realm.json import.
+      # Dev-only; rotate before any shared or production deployment.
+      GOOGLE_CLIENT_ID: "946266379427-quk1e84mtj72o8caeaidsp4msdfb00li.apps.googleusercontent.com"
+      GOOGLE_CLIENT_SECRET: "REDACTED_GOOGLE_SECRET"
     command:
       - start
       - --http-relative-path=/
