@@ -73,6 +73,12 @@ const sidebarSections: SidebarSection[] = [
       { labelKey: 'processHealth', href: '/monitoring', icon: Activity,   requiredRoles: ['ADMIN', 'SUPER_ADMIN'] },
     ],
   },
+  {
+    titleKey: 'platformManagement',
+    items: [
+      { labelKey: 'platformTenants', href: '/admin/platform/tenants', icon: Building2, requiredRoles: ['SUPER_ADMIN'] },
+    ],
+  },
 ]
 
 export function Sidebar() {
