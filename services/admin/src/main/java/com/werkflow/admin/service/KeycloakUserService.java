@@ -7,6 +7,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
@@ -89,6 +90,105 @@ public class KeycloakUserService {
                         && !name.startsWith("default-roles-"))
                 .sorted()
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Creates a Keycloak user for a new tenant's initial admin.
+     * Sets the tenant_id user attribute, enables UPDATE_PASSWORD and VERIFY_EMAIL
+     * required actions, and assigns the realm 'admin' role.
+     *
+     * @param email       the new user's email (also used as username)
+     * @param firstName   the new user's first name
+     * @param lastName    the new user's last name
+     * @param tenantId    the tenant code to set as the tenant_id KC attribute
+     * @throws IllegalStateException if KC user creation or role assignment fails
+     */
+    public void createTenantAdminUser(String email, String firstName, String lastName, String tenantId) {
+        String token = fetchServiceAccountToken();
+
+        // 1. Create the user
+        String createUrl = keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users";
+        Map<String, Object> userRepresentation = Map.of(
+                "username", email,
+                "email", email,
+                "firstName", firstName != null ? firstName : "",
+                "lastName", lastName != null ? lastName : "",
+                "enabled", true,
+                "emailVerified", false,
+                "attributes", Map.of("tenant_id", List.of(tenantId)),
+                "requiredActions", List.of("UPDATE_PASSWORD", "VERIFY_EMAIL")
+        );
+
+        HttpHeaders createHeaders = new HttpHeaders();
+        createHeaders.setContentType(MediaType.APPLICATION_JSON);
+        createHeaders.setBearerAuth(token);
+        HttpEntity<Map<String, Object>> createRequest = new HttpEntity<>(userRepresentation, createHeaders);
+
+        ResponseEntity<Void> createResponse = restTemplate.exchange(
+                createUrl, HttpMethod.POST, createRequest, Void.class);
+
+        if (!createResponse.getStatusCode().is2xxSuccessful()) {
+            throw new IllegalStateException("Keycloak user creation failed with status: " + createResponse.getStatusCode());
+        }
+
+        // 2. Retrieve the newly created user's ID
+        String userId = findKeycloakUserIdByEmail(email, token);
+
+        // 3. Assign the realm 'admin' role to the user
+        assignRealmRole(userId, "admin", token);
+
+        // 4. Send the required actions email (invite link)
+        String actionsEmailUrl = keycloakAdminUrl + "/admin/realms/" + keycloakRealm
+                + "/users/" + userId + "/execute-actions-email";
+        HttpEntity<List<String>> actionsRequest = new HttpEntity<>(
+                List.of("UPDATE_PASSWORD", "VERIFY_EMAIL"), createHeaders);
+        try {
+            restTemplate.exchange(actionsEmailUrl, HttpMethod.PUT, actionsRequest, Void.class);
+        } catch (Exception e) {
+            // Non-fatal: SMTP may not be configured in dev. Log and continue.
+            log.warn("Failed to send required-actions email to {} (SMTP may not be configured): {}", email, e.getMessage());
+        }
+
+        log.info("Tenant admin user created in Keycloak: email={}, tenantId={}", email, tenantId);
+    }
+
+    @SuppressWarnings("unchecked")
+    private String findKeycloakUserIdByEmail(String email, String token) {
+        String searchUrl = keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users?email=" + email + "&exact=true";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                searchUrl, HttpMethod.GET, new HttpEntity<>(headers),
+                new ParameterizedTypeReference<>() {});
+        List<Map<String, Object>> users = response.getBody();
+        if (users == null || users.isEmpty()) {
+            throw new IllegalStateException("Keycloak user not found after creation: email=" + email);
+        }
+        return (String) users.get(0).get("id");
+    }
+
+    @SuppressWarnings("unchecked")
+    private void assignRealmRole(String userId, String roleName, String token) {
+        // Fetch the role representation by name
+        String roleUrl = keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/roles/" + roleName;
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        ResponseEntity<Map<String, Object>> roleResponse = restTemplate.exchange(
+                roleUrl, HttpMethod.GET, new HttpEntity<>(headers),
+                new ParameterizedTypeReference<>() {});
+        Map<String, Object> role = roleResponse.getBody();
+        if (role == null) {
+            throw new IllegalStateException("Keycloak role not found: " + roleName);
+        }
+
+        // Assign role to user
+        String assignUrl = keycloakAdminUrl + "/admin/realms/" + keycloakRealm
+                + "/users/" + userId + "/role-mappings/realm";
+        HttpHeaders assignHeaders = new HttpHeaders();
+        assignHeaders.setContentType(MediaType.APPLICATION_JSON);
+        assignHeaders.setBearerAuth(token);
+        restTemplate.exchange(assignUrl, HttpMethod.POST,
+                new HttpEntity<>(List.of(role), assignHeaders), Void.class);
     }
 
     // ---- Legacy stub methods kept for backward compatibility ----
