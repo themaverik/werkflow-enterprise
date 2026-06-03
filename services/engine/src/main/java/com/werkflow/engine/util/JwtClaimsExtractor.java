@@ -155,7 +155,7 @@ public class JwtClaimsExtractor {
      * @return true if user has the role
      */
     public String getTenantCode(Jwt jwt) {
-        String tc = jwt.getClaimAsString("tenant_code");
+        String tc = jwt.getClaimAsString("tenant_id");
         return (tc != null && !tc.isBlank()) ? tc : "default";
     }
 

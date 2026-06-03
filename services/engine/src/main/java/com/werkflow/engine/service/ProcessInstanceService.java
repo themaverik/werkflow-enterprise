@@ -82,10 +82,11 @@ public class ProcessInstanceService {
         try {
             identityService.setAuthenticatedUserId(userId);
 
-            ProcessInstance processInstance = runtimeService.startProcessInstanceByKey(
+            ProcessInstance processInstance = runtimeService.startProcessInstanceByKeyAndTenantId(
                 request.getProcessDefinitionKey(),
                 request.getBusinessKey(),
-                variables
+                variables,
+                tenantId
             );
 
             log.info("Process instance started successfully. ID: {}", processInstance.getId());
