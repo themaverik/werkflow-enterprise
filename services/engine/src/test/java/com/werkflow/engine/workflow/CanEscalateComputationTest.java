@@ -78,7 +78,7 @@ class CanEscalateComputationTest {
 
         // capex-approval-process v3 has three DMN service tasks — deploy DMN first (ADR-029 Phase 2).
         repositoryService.createDeployment()
-                .addClasspathResource("dmn/capex-approver-resolution.dmn")
+                .addClasspathResource("dmn-examples/capex-approver-resolution.dmn")
                 .name("canEscalate-capex-dmn")
                 .deploy();
 

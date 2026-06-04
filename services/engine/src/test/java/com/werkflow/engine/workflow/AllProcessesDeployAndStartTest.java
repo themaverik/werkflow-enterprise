@@ -104,9 +104,9 @@ class AllProcessesDeployAndStartTest {
         // because Flowable resolves DMN service tasks at execution time, not deploy time,
         // but deploying DMNs first ensures the DmnRepositoryService is ready.
         repositoryService.createDeployment()
-                .addClasspathResource("dmn/capex-approver-resolution.dmn")
-                .addClasspathResource("dmn/leave-approval.dmn")
-                .addClasspathResource("dmn/procurement-matrix.dmn")
+                .addClasspathResource("dmn-examples/capex-approver-resolution.dmn")
+                .addClasspathResource("dmn-examples/leave-approval.dmn")
+                .addClasspathResource("dmn-examples/procurement-matrix.dmn")
                 .name("quality-gate-dmn-all")
                 .deploy();
 

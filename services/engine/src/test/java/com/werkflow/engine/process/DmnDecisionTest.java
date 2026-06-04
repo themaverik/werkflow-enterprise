@@ -21,8 +21,8 @@ class DmnDecisionTest extends WerkflowProcessTest {
     @BeforeAll
     void setup() {
         startEngine("dmnDecision");
-        procurement = dmnRunner.deploy("dmn/procurement-matrix.dmn", "procurement_matrix");
-        leave = dmnRunner.deploy("dmn/leave-approval.dmn", "leave_approval");
+        procurement = dmnRunner.deploy("dmn-examples/procurement-matrix.dmn", "procurement_matrix");
+        leave = dmnRunner.deploy("dmn-examples/leave-approval.dmn", "leave_approval");
     }
 
     // ---- procurement-matrix ----
