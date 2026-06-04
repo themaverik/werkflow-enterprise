@@ -153,7 +153,7 @@ class DmnDecisionTaskExecutionTest {
     @DisplayName("real procurement-matrix.dmn routes all four paths via serviceTask type=dmn")
     void realProcurementMatrixDmn_routesAllPaths() {
         Deployment deployment = repositoryService.createDeployment()
-                .addClasspathResource("dmn/procurement-matrix.dmn")
+                .addClasspathResource("dmn-examples/procurement-matrix.dmn")
                 .addString("dmn-servicetask-form.bpmn20.xml", SERVICETASK_DMN_PROCESS)
                 .name("real-procurement-matrix")
                 .deploy();

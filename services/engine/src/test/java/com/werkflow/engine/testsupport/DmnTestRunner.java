@@ -25,7 +25,7 @@ import java.util.Map;
  *
  *     @BeforeAll void setup() {
  *         startEngine("myDb");
- *         procurement = dmnRunner.deploy("dmn/procurement-matrix.dmn", "procurement_matrix");
+ *         procurement = dmnRunner.deploy("dmn-examples/procurement-matrix.dmn", "procurement_matrix");
  *     }
  *
  *     @Test void routes_correctly() {

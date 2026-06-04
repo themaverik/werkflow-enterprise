@@ -22,7 +22,7 @@ class ProcurementRoutingFlowTest extends WerkflowProcessTest {
     @BeforeAll
     void setup() {
         startEngine("procurementFlow");
-        dsl.deploy("dmn/procurement-matrix.dmn");
+        dsl.deploy("dmn-examples/procurement-matrix.dmn");
         dsl.deploy("flows/procurement-routing-flow.bpmn20.xml");
     }
 

@@ -17,6 +17,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -68,8 +69,8 @@ class ProcessCallDelegateTest {
 
         delegate.notify(execution);
 
-        verify(runtimeService).startProcessInstanceByKey(
-            eq("procurement-approval-process"), eq(vars));
+        verify(runtimeService).startProcessInstanceByKeyAndTenantId(
+            eq("procurement-approval-process"), eq(vars), isNull());
     }
 
     @Test
@@ -78,7 +79,7 @@ class ProcessCallDelegateTest {
             .thenReturn("nonexistent-process");
         when(execution.getVariables()).thenReturn(new HashMap<>());
         doThrow(new FlowableObjectNotFoundException("not found"))
-            .when(runtimeService).startProcessInstanceByKey(eq("nonexistent-process"), any(Map.class));
+            .when(runtimeService).startProcessInstanceByKeyAndTenantId(eq("nonexistent-process"), any(Map.class), any());
 
         // Should not throw — parent process continues
         delegate.notify(execution);
@@ -90,7 +91,7 @@ class ProcessCallDelegateTest {
             .thenReturn("some-process");
         when(execution.getVariables()).thenReturn(new HashMap<>());
         doThrow(new RuntimeException("unexpected"))
-            .when(runtimeService).startProcessInstanceByKey(eq("some-process"), any(Map.class));
+            .when(runtimeService).startProcessInstanceByKeyAndTenantId(eq("some-process"), any(Map.class), any());
 
         assertThrows(RuntimeException.class, () -> delegate.notify(execution));
     }

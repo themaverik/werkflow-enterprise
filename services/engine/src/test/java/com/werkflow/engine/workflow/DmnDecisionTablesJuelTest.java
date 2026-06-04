@@ -64,7 +64,7 @@ class DmnDecisionTablesJuelTest {
     @Test
     @DisplayName("leave-approval.dmn routes by duration and leave type")
     void leaveApproval_routes() {
-        deploy("dmn/leave-approval.dmn", "leave_approval");
+        deploy("dmn-examples/leave-approval.dmn", "leave_approval");
 
         assertThat(route(Map.of("leaveDays", 2, "leaveType", "CASUAL"), "approverRole"))
                 .as("1–3 casual → auto").isEqualTo("AUTO");
@@ -87,7 +87,7 @@ class DmnDecisionTablesJuelTest {
     @Test
     @DisplayName("procurement-matrix.dmn routes by amount and category")
     void procurementMatrix_routes() {
-        deploy("dmn/procurement-matrix.dmn", "procurement_matrix");
+        deploy("dmn-examples/procurement-matrix.dmn", "procurement_matrix");
 
         assertThat(route(Map.of("amount", 10000, "category", "SUPPLIES"), "procurementPath"))
                 .as("<= 50k → direct purchase").isEqualTo("DIRECT_PURCHASE");

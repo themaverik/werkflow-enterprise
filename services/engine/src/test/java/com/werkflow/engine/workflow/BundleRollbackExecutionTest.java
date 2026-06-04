@@ -122,9 +122,10 @@ class BundleRollbackExecutionTest {
         String bpmn       = SIMPLE_BPMN_TEMPLATE.formatted(processKey);
         String dmn        = SIMPLE_DMN_TEMPLATE.formatted(dmnKey, dmnKey);
 
+        BpmnIndicatorScanner scanner = mock(BpmnIndicatorScanner.class);
+        when(scanner.scan(any())).thenReturn(new BpmnIndicatorScanner.Indicators(false, false, false));
         ProcessDefinitionService pds = new ProcessDefinitionService(
-                repositoryService, null,
-                mock(BpmnIndicatorScanner.class), mock(ProcessIndicatorRepository.class));
+                repositoryService, null, scanner, mock(ProcessIndicatorRepository.class));
         DmnDecisionService dmnSvc = new DmnDecisionService(
                 testEngine.getDmnRepositoryService(),
                 testEngine.getFlowableDmnDecisionService(),
@@ -188,9 +189,10 @@ class BundleRollbackExecutionTest {
         String bpmn       = SIMPLE_BPMN_TEMPLATE.formatted(processKey);
         String dmn        = SIMPLE_DMN_TEMPLATE.formatted(dmnKey, dmnKey);
 
+        BpmnIndicatorScanner scanner = mock(BpmnIndicatorScanner.class);
+        when(scanner.scan(any())).thenReturn(new BpmnIndicatorScanner.Indicators(false, false, false));
         ProcessDefinitionService pds = new ProcessDefinitionService(
-                repositoryService, null,
-                mock(BpmnIndicatorScanner.class), mock(ProcessIndicatorRepository.class));
+                repositoryService, null, scanner, mock(ProcessIndicatorRepository.class));
         DmnDecisionService realDmn = new DmnDecisionService(
                 testEngine.getDmnRepositoryService(),
                 testEngine.getFlowableDmnDecisionService(),

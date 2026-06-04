@@ -30,9 +30,9 @@ class CapexApproverGroupTest extends WerkflowProcessTest {
     @BeforeAll
     void setup() {
         startEngine("capexApproverGroup");
-        managerGroup = dmnRunner.deploy("dmn/capex-approver-resolution.dmn", "capex_manager_group");
-        vpGroup      = dmnRunner.deploy("dmn/capex-approver-resolution.dmn", "capex_vp_group");
-        cfoGroup     = dmnRunner.deploy("dmn/capex-approver-resolution.dmn", "capex_cfo_group");
+        managerGroup = dmnRunner.deploy("dmn-examples/capex-approver-resolution.dmn", "capex_manager_group");
+        vpGroup      = dmnRunner.deploy("dmn-examples/capex-approver-resolution.dmn", "capex_vp_group");
+        cfoGroup     = dmnRunner.deploy("dmn-examples/capex-approver-resolution.dmn", "capex_cfo_group");
     }
 
     // ===== capex_manager_group =====
