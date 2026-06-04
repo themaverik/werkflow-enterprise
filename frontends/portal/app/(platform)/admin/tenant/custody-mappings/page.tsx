@@ -7,7 +7,7 @@ import { useAuthorization } from '@/lib/auth/use-authorization'
 import { useCandidateGroups } from '@/lib/platform/usePlatformCapabilities'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Pencil, Trash2, X, Check } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import type { CandidateGroupEntry } from '@/lib/platform/types'
 import { PageSurface } from '@/components/layout/page-surface'
@@ -26,6 +26,18 @@ interface EditState {
   candidateGroups: string[]
   ownerError: string
   groupsError: string
+}
+
+const EMPTY_DEPT_CODES = new Set<string>()
+
+async function fetchDepartmentCodes(token: string): Promise<Set<string>> {
+  const res = await fetch('/api/proxy/erp/departments?size=500', {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) return EMPTY_DEPT_CODES
+  const body = await res.json() as { content?: Array<{ code: string }> }
+  if (!Array.isArray(body?.content)) return EMPTY_DEPT_CODES
+  return new Set(body.content.map((d) => d.code))
 }
 
 async function fetchCustodyMappings(token: string): Promise<CustodyMapping[]> {
@@ -175,6 +187,16 @@ function ChipRow({ groups, onAddGroup, onRemoveGroup, groupsError, availableGrou
   )
 }
 
+function CustodyOwnerWarning({ value, codes }: { value: string; codes: Set<string> }) {
+  if (!value.trim() || codes.size === 0 || codes.has(value.trim())) return null
+  return (
+    <p className="flex items-center gap-1 text-amber-600 dark:text-amber-400 text-xs mt-1">
+      <AlertTriangle size={11} strokeWidth={2} />
+      Not a known department code
+    </p>
+  )
+}
+
 export default function CustodyMappingsPage() {
   const { status, data: session } = useSession()
   const { hasAnyRole } = useAuthorization()
@@ -187,6 +209,13 @@ export default function CustodyMappingsPage() {
   const [newState, setNewState] = useState<EditState>(blankEditState())
 
   const { data: availableGroups = [], isLoading: isLoadingGroups } = useCandidateGroups()
+
+  const { data: departmentCodes = EMPTY_DEPT_CODES } = useQuery({
+    queryKey: ['erp-department-codes'],
+    queryFn: () => fetchDepartmentCodes(token),
+    enabled: status === 'authenticated',
+    staleTime: 5 * 60 * 1000,
+  })
 
   const { data: mappings = [], isLoading } = useQuery({
     queryKey: ['custodyMappings'],
@@ -306,6 +335,7 @@ export default function CustodyMappingsPage() {
                       aria-label="Custody owner"
                     />
                     {editState.ownerError && <p className="text-destructive text-xs mt-1">{editState.ownerError}</p>}
+                    <CustodyOwnerWarning value={editState.custodyOwner} codes={departmentCodes} />
                   </td>
                   <td className="px-4 py-3 align-top">
                     <ChipRow
@@ -405,6 +435,7 @@ export default function CustodyMappingsPage() {
                     autoFocus
                   />
                   {newState.ownerError && <p className="text-destructive text-xs mt-1">{newState.ownerError}</p>}
+                  <CustodyOwnerWarning value={newState.custodyOwner} codes={departmentCodes} />
                 </td>
                 <td className="px-4 py-3 align-top">
                   <ChipRow
