@@ -46,7 +46,6 @@ import java.util.List;
 @Component("dmnExampleDeployer")
 public class DmnExampleDeployer {
 
-    private static final String DEFAULT_TENANT = "default";
     /**
      * Examples are kept under {@code dmn-examples/} (not the conventional {@code dmn/})
      * so Flowable's spring-boot {@code SpringBootAutoDeployment} cannot find them and
@@ -60,15 +59,18 @@ public class DmnExampleDeployer {
     private final ResourcePatternResolver resourcePatternResolver;
     private final boolean deployOnStartup;
     private final boolean resetOnStartup;
+    private final String exampleTenantId;
 
     public DmnExampleDeployer(DmnRepositoryService dmnRepositoryService,
                                ResourcePatternResolver resourcePatternResolver,
                                @Value("${werkflow.examples.deploy-on-startup:false}") boolean deployOnStartup,
-                               @Value("${werkflow.examples.reset-on-startup:false}") boolean resetOnStartup) {
+                               @Value("${werkflow.examples.reset-on-startup:false}") boolean resetOnStartup,
+                               @Value("${werkflow.examples.tenant-id:default}") String exampleTenantId) {
         this.dmnRepositoryService = dmnRepositoryService;
         this.resourcePatternResolver = resourcePatternResolver;
         this.deployOnStartup = deployOnStartup;
         this.resetOnStartup = resetOnStartup;
+        this.exampleTenantId = exampleTenantId;
     }
 
     @PostConstruct
@@ -94,7 +96,7 @@ public class DmnExampleDeployer {
             try {
                 dmnRepositoryService.createDeployment()
                         .name(filename)
-                        .tenantId(DEFAULT_TENANT)
+                        .tenantId(exampleTenantId)
                         .enableDuplicateFiltering()
                         .addClasspathResource(DMN_RESOURCE_PREFIX + filename)
                         .deploy();
@@ -140,7 +142,7 @@ public class DmnExampleDeployer {
             String filename = resource.getFilename();
             List<DmnDeployment> existing = dmnRepositoryService.createDeploymentQuery()
                     .deploymentName(filename)
-                    .deploymentTenantId(DEFAULT_TENANT)
+                    .deploymentTenantId(exampleTenantId)
                     .list();
             if (existing.isEmpty()) {
                 continue;
