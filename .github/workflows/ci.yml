@@ -292,7 +292,7 @@ jobs:
         run: |
           npm start &
           echo "Waiting for portal on port 4000..."
-          timeout 60 bash -c 'until curl -sf http://localhost:4000; do sleep 2; done'
+          timeout 90 bash -c 'until curl -sfo /dev/null http://localhost:4000; do sleep 3; done'
 
       - name: Run Playwright E2E tests
         working-directory: frontends/portal
