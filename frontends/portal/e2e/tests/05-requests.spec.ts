@@ -12,9 +12,7 @@ test.describe('05 — Request history — employee', () => {
 
   test('06.2 — request list has status filter tabs', async ({ page }) => {
     await page.goto('/requests')
-    const tabList = page.getByRole('tablist')
-    await expect(tabList).toBeVisible({ timeout: 10000 })
-    await expect(page.getByRole('tab').first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /All|Active|Completed/i }).first()).toBeVisible({ timeout: 10000 })
   })
 
   test('06.3 — clicking a request shows process timeline or detail', async ({ page }) => {
