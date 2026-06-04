@@ -329,7 +329,6 @@ class ELSecurityVerificationSuiteTest extends IntegrationTestBase {
         void deployProcurementMatrix() {
             dmnRepositoryService.createDeployment()
                     .name("procurement-matrix.dmn")
-                    .enableDuplicateFiltering()
                     .addClasspathResource("dmn-examples/procurement-matrix.dmn")
                     .deploy();
         }
