@@ -257,7 +257,7 @@ jobs:
         run: |
           java -jar target/*.jar &
           echo "Waiting for engine on port 8081..."
-          timeout 60 bash -c 'until curl -sf http://localhost:8081/actuator/health; do sleep 2; done'
+          timeout 120 bash -c 'until curl -sf http://localhost:8081/actuator/health; do sleep 3; done'
 
       - name: Start admin service
         working-directory: services/admin
@@ -268,7 +268,7 @@ jobs:
         run: |
           java -jar target/*.jar &
           echo "Waiting for admin on port 8083..."
-          timeout 60 bash -c 'until curl -sf http://localhost:8083/actuator/health; do sleep 2; done'
+          timeout 90 bash -c 'until curl -sf http://localhost:8083/actuator/health; do sleep 3; done'
 
       - name: Install portal dependencies
         working-directory: frontends/portal
