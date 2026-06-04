@@ -5,7 +5,7 @@ setup('authenticate as employee', async ({ page }) => {
   const user = TEST_USERS.employee
 
   await page.goto('/login')
-  await page.getByRole('button', { name: /sign in with keycloak/i }).click()
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
 
   await page.waitForURL(/keycloak|8090/, { timeout: 10000 })
   await page.fill('#username', user.username)

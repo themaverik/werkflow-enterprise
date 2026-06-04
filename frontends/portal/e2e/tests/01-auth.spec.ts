@@ -5,7 +5,7 @@ test.describe('01 — Authentication — no auth', () => {
 
   test('01.1 — sign in via Keycloak and land on dashboard', async ({ page }) => {
     await page.goto('/login')
-    await page.getByRole('button', { name: /sign in with keycloak/i }).click()
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
 
     await page.waitForURL(/keycloak|8090/, { timeout: 10000 })
     await page.fill('#username', TEST_USERS.admin.username)
@@ -24,7 +24,7 @@ test.describe('01 — Authentication — no auth', () => {
   test('01.6 — after sign out, Sign in with Keycloak redirects to Keycloak credentials page', async ({ page }) => {
     // Sign in first
     await page.goto('/login')
-    await page.getByRole('button', { name: /sign in with keycloak/i }).click()
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     await page.waitForURL(/keycloak|8090/, { timeout: 10000 })
     await page.fill('#username', TEST_USERS.admin.username)
     await page.fill('#password', TEST_USERS.admin.password)
@@ -42,7 +42,7 @@ test.describe('01 — Authentication — no auth', () => {
 
     // Click sign in again — should be prompted for credentials (not auto-signed-in)
     await page.goto('/login')
-    await page.getByRole('button', { name: /sign in with keycloak/i }).click()
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     await page.waitForURL(/keycloak|8090/, { timeout: 10000 })
     await expect(page).toHaveURL(/keycloak|8090/)
   })

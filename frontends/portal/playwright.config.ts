@@ -21,6 +21,13 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup'],
+      testIgnore: /.*\/business\/.*/,
+    },
+    {
+      name: 'business',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
+      testMatch: /.*\/business\/.*\.spec\.ts/,
     },
   ],
 })

@@ -16,14 +16,14 @@ export const TEST_USERS = {
   },
   manager: {
     username: process.env.E2E_MANAGER_USER || 'john.manager',
-    password: process.env.E2E_MANAGER_PASSWORD || 'manager123',
+    password: process.env.E2E_MANAGER_PASSWORD || 'Demo1234!',
     roles: ['doa_approver_level2'],
     doaLevel: 2,
     department: 'Finance',
   },
   employee: {
     username: process.env.E2E_EMPLOYEE_USER || 'jane.employee',
-    password: process.env.E2E_EMPLOYEE_PASSWORD || 'employee123',
+    password: process.env.E2E_EMPLOYEE_PASSWORD || 'Demo1234!',
     roles: ['employee'],
     doaLevel: 0,
     department: 'HR',

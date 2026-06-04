@@ -26,7 +26,7 @@ import { STORAGE_STATES, TEST_USERS } from '../fixtures/auth'
 
 const ENGINE_URL = process.env.E2E_ENGINE_URL ?? 'http://localhost:8081'
 const KEYCLOAK_URL = process.env.E2E_KEYCLOAK_URL ?? 'http://localhost:8090'
-const PORTAL_CLIENT_SECRET = process.env.E2E_PORTAL_CLIENT_SECRET ?? 'ci-client-secret'
+const PORTAL_CLIENT_SECRET = process.env.E2E_PORTAL_CLIENT_SECRET ?? 'REDACTED_KC_PORTAL_SECRET'
 
 // Forms required by Layer 3 — must persist after this spec
 const WORKFLOW_FORMS = [

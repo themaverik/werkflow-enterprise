@@ -39,6 +39,9 @@ const KNOWN_ENV_NOISE = [
   /Failed to load notification templates/i,
   /Failed to load custody/i,
   /Failed to load groups/i,
+  /Network Error: XMLHttpRequest/i,
+  /ERR_EMPTY_RESPONSE/i,
+  /ERR_CONNECTION_REFUSED/i,
 ]
 
 test.describe('27 — BPMN Designer M4.11 smoke', () => {

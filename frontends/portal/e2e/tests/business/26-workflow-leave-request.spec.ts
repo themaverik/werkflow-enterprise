@@ -36,7 +36,7 @@ import { getLatestEmail } from '../fixtures/mailpit'
 
 const ENGINE_URL           = process.env.E2E_ENGINE_URL           ?? 'http://localhost:8081'
 const KEYCLOAK_URL         = process.env.E2E_KEYCLOAK_URL         ?? 'http://localhost:8090'
-const PORTAL_CLIENT_SECRET = process.env.E2E_PORTAL_CLIENT_SECRET ?? 'ci-client-secret'
+const PORTAL_CLIENT_SECRET = process.env.E2E_PORTAL_CLIENT_SECRET ?? 'REDACTED_KC_PORTAL_SECRET'
 
 const PROCESS_KEY = 'leave-request'
 

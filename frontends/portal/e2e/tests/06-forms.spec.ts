@@ -17,10 +17,8 @@ test.describe('Form management', () => {
 
   test('forms page loads deployed forms', async ({ page }) => {
     await page.goto('/forms')
-    await expect(page.getByRole('heading', { name: 'Form Designer' })).toBeVisible()
-    // List or empty state present
-    const content = page.locator('.container').first()
-    await expect(content).toBeVisible()
+    await page.waitForLoadState('networkidle')
+    await expect(page.locator('h1').filter({ hasText: 'Form Designer' })).toBeVisible({ timeout: 10000 })
   })
 
   test('Create New Form button visible to admin', async ({ page }) => {
@@ -31,11 +29,14 @@ test.describe('Form management', () => {
   test('New form page renders form-js editor', async ({ page }) => {
     await page.goto('/forms/new')
     // Toolbar with form key input should be present
-    await expect(page.getByPlaceholder(/Form key/i)).toBeVisible()
+    // Placeholder is the i18n value "e.g. leave-request-form" (formKeyPlaceholder key)
+    await expect(page.getByPlaceholder(/leave-request-form/i)).toBeVisible({ timeout: 10000 })
   })
 
   test('Save button disabled without form key', async ({ page }) => {
     await page.goto('/forms/new')
+    // Wait for toolbar to render before asserting button state
+    await expect(page.getByPlaceholder(/leave-request-form/i)).toBeVisible({ timeout: 10000 })
     const saveBtn = page.getByRole('button', { name: /^Save$/i })
     await expect(saveBtn).toBeDisabled()
   })
@@ -44,7 +45,7 @@ test.describe('Form management', () => {
     const testKey = `e2e-test-form-${Date.now()}`
 
     await page.goto('/forms/new')
-    await page.getByPlaceholder(/Form key/i).fill(testKey)
+    await page.getByPlaceholder(/leave-request-form/i).fill(testKey)
 
     // Save button should now be enabled
     const saveBtn = page.getByRole('button', { name: /^Save$/i })

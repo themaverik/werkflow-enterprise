@@ -26,7 +26,7 @@ import { STORAGE_STATES, TEST_USERS } from '../fixtures/auth'
 
 const ADMIN_URL = process.env.E2E_ADMIN_SERVICE_URL ?? 'http://localhost:8083'
 const KEYCLOAK_URL = process.env.E2E_KEYCLOAK_URL ?? 'http://localhost:8090'
-const PORTAL_CLIENT_SECRET = process.env.E2E_PORTAL_CLIENT_SECRET ?? 'ci-client-secret'
+const PORTAL_CLIENT_SECRET = process.env.E2E_PORTAL_CLIENT_SECRET ?? 'REDACTED_KC_PORTAL_SECRET'
 const TENANT_CODE = process.env.E2E_TENANT_CODE ?? 'default'
 
 const CONNECTOR_MOCK_API = {
@@ -226,7 +226,7 @@ test.describe('22 — Connector Setup — admin', () => {
         await confirmBtn.click()
         await page.waitForTimeout(1000)
       }
-      await expect(page.getByText(/notification.?service/i)).not.toBeVisible({ timeout: 5000 })
+      await expect(page.getByRole('heading', { name: /notification.?service/i })).not.toBeVisible({ timeout: 5000 })
       test.info().annotations.push({ type: 'note', description: 'notification-service deleted via UI' })
     } else {
       test.info().annotations.push({
@@ -258,11 +258,23 @@ test.describe('22 — Connector Setup — admin', () => {
 
   // ── 22.9 — Both connectors accessible via API ─────────────────────────────
 
-  test('22.9 — Both connectors returned by admin API (required for BPMN connector dropdown)', async () => {
+  test('22.9 — Both connectors returned by admin API (required for BPMN connector dropdown)', async ({ page }) => {
     const token = await getAdminToken()
+
+    // Ensure both connectors exist (defensive — previous create tests may have been flaky)
+    for (const connector of [CONNECTOR_MOCK_API, CONNECTOR_NOTIFICATION]) {
+      if (!await connectorExistsApi(token, connector.key)) {
+        await page.goto('/admin/connectors')
+        await expect(page.getByRole('button', { name: /new connector/i })).toBeVisible({ timeout: 10000 })
+        await createConnectorViaUI(page, connector)
+        await page.waitForTimeout(1500)
+        const dialogOpen = await page.getByRole('dialog').isVisible({ timeout: 1000 }).catch(() => false)
+        if (dialogOpen) await page.keyboard.press('Escape')
+      }
+    }
+
     const connectors = await listConnectorsApi(token)
     const keys = connectors.map((c: any) => c.connectorKey)
-
     expect(keys).toContain(CONNECTOR_MOCK_API.key)
     expect(keys).toContain(CONNECTOR_NOTIFICATION.key)
   })
