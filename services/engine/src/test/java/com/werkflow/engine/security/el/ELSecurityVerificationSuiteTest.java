@@ -7,11 +7,10 @@ import org.flowable.common.engine.impl.variable.MapDelegateVariableContainer;
 import org.flowable.dmn.api.DmnRepositoryService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 
@@ -323,11 +322,10 @@ class ELSecurityVerificationSuiteTest extends IntegrationTestBase {
     // =========================================================================
 
     @Nested
-    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     @DisplayName("P1-12 — DMN regression: procurement-matrix FEEL unaffected by EL hardening")
     class P1_12_DmnRegression {
 
-        @BeforeAll
+        @BeforeEach
         void deployProcurementMatrix() {
             dmnRepositoryService.createDeployment()
                     .name("procurement-matrix.dmn")
