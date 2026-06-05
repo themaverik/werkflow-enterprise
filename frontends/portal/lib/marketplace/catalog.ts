@@ -73,10 +73,10 @@ export const MARKETPLACE_CATALOG: MarketplaceConnector[] = [
     source: 'official',
     transport: 'rest',
     primaryAuth: 'api-key',
-    operationCount: 7,
+    operationCount: 16,
     license: 'Apache-2.0',
     documentationUrl:
-      'https://github.com/werkflow-platform/werkflow-public/tree/main/marketplace/connectors/werkflow-erp',
+      'https://github.com/themaverik/werkflow-erp/tree/main/docs',
     logoPath: '/icons/werkflow-mark.svg',
   },
   {
@@ -128,7 +128,7 @@ export const MARKETPLACE_CATALOG: MarketplaceConnector[] = [
     operationCount: 3,
     license: 'Apache-2.0',
     documentationUrl:
-      'https://github.com/werkflow-platform/werkflow-public/tree/main/marketplace/connectors/community/postgres-readonly',
+      'https://www.postgresql.org/docs/current/runtime-config-connection.html',
     logoPath: '/icons/postgresql.svg',
   },
   {
