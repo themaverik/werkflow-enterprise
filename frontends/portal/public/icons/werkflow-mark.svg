@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 40" width="64" height="40">
+  <defs>
+    <clipPath id="werf-l"><rect x="6" y="4" width="32" height="32" rx="16"></rect></clipPath>
+    <clipPath id="werf-r"><rect x="26" y="4" width="32" height="32" rx="16"></rect></clipPath>
+  </defs>
+  <rect x="6" y="4" width="32" height="32" rx="16" fill="#2EC4A0"></rect>
+  <rect x="26" y="4" width="32" height="32" rx="16" fill="#36B6E8"></rect>
+  <g clip-path="url(#werf-l)"><rect x="26" y="4" width="32" height="32" fill="#0E8E8C"></rect></g>
+</svg>

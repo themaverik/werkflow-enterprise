@@ -55,6 +55,8 @@ export interface MarketplaceConnector {
   /** SPDX license expression. */
   license: string
   documentationUrl?: string
+  /** Path relative to /public, e.g. "/icons/slack.svg" */
+  logoPath?: string
 }
 
 /** The static marketplace catalog. */
@@ -75,6 +77,7 @@ export const MARKETPLACE_CATALOG: MarketplaceConnector[] = [
     license: 'Apache-2.0',
     documentationUrl:
       'https://github.com/werkflow-platform/werkflow-public/tree/main/marketplace/connectors/werkflow-erp',
+    logoPath: '/icons/werkflow-mark.svg',
   },
   {
     key: 'slack-web-api',
@@ -91,6 +94,7 @@ export const MARKETPLACE_CATALOG: MarketplaceConnector[] = [
     operationCount: 2,
     license: 'Apache-2.0',
     documentationUrl: 'https://api.slack.com/methods',
+    logoPath: '/icons/slack.svg',
   },
   {
     key: 'github-rest-api',
@@ -107,6 +111,7 @@ export const MARKETPLACE_CATALOG: MarketplaceConnector[] = [
     operationCount: 3,
     license: 'Apache-2.0',
     documentationUrl: 'https://docs.github.com/en/rest',
+    logoPath: '/icons/github.svg',
   },
   {
     key: 'postgres-readonly',
@@ -124,6 +129,7 @@ export const MARKETPLACE_CATALOG: MarketplaceConnector[] = [
     license: 'Apache-2.0',
     documentationUrl:
       'https://github.com/werkflow-platform/werkflow-public/tree/main/marketplace/connectors/community/postgres-readonly',
+    logoPath: '/icons/postgresql.svg',
   },
   {
     key: 'openai-chat',
@@ -140,6 +146,7 @@ export const MARKETPLACE_CATALOG: MarketplaceConnector[] = [
     operationCount: 1,
     license: 'Apache-2.0',
     documentationUrl: 'https://platform.openai.com/docs/api-reference/chat',
+    logoPath: '/icons/openai.svg',
   },
 ]
 
