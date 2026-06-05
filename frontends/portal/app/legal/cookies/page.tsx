@@ -1,10 +1,6 @@
 'use client'
 
-import type { Metadata } from 'next'
 import { useCookieConsent } from '@/hooks/use-cookie-consent'
-
-// Metadata cannot be exported from a 'use client' file — defined in a separate export from a parent.
-// Title is set on layout.tsx instead.
 
 interface Category {
   id: keyof Pick<ReturnType<typeof useCookieConsent>['consent'] & object, 'analytics' | 'preferences' | 'marketing'>
@@ -111,7 +107,7 @@ export default function CookieSettingsPage() {
 
       <section style={{ marginBottom: 36 }}>
         <h2 style={h2Style}>Your rights</h2>
-        <p>You can change or withdraw your consent at any time on this page. For GDPR data subject rights (access, erasure, portability) and CCPA requests, see our <a href="/legal/privacy" style={linkStyle}>Privacy Policy</a> or email <a href="mailto:privacy@werkflow.io" style={linkStyle}>privacy@werkflow.io</a>.</p>
+        <p>You can change or withdraw your consent at any time on this page. For GDPR data subject rights (access, erasure, portability) and CCPA requests, see our <a href="/legal/privacy" style={linkStyle}>Privacy Policy</a> or email <a href="mailto:support@werkflow.cloud" style={linkStyle}>support@werkflow.cloud</a>.</p>
         <p>California residents: we do not sell or share your personal information for cross-context behavioural advertising.</p>
       </section>
     </article>
