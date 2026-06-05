@@ -2,6 +2,7 @@ package com.werkflow.admin.controller;
 
 import com.werkflow.admin.dto.TenantProvisioningRequest;
 import com.werkflow.admin.dto.TenantResponse;
+import com.werkflow.admin.dto.TenantUpdateRequest;
 import com.werkflow.admin.repository.TenantRepository;
 import com.werkflow.admin.service.TenantProvisioningService;
 import jakarta.validation.Valid;
@@ -51,5 +52,42 @@ public class TenantController {
     public ResponseEntity<TenantResponse> createTenant(@Valid @RequestBody TenantProvisioningRequest request) {
         TenantResponse response = tenantProvisioningService.provision(request);
         return ResponseEntity.status(201).body(response);
+    }
+
+    /**
+     * Updates a tenant's name and active status.
+     *
+     * @param id      the tenant ID
+     * @param request the update payload (validated)
+     * @return the updated tenant summary, or 404 if not found
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<TenantResponse> updateTenant(
+            @PathVariable Long id,
+            @Valid @RequestBody TenantUpdateRequest request) {
+        return tenantRepository.findById(id)
+                .map(tenant -> {
+                    tenant.setName(request.getName());
+                    tenant.setActive(request.isActive());
+                    return ResponseEntity.ok(TenantResponse.from(tenantRepository.save(tenant)));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Hard-deletes a tenant by ID.
+     *
+     * @param id the tenant ID
+     * @return 204 No Content, or 404 if not found
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Void> deleteTenant(@PathVariable Long id) {
+        if (!tenantRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        tenantRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 }
