@@ -19,6 +19,7 @@ public class TenantResponse {
     private String name;
     private boolean active;
     private LocalDateTime createdAt;
+    private boolean keycloakProvisioned;
 
     /**
      * Maps a Tenant entity to a TenantResponse DTO.
@@ -30,6 +31,7 @@ public class TenantResponse {
                 .name(tenant.getName())
                 .active(tenant.isActive())
                 .createdAt(tenant.getCreatedAt())
+                .keycloakProvisioned(tenant.getKeycloakRealm() != null)
                 .build();
     }
 }

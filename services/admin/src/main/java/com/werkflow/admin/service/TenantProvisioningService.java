@@ -6,6 +6,7 @@ import com.werkflow.admin.entity.Tenant;
 import com.werkflow.admin.repository.TenantRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -21,6 +22,9 @@ public class TenantProvisioningService {
 
     private final TenantRepository tenantRepository;
     private final KeycloakUserService keycloakUserService;
+
+    @Value("${app.keycloak.realm:werkflow}")
+    private String keycloakRealm;
 
     /**
      * Provisions a new tenant and its initial admin user.
@@ -63,6 +67,8 @@ public class TenantProvisioningService {
                     "Tenant provisioning failed: Keycloak user could not be created");
         }
 
+        saved.setKeycloakRealm(keycloakRealm);
+        tenantRepository.save(saved);
         log.info("Tenant provisioned: tenantCode={}, adminEmail={}", saved.getTenantCode(), request.getAdminEmail());
         return TenantResponse.from(saved);
     }
