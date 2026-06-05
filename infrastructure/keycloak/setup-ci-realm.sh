@@ -105,6 +105,27 @@ else
   echo "  WARNING: could not find werkflow-portal client UUID to update secret"
 fi
 
+# ── Service account — grant manage-users on realm-management ──────────────────
+# Required by TenantProvisioningService to create Keycloak users via the admin API.
+echo "Granting manage-users to werkflow-portal service account..."
+if [ -n "$CLIENT_UUID" ]; then
+  SA_USER_ID=$(curl -s "${KEYCLOAK_URL}/admin/realms/werkflow/clients/${CLIENT_UUID}/service-account-user" \
+    -H "$(auth)" | jq -r '.id // empty')
+  REALM_MGMT_UUID=$(curl -s "${KEYCLOAK_URL}/admin/realms/werkflow/clients?clientId=realm-management" \
+    -H "$(auth)" | jq -r '.[0].id // empty')
+  if [ -n "$SA_USER_ID" ] && [ -n "$REALM_MGMT_UUID" ]; then
+    MANAGE_USERS_ROLE=$(curl -s "${KEYCLOAK_URL}/admin/realms/werkflow/clients/${REALM_MGMT_UUID}/roles/manage-users" \
+      -H "$(auth)")
+    curl -sf -X POST "${KEYCLOAK_URL}/admin/realms/werkflow/users/${SA_USER_ID}/role-mappings/clients/${REALM_MGMT_UUID}" \
+      -H "$(auth)" -H "Content-Type: application/json" \
+      -d "[${MANAGE_USERS_ROLE}]" && echo "  manage-users granted" || echo "  manage-users may already be assigned"
+  else
+    echo "  WARNING: could not resolve SA user or realm-management client"
+  fi
+else
+  echo "  WARNING: skipping service account grant (client UUID not resolved)"
+fi
+
 # ── Helper: create user, assign roles, and reset password ─────────────────────
 create_user() {
   local username="$1" password="$2" email="$3" first="$4" last="$5"
