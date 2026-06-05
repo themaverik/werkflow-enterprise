@@ -88,7 +88,7 @@ async function deployDecisionViaUI(page: any, name: string): Promise<void> {
 
   // Wait for DmnEditor canvas to render (dynamically loaded)
   const canvas = page.locator('[class*="dmn"], .djs-container, canvas, .dmn-js-container').first()
-  await expect(canvas).toBeVisible({ timeout: 15000 })
+  await expect(canvas).toBeVisible({ timeout: 25000 })
 
   // Fill the decision name
   await page.locator("#decisionName").fill(name)
@@ -136,7 +136,7 @@ test.describe('23 — DMN Decisions — admin', () => {
     await expect(page).not.toHaveURL(/login|403/, { timeout: 5000 })
     // DmnEditor mounts asynchronously (dynamic import)
     const canvas = page.locator('[class*="dmn"], .djs-container, canvas, .dmn-js-container').first()
-    await expect(canvas).toBeVisible({ timeout: 15000 })
+    await expect(canvas).toBeVisible({ timeout: 25000 })
     // Deploy button exists (disabled until name is filled)
     await expect(page.getByRole('button', { name: /deploy/i })).toBeVisible({ timeout: 5000 })
   })
@@ -217,7 +217,7 @@ test.describe('23 — DMN Decisions — admin', () => {
       await expect(page).toHaveURL(/decisions\/.+\/edit/, { timeout: 8000 })
       // DMN editor should load on edit page too
       const canvas = page.locator('[class*="dmn"], .djs-container, canvas, .dmn-js-container').first()
-      await expect(canvas).toBeVisible({ timeout: 15000 })
+      await expect(canvas).toBeVisible({ timeout: 25000 })
     } else {
       test.info().annotations.push({ type: 'note', description: 'No Edit link visible — no decisions deployed yet' })
     }

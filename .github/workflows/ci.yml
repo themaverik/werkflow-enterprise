@@ -254,6 +254,7 @@ jobs:
           POSTGRES_PASSWORD: werkflow_secure_pass
           WERKFLOW_VAULT_TOKEN: ci-dummy-token
           WERKFLOW_VAULT_ADDR: http://localhost:8200
+          KEYCLOAK_JWK_SET_URI: http://localhost:8090/realms/werkflow/protocol/openid-connect/certs
         run: |
           java -jar target/*.jar &
           echo "Waiting for engine on port 8081..."
@@ -265,6 +266,8 @@ jobs:
           POSTGRES_PASSWORD: werkflow_secure_pass
           WERKFLOW_VAULT_TOKEN: ci-dummy-token
           WERKFLOW_VAULT_ADDR: http://localhost:8200
+          KEYCLOAK_JWK_SET_URI: http://localhost:8090/realms/werkflow/protocol/openid-connect/certs
+          KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET || 'REDACTED_KC_SECRET' }}
         run: |
           java -jar target/*.jar &
           echo "Waiting for admin on port 8083..."

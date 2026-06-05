@@ -81,6 +81,7 @@ curl -sf -X POST "${KEYCLOAK_URL}/admin/realms/werkflow/clients" \
     \"secret\": \"${CLIENT_SECRET}\",
     \"standardFlowEnabled\": true,
     \"directAccessGrantsEnabled\": true,
+    \"serviceAccountsEnabled\": true,
     \"redirectUris\": [\"http://localhost:4000/*\", \"http://localhost:3000/*\"],
     \"webOrigins\": [\"http://localhost:4000\", \"http://localhost:3000\"],
     \"attributes\": {\"post.logout.redirect.uris\": \"http://localhost:4000/*\"}
