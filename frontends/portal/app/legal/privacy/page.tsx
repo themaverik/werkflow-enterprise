@@ -5,7 +5,7 @@ export const metadata: Metadata = {
 }
 
 const EFFECTIVE_DATE = '30 May 2026'
-const CONTACT_EMAIL = 'privacy@werkflow.io'
+const CONTACT_EMAIL = 'support@werkflow.cloud'
 
 export default function PrivacyPolicyPage() {
   return (
@@ -94,12 +94,14 @@ export default function PrivacyPolicyPage() {
           <li><strong>Right of access (Art. 15):</strong> request a copy of the personal data we hold about you.</li>
           <li><strong>Right to rectification (Art. 16):</strong> request correction of inaccurate data.</li>
           <li><strong>Right to erasure (Art. 17):</strong> request deletion of your data where there is no lawful reason to retain it.</li>
+          <li><strong>Right to restriction of processing (Art. 18):</strong> request that we limit the processing of your personal data in certain circumstances, for example while a rectification or objection request is being considered.</li>
           <li><strong>Right to data portability (Art. 20):</strong> receive your data in a machine-readable format.</li>
           <li><strong>Right to object (Art. 21):</strong> object to processing based on legitimate interests or for analytics purposes.</li>
-          <li><strong>Right to withdraw consent:</strong> withdraw consent for analytics cookies at any time via <a href="/legal/cookies" style={linkStyle}>Cookie Settings</a>.</li>
-          <li><strong>Right to lodge a complaint:</strong> you have the right to lodge a complaint with a supervisory authority, in particular in the EU Member State of your habitual residence.</li>
+          <li><strong>Rights related to automated decision-making (Art. 22):</strong> not to be subject to a decision based solely on automated processing, including profiling, that produces legal or similarly significant effects concerning you. Where your employer configures a workflow that includes automated decisions (for example, DMN decision tables that automatically approve or reject a request), you may request human review, express your point of view, and contest the decision by contacting your employer or us.</li>
+          <li><strong>Right to withdraw consent:</strong> withdraw consent for analytics cookies at any time via <a href="/legal/cookies" style={linkStyle}>Cookie Settings</a>. Withdrawing consent does not affect the lawfulness of processing carried out before the withdrawal.</li>
+          <li><strong>Right to lodge a complaint:</strong> you have the right to lodge a complaint with a supervisory authority, in particular in the EU Member State of your habitual residence, your place of work, or the place of the alleged infringement. In the United Kingdom, the supervisory authority is the Information Commissioner&apos;s Office (ICO, <a href="https://ico.org.uk" style={linkStyle} target="_blank" rel="noopener noreferrer">ico.org.uk</a>).</li>
         </ul>
-        <p>To exercise your rights, email <a href={`mailto:${CONTACT_EMAIL}`} style={linkStyle}>{CONTACT_EMAIL}</a>. We will respond within 30 days.</p>
+        <p>To exercise your rights, email <a href={`mailto:${CONTACT_EMAIL}`} style={linkStyle}>{CONTACT_EMAIL}</a>. We will respond within one month of receipt of your request, and may extend that period by up to two further months where necessary, taking into account the complexity and number of requests.</p>
       </Section>
 
       <Section title="7. California residents — CCPA / CPRA rights">

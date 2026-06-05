@@ -8,7 +8,7 @@ export function CookieConsentBanner() {
   const { needsBanner, acceptAll, rejectNonEssential } = useCookieConsent()
   const [dismissed, setDismissed] = useState(false)
 
-  if (!needsBanner || dismissed) return null
+  const visible = needsBanner && !dismissed
 
   function handleAcceptAll() {
     acceptAll()
@@ -25,6 +25,8 @@ export function CookieConsentBanner() {
       role="dialog"
       aria-label="Cookie consent"
       aria-modal="false"
+      aria-hidden={!visible}
+      suppressHydrationWarning
       style={{
         position: 'fixed',
         bottom: 0,
@@ -34,7 +36,7 @@ export function CookieConsentBanner() {
         background: '#111c27',
         borderTop: '1px solid rgba(255,255,255,0.08)',
         padding: '16px 24px',
-        display: 'flex',
+        display: visible ? 'flex' : 'none',
         alignItems: 'center',
         gap: 16,
         flexWrap: 'wrap',

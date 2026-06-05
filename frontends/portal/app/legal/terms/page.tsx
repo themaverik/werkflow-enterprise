@@ -5,7 +5,7 @@ export const metadata: Metadata = {
 }
 
 const EFFECTIVE_DATE = '30 May 2026'
-const CONTACT_EMAIL = 'legal@werkflow.io'
+const CONTACT_EMAIL = 'support@werkflow.cloud'
 
 export default function TermsOfUsePage() {
   return (
@@ -35,8 +35,26 @@ export default function TermsOfUsePage() {
           <li>attempt to bypass authentication, authorisation, or tenant-isolation controls,</li>
           <li>use the Platform to process data belonging to a different organisation&apos;s tenant,</li>
           <li>upload or process content that is unlawful, harmful, or infringes third-party rights,</li>
-          <li>use the BPMN script-task capability to execute code that has not been approved by your organisation&apos;s administrator,</li>
           <li>conduct penetration testing or security research without prior written consent from Werkflow.</li>
+        </ul>
+
+        <h3 style={h3Style}>3A. Open Source Software</h3>
+        <p><strong>A.1 Open Source Components.</strong> The Platform contains or is distributed with certain open-source software components (&ldquo;OSS Components&rdquo;) governed by their respective open-source licences. The licences applicable to the OSS Components shipped with the Platform are published in the <a href="https://github.com/themaverik/werkflow/tree/main/LICENSES" style={linkStyle} target="_blank" rel="noopener noreferrer">LICENSES directory</a> of the Werkflow source distribution, and include:</p>
+        <ul>
+          <li><a href="https://github.com/themaverik/werkflow/blob/main/LICENSES/Apache-2.0.txt" style={linkStyle} target="_blank" rel="noopener noreferrer">Apache License 2.0</a> — applies to components such as the Flowable workflow engine and Spring Boot.</li>
+          <li><a href="https://github.com/themaverik/werkflow/blob/main/LICENSES/MIT.txt" style={linkStyle} target="_blank" rel="noopener noreferrer">MIT License</a> — applies to components such as Next.js, React, and associated JavaScript libraries.</li>
+          <li><a href="https://github.com/themaverik/werkflow/blob/main/LICENSES/bpmn.io.txt" style={linkStyle} target="_blank" rel="noopener noreferrer">bpmn.io License</a> — applies to the bpmn-js and dmn-js diagram editing libraries used by the BPMN and DMN designers.</li>
+        </ul>
+        <p><strong>A.2 Priority of Licences.</strong> The terms of each OSS Component licence apply to that OSS Component in lieu of these Terms to the extent required by that licence. Nothing in these Terms limits, restricts, or supersedes any right granted to you under the licence applicable to an OSS Component.</p>
+
+        <h3 style={h3Style}>3B. Prohibited Conduct and Security Boundaries</h3>
+        <p><strong>B.1 Restrictions.</strong> Except as expressly permitted by an applicable OSS Component licence, you must not:</p>
+        <ul>
+          <li>circumvent, disable, or otherwise bypass any security, tenant-isolation, licence-verification, entitlement, or feature-gating mechanism of the Platform, the workflow engine, the admin console, or any associated API;</li>
+          <li>perform unauthorised penetration testing, vulnerability scanning, fuzzing, or other security probing of the Platform, the workflow engine, the cloud infrastructure on which the Platform is hosted, or any of its APIs or hosted services;</li>
+          <li>disrupt, disable, overload, or impair the integrity, performance, or security of the Platform or of any servers, networks, databases, secret stores, or identity providers used to operate the Platform;</li>
+          <li>use the Platform to gain access to enterprise features, premium connectors, or paid tiers that your organisation has not purchased or otherwise been entitled to;</li>
+          <li>introduce code (including in BPMN, DMN, scripts, expressions, or custom connectors) intended to extract data from another tenant, escalate privileges, or evade audit logging.</li>
         </ul>
       </Section>
 
@@ -107,6 +125,14 @@ const h2Style: React.CSSProperties = {
   marginBottom: 12,
   paddingBottom: 6,
   borderBottom: '1px solid #e2e8f0',
+}
+
+const h3Style: React.CSSProperties = {
+  fontSize: 15,
+  fontWeight: 600,
+  color: '#0f1e2a',
+  marginTop: 20,
+  marginBottom: 10,
 }
 
 const metaStyle: React.CSSProperties = {
