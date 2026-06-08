@@ -43,7 +43,7 @@ spring:
         registration:
           werkflow-admin:
             client-id: werkflow-admin
-            client-secret: ${ADMIN_CLIENT_SECRET:REDACTED_KC_SECRET}
+            client-secret: ${ADMIN_CLIENT_SECRET}
             authorization-grant-type: client_credentials
             scope: openid
         provider:
