@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -42,6 +43,7 @@ public class ProcessDefinitionController {
 
     @PostMapping(value = "/deploy", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasPermission(null, 'WORKFLOW:DEPLOY')")
+    @RateLimiter(name = "bpmn-deploy")
     @Operation(summary = "Deploy a new process definition", description = "Deploy a BPMN 2.0 XML string. " +
         "Set parentDeploymentId to link this deployment to a bundle (ADR-009).")
     public ResponseEntity<ProcessDefinitionResponse> deployProcessDefinition(
@@ -64,6 +66,7 @@ public class ProcessDefinitionController {
 
     @PostMapping(value = "/deploy/bundle", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasPermission(null, 'WORKFLOW:DEPLOY')")
+    @RateLimiter(name = "bpmn-deploy")
     @Operation(summary = "Deploy a process as a version bundle",
         description = "Deploys a BPMN and its referenced DMNs under one shared parentDeploymentId "
             + "so same-deployment binding resolves to the pinned DMN versions (ADR-026 Phase 1).")
@@ -86,6 +89,7 @@ public class ProcessDefinitionController {
 
     @PostMapping("/{processKey}/rollback/{bundleVersion}")
     @PreAuthorize("hasPermission(null, 'WORKFLOW:DEPLOY')")
+    @RateLimiter(name = "bpmn-deploy")
     @Operation(summary = "Roll a process back to a prior bundle version",
         description = "Redeploys the target bundle version's exact artifacts (BPMN + pinned DMNs) "
             + "as a new latest version (ADR-026 Phase 3). In-flight instances are unaffected.")

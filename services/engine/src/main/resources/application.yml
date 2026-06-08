@@ -355,3 +355,12 @@ werkflow:
     # Super Admins have all platform permissions plus system-level access
     SUPER_ADMIN:
       - SYSTEM:ADMIN
+
+# Resilience4j — rate limiting for sensitive write operations
+resilience4j:
+  ratelimiter:
+    instances:
+      bpmn-deploy:
+        limit-for-period: 20
+        limit-refresh-period: 60s
+        timeout-duration: 0s

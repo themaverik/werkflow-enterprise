@@ -331,6 +331,17 @@
                 <version>${flyway.version}</version>
             </plugin>
 
+            <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <version>10.0.3</version>
+                <configuration>
+                    <failBuildOnCVSS>9</failBuildOnCVSS>
+                    <suppressionFile>${project.basedir}/owasp-suppressions.xml</suppressionFile>
+                    <skipProvidedScope>true</skipProvidedScope>
+                </configuration>
+            </plugin>
+
             <!-- Default: exclude harness process tests + OpenBao-dependent ITs.
                  CI runs: mvn clean verify -B  (no -DexcludedGroups override needed;
                  Surefire 3.2.x does not reliably propagate system property overrides
