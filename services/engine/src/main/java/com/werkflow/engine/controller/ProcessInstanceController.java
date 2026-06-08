@@ -84,9 +84,10 @@ public class ProcessInstanceController {
     @PreAuthorize("hasPermission(null, 'PROCESS:MANAGE')")
     public ResponseEntity<Void> deleteProcessInstance(
         @Parameter(description = "Process instance ID") @PathVariable String id,
-        @Parameter(description = "Deletion reason") @RequestParam(required = false) String reason
+        @Parameter(description = "Deletion reason") @RequestParam(required = false) String reason,
+        @AuthenticationPrincipal Jwt jwt
     ) {
-        processInstanceService.deleteProcessInstance(id, reason);
+        processInstanceService.deleteProcessInstance(id, reason, jwt.getClaimAsString("tenant_code"));
         return ResponseEntity.noContent().build();
     }
 
@@ -94,9 +95,10 @@ public class ProcessInstanceController {
     @Operation(summary = "Suspend a process instance")
     @PreAuthorize("hasPermission(null, 'PROCESS:MANAGE')")
     public ResponseEntity<Void> suspendProcessInstance(
-        @Parameter(description = "Process instance ID") @PathVariable String id
+        @Parameter(description = "Process instance ID") @PathVariable String id,
+        @AuthenticationPrincipal Jwt jwt
     ) {
-        processInstanceService.suspendProcessInstance(id);
+        processInstanceService.suspendProcessInstance(id, jwt.getClaimAsString("tenant_code"));
         return ResponseEntity.noContent().build();
     }
 
@@ -104,9 +106,10 @@ public class ProcessInstanceController {
     @Operation(summary = "Activate a suspended process instance")
     @PreAuthorize("hasPermission(null, 'PROCESS:MANAGE')")
     public ResponseEntity<Void> activateProcessInstance(
-        @Parameter(description = "Process instance ID") @PathVariable String id
+        @Parameter(description = "Process instance ID") @PathVariable String id,
+        @AuthenticationPrincipal Jwt jwt
     ) {
-        processInstanceService.activateProcessInstance(id);
+        processInstanceService.activateProcessInstance(id, jwt.getClaimAsString("tenant_code"));
         return ResponseEntity.noContent().build();
     }
 
@@ -126,9 +129,10 @@ public class ProcessInstanceController {
     @PreAuthorize("hasPermission(null, 'PROCESS:MANAGE')")
     public ResponseEntity<Void> setProcessVariables(
         @Parameter(description = "Process instance ID") @PathVariable String id,
-        @RequestBody Map<String, Object> variables
+        @RequestBody Map<String, Object> variables,
+        @AuthenticationPrincipal Jwt jwt
     ) {
-        processInstanceService.setProcessVariables(id, variables);
+        processInstanceService.setProcessVariables(id, variables, jwt.getClaimAsString("tenant_code"));
         return ResponseEntity.noContent().build();
     }
 }

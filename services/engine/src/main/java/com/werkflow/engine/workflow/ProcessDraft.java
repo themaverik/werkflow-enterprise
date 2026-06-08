@@ -2,6 +2,7 @@ package com.werkflow.engine.workflow;
 
 import jakarta.persistence.*;
 import lombok.*;
+import jakarta.persistence.UniqueConstraint;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -12,7 +13,8 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "process_draft")
+@Table(name = "process_draft",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"process_key", "tenant_id"}))
 @Data
 @Builder
 @NoArgsConstructor
@@ -23,8 +25,11 @@ public class ProcessDraft {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "process_key", nullable = false, unique = true)
+    @Column(name = "process_key", nullable = false)
     private String processKey;
+
+    @Column(name = "tenant_id", nullable = false)
+    private String tenantId;
 
     @Column(name = "name")
     private String name;

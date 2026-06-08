@@ -208,10 +208,11 @@ public class ProcessDefinitionService {
      * Get all process definitions (latest versions).
      * Indicator flags are loaded in a single batch query to avoid N+1 per row.
      */
-    public List<ProcessDefinitionResponse> getAllProcessDefinitions() {
+    public List<ProcessDefinitionResponse> getAllProcessDefinitions(String tenantId) {
         log.debug("Fetching all process definitions");
 
         List<ProcessDefinition> definitions = repositoryService.createProcessDefinitionQuery()
+            .processDefinitionTenantId(tenantId)
             .latestVersion()
             .list();
 
@@ -248,11 +249,12 @@ public class ProcessDefinitionService {
     /**
      * Get process definition by key (latest version)
      */
-    public ProcessDefinitionResponse getProcessDefinitionByKey(String key) {
+    public ProcessDefinitionResponse getProcessDefinitionByKey(String key, String tenantId) {
         log.debug("Fetching process definition by key: {}", key);
 
         ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
             .processDefinitionKey(key)
+            .processDefinitionTenantId(tenantId)
             .latestVersion()
             .singleResult();
 
@@ -266,11 +268,12 @@ public class ProcessDefinitionService {
     /**
      * Get all versions of a process definition by key
      */
-    public List<ProcessDefinitionResponse> getProcessDefinitionVersions(String key) {
+    public List<ProcessDefinitionResponse> getProcessDefinitionVersions(String key, String tenantId) {
         log.debug("Fetching all versions of process definition: {}", key);
 
         List<ProcessDefinition> definitions = repositoryService.createProcessDefinitionQuery()
             .processDefinitionKey(key)
+            .processDefinitionTenantId(tenantId)
             .orderByProcessDefinitionVersion()
             .desc()
             .list();

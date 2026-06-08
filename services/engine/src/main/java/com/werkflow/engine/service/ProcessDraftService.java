@@ -23,10 +23,10 @@ public class ProcessDraftService {
     @Transactional
     public ProcessDraft saveDraft(String processKey, String name, String bpmnXml,
                                   String departmentCode, String categoryCode,
-                                  List<String> tags, String userId) {
+                                  List<String> tags, String userId, String tenantId) {
         log.info("Saving draft for process: {}", processKey);
-        ProcessDraft draft = repository.findByProcessKey(processKey)
-                .orElse(ProcessDraft.builder().processKey(processKey).createdBy(userId).build());
+        ProcessDraft draft = repository.findByProcessKeyAndTenantId(processKey, tenantId)
+                .orElse(ProcessDraft.builder().processKey(processKey).tenantId(tenantId).createdBy(userId).build());
         draft.setName(name);
         draft.setBpmnXml(bpmnXml);
         if (departmentCode != null) draft.setDepartmentCode(departmentCode.isBlank() ? null : departmentCode);
@@ -36,13 +36,13 @@ public class ProcessDraftService {
         return repository.save(draft);
     }
 
-    public Optional<ProcessDraft> getDraft(String processKey) {
-        return repository.findByProcessKey(processKey);
+    public Optional<ProcessDraft> getDraft(String processKey, String tenantId) {
+        return repository.findByProcessKeyAndTenantId(processKey, tenantId);
     }
 
     @Transactional(readOnly = true)
-    public List<ProcessDraftSummaryDTO> listDrafts() {
-        return repository.findAllByOrderByUpdatedAtDesc().stream()
+    public List<ProcessDraftSummaryDTO> listDrafts(String tenantId) {
+        return repository.findAllByTenantIdOrderByUpdatedAtDesc(tenantId).stream()
                 .map(draft -> ProcessDraftSummaryDTO.builder()
                         .id(draft.getId())
                         .processKey(draft.getProcessKey())
@@ -59,8 +59,8 @@ public class ProcessDraftService {
     }
 
     @Transactional
-    public void deleteDraft(String processKey) {
+    public void deleteDraft(String processKey, String tenantId) {
         log.info("Deleting draft for process: {}", processKey);
-        repository.deleteByProcessKey(processKey);
+        repository.deleteByProcessKeyAndTenantId(processKey, tenantId);
     }
 }
