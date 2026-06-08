@@ -128,6 +128,7 @@ public abstract class ConnectorDelegateBase implements JavaDelegate {
                 .processInstanceId(execution.getProcessInstanceId())
                 .executionId(execution.getId())
                 .processDefinitionKey(extractKey(execution.getProcessDefinitionId()))
+                .tenantId(execution.getTenantId())
                 .actionType(resolveActionType())
                 .taskId(execution.getCurrentActivityId())
                 .taskName(execution.getCurrentActivityName())

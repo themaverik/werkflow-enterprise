@@ -5,7 +5,8 @@ import lombok.*;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "notification_templates")
+@Table(name = "notification_templates",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"template_key", "tenant_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -15,8 +16,11 @@ public class NotificationTemplate {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "template_key", nullable = false, unique = true, length = 100)
+    @Column(name = "template_key", nullable = false, length = 100)
     private String templateKey;
+
+    @Column(name = "tenant_id", nullable = false, length = 100)
+    private String tenantId;
 
     @Column(name = "channel", nullable = false, length = 50)
     private String channel;

@@ -12,4 +12,8 @@ public interface NotificationTemplateRepository extends JpaRepository<Notificati
     Optional<NotificationTemplate> findByTemplateKeyAndDeletedAtIsNull(String templateKey);
 
     List<NotificationTemplate> findAllByDeletedAtIsNull();
+
+    Optional<NotificationTemplate> findByTemplateKeyAndTenantIdAndDeletedAtIsNull(String templateKey, String tenantId);
+
+    List<NotificationTemplate> findAllByTenantIdAndDeletedAtIsNull(String tenantId);
 }
