@@ -136,6 +136,49 @@ public class UserService {
             .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public UserResponse getUserById(Long id, String tenantCode) {
+        log.debug("Fetching user with ID: {} for tenant: {}", id, tenantCode);
+
+        User user = userRepository.findByIdAndTenantCode(id, tenantCode)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "User not found with ID: " + id));
+
+        return mapToResponse(user);
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getUserByKeycloakId(String keycloakId, String tenantCode) {
+        log.debug("Fetching user with Keycloak ID: {} for tenant: {}", keycloakId, tenantCode);
+
+        User user = userRepository.findByKeycloakIdAndTenantCode(keycloakId, tenantCode)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "User not found with Keycloak ID: " + keycloakId));
+
+        return mapToResponse(user);
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getUserByUsername(String username, String tenantCode) {
+        log.debug("Fetching user with username: {} for tenant: {}", username, tenantCode);
+
+        User user = userRepository.findByUsernameAndTenantCode(username, tenantCode)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "User not found with username: " + username));
+
+        return mapToResponse(user);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserResponse> getUsersByOrganization(Long organizationId, String tenantCode) {
+        log.debug("Fetching users for organization ID: {} for tenant: {}", organizationId, tenantCode);
+
+        return userRepository.findByOrganizationIdAndTenantCode(organizationId, tenantCode)
+            .stream()
+            .map(this::mapToResponse)
+            .collect(Collectors.toList());
+    }
+
     @Transactional
     public UserResponse updateUser(Long id, UserRequest request) {
         log.info("Updating user with ID: {}", id);

@@ -22,6 +22,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByOrganizationId(Long organizationId);
 
+    Optional<User> findByIdAndTenantCode(Long id, String tenantCode);
+
+    Optional<User> findByKeycloakIdAndTenantCode(String keycloakId, String tenantCode);
+
+    Optional<User> findByUsernameAndTenantCode(String username, String tenantCode);
+
+    List<User> findByOrganizationIdAndTenantCode(Long organizationId, String tenantCode);
+
     List<User> findByManagerId(Long managerId);
 
     @Query("SELECT u FROM User u WHERE u.organization.id = :orgId AND u.active = :active")
