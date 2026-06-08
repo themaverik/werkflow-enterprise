@@ -20,7 +20,7 @@
         <revision>1.0.0</revision>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <spring-boot.version>3.3.2</spring-boot.version>
+        <spring-boot.version>3.3.12</spring-boot.version>
         <postgresql.version>42.7.3</postgresql.version>
         <flyway.version>10.15.0</flyway.version>
         <keycloak.version>24.0.4</keycloak.version>
