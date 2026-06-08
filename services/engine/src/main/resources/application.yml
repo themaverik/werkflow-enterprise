@@ -160,7 +160,7 @@ management:
         include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info,metrics,flowable}
   endpoint:
     health:
-      show-details: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS:always}
+      show-details: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS:when-authorized}
   health:
     mail:
       enabled: false  # Disable mail health check since we're not using Spring Mail for Flowable

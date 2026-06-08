@@ -43,7 +43,7 @@ spring:
         registration:
           werkflow-admin:
             client-id: werkflow-admin
-            client-secret: ${ADMIN_CLIENT_SECRET:admin-dev-secret-do-not-use-in-prod}
+            client-secret: ${ADMIN_CLIENT_SECRET}
             authorization-grant-type: client_credentials
             scope: openid
         provider:

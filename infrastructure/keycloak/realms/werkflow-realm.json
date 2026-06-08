@@ -5,7 +5,12 @@
   "accessTokenLifespan": 300,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
-  "passwordPolicy": "length(8)",
+  "passwordPolicy": "length(12) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1)",
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
   "clients": [
     {
       "clientId": "werkflow-portal",
@@ -23,7 +28,7 @@
       "consentRequired": false,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
       "publicClient": false,
       "protocol": "openid-connect",
@@ -329,8 +334,8 @@
       "addReadTokenRoleOnCreate": false,
       "firstBrokerLoginFlowAlias": "first broker login",
       "config": {
-        "clientId": "946266379427-quk1e84mtj72o8caeaidsp4msdfb00li.apps.googleusercontent.com",
-        "clientSecret": "REDACTED_GOOGLE_SECRET",
+        "clientId": "${GOOGLE_CLIENT_ID}",
+        "clientSecret": "${GOOGLE_CLIENT_SECRET}",
         "authorizationUrl": "https://accounts.google.com/o/oauth2/v2/auth",
         "tokenUrl": "https://oauth2.googleapis.com/token",
         "jwksUrl": "https://www.googleapis.com/oauth2/v3/certs",
