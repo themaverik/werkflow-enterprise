@@ -27,7 +27,16 @@ public class RoleGroupMappingController {
     private final CandidateGroupsAggregator candidateGroupsAggregator;
 
     private String resolveTenant(String tenantCode, Jwt jwt) {
-        return (tenantCode != null && !tenantCode.isBlank()) ? tenantCode : jwtClaimsExtractor.getTenantId(jwt);
+        String jwtTenant = jwtClaimsExtractor.getTenantId(jwt);
+        if (tenantCode != null && !tenantCode.isBlank() && !tenantCode.equals(jwtTenant)) {
+            if (!jwtClaimsExtractor.hasRole(jwt, "SUPER_ADMIN")) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.FORBIDDEN,
+                        "SUPER_ADMIN role required to access another tenant's data");
+            }
+            return tenantCode;
+        }
+        return jwtTenant;
     }
 
     @GetMapping
