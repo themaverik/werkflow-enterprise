@@ -73,7 +73,7 @@ services:
       KC_HOSTNAME_PORT: 8090
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_HTTPS: false
-      KC_HOSTNAME_STRICT_BACKCHANNEL: false
+      KC_HOSTNAME_STRICT_BACKCHANNEL: true
 
       # Enable HTTP (required for local development)
       KC_HTTP_ENABLED: true

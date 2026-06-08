@@ -39,11 +39,10 @@ export const authConfig = {
       // Keycloak returns "http://localhost:8090/realms/werkflow" via KC_HOSTNAME config
       issuer: process.env.KEYCLOAK_ISSUER_PUBLIC || process.env.KEYCLOAK_ISSUER,
 
-      // Disable PKCE: confidential client (client_secret) provides equivalent security.
-      // PKCE code_verifier is bound to the authorization URL cookie; the dual-URL setup
-      // (browser→localhost:8090, server→keycloak:8080) causes the verifier lookup to fail
-      // during token exchange → pkce_verification_failed.
-      checks: ["state"],
+      // KC_HOSTNAME_STRICT_BACKCHANNEL=true (docker-compose) allows backchannel token exchange
+      // to use the internal Docker URL (keycloak:8080) while the browser-facing URL remains
+      // localhost:8090. PKCE is re-enabled now that the dual-URL split is handled at the KC layer.
+      checks: ["pkce", "state"],
 
       // Override authorization URL for browser redirects
       // Users click login -> browser redirects to this URL (must be accessible from browser)
