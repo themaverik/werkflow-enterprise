@@ -268,6 +268,7 @@ public class GlobalExceptionHandler {
     /**
      * Handle Flowable engine exceptions — extract root cause for a useful message.
      * FlowableException wraps delegate/expression errors (e.g. invalid email, missing field).
+     * Root cause detail is logged server-side; a safe generic message is returned to the client.
      */
     @ExceptionHandler(FlowableException.class)
     public ResponseEntity<ErrorResponse> handleFlowableException(
@@ -275,19 +276,36 @@ public class GlobalExceptionHandler {
 
         Throwable root = ex;
         while (root.getCause() != null) root = root.getCause();
-        String message = root.getMessage() != null ? root.getMessage() : ex.getMessage();
+        String detail = root.getMessage() != null ? root.getMessage() : ex.getMessage();
 
-        log.error("Flowable engine error: {}", message, ex);
+        log.error("Flowable engine error: {}", detail, ex);
 
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(OffsetDateTime.now())
                 .status(HttpStatus.UNPROCESSABLE_ENTITY.value())
                 .error("Process Execution Error")
-                .message(message)
+                .message("The process could not be executed. Check process configuration and try again.")
                 .path(extractPath(request))
                 .build();
 
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(errorResponse);
+    }
+
+    @ExceptionHandler(io.github.resilience4j.ratelimiter.RequestNotPermitted.class)
+    public ResponseEntity<ErrorResponse> handleRequestNotPermitted(
+            io.github.resilience4j.ratelimiter.RequestNotPermitted ex, WebRequest request) {
+
+        log.warn("Rate limit exceeded: {}", ex.getMessage());
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(OffsetDateTime.now())
+                .status(429)
+                .error("Too Many Requests")
+                .message("Request rate limit exceeded. Please wait before retrying.")
+                .path(extractPath(request))
+                .build();
+
+        return ResponseEntity.status(429).body(errorResponse);
     }
 
     /**
