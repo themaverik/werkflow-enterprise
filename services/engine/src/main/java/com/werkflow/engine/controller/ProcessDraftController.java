@@ -40,8 +40,8 @@ public class ProcessDraftController {
 
     @PreAuthorize("hasPermission(null, 'WORKFLOW:DESIGN')")
     @GetMapping
-    public ResponseEntity<List<ProcessDraftSummaryDTO>> listDrafts() {
-        return ResponseEntity.ok(processDraftService.listDrafts());
+    public ResponseEntity<List<ProcessDraftSummaryDTO>> listDrafts(Authentication authentication) {
+        return ResponseEntity.ok(processDraftService.listDrafts(extractTenantCode(authentication)));
     }
 
     @PostMapping
@@ -53,20 +53,20 @@ public class ProcessDraftController {
                 request.getProcessKey(), request.getName(), request.getBpmnXml(),
                 request.getDepartmentCode(), request.getCategoryCode(),
                 request.getTags() != null ? request.getTags() : Collections.emptyList(),
-                userId);
+                userId, extractTenantCode(authentication));
         return ResponseEntity.ok(draft);
     }
 
     @GetMapping("/{processKey}")
-    public ResponseEntity<ProcessDraft> getDraft(@PathVariable String processKey) {
-        Optional<ProcessDraft> draft = processDraftService.getDraft(processKey);
+    public ResponseEntity<ProcessDraft> getDraft(@PathVariable String processKey, Authentication authentication) {
+        Optional<ProcessDraft> draft = processDraftService.getDraft(processKey, extractTenantCode(authentication));
         return draft.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{processKey}")
-    public ResponseEntity<Void> deleteDraft(@PathVariable String processKey) {
-        processDraftService.deleteDraft(processKey);
+    public ResponseEntity<Void> deleteDraft(@PathVariable String processKey, Authentication authentication) {
+        processDraftService.deleteDraft(processKey, extractTenantCode(authentication));
         return ResponseEntity.noContent().build();
     }
 
@@ -75,5 +75,13 @@ public class ProcessDraftController {
             return new JwtUserContext(jwt).getUserId();
         }
         return "system";
+    }
+
+    private String extractTenantCode(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
+            return new JwtUserContext(jwt).getTenantCode();
+        }
+        throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.UNAUTHORIZED, "Authentication required");
     }
 }

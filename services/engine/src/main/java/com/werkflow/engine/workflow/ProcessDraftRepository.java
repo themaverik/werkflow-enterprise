@@ -9,7 +9,7 @@ import java.util.UUID;
 
 @Repository
 public interface ProcessDraftRepository extends JpaRepository<ProcessDraft, UUID> {
-    Optional<ProcessDraft> findByProcessKey(String processKey);
-    void deleteByProcessKey(String processKey);
-    List<ProcessDraft> findAllByOrderByUpdatedAtDesc();
+    Optional<ProcessDraft> findByProcessKeyAndTenantId(String processKey, String tenantId);
+    void deleteByProcessKeyAndTenantId(String processKey, String tenantId);
+    List<ProcessDraft> findAllByTenantIdOrderByUpdatedAtDesc(String tenantId);
 }

@@ -101,9 +101,11 @@ public class ProcessDefinitionController {
     }
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get all process definitions", description = "Retrieve all process definitions (latest versions)")
-    public ResponseEntity<List<ProcessDefinitionResponse>> getAllProcessDefinitions() {
-        List<ProcessDefinitionResponse> responses = processDefinitionService.getAllProcessDefinitions();
+    public ResponseEntity<List<ProcessDefinitionResponse>> getAllProcessDefinitions(Authentication authentication) {
+        JwtUserContext user = extractUserContext(authentication);
+        List<ProcessDefinitionResponse> responses = processDefinitionService.getAllProcessDefinitions(user.getTenantCode());
         return ResponseEntity.ok(responses);
     }
 
@@ -119,18 +121,22 @@ public class ProcessDefinitionController {
     @GetMapping("/key/{key}")
     @Operation(summary = "Get process definition by key", description = "Get latest version of process definition by key")
     public ResponseEntity<ProcessDefinitionResponse> getProcessDefinitionByKey(
-        @Parameter(description = "Process definition key") @PathVariable String key
+        @Parameter(description = "Process definition key") @PathVariable String key,
+        Authentication authentication
     ) {
-        ProcessDefinitionResponse response = processDefinitionService.getProcessDefinitionByKey(key);
+        JwtUserContext user = extractUserContext(authentication);
+        ProcessDefinitionResponse response = processDefinitionService.getProcessDefinitionByKey(key, user.getTenantCode());
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/key/{key}/versions")
     @Operation(summary = "Get all versions of a process definition")
     public ResponseEntity<List<ProcessDefinitionResponse>> getProcessDefinitionVersions(
-        @Parameter(description = "Process definition key") @PathVariable String key
+        @Parameter(description = "Process definition key") @PathVariable String key,
+        Authentication authentication
     ) {
-        List<ProcessDefinitionResponse> responses = processDefinitionService.getProcessDefinitionVersions(key);
+        JwtUserContext user = extractUserContext(authentication);
+        List<ProcessDefinitionResponse> responses = processDefinitionService.getProcessDefinitionVersions(key, user.getTenantCode());
         return ResponseEntity.ok(responses);
     }
 

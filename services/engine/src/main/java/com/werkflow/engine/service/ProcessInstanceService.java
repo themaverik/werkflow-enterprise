@@ -167,8 +167,16 @@ public class ProcessInstanceService {
      * Delete (terminate) a process instance
      */
     @Transactional
-    public void deleteProcessInstance(String processInstanceId, String reason) {
+    public void deleteProcessInstance(String processInstanceId, String reason, String callerTenantId) {
         log.info("Deleting process instance: {} with reason: {}", processInstanceId, reason);
+
+        ProcessInstance processInstance = runtimeService.createProcessInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .singleResult();
+        if (processInstance == null || (callerTenantId != null && !callerTenantId.isBlank()
+                && !callerTenantId.equals(processInstance.getTenantId()))) {
+            throw new RuntimeException("Process instance not found with ID: " + processInstanceId);
+        }
 
         runtimeService.deleteProcessInstance(processInstanceId, reason);
 
@@ -179,8 +187,16 @@ public class ProcessInstanceService {
      * Suspend a process instance
      */
     @Transactional
-    public void suspendProcessInstance(String processInstanceId) {
+    public void suspendProcessInstance(String processInstanceId, String callerTenantId) {
         log.info("Suspending process instance: {}", processInstanceId);
+
+        ProcessInstance processInstance = runtimeService.createProcessInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .singleResult();
+        if (processInstance == null || (callerTenantId != null && !callerTenantId.isBlank()
+                && !callerTenantId.equals(processInstance.getTenantId()))) {
+            throw new RuntimeException("Process instance not found with ID: " + processInstanceId);
+        }
 
         runtimeService.suspendProcessInstanceById(processInstanceId);
 
@@ -191,8 +207,16 @@ public class ProcessInstanceService {
      * Activate a process instance
      */
     @Transactional
-    public void activateProcessInstance(String processInstanceId) {
+    public void activateProcessInstance(String processInstanceId, String callerTenantId) {
         log.info("Activating process instance: {}", processInstanceId);
+
+        ProcessInstance processInstance = runtimeService.createProcessInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .singleResult();
+        if (processInstance == null || (callerTenantId != null && !callerTenantId.isBlank()
+                && !callerTenantId.equals(processInstance.getTenantId()))) {
+            throw new RuntimeException("Process instance not found with ID: " + processInstanceId);
+        }
 
         runtimeService.activateProcessInstanceById(processInstanceId);
 
@@ -228,8 +252,16 @@ public class ProcessInstanceService {
      * HIGH-05: prevents EL injection and security variable override.
      */
     @Transactional
-    public void setProcessVariables(String processInstanceId, Map<String, Object> variables) {
+    public void setProcessVariables(String processInstanceId, Map<String, Object> variables, String callerTenantId) {
         log.info("Setting variables for process instance: {}", processInstanceId);
+
+        ProcessInstance processInstance = runtimeService.createProcessInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .singleResult();
+        if (processInstance == null || (callerTenantId != null && !callerTenantId.isBlank()
+                && !callerTenantId.equals(processInstance.getTenantId()))) {
+            throw new RuntimeException("Process instance not found with ID: " + processInstanceId);
+        }
 
         Map<String, Object> safe = stripSecurityVariables(variables);
         runtimeService.setVariables(processInstanceId, safe);
