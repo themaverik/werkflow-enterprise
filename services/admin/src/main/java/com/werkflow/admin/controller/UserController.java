@@ -2,6 +2,7 @@ package com.werkflow.admin.controller;
 
 import com.werkflow.admin.dto.UserRequest;
 import com.werkflow.admin.dto.UserResponse;
+import com.werkflow.admin.security.JwtClaimsExtractor;
 import com.werkflow.admin.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -10,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,6 +24,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
@@ -33,33 +37,44 @@ public class UserController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @Operation(summary = "Get user by ID", description = "Retrieve user details by ID (ADMIN, SUPER_ADMIN)")
-    public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
-        UserResponse response = userService.getUserById(id);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<UserResponse> getUserById(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+        if (jwtClaimsExtractor.hasRole(jwt, "SUPER_ADMIN")) {
+            return ResponseEntity.ok(userService.getUserById(id));
+        }
+        return ResponseEntity.ok(userService.getUserById(id, jwtClaimsExtractor.getTenantId(jwt)));
     }
 
     @GetMapping("/keycloak/{keycloakId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @Operation(summary = "Get user by Keycloak ID", description = "Retrieve user details by Keycloak ID (ADMIN, SUPER_ADMIN)")
-    public ResponseEntity<UserResponse> getUserByKeycloakId(@PathVariable String keycloakId) {
-        UserResponse response = userService.getUserByKeycloakId(keycloakId);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<UserResponse> getUserByKeycloakId(@PathVariable String keycloakId,
+            @AuthenticationPrincipal Jwt jwt) {
+        if (jwtClaimsExtractor.hasRole(jwt, "SUPER_ADMIN")) {
+            return ResponseEntity.ok(userService.getUserByKeycloakId(keycloakId));
+        }
+        return ResponseEntity.ok(userService.getUserByKeycloakId(keycloakId, jwtClaimsExtractor.getTenantId(jwt)));
     }
 
     @GetMapping("/username/{username}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @Operation(summary = "Get user by username", description = "Retrieve user details by username (ADMIN, SUPER_ADMIN)")
-    public ResponseEntity<UserResponse> getUserByUsername(@PathVariable String username) {
-        UserResponse response = userService.getUserByUsername(username);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<UserResponse> getUserByUsername(@PathVariable String username,
+            @AuthenticationPrincipal Jwt jwt) {
+        if (jwtClaimsExtractor.hasRole(jwt, "SUPER_ADMIN")) {
+            return ResponseEntity.ok(userService.getUserByUsername(username));
+        }
+        return ResponseEntity.ok(userService.getUserByUsername(username, jwtClaimsExtractor.getTenantId(jwt)));
     }
 
     @GetMapping("/organization/{organizationId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @Operation(summary = "Get users by organization", description = "Retrieve all users for an organization (ADMIN, SUPER_ADMIN)")
-    public ResponseEntity<List<UserResponse>> getUsersByOrganization(@PathVariable Long organizationId) {
-        List<UserResponse> response = userService.getUsersByOrganization(organizationId);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<List<UserResponse>> getUsersByOrganization(@PathVariable Long organizationId,
+            @AuthenticationPrincipal Jwt jwt) {
+        if (jwtClaimsExtractor.hasRole(jwt, "SUPER_ADMIN")) {
+            return ResponseEntity.ok(userService.getUsersByOrganization(organizationId));
+        }
+        return ResponseEntity.ok(userService.getUsersByOrganization(organizationId, jwtClaimsExtractor.getTenantId(jwt)));
     }
 
     @PutMapping("/{id}")
