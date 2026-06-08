@@ -30,6 +30,9 @@ public class ProcessAuditLog {
     @Column(name = "process_definition_key", nullable = false)
     private String processDefinitionKey;
 
+    @Column(name = "tenant_id", length = 100)
+    private String tenantId;
+
     @Column(name = "action_type", nullable = false, length = 50)
     private String actionType;
 

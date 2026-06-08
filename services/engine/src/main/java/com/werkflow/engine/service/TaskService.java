@@ -36,13 +36,14 @@ public class TaskService {
     private final RepositoryService repositoryService;
 
     /**
-     * Get all tasks for a specific user
+     * Get all tasks for a specific user scoped to a tenant
      */
-    public List<TaskResponse> getTasksForUser(String userId) {
+    public List<TaskResponse> getTasksForUser(String userId, String tenantId) {
         log.debug("Fetching tasks for user: {}", userId);
 
         List<Task> tasks = flowableTaskService.createTaskQuery()
             .taskAssignee(userId)
+            .taskTenantId(tenantId)
             .active()
             .list();
 
@@ -52,13 +53,14 @@ public class TaskService {
     }
 
     /**
-     * Get tasks for candidate groups
+     * Get tasks for candidate groups scoped to a tenant
      */
-    public List<TaskResponse> getTasksForCandidateGroups(List<String> groups) {
+    public List<TaskResponse> getTasksForCandidateGroups(List<String> groups, String tenantId) {
         log.debug("Fetching tasks for candidate groups: {}", groups);
 
         List<Task> tasks = flowableTaskService.createTaskQuery()
             .taskCandidateGroupIn(groups)
+            .taskTenantId(tenantId)
             .active()
             .list();
 
@@ -68,13 +70,14 @@ public class TaskService {
     }
 
     /**
-     * Get unassigned tasks
+     * Get unassigned tasks scoped to a tenant
      */
-    public List<TaskResponse> getUnassignedTasks() {
+    public List<TaskResponse> getUnassignedTasks(String tenantId) {
         log.debug("Fetching unassigned tasks");
 
         List<Task> tasks = flowableTaskService.createTaskQuery()
             .taskUnassigned()
+            .taskTenantId(tenantId)
             .active()
             .list();
 
@@ -84,14 +87,15 @@ public class TaskService {
     }
 
     /**
-     * Get tasks assigned to user OR available via candidate groups
+     * Get tasks assigned to user OR available via candidate groups, scoped to a tenant
      */
-    public List<TaskResponse> getTasksForUserOrGroups(String userId, List<String> groups) {
+    public List<TaskResponse> getTasksForUserOrGroups(String userId, List<String> groups, String tenantId) {
         log.debug("Fetching tasks for user: {} or groups: {}", userId, groups);
 
         // Get assigned tasks
         List<Task> assignedTasks = flowableTaskService.createTaskQuery()
             .taskAssignee(userId)
+            .taskTenantId(tenantId)
             .active()
             .list();
 
@@ -100,6 +104,7 @@ public class TaskService {
         if (groups != null && !groups.isEmpty()) {
             candidateTasks = flowableTaskService.createTaskQuery()
                 .taskCandidateGroupIn(groups)
+                .taskTenantId(tenantId)
                 .taskUnassigned()
                 .active()
                 .list();
@@ -116,13 +121,14 @@ public class TaskService {
     }
 
     /**
-     * Get tasks assigned to a group/role
+     * Get tasks assigned to a group/role scoped to a tenant
      */
-    public List<TaskResponse> getTasksForGroup(String groupId) {
+    public List<TaskResponse> getTasksForGroup(String groupId, String tenantId) {
         log.debug("Fetching tasks for group: {}", groupId);
 
         List<Task> tasks = flowableTaskService.createTaskQuery()
             .taskCandidateGroup(groupId)
+            .taskTenantId(tenantId)
             .active()
             .list();
 
@@ -227,13 +233,14 @@ public class TaskService {
     }
 
     /**
-     * Get tasks for a process instance
+     * Get tasks for a process instance scoped to a tenant
      */
-    public List<TaskResponse> getTasksByProcessInstanceId(String processInstanceId) {
+    public List<TaskResponse> getTasksByProcessInstanceId(String processInstanceId, String tenantId) {
         log.debug("Fetching tasks for process instance: {}", processInstanceId);
 
         List<Task> tasks = flowableTaskService.createTaskQuery()
             .processInstanceId(processInstanceId)
+            .taskTenantId(tenantId)
             .active()
             .list();
 

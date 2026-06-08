@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
@@ -71,9 +73,11 @@ public class NotificationTemplateController {
     // ---- Endpoints --------------------------------------------------
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "List templates", description = "Returns all active notification templates")
-    public ResponseEntity<List<TemplateInfo>> listTemplates() {
-        List<TemplateInfo> templates = repository.findAllByDeletedAtIsNull()
+    public ResponseEntity<List<TemplateInfo>> listTemplates(Authentication authentication) {
+        String tenantId = extractTenantId(authentication);
+        List<TemplateInfo> templates = repository.findAllByTenantIdAndDeletedAtIsNull(tenantId)
             .stream()
             .map(t -> new TemplateInfo(
                 t.getTemplateKey(),
@@ -87,17 +91,19 @@ public class NotificationTemplateController {
     @GetMapping("/all")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'WORKFLOW_ADMIN')")
     @Operation(summary = "List all templates (full)", description = "Returns full template details for the admin designer")
-    public ResponseEntity<List<TemplateResponse>> listAll() {
+    public ResponseEntity<List<TemplateResponse>> listAll(Authentication authentication) {
+        String tenantId = extractTenantId(authentication);
         return ResponseEntity.ok(
-            repository.findAllByDeletedAtIsNull().stream().map(this::toResponse).toList()
+            repository.findAllByTenantIdAndDeletedAtIsNull(tenantId).stream().map(this::toResponse).toList()
         );
     }
 
     @GetMapping("/{key}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'WORKFLOW_ADMIN')")
     @Operation(summary = "Get template by key")
-    public ResponseEntity<TemplateResponse> getByKey(@PathVariable String key) {
-        return repository.findByTemplateKeyAndDeletedAtIsNull(key)
+    public ResponseEntity<TemplateResponse> getByKey(@PathVariable String key, Authentication authentication) {
+        String tenantId = extractTenantId(authentication);
+        return repository.findByTemplateKeyAndTenantIdAndDeletedAtIsNull(key, tenantId)
             .map(t -> ResponseEntity.ok(toResponse(t)))
             .orElse(ResponseEntity.notFound().build());
     }
@@ -105,12 +111,15 @@ public class NotificationTemplateController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'WORKFLOW_ADMIN')")
     @Operation(summary = "Create template")
-    public ResponseEntity<TemplateResponse> create(@Valid @RequestBody TemplateRequest request) {
-        if (repository.findByTemplateKeyAndDeletedAtIsNull(request.key()).isPresent()) {
+    public ResponseEntity<TemplateResponse> create(@Valid @RequestBody TemplateRequest request,
+            Authentication authentication) {
+        String tenantId = extractTenantId(authentication);
+        if (repository.findByTemplateKeyAndTenantIdAndDeletedAtIsNull(request.key(), tenantId).isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
         NotificationTemplate t = new NotificationTemplate();
         t.setTemplateKey(request.key());
+        t.setTenantId(tenantId);
         t.setName(request.name() != null ? request.name() : request.key());
         t.setChannel(request.channel());
         t.setSubject(request.subject());
@@ -125,8 +134,10 @@ public class NotificationTemplateController {
     @Operation(summary = "Update template")
     public ResponseEntity<TemplateResponse> update(
             @PathVariable String key,
-            @Valid @RequestBody TemplateRequest request) {
-        return repository.findByTemplateKeyAndDeletedAtIsNull(key)
+            @Valid @RequestBody TemplateRequest request,
+            Authentication authentication) {
+        String tenantId = extractTenantId(authentication);
+        return repository.findByTemplateKeyAndTenantIdAndDeletedAtIsNull(key, tenantId)
             .map(t -> {
                 t.setName(request.name() != null ? request.name() : t.getName());
                 t.setChannel(request.channel());
@@ -142,13 +153,26 @@ public class NotificationTemplateController {
     @DeleteMapping("/{key}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'WORKFLOW_ADMIN')")
     @Operation(summary = "Soft-delete template")
-    public ResponseEntity<Void> delete(@PathVariable String key) {
-        return repository.findByTemplateKeyAndDeletedAtIsNull(key)
+    public ResponseEntity<Void> delete(@PathVariable String key, Authentication authentication) {
+        String tenantId = extractTenantId(authentication);
+        return repository.findByTemplateKeyAndTenantIdAndDeletedAtIsNull(key, tenantId)
             .map(t -> {
                 t.setDeletedAt(OffsetDateTime.now());
                 repository.save(t);
                 return ResponseEntity.noContent().<Void>build();
             })
             .orElse(ResponseEntity.notFound().build());
+    }
+
+    // ---- Private helpers --------------------------------------------
+
+    private String extractTenantId(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
+            String tc = jwt.getClaimAsString("tenant_code");
+            if (tc != null && !tc.isBlank()) return tc;
+            String ti = jwt.getClaimAsString("tenant_id");
+            return (ti != null && !ti.isBlank()) ? ti : "default";
+        }
+        return "default";
     }
 }

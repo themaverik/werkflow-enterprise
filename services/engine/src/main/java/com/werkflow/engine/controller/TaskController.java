@@ -68,10 +68,11 @@ public class TaskController {
 
         JwtUserContext userContext = jwtClaimsExtractor.extractUserContext(jwt);
         List<String> userGroups = groupResolver.resolveGroups(userContext);
+        String tenantId = userContext.getTenantCode();
 
         if (assignee != null && !assignee.isEmpty()) {
             // My Tasks: restrict to current user only (H5 — prevent arbitrary user query)
-            tasks = taskService.getTasksForUser(userId);
+            tasks = taskService.getTasksForUser(userId, tenantId);
         } else if (candidateGroups != null && !candidateGroups.isEmpty()) {
             // Team/Group Tasks: intersect requested groups with user's own groups (H5)
             Set<String> userGroupSet = new java.util.HashSet<>(userGroups);
@@ -80,13 +81,13 @@ public class TaskController {
                 .collect(java.util.stream.Collectors.toList());
             tasks = allowedGroups.isEmpty()
                 ? List.of()
-                : taskService.getTasksForCandidateGroups(allowedGroups);
+                : taskService.getTasksForCandidateGroups(allowedGroups, tenantId);
         } else if (unassigned != null && unassigned) {
             // Unassigned tasks
-            tasks = taskService.getUnassignedTasks();
+            tasks = taskService.getUnassignedTasks(tenantId);
         } else {
             // Default: assigned to user + candidate tasks for user's resolved groups
-            tasks = taskService.getTasksForUserOrGroups(userId, userGroups);
+            tasks = taskService.getTasksForUserOrGroups(userId, userGroups, tenantId);
         }
 
         if (priority != null) {
@@ -123,7 +124,8 @@ public class TaskController {
     public ResponseEntity<List<TaskResponse>> getMyTasks(@AuthenticationPrincipal Jwt jwt) {
         // L-4: use sub (stable Keycloak UUID) instead of preferred_username for all task ops
         String userId = jwt.getSubject();
-        List<TaskResponse> responses = taskService.getTasksForUser(userId);
+        String tenantId = jwtClaimsExtractor.extractUserContext(jwt).getTenantCode();
+        List<TaskResponse> responses = taskService.getTasksForUser(userId, tenantId);
         return ResponseEntity.ok(responses);
     }
 
@@ -140,7 +142,8 @@ public class TaskController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                 "User is not a member of group: " + groupId);
         }
-        List<TaskResponse> responses = taskService.getTasksForGroup(groupId);
+        String tenantId = userContext.getTenantCode();
+        List<TaskResponse> responses = taskService.getTasksForGroup(groupId, tenantId);
         return ResponseEntity.ok(responses);
     }
 
@@ -156,9 +159,11 @@ public class TaskController {
     @GetMapping("/process-instance/{processInstanceId}")
     @Operation(summary = "Get tasks for a process instance")
     public ResponseEntity<List<TaskResponse>> getTasksByProcessInstanceId(
-        @Parameter(description = "Process instance ID") @PathVariable String processInstanceId
+        @Parameter(description = "Process instance ID") @PathVariable String processInstanceId,
+        @AuthenticationPrincipal Jwt jwt
     ) {
-        List<TaskResponse> responses = taskService.getTasksByProcessInstanceId(processInstanceId);
+        String tenantId = jwtClaimsExtractor.extractUserContext(jwt).getTenantCode();
+        List<TaskResponse> responses = taskService.getTasksByProcessInstanceId(processInstanceId, tenantId);
         return ResponseEntity.ok(responses);
     }
 

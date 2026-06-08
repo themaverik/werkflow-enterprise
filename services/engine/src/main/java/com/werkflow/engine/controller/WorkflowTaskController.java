@@ -196,9 +196,11 @@ public class WorkflowTaskController {
     @GetMapping("/process/{processInstanceId}")
     @Operation(summary = "Get tasks for a process instance")
     public ResponseEntity<List<TaskResponse>> getTasksByProcessInstance(
-            @Parameter(description = "Process instance ID") @PathVariable String processInstanceId) {
+            @Parameter(description = "Process instance ID") @PathVariable String processInstanceId,
+            @AuthenticationPrincipal Jwt jwt) {
         log.info("GET /workflows/tasks/process/{}", processInstanceId);
-        List<TaskResponse> responses = taskService.getTasksByProcessInstanceId(processInstanceId);
+        String tenantId = jwtClaimsExtractor.extractUserContext(jwt).getTenantCode();
+        List<TaskResponse> responses = taskService.getTasksByProcessInstanceId(processInstanceId, tenantId);
         return ResponseEntity.ok(responses);
     }
 }

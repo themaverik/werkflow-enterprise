@@ -11,4 +11,8 @@ public interface ProcessAuditLogRepository extends JpaRepository<ProcessAuditLog
     List<ProcessAuditLog> findByProcessInstanceId(String processInstanceId);
 
     List<ProcessAuditLog> findByProcessDefinitionKey(String processDefinitionKey);
+
+    List<ProcessAuditLog> findByProcessInstanceIdAndTenantId(String processInstanceId, String tenantId);
+
+    List<ProcessAuditLog> findByProcessDefinitionKeyAndTenantId(String processDefinitionKey, String tenantId);
 }
