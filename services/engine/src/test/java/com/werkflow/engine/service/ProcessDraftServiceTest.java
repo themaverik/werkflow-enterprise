@@ -28,6 +28,7 @@ class ProcessDraftServiceTest {
 
     @Test
     void listDrafts_returnsSummariesOrderedByUpdatedAtDesc() {
+        String tenantId = "tenant-1";
         Instant earlier = Instant.parse("2026-03-28T10:00:00Z");
         Instant later   = Instant.parse("2026-03-28T12:00:00Z");
 
@@ -36,6 +37,7 @@ class ProcessDraftServiceTest {
                 .processKey("process-a")
                 .name("Process A")
                 .bpmnXml("<xml/>")
+                .tenantId(tenantId)
                 .updatedAt(later)
                 .build();
         ProcessDraft draft2 = ProcessDraft.builder()
@@ -43,26 +45,28 @@ class ProcessDraftServiceTest {
                 .processKey("process-b")
                 .name("Process B")
                 .bpmnXml("<xml/>")
+                .tenantId(tenantId)
                 .updatedAt(earlier)
                 .build();
-        when(repository.findAllByOrderByUpdatedAtDesc()).thenReturn(List.of(draft1, draft2));
+        when(repository.findAllByTenantIdOrderByUpdatedAtDesc(tenantId)).thenReturn(List.of(draft1, draft2));
 
-        List<ProcessDraftSummaryDTO> result = processDraftService.listDrafts();
+        List<ProcessDraftSummaryDTO> result = processDraftService.listDrafts(tenantId);
 
         assertEquals(2, result.size());
         assertEquals("process-a", result.get(0).getProcessKey());
         assertEquals("process-b", result.get(1).getProcessKey());
-        verify(repository).findAllByOrderByUpdatedAtDesc();
+        verify(repository).findAllByTenantIdOrderByUpdatedAtDesc(tenantId);
     }
 
     @Test
     void listDrafts_returnsEmptyListWhenNoDrafts() {
-        when(repository.findAllByOrderByUpdatedAtDesc()).thenReturn(List.of());
+        String tenantId = "tenant-1";
+        when(repository.findAllByTenantIdOrderByUpdatedAtDesc(tenantId)).thenReturn(List.of());
 
-        List<ProcessDraftSummaryDTO> result = processDraftService.listDrafts();
+        List<ProcessDraftSummaryDTO> result = processDraftService.listDrafts(tenantId);
 
         assertNotNull(result);
         assertEquals(0, result.size());
-        verify(repository).findAllByOrderByUpdatedAtDesc();
+        verify(repository).findAllByTenantIdOrderByUpdatedAtDesc(tenantId);
     }
 }
