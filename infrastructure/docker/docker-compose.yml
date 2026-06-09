@@ -56,7 +56,7 @@ services:
 
   # Keycloak Identity and Access Management
   keycloak:
-    image: quay.io/keycloak/keycloak:23.0
+    image: quay.io/keycloak/keycloak:26.0.5
     container_name: werkflow-keycloak
     environment:
       KC_DB: postgres
@@ -64,23 +64,22 @@ services:
       KC_DB_USERNAME: keycloak_user
       KC_DB_PASSWORD: keycloak_pass
 
-      # Hostname Configuration for Docker Environment
-      # CRITICAL: Using 'start' (production mode) instead of 'start-dev' to enable hostname config
-      # Browser accesses Keycloak at localhost:8090 (port-mapped)
-      # Containers access Keycloak at keycloak:8080 (internal network)
-      # KC_HOSTNAME: Sets the frontend URL that browsers will use
-      KC_HOSTNAME: localhost
-      KC_HOSTNAME_PORT: 8090
+      # Hostname v2 (KC 26+): KC_HOSTNAME takes a full URL.
+      # Browser accesses Keycloak at localhost:8090 (port-mapped).
+      # Containers access Keycloak at keycloak:8080 (internal network).
+      # KC_HOSTNAME_STRICT: false allows both URLs to be accepted.
+      # KC_HOSTNAME_BACKCHANNEL_DYNAMIC: true lets backchannel calls use the
+      # request Host header (keycloak:8080) instead of the frontend hostname.
+      # Production: set KC_HOSTNAME to https://auth.werkflow.cloud
+      KC_HOSTNAME: http://localhost:8090
       KC_HOSTNAME_STRICT: false
-      KC_HOSTNAME_STRICT_HTTPS: false
-      KC_HOSTNAME_STRICT_BACKCHANNEL: true
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
 
       # Enable HTTP (required for local development)
       KC_HTTP_ENABLED: true
 
-      # Proxy mode: Tells Keycloak it's behind a reverse proxy
-      # This makes Keycloak respect X-Forwarded-* headers
-      KC_PROXY: edge
+      # KC 26+: KC_PROXY_HEADERS replaces the deprecated KC_PROXY option.
+      KC_PROXY_HEADERS: xforwarded
 
       # Logging and Metrics
       KC_LOG_LEVEL: info
