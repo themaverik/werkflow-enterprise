@@ -1,5 +1,6 @@
 package com.werkflow.admin.controller;
 
+import com.werkflow.admin.dto.UserInviteRequest;
 import com.werkflow.admin.dto.UserRequest;
 import com.werkflow.admin.dto.UserResponse;
 import com.werkflow.admin.security.JwtClaimsExtractor;
@@ -31,6 +32,17 @@ public class UserController {
     @Operation(summary = "Create user", description = "Create a new user (ADMIN, SUPER_ADMIN)")
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserRequest request) {
         UserResponse response = userService.createUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/invite")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @Operation(summary = "Invite user", description = "Create KC user + admin DB row via email invite")
+    public ResponseEntity<UserResponse> inviteUser(
+            @Valid @RequestBody UserInviteRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        String callerTenantCode = jwtClaimsExtractor.getTenantId(jwt);
+        UserResponse response = userService.inviteUser(request, callerTenantCode);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

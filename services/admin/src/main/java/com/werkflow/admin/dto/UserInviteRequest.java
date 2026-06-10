@@ -1,0 +1,35 @@
+package com.werkflow.admin.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserInviteRequest {
+
+    @NotBlank @Email @Size(max = 100)
+    private String email;
+
+    @NotBlank @Size(max = 100)
+    private String firstName;
+
+    @NotBlank @Size(max = 100)
+    private String lastName;
+
+    // Role name as a string (e.g. "ADMIN", "EMPLOYEE") — resolved against roles table
+    @NotBlank @Size(max = 50)
+    private String roleName;
+
+    // Optional enrichment
+    private Integer doaLevel;
+
+    @Size(max = 50)
+    private String departmentCode;
+}
