@@ -179,16 +179,9 @@ create_user() {
 }
 
 # ── Test users ─────────────────────────────────────────────────────────────────
-create_user "admin"        "admin123"   "admin@werkflow.com"       "Admin"  "User"    "super_admin" "admin" "doa_approver_level4"
-create_user "john.manager" "manager123" "john.manager@werkflow.com" "John"  "Manager" "doa_approver_level2"
-create_user "jane.employee" "employee123" "jane.employee@werkflow.com" "Jane" "Employee" "employee"
-
-# ── Password policy (applied after users so import passwords are not validated) ─
-echo "Applying password policy..."
-curl -sf -X PUT "${KEYCLOAK_URL}/admin/realms/werkflow" \
-  -H "$(auth)" -H "Content-Type: application/json" \
-  -d '{"passwordPolicy": "length(12) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1)"}' \
-  && echo "  password policy set" || echo "  WARNING: could not set password policy"
+create_user "admin"        "Werkflow@2026!"   "admin@werkflow.com"       "Admin"  "User"    "super_admin" "admin" "doa_approver_level4"
+create_user "john.manager" "Werkflow@2026!" "john.manager@werkflow.com" "John"  "Manager" "doa_approver_level2"
+create_user "jane.employee" "Werkflow@2026!" "jane.employee@werkflow.com" "Jane" "Employee" "employee"
 
 echo ""
 echo "Realm setup complete. Realm: werkflow, Client: werkflow-portal (secret updated)"
