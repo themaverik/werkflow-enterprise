@@ -15,4 +15,6 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
     List<Organization> findByActive(Boolean active);
 
     boolean existsByName(String name);
+
+    Optional<Organization> findByTenantCode(String tenantCode);
 }
