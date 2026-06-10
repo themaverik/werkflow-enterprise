@@ -67,24 +67,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
-    const idToken = (session as any)?.idToken
-    const keycloakIssuer = process.env.NEXT_PUBLIC_KEYCLOAK_ISSUER_BROWSER
-    const clientId = process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID
+    // Fetch KC logout URL server-side before clearing session.
+    // KEYCLOAK_ISSUER_BROWSER / KEYCLOAK_CLIENT_ID are server-only env vars
+    // (no NEXT_PUBLIC_ prefix) so they cannot be read client-side directly.
+    let kcLogoutUrl = '/login'
+    try {
+      const res = await fetch('/api/auth/logout')
+      if (res.ok) {
+        const data = await res.json()
+        kcLogoutUrl = data.url ?? '/login'
+      }
+    } catch {
+      // fall through to /login
+    }
 
     await signOut({ redirect: false })
-
-    if (typeof window !== 'undefined') {
-      if (keycloakIssuer && clientId) {
-        const postLogoutUri = window.location.origin + '/login'
-        const params = new URLSearchParams({ client_id: clientId, post_logout_redirect_uri: postLogoutUri })
-        if (idToken) params.set('id_token_hint', idToken)
-        window.location.href = `${keycloakIssuer}/protocol/openid-connect/logout?${params.toString()}`
-      } else {
-        console.warn('Keycloak issuer or client_id not configured — falling back to /login')
-        window.location.href = '/login'
-      }
-    }
-  }, [session])
+    window.location.href = kcLogoutUrl
+  }, [])
 
   const refreshToken = useCallback(async (): Promise<string | null> => {
     // Token refresh is handled by next-auth automatically
