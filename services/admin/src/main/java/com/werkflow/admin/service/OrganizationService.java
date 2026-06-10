@@ -6,8 +6,10 @@ import com.werkflow.admin.entity.Organization;
 import com.werkflow.admin.repository.OrganizationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -53,7 +55,8 @@ public class OrganizationService {
     public OrganizationResponse getByTenantCode(String tenantCode) {
         log.debug("Fetching organization for tenantCode: {}", tenantCode);
         Organization organization = organizationRepository.findByTenantCode(tenantCode)
-            .orElseThrow(() -> new RuntimeException("Organization not found for tenant: " + tenantCode));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Organization not found for tenant: " + tenantCode));
         return mapToResponse(organization);
     }
 

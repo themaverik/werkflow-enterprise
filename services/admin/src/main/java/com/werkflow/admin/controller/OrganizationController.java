@@ -36,6 +36,7 @@ public class OrganizationController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @Operation(summary = "Get organization by ID", description = "Retrieve organization details by ID")
     public ResponseEntity<OrganizationResponse> getOrganizationById(@PathVariable Long id) {
         OrganizationResponse response = organizationService.getOrganizationById(id);
@@ -43,6 +44,7 @@ public class OrganizationController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @Operation(summary = "Get all organizations", description = "Retrieve all organizations")
     public ResponseEntity<List<OrganizationResponse>> getAllOrganizations() {
         List<OrganizationResponse> response = organizationService.getAllOrganizations();
@@ -50,6 +52,7 @@ public class OrganizationController {
     }
 
     @GetMapping("/active")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @Operation(summary = "Get active organizations", description = "Retrieve all active organizations")
     public ResponseEntity<List<OrganizationResponse>> getActiveOrganizations() {
         List<OrganizationResponse> response = organizationService.getActiveOrganizations();
@@ -63,7 +66,7 @@ public class OrganizationController {
             @PathVariable String tenantCode,
             @AuthenticationPrincipal Jwt jwt) {
         String callerTenant = jwtClaimsExtractor.getTenantId(jwt);
-        if (!jwtClaimsExtractor.hasRole(jwt, "SUPER_ADMIN") && !callerTenant.equals(tenantCode)) {
+        if (!jwtClaimsExtractor.hasRole(jwt, "SUPER_ADMIN") && !callerTenant.equalsIgnoreCase(tenantCode)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
         OrganizationResponse response = organizationService.getByTenantCode(tenantCode);
