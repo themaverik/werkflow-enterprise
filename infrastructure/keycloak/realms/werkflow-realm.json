@@ -33,7 +33,7 @@
       "publicClient": false,
       "protocol": "openid-connect",
       "attributes": {
-        "post.logout.redirect.uris": "http://localhost:4000/*"
+        "post.logout.redirect.uris": "+"
       },
       "protocolMappers": [
         {
