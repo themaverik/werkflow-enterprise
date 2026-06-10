@@ -36,7 +36,8 @@
     "marketplace": "Marketplace",
     "credentials": "Credentials",
     "platformManagement": "Platform",
-    "platformTenants": "Tenants"
+    "platformTenants": "Tenants",
+    "users": "Users"
   },
   "dashboard": {
     "title": "Dashboard",
