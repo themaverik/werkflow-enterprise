@@ -13,9 +13,9 @@ The following demo users are pre-loaded in the default Keycloak realm.
 
 | Username | Password | DOA Level | Role in this tutorial |
 |---|---|---|---|
-| `demo.employee` | `Demo1234!` | L1 | Submits the request |
-| `demo.manager` | `Demo1234!` | L2 | Approves requests up to $50K |
-| `demo.admin` | `Demo1234!` | L4 | Approves requests over $50K |
+| `demo.employee` | `Werkflow@2026!` | L1 | Submits the request |
+| `demo.manager` | `Werkflow@2026!` | L2 | Approves requests up to $50K |
+| `demo.admin` | `Werkflow@2026!` | L4 | Approves requests over $50K |
 
 ---
 

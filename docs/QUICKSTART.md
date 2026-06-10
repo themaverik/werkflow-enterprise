@@ -68,7 +68,7 @@ docker compose ps
 ## Step 4 — Get the Keycloak client secret
 
 1. Open http://localhost:8090 (Keycloak admin)
-2. Log in: username `admin`, password `admin123`
+2. Log in: username `admin`, password `Werkflow@2026!`
 3. Select realm `werkflow`
 4. Go to **Clients** → `werkflow-portal` → **Credentials** tab
 5. Copy the **Client secret**
@@ -89,9 +89,23 @@ Default credentials (set in Keycloak):
 
 | Username | Password | Role |
 |---|---|---|
-| `admin` | `admin123` | Admin |
+| `admin` | `Werkflow@2026!` | Admin |
 
 > To add users or change passwords: Keycloak admin → Realm `werkflow` → Users.
+
+---
+
+## Step 5b — User accounts explained
+
+Three tiers of accounts exist:
+
+**Super admin** (`admin` / `Werkflow@2026!`) — seeded automatically by the V29 Flyway migration on every fresh deploy. Logs in at http://localhost:4000. Can manage all tenants.
+
+**Tenant admin** — created automatically when you provision a tenant via **Admin → Platform → Tenants → New**. The admin's email and password are set via the Keycloak invite email they receive. Until SMTP is configured, set the password manually in Keycloak admin → Realm `werkflow` → Users → select the admin user → Credentials.
+
+**Tenant users** — invited by a tenant admin via **Admin → Users → Invite User**. They receive a Keycloak email to set their own password. Until SMTP is configured, set passwords manually in Keycloak admin.
+
+> All demo seed users (`admin`, `demo.admin`, `demo.employee`, `demo.manager`, etc.) use the password `Werkflow@2026!`.
 
 ---
 

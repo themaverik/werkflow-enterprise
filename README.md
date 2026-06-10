@@ -51,7 +51,7 @@ Engine Swagger UI: http://localhost:8081/swagger-ui.html
 
 | Service        | URL                     | Username           | Password             |
 |----------------|-------------------------|--------------------|----------------------|
-| Portal (admin) | http://localhost:4000   | admin              | (set in Keycloak)    |
+| Portal (admin) | http://localhost:4000   | admin              | Werkflow@2026!       |
 | Keycloak admin | http://localhost:8090   | admin              | admin123             |
 | pgAdmin        | http://localhost:5050   | admin@werkflow.com | admin                |
 | PostgreSQL     | localhost:5433          | werkflow_admin     | werkflow_secure_pass |
