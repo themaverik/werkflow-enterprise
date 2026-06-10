@@ -162,7 +162,7 @@ public class JwtClaimsExtractor {
         }
         @SuppressWarnings("unchecked")
         List<String> roles = (List<String>) realmAccess.get("roles");
-        return roles != null && roles.contains(role);
+        return roles != null && roles.stream().anyMatch(r -> r.equalsIgnoreCase(role));
     }
 
     /**
