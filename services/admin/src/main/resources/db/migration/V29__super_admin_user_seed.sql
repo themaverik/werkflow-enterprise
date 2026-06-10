@@ -31,7 +31,7 @@ SELECT
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
 FROM organizations o
-WHERE o.name = 'Werkflow Organisation'
+WHERE o.tenant_code = 'default'
 ON CONFLICT (keycloak_id) DO NOTHING;
 
 INSERT INTO user_roles (user_id, role_id)
