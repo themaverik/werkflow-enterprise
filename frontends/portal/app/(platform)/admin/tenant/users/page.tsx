@@ -108,7 +108,7 @@ async function inviteUser(payload: InvitePayload): Promise<UserRow> {
 
 export default function TenantUsersPage() {
   const { user } = useAuth()
-  const tenantCode = user?.tenantId ?? 'default'
+  const tenantCode = user?.tenantId ?? ''
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
@@ -119,7 +119,7 @@ export default function TenantUsersPage() {
   const { data: org } = useQuery<OrgInfo>({
     queryKey: ['org', tenantCode],
     queryFn: () => fetchOrg(tenantCode),
-    enabled: !!tenantCode,
+    enabled: !!user && !!tenantCode && tenantCode !== 'default',
   })
 
   const { data: users = [], isFetching, refetch } = useQuery<UserRow[]>({
@@ -140,17 +140,30 @@ export default function TenantUsersPage() {
       setForm(EMPTY_FORM)
       setFormError(null)
     },
-    onError: (e: Error) => setFormError(e.message),
+    onError: (e: unknown) => setFormError(e instanceof Error ? e.message : 'Unexpected error'),
   })
 
   function handleInvite() {
     setFormError(null)
+    if (!form.firstName.trim() || !form.lastName.trim()) {
+      setFormError('First name and last name are required.')
+      return
+    }
+    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setFormError('A valid email address is required.')
+      return
+    }
+    const doa = form.doaLevel ? parseInt(form.doaLevel, 10) : NaN
+    if (isNaN(doa) || doa < 1 || doa > 4) {
+      setFormError('DOA Level must be between 1 and 4.')
+      return
+    }
     invite.mutate({
       email: form.email,
       firstName: form.firstName,
       lastName: form.lastName,
       roleName: form.roleName,
-      doaLevel: form.doaLevel ? parseInt(form.doaLevel, 10) : undefined,
+      doaLevel: doa,
       departmentCode: form.departmentCode || undefined,
     })
   }
@@ -233,7 +246,13 @@ export default function TenantUsersPage() {
         )}
       </div>
 
-      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+      <Dialog open={inviteOpen} onOpenChange={(open) => {
+        setInviteOpen(open)
+        if (!open) {
+          setForm({ email: '', firstName: '', lastName: '', roleName: 'EMPLOYEE', doaLevel: '', departmentCode: '' })
+          setFormError(null)
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Invite User</DialogTitle>
@@ -306,7 +325,7 @@ export default function TenantUsersPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setInviteOpen(false)}>
+            <Button variant="outline" onClick={() => setInviteOpen(false)} disabled={invite.isPending}>
               Cancel
             </Button>
             <Button onClick={handleInvite} disabled={invite.isPending}>
