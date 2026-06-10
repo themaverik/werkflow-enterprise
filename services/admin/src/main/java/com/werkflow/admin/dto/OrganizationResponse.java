@@ -27,6 +27,7 @@ public class OrganizationResponse {
     private String email;
     private String website;
     private Boolean active;
+    private String tenantCode;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
