@@ -24,7 +24,7 @@ import java.util.List;
  * Orchestrates tenant creation: DB rows (Tenant + Organization + admin User) + Keycloak user.
  *
  * <p>DB writes are wrapped in {@code @Transactional}. The Keycloak call is non-transactional by
- * nature. On KC failure, compensating deletes remove the three DB rows.
+ * nature. On KC failure, Spring rolls back all DB writes automatically.
  *
  * <p>Contract: KC username = adminEmail = admin DB {@code keycloak_id} = admin DB {@code username}.
  * This matches how {@code JwtUserContext.userId = preferred_username = email} is used as the lookup
@@ -100,7 +100,7 @@ public class TenantProvisioningService {
                 .build();
         userRepository.save(adminUser);
 
-        // 4. Create KC user — non-transactional; compensate with DB deletes on failure
+        // 4. Create KC user — non-transactional; @Transactional rolls back all DB writes on failure
         try {
             keycloakUserService.createKeycloakUser(
                     request.getAdminEmail(),
@@ -110,11 +110,8 @@ public class TenantProvisioningService {
                     "admin"
             );
         } catch (Exception e) {
-            log.error("Keycloak user creation failed for tenant={}, performing compensating deletes: {}",
+            log.error("Keycloak user creation failed for tenant={}, transaction will roll back all DB writes: {}",
                     request.getTenantCode(), e.getMessage());
-            userRepository.delete(adminUser);
-            organizationRepository.delete(savedOrg);
-            tenantRepository.delete(saved);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Tenant provisioning failed: Keycloak user could not be created");
         }

@@ -100,7 +100,7 @@ class UserInviteServiceTest {
         assertThatThrownBy(() -> userService.inviteUser(request, "acme"))
                 .hasMessageContaining("invite failed");
 
-        verify(userRepository).delete(savedUser);
+        verify(userRepository, never()).delete(any(User.class));
     }
 
     @Test

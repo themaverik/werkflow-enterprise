@@ -108,9 +108,10 @@ class TenantProvisioningServiceTest {
         assertThatThrownBy(() -> service.provision(request))
                 .hasMessageContaining("Tenant provisioning failed");
 
-        // Compensating deletes run
-        verify(tenantRepository).delete(savedTenant);
-        verify(organizationRepository).delete(savedOrg);
+        verify(keycloakUserService).createKeycloakUser(anyString(), anyString(), anyString(), anyString(), anyString());
+        verify(tenantRepository, never()).delete(any(Tenant.class));
+        verify(organizationRepository, never()).delete(any(Organization.class));
+        verify(userRepository, never()).delete(any(User.class));
     }
 
     @Test

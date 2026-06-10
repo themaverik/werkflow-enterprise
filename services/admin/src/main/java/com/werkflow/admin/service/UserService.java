@@ -98,7 +98,7 @@ public class UserService {
 
     /**
      * Invites a new user: writes the admin DB row first, then creates the Keycloak user.
-     * On KC failure, the DB row is deleted (compensating action).
+     * On KC failure, Spring rolls back the DB write automatically via {@code @Transactional}.
      *
      * <p>KC username = email = DB {@code keycloak_id} = DB {@code username} (preferred_username contract).
      *
@@ -120,6 +120,11 @@ public class UserService {
         if (userRepository.existsByUsername(request.getEmail())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "User with username '" + request.getEmail() + "' already exists");
+        }
+
+        if ("SUPER_ADMIN".equalsIgnoreCase(request.getRoleName())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "SUPER_ADMIN role cannot be assigned via invite");
         }
 
         Organization org = organizationRepository.findByTenantCode(callerTenantCode)
@@ -148,6 +153,8 @@ public class UserService {
         User saved = userRepository.save(user);
 
         try {
+            // KC realm roles are lowercase by convention (e.g. "admin", "employee").
+            // The DB roles table stores uppercase. toUpperCase() for DB, toLowerCase() for KC.
             keycloakUserService.createKeycloakUser(
                     request.getEmail(),
                     request.getFirstName(),
@@ -156,8 +163,7 @@ public class UserService {
                     request.getRoleName().toLowerCase()
             );
         } catch (Exception e) {
-            log.error("KC invite failed for email={}, compensating DB delete: {}", request.getEmail(), e.getMessage());
-            userRepository.delete(saved);
+            log.error("KC invite failed for email={}, transaction will roll back DB write: {}", request.getEmail(), e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "User invite failed: Keycloak user could not be created");
         }

@@ -36,8 +36,8 @@ public class UserController {
     }
 
     @PostMapping("/invite")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
-    @Operation(summary = "Invite user", description = "Create KC user + admin DB row via email invite")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Invite user", description = "Create KC user + admin DB row via email invite (ADMIN only)")
     public ResponseEntity<UserResponse> inviteUser(
             @Valid @RequestBody UserInviteRequest request,
             @AuthenticationPrincipal Jwt jwt) {

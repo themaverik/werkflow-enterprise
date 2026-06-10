@@ -9,6 +9,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -164,7 +165,12 @@ public class KeycloakUserService {
 
     @SuppressWarnings("unchecked")
     private String findKeycloakUserIdByEmail(String email, String token) {
-        String searchUrl = keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users?email=" + email + "&exact=true";
+        String searchUrl = UriComponentsBuilder
+                .fromHttpUrl(keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users")
+                .queryParam("email", email)
+                .queryParam("exact", "true")
+                .build()
+                .toUriString();
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);
         ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
