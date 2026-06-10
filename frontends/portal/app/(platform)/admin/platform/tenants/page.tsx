@@ -162,6 +162,12 @@ export default function TenantsPage() {
   const isSuperAdmin = hasRole('SUPER_ADMIN')
   const { toast } = useToast()
 
+  useEffect(() => {
+    if (!isSuperAdmin) {
+      router.replace('/dashboard')
+    }
+  }, [isSuperAdmin, router])
+
   const { data: tenants, isLoading, error, refetch } = useQuery({
     queryKey: ['platform-tenants'],
     queryFn: fetchTenants,
@@ -173,7 +179,6 @@ export default function TenantsPage() {
   const [deleting, setDeleting] = useState<TenantRow | null>(null)
 
   if (!isSuperAdmin) {
-    router.replace('/dashboard')
     return null
   }
 
