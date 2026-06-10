@@ -50,6 +50,14 @@ public class OrganizationService {
     }
 
     @Transactional(readOnly = true)
+    public OrganizationResponse getByTenantCode(String tenantCode) {
+        log.debug("Fetching organization for tenantCode: {}", tenantCode);
+        Organization organization = organizationRepository.findByTenantCode(tenantCode)
+            .orElseThrow(() -> new RuntimeException("Organization not found for tenant: " + tenantCode));
+        return mapToResponse(organization);
+    }
+
+    @Transactional(readOnly = true)
     public OrganizationResponse getOrganizationById(Long id) {
         log.debug("Fetching organization with ID: {}", id);
 
@@ -139,6 +147,7 @@ public class OrganizationService {
             .email(organization.getEmail())
             .website(organization.getWebsite())
             .active(organization.getActive())
+            .tenantCode(organization.getTenantCode())
             .createdAt(organization.getCreatedAt())
             .updatedAt(organization.getUpdatedAt())
             .build();
