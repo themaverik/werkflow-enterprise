@@ -16,7 +16,7 @@
       "clientId": "werkflow-portal",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "${KEYCLOAK_PORTAL_CLIENT_SECRET}",
+      "secret": "${KEYCLOAK_CLIENT_SECRET}",
       "redirectUris": [
         "http://localhost:4000/*",
         "http://localhost:4000/api/auth/callback/keycloak"
