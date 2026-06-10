@@ -1,6 +1,7 @@
 package com.werkflow.admin.service;
 
 import com.werkflow.admin.dto.RoleResponse;
+import com.werkflow.admin.dto.UserInviteRequest;
 import com.werkflow.admin.dto.UserProfileResponse;
 import com.werkflow.admin.dto.UserRequest;
 import com.werkflow.admin.dto.UserResponse;
@@ -28,6 +29,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final OrganizationRepository organizationRepository;
     private final RoleRepository roleRepository;
+    private final KeycloakUserService keycloakUserService;
 
     @Transactional
     public UserResponse createUser(UserRequest request) {
@@ -92,6 +94,76 @@ public class UserService {
         log.info("User created successfully with ID: {}", user.getId());
 
         return mapToResponse(user);
+    }
+
+    /**
+     * Invites a new user: writes the admin DB row first, then creates the Keycloak user.
+     * On KC failure, the DB row is deleted (compensating action).
+     *
+     * <p>KC username = email = DB {@code keycloak_id} = DB {@code username} (preferred_username contract).
+     *
+     * @param request        invite details — email becomes the KC username/preferred_username
+     * @param callerTenantCode tenant code extracted from the caller's JWT
+     * @return {@link UserResponse} for the newly created user
+     * @throws ResponseStatusException 409 if email/username/keycloakId already exists; 500 on KC failure
+     */
+    @Transactional
+    public UserResponse inviteUser(UserInviteRequest request, String callerTenantCode) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "User with email '" + request.getEmail() + "' already exists");
+        }
+        if (userRepository.existsByKeycloakId(request.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "User with Keycloak ID '" + request.getEmail() + "' already exists");
+        }
+        if (userRepository.existsByUsername(request.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "User with username '" + request.getEmail() + "' already exists");
+        }
+
+        Organization org = organizationRepository.findByTenantCode(callerTenantCode)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Organization not found for tenant: " + callerTenantCode));
+
+        Role role = roleRepository.findByName(request.getRoleName().toUpperCase())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Role not found: " + request.getRoleName()));
+
+        // keycloakId = username = email — preferred_username contract
+        User user = User.builder()
+                .keycloakId(request.getEmail())
+                .username(request.getEmail())
+                .email(request.getEmail())
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .organization(org)
+                .tenantCode(callerTenantCode)
+                .doaLevel(request.getDoaLevel())
+                .departmentCode(request.getDepartmentCode())
+                .active(true)
+                .emailVerified(false)
+                .roles(List.of(role))
+                .build();
+        User saved = userRepository.save(user);
+
+        try {
+            keycloakUserService.createKeycloakUser(
+                    request.getEmail(),
+                    request.getFirstName(),
+                    request.getLastName(),
+                    callerTenantCode,
+                    request.getRoleName().toLowerCase()
+            );
+        } catch (Exception e) {
+            log.error("KC invite failed for email={}, compensating DB delete: {}", request.getEmail(), e.getMessage());
+            userRepository.delete(saved);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "User invite failed: Keycloak user could not be created");
+        }
+
+        log.info("User invited: email={}, tenant={}, role={}", request.getEmail(), callerTenantCode, request.getRoleName());
+        return mapToResponse(saved);
     }
 
     @Transactional(readOnly = true)
