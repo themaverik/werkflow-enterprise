@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthorization } from '@/lib/auth/use-authorization'
 import { PageSurface } from '@/components/layout/page-surface'
@@ -36,8 +36,13 @@ export default function NewTenantPage() {
 
   const isSuperAdmin = hasRole('SUPER_ADMIN')
 
+  useEffect(() => {
+    if (!isSuperAdmin) {
+      router.replace('/dashboard')
+    }
+  }, [isSuperAdmin, router])
+
   if (!isSuperAdmin) {
-    router.replace('/dashboard')
     return null
   }
 
