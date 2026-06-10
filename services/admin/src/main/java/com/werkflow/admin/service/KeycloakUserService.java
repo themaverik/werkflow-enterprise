@@ -93,20 +93,22 @@ public class KeycloakUserService {
     }
 
     /**
-     * Creates a Keycloak user for a new tenant's initial admin.
-     * Sets the tenant_id user attribute, enables UPDATE_PASSWORD and VERIFY_EMAIL
-     * required actions, and assigns the realm 'admin' role.
+     * Creates a Keycloak user, assigns one realm role, and sends the invite email.
+     * The KC username is set to {@code email} — consistent with how preferred_username
+     * is used as the lookup key in the admin DB (keycloak_id = preferred_username = email).
      *
-     * @param email       the new user's email (also used as username)
-     * @param firstName   the new user's first name
-     * @param lastName    the new user's last name
-     * @param tenantId    the tenant code to set as the tenant_id KC attribute
-     * @throws IllegalStateException if KC user creation or role assignment fails
+     * @param email     the user's email; also becomes the KC username/preferred_username
+     * @param firstName first name
+     * @param lastName  last name
+     * @param tenantId  value to set as the 'tenant_id' KC user attribute
+     * @param roleName  realm role to assign (e.g. "admin", "employee")
+     * @throws IllegalStateException if KC user creation, role lookup, or role assignment fails
      */
-    public void createTenantAdminUser(String email, String firstName, String lastName, String tenantId) {
+    public void createKeycloakUser(
+            String email, String firstName, String lastName,
+            String tenantId, String roleName) {
         String token = fetchServiceAccountToken();
 
-        // 1. Create the user
         String createUrl = keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users";
         Map<String, Object> userRepresentation = Map.of(
                 "username", email,
@@ -119,37 +121,45 @@ public class KeycloakUserService {
                 "requiredActions", List.of("UPDATE_PASSWORD", "VERIFY_EMAIL")
         );
 
-        HttpHeaders createHeaders = new HttpHeaders();
-        createHeaders.setContentType(MediaType.APPLICATION_JSON);
-        createHeaders.setBearerAuth(token);
-        HttpEntity<Map<String, Object>> createRequest = new HttpEntity<>(userRepresentation, createHeaders);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
 
         ResponseEntity<Void> createResponse = restTemplate.exchange(
-                createUrl, HttpMethod.POST, createRequest, Void.class);
+                createUrl, HttpMethod.POST,
+                new HttpEntity<>(userRepresentation, headers), Void.class);
 
         if (!createResponse.getStatusCode().is2xxSuccessful()) {
-            throw new IllegalStateException("Keycloak user creation failed with status: " + createResponse.getStatusCode());
+            throw new IllegalStateException(
+                    "Keycloak user creation failed with status: " + createResponse.getStatusCode());
         }
 
-        // 2. Retrieve the newly created user's ID
         String userId = findKeycloakUserIdByEmail(email, token);
+        assignRealmRole(userId, roleName, token);
 
-        // 3. Assign the realm 'admin' role to the user
-        assignRealmRole(userId, "admin", token);
-
-        // 4. Send the required actions email (invite link)
         String actionsEmailUrl = keycloakAdminUrl + "/admin/realms/" + keycloakRealm
                 + "/users/" + userId + "/execute-actions-email";
-        HttpEntity<List<String>> actionsRequest = new HttpEntity<>(
-                List.of("UPDATE_PASSWORD", "VERIFY_EMAIL"), createHeaders);
         try {
-            restTemplate.exchange(actionsEmailUrl, HttpMethod.PUT, actionsRequest, Void.class);
+            restTemplate.exchange(actionsEmailUrl, HttpMethod.PUT,
+                    new HttpEntity<>(List.of("UPDATE_PASSWORD", "VERIFY_EMAIL"), headers), Void.class);
         } catch (Exception e) {
-            // Non-fatal: SMTP may not be configured in dev. Log and continue.
-            log.warn("Failed to send required-actions email to {} (SMTP may not be configured): {}", email, e.getMessage());
+            log.warn("Failed to send invite email to {} (SMTP may not be configured): {}", email, e.getMessage());
         }
 
-        log.info("Tenant admin user created in Keycloak: email={}, tenantId={}", email, tenantId);
+        log.info("Keycloak user created: email={}, tenantId={}, role={}", email, tenantId, roleName);
+    }
+
+    /**
+     * Creates a Keycloak user for a new tenant's initial admin.
+     * Delegates to {@link #createKeycloakUser} with the hardcoded realm role "admin".
+     *
+     * @param email     the new user's email (also used as username)
+     * @param firstName the new user's first name
+     * @param lastName  the new user's last name
+     * @param tenantId  the tenant code to set as the tenant_id KC attribute
+     */
+    public void createTenantAdminUser(String email, String firstName, String lastName, String tenantId) {
+        createKeycloakUser(email, firstName, lastName, tenantId, "admin");
     }
 
     @SuppressWarnings("unchecked")
