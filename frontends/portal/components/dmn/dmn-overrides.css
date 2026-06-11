@@ -3,7 +3,9 @@
  * Imported after the dmn-js dist CSS so these rules take precedence.
  */
 
-/* Reduce decision name from 21px to match ~Hit policy label size + a little */
+/* dmn-js INTERNAL — .decision-table-name not in public CSS variable API.
+   Verified: dmn-js v14.x. Check CHANGELOG on upgrade:
+   https://github.com/bpmn-io/dmn-js/blob/develop/CHANGELOG.md */
 .dmn-decision-table-container .decision-table-name {
   font-size: 15px;
   font-weight: 600;
@@ -25,7 +27,8 @@
   color: hsl(207 14% 57%);
 }
 
-/* DRD definitions panel */
+/* dmn-js INTERNAL — .dmn-definitions/.dmn-definitions-name/.dmn-definitions-id
+   not in public CSS variable API. Verified: dmn-js v14.x. Check CHANGELOG on upgrade. */
 .dmn-drd-container .dmn-definitions .dmn-definitions-name {
   font-size: 15px;
   font-weight: 600;
