@@ -34,7 +34,7 @@ public class FormSchemaDataLoader implements CommandLineRunner {
             // Load CapEx Request Form
             loadFormSchema(
                     "capex-request-form",
-                    "forms/capex-request-form.json",
+                    "examples/tenants/default/forms/capex-request-form.json",
                     "Capital Expenditure Request Form - 22 fields for CapEx approval workflow",
                     FormSchema.FormType.TASK_FORM
             );
@@ -42,15 +42,15 @@ public class FormSchemaDataLoader implements CommandLineRunner {
             // Load CapEx Approval Form
             loadFormSchema(
                     "capex-approval-form",
-                    "forms/capex-approval-form.json",
-                    "Capital Expenditure Approval Form - 25 fields for CapEx approval decision",
+                    "examples/tenants/default/forms/capex-approval-form.json",
+                    "Capital Expenditure Approval Form - 3 fields for CapEx approval decision",
                     FormSchema.FormType.APPROVAL
             );
 
             // Load Leave Request Form
             loadFormSchema(
                     "leave-request-form",
-                    "forms/leave-request-form.json",
+                    "examples/tenants/default/forms/leave-request-form.json",
                     "Leave Request Form - 28 fields for employee leave requests",
                     FormSchema.FormType.TASK_FORM
             );
@@ -58,25 +58,9 @@ public class FormSchemaDataLoader implements CommandLineRunner {
             // Load Leave Approval Form
             loadFormSchema(
                     "leave-approval-form",
-                    "forms/leave-approval-form.json",
-                    "Leave Approval Form - 24 fields for leave request approval",
+                    "examples/tenants/default/forms/leave-approval-form.json",
+                    "Leave Approval Form - 3 fields for leave request approval decision",
                     FormSchema.FormType.APPROVAL
-            );
-
-            // Load Purchase Requisition Form
-            loadFormSchema(
-                    "purchase-requisition-form",
-                    "forms/purchase-requisition-form.json",
-                    "Purchase Requisition Form - 30 fields for procurement requests",
-                    FormSchema.FormType.TASK_FORM
-            );
-
-            // Load Asset Request Form
-            loadFormSchema(
-                    "asset-request-form",
-                    "forms/asset-request-form.json",
-                    "Asset Request Form — dynamic category and asset selects via dataSource pattern",
-                    FormSchema.FormType.TASK_FORM
             );
 
             log.info("Form schema data initialization completed successfully");

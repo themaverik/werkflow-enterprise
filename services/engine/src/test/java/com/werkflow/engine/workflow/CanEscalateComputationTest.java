@@ -32,13 +32,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>The traversal logic is replicated here verbatim against a real deployed
  * {@link BpmnModel}.  The production method is private; replicating the traversal
  * in the test avoids reflection while still asserting against the exact topology
- * of the deployed BPMN.  Three scenarios are covered:
+ * of the deployed BPMN.  Scenarios covered:
  *
  * <ol>
  *   <li><b>capex managerApproval</b>: gateway has an escalate outgoing flow → {@code true}.</li>
  *   <li><b>capex cfoApproval</b>: gateway has no escalate flow (top level) → {@code false}.</li>
- *   <li><b>general-approval directorApproval</b>: top level, gateway only routes approve/reject
- *       → {@code false}.</li>
  *   <li><b>runtime case</b>: start a capex instance, assert managerApproval → {@code true};
  *       escalate it, assert vpApproval → {@code true}.</li>
  * </ol>
@@ -78,21 +76,13 @@ class CanEscalateComputationTest {
 
         // capex-approval-process v3 has three DMN service tasks — deploy DMN first (ADR-029 Phase 2).
         repositoryService.createDeployment()
-                .addClasspathResource("dmn-examples/capex-approver-resolution.dmn")
+                .addClasspathResource("examples/tenants/default/dmn/capex-approver-resolution.dmn")
                 .name("canEscalate-capex-dmn")
                 .deploy();
 
         repositoryService.createDeployment()
-                .addClasspathResource("processes/examples/capex-approval-process.bpmn20.xml")
+                .addClasspathResource("examples/tenants/default/bpmn/capex-approval-process.bpmn20.xml")
                 .name("canEscalate-capex-test")
-                .deploy();
-
-        // general-approval provides a second two-level process (manager has escalate,
-        // director is top level / no escalate) without triggering the leave-request XSD
-        // ordering issue that prevents safe-XML deployment in the test engine.
-        repositoryService.createDeployment()
-                .addClasspathResource("processes/examples/general-approval.bpmn20.xml")
-                .name("canEscalate-general-test")
                 .deploy();
     }
 
@@ -191,24 +181,7 @@ class CanEscalateComputationTest {
     }
 
     // -------------------------------------------------------------------------
-    // Case 3: general-approval directorApproval — top level, no escalate route → false
-    // -------------------------------------------------------------------------
-
-    @Test
-    @DisplayName("3. general-approval directorApproval (top level) → no escalate route → canEscalate=false")
-    void generalApproval_directorApproval_canEscalate_isFalse() {
-        ProcessDefinition pd = definitionFor("general-approval");
-        BpmnModel model = repositoryService.getBpmnModel(pd.getId());
-
-        boolean result = traverseCanEscalate(model, "directorApproval");
-
-        assertThat(result)
-                .as("general-approval directorApproval has no escalate route → canEscalate must be false")
-                .isFalse();
-    }
-
-    // -------------------------------------------------------------------------
-    // Case 4: runtime — start a capex instance, confirm canEscalate values at each active task
+    // Case 3: runtime — start a capex instance, confirm canEscalate values at each active task
     // -------------------------------------------------------------------------
 
     @Test

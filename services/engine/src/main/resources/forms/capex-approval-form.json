@@ -1,12 +1,9 @@
 {
-  "id": "general-approval-decision",
-  "name": "Approval Decision",
-  "versionTag": "1",
   "type": "default",
   "components": [
     {
       "type": "text",
-      "text": "<h3>Approval Decision</h3><p>Review the request details and enter your decision below.</p>"
+      "text": "<h3>CapEx Approval Decision</h3><p>Review the capital expenditure request and provide your decision.</p>"
     },
     {
       "type": "select",
@@ -14,7 +11,8 @@
       "label": "Decision",
       "values": [
         { "label": "Approve", "value": "approve" },
-        { "label": "Reject", "value": "reject" }
+        { "label": "Reject", "value": "reject" },
+        { "label": "Escalate to next level", "value": "escalate" }
       ],
       "validate": {
         "required": true
@@ -22,13 +20,13 @@
     },
     {
       "type": "textarea",
-      "key": "comments",
+      "key": "approvalComments",
       "label": "Comments",
-      "placeholder": "Provide justification for your decision",
+      "placeholder": "Enter your decision rationale",
       "validate": {
         "required": true,
-        "minLength": 5,
-        "maxLength": 2000
+        "minLength": 10,
+        "maxLength": 1000
       }
     }
   ]

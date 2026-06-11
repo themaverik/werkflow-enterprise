@@ -187,7 +187,7 @@ class DeadExtensionAttrValidatorTest {
     void leaveRequest_deploysCleanly() {
         assertThatCode(() ->
                 repositoryService.createDeployment()
-                        .addClasspathResource("processes/examples/leave-request.bpmn20.xml")
+                        .addClasspathResource("examples/tenants/default/bpmn/leave-request.bpmn20.xml")
                         .name("leave-request-xsd-fix")
                         .deploy()
         ).doesNotThrowAnyException();

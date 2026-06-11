@@ -68,9 +68,9 @@ public class ProcessExampleDeployer {
             return;
         }
 
-        Resource[] resources = resourcePatternResolver.getResources("classpath:processes/examples/*.bpmn20.xml");
+        Resource[] resources = resourcePatternResolver.getResources("classpath:examples/tenants/default/bpmn/*.bpmn20.xml");
         if (resources.length == 0) {
-            log.info("No example BPMN files found in classpath:processes/examples/");
+            log.info("No example BPMN files found in classpath:examples/tenants/default/bpmn/");
             return;
         }
 

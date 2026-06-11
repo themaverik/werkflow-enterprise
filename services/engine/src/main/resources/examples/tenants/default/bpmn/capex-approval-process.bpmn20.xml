@@ -77,7 +77,7 @@ requestAmount (number), category (string), capexOwner (string — department cod
     <userTask id="managerApproval" name="Manager Review"
               flowable:actionType="HUMAN_APPROVAL"
               flowable:candidateGroups="${approverGroup},SUPER_ADMIN"
-              flowable:formKey="capex-request-form">
+              flowable:formKey="capex-approval-form">
       <documentation>Finance manager reviews and approves, rejects, or escalates the CapEx request</documentation>
     </userTask>
 
@@ -101,7 +101,7 @@ requestAmount (number), category (string), capexOwner (string — department cod
     <userTask id="vpApproval" name="VP Review"
               flowable:actionType="HUMAN_APPROVAL"
               flowable:candidateGroups="${approverGroup},SUPER_ADMIN"
-              flowable:formKey="capex-request-form">
+              flowable:formKey="capex-approval-form">
       <documentation>Finance VP reviews CapEx requests over $50,000 or escalated from manager</documentation>
     </userTask>
 
@@ -125,7 +125,7 @@ requestAmount (number), category (string), capexOwner (string — department cod
     <userTask id="cfoApproval" name="CFO Review"
               flowable:actionType="HUMAN_APPROVAL"
               flowable:candidateGroups="${approverGroup},SUPER_ADMIN"
-              flowable:formKey="capex-request-form">
+              flowable:formKey="capex-approval-form">
       <documentation>CFO reviews CapEx requests over $250,000 or escalated from VP</documentation>
     </userTask>
 

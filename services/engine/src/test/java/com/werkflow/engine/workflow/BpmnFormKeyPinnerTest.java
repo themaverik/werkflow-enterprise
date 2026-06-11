@@ -112,7 +112,7 @@ class BpmnFormKeyPinnerTest {
 
         byte[] bytes;
         try (var in = getClass().getClassLoader()
-                .getResourceAsStream("processes/examples/capex-approval-process.bpmn20.xml")) {
+                .getResourceAsStream("examples/tenants/default/bpmn/capex-approval-process.bpmn20.xml")) {
             assertThat(in).as("fixture present on test classpath").isNotNull();
             bytes = in.readAllBytes();
         }
