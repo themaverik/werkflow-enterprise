@@ -6,32 +6,34 @@
 
 @layer base {
   :root {
-    /* ── Werkflow design tokens ──────────────────────────── */
-    --wf-accent: #149ba5;
-    --wf-accent-dk: #0e7a83;
-    --wf-accent-lt: #dff4f5;
-    --wf-accent-bg: #f0fafb;
-    --wf-brand: #111c27;
-    --wf-brand-2: #1a2d3d;
-    --wf-text: #0f1e2a;
-    --wf-text-2: #354a5b;
-    --wf-muted: #6b7e8c;
-    --wf-light: #a8b9c4;
-    --wf-border: #e2eaee;
-    --wf-border-2: #eef2f5;
-    --wf-bg: #f0f4f6;
-    --wf-card: #ffffff;
-    --wf-canvas: #edf2f5;
+    /* ── Werkflow design tokens (aliases over shadcn HSL vars) ─ */
+    /* Tokens with a shadcn equivalent auto-follow --primary etc.  */
+    /* Tokens marked "no shadcn equiv" keep their fixed hex values. */
+    --wf-accent:    hsl(var(--primary));
+    --wf-accent-dk: color-mix(in oklch, hsl(var(--primary)) 85%, black);
+    --wf-accent-lt: color-mix(in oklch, hsl(var(--primary)) 25%, white);
+    --wf-accent-bg: color-mix(in oklch, hsl(var(--primary))  8%, white);
+    --wf-brand:     #111c27;                   /* sidebar/header — no shadcn equiv */
+    --wf-brand-2:   #1a2d3d;                   /* secondary brand dark — no shadcn equiv */
+    --wf-text:      hsl(var(--foreground));
+    --wf-text-2:    hsl(211 36% 28%);          /* no shadcn equiv */
+    --wf-muted:     hsl(var(--muted-foreground));
+    --wf-light:     hsl(207 18% 71%);          /* no shadcn equiv */
+    --wf-border:    hsl(var(--border));
+    --wf-border-2:  hsl(210 26% 93%);          /* subtler border — no shadcn equiv */
+    --wf-bg:        hsl(var(--background));
+    --wf-card:      hsl(var(--card));
+    --wf-canvas:    hsl(210 20% 93%);          /* editor canvas — no shadcn equiv */
 
-    --wf-success: #16a34a;
-    --wf-success-bg: #f0fdf4;
-    --wf-warning: #c27b00;
-    --wf-warning-bg: #fffbeb;
-    --wf-danger: #dc2626;
-    --wf-danger-bg: #fef2f2;
-    --wf-info: #1d4ed8;
-    --wf-info-bg: #eff6ff;
-    --wf-purple: #7c3aed;
+    --wf-success:    hsl(142 72% 37%);
+    --wf-success-bg: hsl(138 76% 97%);
+    --wf-warning:    hsl(38 100% 38%);
+    --wf-warning-bg: hsl(48 100% 97%);
+    --wf-danger:     hsl(var(--destructive));
+    --wf-danger-bg:  hsl(0 84% 97%);
+    --wf-info:       hsl(221 83% 53%);
+    --wf-info-bg:    hsl(214 100% 97%);
+    --wf-purple:     hsl(263 70% 50%);
 
     /* ── Shared panel design tokens ──────────────────────── */
     /* Single source of truth for bpmn-js, form-js, dmn-js   */
@@ -519,7 +521,9 @@
   border-bottom: 2px solid var(--panel-accent-dk);
 }
 
-/* Table cells */
+/* dmn-js INTERNAL — .tjs-table not in public CSS variable API.
+   Verified: dmn-js v14.x. Check CHANGELOG on upgrade:
+   https://github.com/bpmn-io/dmn-js/blob/develop/CHANGELOG.md */
 .dmn-decision-table-container .tjs-table th {
   font-family: var(--panel-font);
   font-size:   var(--panel-fs);
@@ -570,7 +574,8 @@
   opacity:     0.6;
 }
 
-/* Add column / row buttons */
+/* dmn-js INTERNAL — .add-rule/.add-input/.add-output not in public CSS variable API.
+   Verified: dmn-js v14.x. Check CHANGELOG on upgrade. */
 .dmn-decision-table-container .add-rule,
 .dmn-decision-table-container .add-input,
 .dmn-decision-table-container .add-output {
@@ -581,7 +586,8 @@
 }
 .dmn-decision-table-container .add-rule:hover { background-color: var(--panel-accent-lt); }
 
-/* Hit policy / select dropdown portal */
+/* dmn-js INTERNAL — .dms-select-options not in public CSS variable API.
+   Verified: dmn-js v14.x. Check CHANGELOG on upgrade. */
 .dms-select-options {
   background-color: var(--panel-hdr-bg);
   border-color:     rgba(255,255,255,0.12);
