@@ -7,8 +7,10 @@ import { toast } from 'sonner'
 import { AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { useAuthorization } from '@/lib/auth/use-authorization'
+import { useAuth } from '@/lib/auth/auth-context'
 import { listConnectors } from '@/lib/api/connectors'
 import { PageSurface } from '@/components/layout/page-surface'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 const DEPARTMENTS_CONNECTOR_KEY = 'hr-service'
 
@@ -36,9 +38,9 @@ async function fetchDepartments(token: string): Promise<Department[]> {
 }
 
 export default function DepartmentsPage() {
-  const { status, data: session } = useSession()
+  const { status } = useSession()
   const { hasAnyRole } = useAuthorization()
-  const token = (session?.accessToken as string) ?? ''
+  const { token } = useAuth()
 
   const { data: connectors, isLoading: loadingConnectors } = useQuery({
     queryKey: ['connectors'],
@@ -53,7 +55,7 @@ export default function DepartmentsPage() {
 
   const { data: depts, isLoading: loadingDepts, error } = useQuery({
     queryKey: ['erpDepartments'],
-    queryFn: () => fetchDepartments(token),
+    queryFn: () => fetchDepartments(token ?? ''),
     enabled: status === 'authenticated' && hasConnector,
     staleTime: 60_000,
   })
@@ -99,21 +101,21 @@ export default function DepartmentsPage() {
 
       {hasConnector && (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <table className="w-full text-sm" aria-label="Departments">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Code</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Location</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Lead</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
+          <Table aria-label="Departments">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="uppercase tracking-wider text-xs">Code</TableHead>
+                <TableHead className="uppercase tracking-wider text-xs">Name</TableHead>
+                <TableHead className="uppercase tracking-wider text-xs">Type</TableHead>
+                <TableHead className="uppercase tracking-wider text-xs">Location</TableHead>
+                <TableHead className="uppercase tracking-wider text-xs">Email</TableHead>
+                <TableHead className="uppercase tracking-wider text-xs">Lead</TableHead>
+                <TableHead className="uppercase tracking-wider text-xs">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {isLoading && (
-                <tr><td colSpan={7} className="px-4 py-6 text-center text-muted-foreground text-sm">Loading...</td></tr>
+                <TableRow><TableCell colSpan={7} className="py-6 text-center text-muted-foreground text-sm">Loading...</TableCell></TableRow>
               )}
               {(depts ?? []).map((d) => {
                 const code = d.deptCode ?? d.code ?? '—'
@@ -123,28 +125,28 @@ export default function DepartmentsPage() {
                   ? d.officeLocation.replace(/_/g, ' ').replace(/([A-Z]{2,})$/, (m) => m)
                   : '—'
                 return (
-                  <tr key={d.id} className="hover:bg-muted/30">
-                    <td className="px-4 py-3 font-mono text-xs font-semibold">{code}</td>
-                    <td className="px-4 py-3 font-medium">{name}</td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">{d.departmentType ?? '—'}</td>
-                    <td className="px-4 py-3 text-xs">{location}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{d.departmentEmail ?? '—'}</td>
-                    <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{lead}</td>
-                    <td className="px-4 py-3">
+                  <TableRow key={d.id} className="hover:bg-muted/30">
+                    <TableCell className="font-mono text-xs font-semibold">{code}</TableCell>
+                    <TableCell className="font-medium">{name}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs">{d.departmentType ?? '—'}</TableCell>
+                    <TableCell className="text-xs">{location}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{d.departmentEmail ?? '—'}</TableCell>
+                    <TableCell className="text-xs font-mono text-muted-foreground">{lead}</TableCell>
+                    <TableCell>
                       {d.isActive === undefined ? '—' : (
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${d.isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}>
                           {d.isActive ? 'Active' : 'Inactive'}
                         </span>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )
               })}
               {!isLoading && !error && !depts?.length && (
-                <tr><td colSpan={7} className="px-4 py-6 text-center text-muted-foreground text-sm">No departments found.</td></tr>
+                <TableRow><TableCell colSpan={7} className="py-6 text-center text-muted-foreground text-sm">No departments found.</TableCell></TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

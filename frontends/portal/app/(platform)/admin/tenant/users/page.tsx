@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Plus, RefreshCw, User } from 'lucide-react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface UserRow {
   id: number
@@ -194,46 +195,46 @@ export default function TenantUsersPage() {
 
         {users.length > 0 && (
           <div className="rounded-xl border border-border overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Name</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Email</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Roles</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">DOA</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Dept</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Roles</TableHead>
+                  <TableHead>DOA</TableHead>
+                  <TableHead>Dept</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {users.map((u) => (
-                  <tr key={u.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3 font-medium text-foreground">
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium text-foreground">
                       {u.firstName} {u.lastName}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                    <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {u.roles.map((r) => (
                           <Badge key={r.name} variant="secondary">{r.name}</Badge>
                         ))}
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
                       {u.doaLevel != null ? `L${u.doaLevel}` : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
                       {u.departmentCode ?? '—'}
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       <Badge variant={u.active ? 'default' : 'destructive'}>
                         {u.active ? 'Active' : 'Inactive'}
                       </Badge>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
       </div>
