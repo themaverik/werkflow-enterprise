@@ -64,49 +64,24 @@ class DmnDecisionTablesJuelTest {
     @Test
     @DisplayName("leave-approval.dmn routes by duration and leave type")
     void leaveApproval_routes() {
-        deploy("dmn-examples/leave-approval.dmn", "leave_approval");
+        deploy("examples/tenants/default/dmn/leave-approval.dmn", "leave_approval");
 
-        assertThat(route(Map.of("leaveDays", 2, "leaveType", "CASUAL"), "approverRole"))
-                .as("1–3 casual → auto").isEqualTo("AUTO");
-        assertThat(route(Map.of("leaveDays", 2, "leaveType", "CASUAL"), "approvalRequired"))
-                .as("auto-approved → not required").isEqualTo(false);
-        assertThat(route(Map.of("leaveDays", 3, "leaveType", "ANNUAL"), "approverRole"))
+        assertThat(route(Map.of("leaveDays", 2, "leaveType", "annual"), "approverRole"))
                 .as("1–3 annual → auto").isEqualTo("AUTO");
-        assertThat(route(Map.of("leaveDays", 5, "leaveType", "ANNUAL"), "approverRole"))
+        assertThat(route(Map.of("leaveDays", 2, "leaveType", "annual"), "approvalRequired"))
+                .as("auto-approved → not required").isEqualTo(false);
+        assertThat(route(Map.of("leaveDays", 3, "leaveType", "personal"), "approverRole"))
+                .as("1–3 personal → auto").isEqualTo("AUTO");
+        assertThat(route(Map.of("leaveDays", 5, "leaveType", "annual"), "approverRole"))
                 .as("4–10 days → line manager").isEqualTo("LINE_MANAGER");
-        assertThat(route(Map.of("leaveDays", 10, "leaveType", "CASUAL"), "approverRole"))
+        assertThat(route(Map.of("leaveDays", 10, "leaveType", "personal"), "approverRole"))
                 .as("boundary 10 days → line manager").isEqualTo("LINE_MANAGER");
-        assertThat(route(Map.of("leaveDays", 15, "leaveType", "ANNUAL"), "approverRole"))
+        assertThat(route(Map.of("leaveDays", 15, "leaveType", "annual"), "approverRole"))
                 .as("> 10 days → HR manager").isEqualTo("HR_MANAGER");
-        assertThat(route(Map.of("leaveDays", 1, "leaveType", "MEDICAL"), "approverRole"))
-                .as("medical (any duration) → HR manager").isEqualTo("HR_MANAGER");
-        assertThat(route(Map.of("leaveDays", 20, "leaveType", "MATERNITY"), "approverRole"))
-                .as("maternity → HR manager").isEqualTo("HR_MANAGER");
-    }
-
-    @Test
-    @DisplayName("procurement-matrix.dmn routes by amount and category")
-    void procurementMatrix_routes() {
-        deploy("dmn-examples/procurement-matrix.dmn", "procurement_matrix");
-
-        assertThat(route(Map.of("amount", 10000, "category", "SUPPLIES"), "procurementPath"))
-                .as("<= 50k → direct purchase").isEqualTo("DIRECT_PURCHASE");
-        assertThat(route(Map.of("amount", 10000, "category", "SUPPLIES"), "requiresCommittee"))
-                .as("direct purchase → no committee").isEqualTo(false);
-        assertThat(route(Map.of("amount", 75000, "category", "OFFICE"), "procurementPath"))
-                .as("> 50k → manager approval").isEqualTo("MANAGER_APPROVAL");
-        assertThat(route(Map.of("amount", 75000, "category", "OFFICE"), "requiresCommittee"))
-                .as("manager approval → no committee").isEqualTo(false);
-        assertThat(route(Map.of("amount", 250000, "category", "LOGISTICS"), "procurementPath"))
-                .as("> 200k any category → committee review").isEqualTo("COMMITTEE_REVIEW");
-        assertThat(route(Map.of("amount", 250000, "category", "LOGISTICS"), "requiresCommittee"))
-                .as("committee review → committee required").isEqualTo(true);
-        assertThat(route(Map.of("amount", 600000, "category", "IT"), "procurementPath"))
-                .as("> 500k IT → board approval").isEqualTo("BOARD_APPROVAL");
-        assertThat(route(Map.of("amount", 600000, "category", "IT"), "requiresCommittee"))
-                .as("board approval → committee required").isEqualTo(true);
-        assertThat(route(Map.of("amount", 600000, "category", "INFRASTRUCTURE"), "procurementPath"))
-                .as("> 500k infrastructure → board approval").isEqualTo("BOARD_APPROVAL");
+        assertThat(route(Map.of("leaveDays", 1, "leaveType", "sick"), "approverRole"))
+                .as("sick (any duration) → HR manager").isEqualTo("HR_MANAGER");
+        assertThat(route(Map.of("leaveDays", 20, "leaveType", "parental"), "approverRole"))
+                .as("parental → HR manager").isEqualTo("HR_MANAGER");
     }
 
     private void deploy(String dmnResource, String decisionKey) {

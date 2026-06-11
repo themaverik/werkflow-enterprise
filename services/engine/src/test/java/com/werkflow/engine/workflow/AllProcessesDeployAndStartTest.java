@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  *   <li>Level 3 (routing tests): process-specific tests (e.g. CapexApprovalRoutingTest).</li>
  * </ul>
  *
- * <p>Any new BPMN added to {@code processes/examples/} must be listed in
+ * <p>Any new BPMN added to {@code examples/tenants/default/bpmn/} must be listed in
  * {@link #allProcessKeys()} so that authoring a new process automatically
  * triggers this gate on the next CI run — no per-process test is required for
  * the basic deploy+start contract.
@@ -68,25 +68,12 @@ class AllProcessesDeployAndStartTest {
         // capex-approval-process (ADR-029 Phase 2): capexOwner drives DMN group resolution
         vars.put("requestAmount", 10_000);
         vars.put("capexOwner", "FIN");
-        // procurement-approval-process: amount <= 50000 → DIRECT_PURCHASE path (no human task)
-        vars.put("amount", 500);
-        vars.put("category", "IT");
-        vars.put("requestId", "TEST-001");
-        vars.put("itemName", "Test Item");
-        vars.put("quantity", 1);
-        vars.put("estimatedCost", 500);
-        // leave-request: type + days drive the leave-approval DMN
-        vars.put("days", 3);
-        vars.put("leaveType", "ANNUAL");
-        // onboarding-checklist: buddyRequired controls the buddy-assignment branch
-        vars.put("buddyRequired", false);
-        vars.put("employeeEmail", "test@example.com");
-        // asset-request-process: custodianGroupName set by createAssetRecord service task at runtime;
-        // stub skips that, so provide it directly so the custodianReview user task resolves
-        vars.put("custodianGroupName", "CUSTODIAN");
         // capex-approval-process: budgetAvailable set by checkBudget service task;
         // stub skips that, so provide true so budgetGateway takes the approved path
         vars.put("budgetAvailable", true);
+        // leave-request: leaveType + leaveDays drive the leave-approval DMN
+        vars.put("leaveDays", 2);
+        vars.put("leaveType", "annual");
         START_VARS = Map.copyOf(vars);
     }
 
@@ -104,22 +91,15 @@ class AllProcessesDeployAndStartTest {
         // because Flowable resolves DMN service tasks at execution time, not deploy time,
         // but deploying DMNs first ensures the DmnRepositoryService is ready.
         repositoryService.createDeployment()
-                .addClasspathResource("dmn-examples/capex-approver-resolution.dmn")
-                .addClasspathResource("dmn-examples/leave-approval.dmn")
-                .addClasspathResource("dmn-examples/procurement-matrix.dmn")
+                .addClasspathResource("examples/tenants/default/dmn/capex-approver-resolution.dmn")
+                .addClasspathResource("examples/tenants/default/dmn/leave-approval.dmn")
                 .name("quality-gate-dmn-all")
                 .deploy();
 
-        // Deploy all eight example BPMNs in a single bundle.
+        // Deploy the curated example BPMNs.
         repositoryService.createDeployment()
-                .addClasspathResource("processes/examples/asset-request-process.bpmn20.xml")
-                .addClasspathResource("processes/examples/capex-approval-process.bpmn20.xml")
-                .addClasspathResource("processes/examples/event-ticket-request.bpmn20.xml")
-                .addClasspathResource("processes/examples/finance-approval-process.bpmn20.xml")
-                .addClasspathResource("processes/examples/general-approval.bpmn20.xml")
-                .addClasspathResource("processes/examples/leave-request.bpmn20.xml")
-                .addClasspathResource("processes/examples/onboarding-checklist.bpmn20.xml")
-                .addClasspathResource("processes/examples/procurement-approval-process.bpmn20.xml")
+                .addClasspathResource("examples/tenants/default/bpmn/capex-approval-process.bpmn20.xml")
+                .addClasspathResource("examples/tenants/default/bpmn/leave-request.bpmn20.xml")
                 .name("quality-gate-bpmn-all")
                 .deploy();
     }
@@ -133,18 +113,12 @@ class AllProcessesDeployAndStartTest {
 
     /**
      * Every process key listed here is tested by the parameterized gate below.
-     * Add the process key here when authoring a new BPMN in processes/examples/.
+     * Add the process key here when authoring a new BPMN in examples/tenants/default/bpmn/.
      */
     static Stream<String> allProcessKeys() {
         return Stream.of(
-                "asset-request-process",
                 "capex-approval-process",
-                "event-ticket-request",
-                "finance-approval-process",
-                "general-approval",
-                "leave-request",
-                "onboarding-checklist",
-                "procurement-approval-process"
+                "leave-request"
         );
     }
 

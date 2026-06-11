@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
+             xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/"
+             id="leave_approval_definitions"
+             name="Leave Approval Definitions"
+             namespace="http://werkflow.com/dmn">
+
+  <decision id="leave_approval" name="Leave Approval Rules">
+    <description>Determines whether a leave request requires formal approval and which
+role must approve it, based on duration and leave type. Short casual leave is
+auto-approved; longer or special-category leave escalates to manager or HR.</description>
+    <decisionTable id="leave_approval_table" hitPolicy="FIRST">
+
+      <input id="input_days" label="Leave Days">
+        <inputExpression id="input_days_expr" typeRef="number">
+          <text>leaveDays</text>
+        </inputExpression>
+      </input>
+
+      <input id="input_type" label="Leave Type">
+        <inputExpression id="input_type_expr" typeRef="string">
+          <text>leaveType</text>
+        </inputExpression>
+      </input>
+
+      <output id="output_required" label="Approval Required" name="approvalRequired" typeRef="boolean"/>
+      <output id="output_approver" label="Approver Role" name="approverRole" typeRef="string"/>
+
+      <!-- Flowable evaluates input entries as JUEL, not FEEL. -->
+      <!-- leaveType values match leave-request-form field values (lowercase). -->
+
+      <!-- Rule 1: Sick leave always requires HR regardless of duration -->
+      <rule id="rule_hr_sick">
+        <description>Sick leave always requires HR regardless of duration</description>
+        <inputEntry id="rule_hr_sick_days"><text></text></inputEntry>
+        <inputEntry id="rule_hr_sick_type"><text>== "sick"</text></inputEntry>
+        <outputEntry id="rule_hr_sick_req"><text>true</text></outputEntry>
+        <outputEntry id="rule_hr_sick_approver"><text>"HR_MANAGER"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 2: Parental leave always requires HR regardless of duration -->
+      <rule id="rule_hr_parental">
+        <description>Parental leave always requires HR regardless of duration</description>
+        <inputEntry id="rule_hr_par_days"><text></text></inputEntry>
+        <inputEntry id="rule_hr_par_type"><text>== "parental"</text></inputEntry>
+        <outputEntry id="rule_hr_par_req"><text>true</text></outputEntry>
+        <outputEntry id="rule_hr_par_approver"><text>"HR_MANAGER"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 3: Bereavement leave always requires HR regardless of duration -->
+      <rule id="rule_hr_bereavement">
+        <description>Bereavement leave always requires HR regardless of duration</description>
+        <inputEntry id="rule_hr_ber_days"><text></text></inputEntry>
+        <inputEntry id="rule_hr_ber_type"><text>== "bereavement"</text></inputEntry>
+        <outputEntry id="rule_hr_ber_req"><text>true</text></outputEntry>
+        <outputEntry id="rule_hr_ber_approver"><text>"HR_MANAGER"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 4: > 10 days any type — HR approval -->
+      <rule id="rule_long_leave">
+        <description>Leaves longer than 10 days require HR manager approval</description>
+        <inputEntry id="rule_long_days"><text>&gt; 10</text></inputEntry>
+        <inputEntry id="rule_long_type"><text></text></inputEntry>
+        <outputEntry id="rule_long_req"><text>true</text></outputEntry>
+        <outputEntry id="rule_long_approver"><text>"HR_MANAGER"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 5: 4–10 days — manager approval (upper bound implicit under FIRST hit policy + rule order) -->
+      <rule id="rule_medium_leave">
+        <description>Medium-duration leave requires line manager approval</description>
+        <inputEntry id="rule_med_days"><text>&gt;= 4</text></inputEntry>
+        <inputEntry id="rule_med_type"><text></text></inputEntry>
+        <outputEntry id="rule_med_req"><text>true</text></outputEntry>
+        <outputEntry id="rule_med_approver"><text>"LINE_MANAGER"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 6: Short annual leave — auto-approved -->
+      <rule id="rule_casual_annual">
+        <description>Short annual leave is auto-approved</description>
+        <inputEntry id="rule_ann_days"><text>&gt; 0</text></inputEntry>
+        <inputEntry id="rule_ann_type"><text>== "annual"</text></inputEntry>
+        <outputEntry id="rule_ann_req"><text>false</text></outputEntry>
+        <outputEntry id="rule_ann_approver"><text>"AUTO"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 7: Short personal leave — auto-approved -->
+      <rule id="rule_casual_personal">
+        <description>Short personal leave is auto-approved</description>
+        <inputEntry id="rule_per_days"><text>&gt; 0</text></inputEntry>
+        <inputEntry id="rule_per_type"><text>== "personal"</text></inputEntry>
+        <outputEntry id="rule_per_req"><text>false</text></outputEntry>
+        <outputEntry id="rule_per_approver"><text>"AUTO"</text></outputEntry>
+      </rule>
+
+      <!-- Rule 8: Catch-all for short leave not otherwise matched — line manager approval -->
+      <rule id="rule_short_default">
+        <description>Short leave of any other type defaults to line manager approval</description>
+        <inputEntry id="rule_def_days"><text>&gt; 0</text></inputEntry>
+        <inputEntry id="rule_def_type"><text></text></inputEntry>
+        <outputEntry id="rule_def_req"><text>true</text></outputEntry>
+        <outputEntry id="rule_def_approver"><text>"LINE_MANAGER"</text></outputEntry>
+      </rule>
+
+    </decisionTable>
+  </decision>
+
+</definitions>

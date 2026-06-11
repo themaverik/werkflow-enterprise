@@ -318,97 +318,84 @@ class ELSecurityVerificationSuiteTest extends IntegrationTestBase {
     }
 
     // =========================================================================
-    // P1-12: DMN regression — procurement-matrix evaluates under restricted manager
+    // P1-12: DMN regression — leave-approval evaluates under restricted manager
     // =========================================================================
 
     @Nested
-    @DisplayName("P1-12 — DMN regression: procurement-matrix FEEL unaffected by EL hardening")
+    @DisplayName("P1-12 — DMN regression: leave-approval FEEL unaffected by EL hardening")
     class P1_12_DmnRegression {
 
         @BeforeEach
-        void deployProcurementMatrix() {
+        void deployLeaveApproval() {
             dmnRepositoryService.createDeployment()
-                    .name("procurement-matrix.dmn")
-                    .addClasspathResource("dmn-examples/procurement-matrix.dmn")
+                    .name("leave-approval.dmn")
+                    .addClasspathResource("examples/tenants/default/dmn/leave-approval.dmn")
                     .deploy();
         }
 
         /**
-         * The {@code procurement_matrix} DMN must evaluate end-to-end with the
-         * {@link DmnModeCommandInterceptor} active (which sets the
-         * {@link SecurityELResolver#dmnMode} ThreadLocal flag for the duration of the DMN
-         * command). This proves FEEL expressions are not blocked by the BPMN EL guard.
+         * The {@code leave_approval} DMN must evaluate end-to-end with the
+         * {@link DmnModeCommandInterceptor} active. This proves FEEL expressions are not
+         * blocked by the BPMN EL guard.
          *
-         * <p>Inputs: amount=600000, category="IT".
-         * Per procurement-matrix.dmn rule_board_it (amount > 500,000 AND category == "IT"):
-         * procurementPath="BOARD_APPROVAL", requiresCommittee=true.
-         *
-         * <p>The DMN is auto-deployed from {@code src/main/resources/dmn/} by Flowable's
-         * DMN auto-deployment on boot. We look it up by key {@code procurement_matrix}.
+         * <p>Inputs: leaveDays=15, leaveType="annual".
+         * Per leave-approval.dmn rule_long_leave (leaveDays > 10, any type):
+         * approvalRequired=true, approverRole="HR_MANAGER".
          */
         @Test
-        @DisplayName("procurement_matrix DMN evaluates amount=600000 category=IT to BOARD_APPROVAL")
-        void procurementMatrixDmn_amount600kCategoryIt_returnsBoardApproval() {
+        @DisplayName("leave_approval DMN evaluates leaveDays=15 to HR_MANAGER approval")
+        void leaveApprovalDmn_longLeave_returnsHrManager() {
             // Arrange
             Map<String, Object> inputs = Map.of(
-                    "amount", new BigDecimal("600000"),
-                    "category", "IT"
-            );
-
-            // Act — use DmnDecisionService.executeDecision (tenant-unscoped path)
-            // The DMN is auto-deployed without a tenantId; query directly via DmnRepositoryService
-            List<Map<String, Object>> results = evaluateProcurementMatrixDirectly(inputs);
-
-            // Assert — rule_board_it fires: amount > 500,000 AND category == "IT" → BOARD_APPROVAL
-            assertThat(results)
-                    .isNotEmpty()
-                    .first()
-                    .satisfies(row -> {
-                        assertThat(row.get("procurementPath")).isEqualTo("BOARD_APPROVAL");
-                        assertThat(row.get("requiresCommittee")).isEqualTo(true);
-                    });
-        }
-
-        /**
-         * Evaluates procurement-matrix for a small amount to confirm rule_direct fires,
-         * further proving that FEEL evaluation across multiple rules works without
-         * interference from the EL security resolver.
-         *
-         * <p>Inputs: amount=10000, category="SUPPLIES" (matches the blank catch-all input entry).
-         * Per procurement-matrix.dmn rule_direct (amount <= 50,000, any category):
-         * procurementPath="DIRECT_PURCHASE", requiresCommittee=false.
-         */
-        @Test
-        @DisplayName("procurement_matrix DMN evaluates amount=10000 to DIRECT_PURCHASE")
-        void procurementMatrixDmn_amount10k_returnsDirectPurchase() {
-            // Arrange
-            Map<String, Object> inputs = Map.of(
-                    "amount", new BigDecimal("10000"),
-                    "category", "SUPPLIES"
+                    "leaveDays", 15,
+                    "leaveType", "annual"
             );
 
             // Act
-            List<Map<String, Object>> results = evaluateProcurementMatrixDirectly(inputs);
+            List<Map<String, Object>> results = evaluateLeaveApprovalDirectly(inputs);
 
-            // Assert — rule_direct fires: amount <= 50,000, any category → DIRECT_PURCHASE
+            // Assert — rule_long_leave fires: > 10 days → HR_MANAGER
             assertThat(results)
                     .isNotEmpty()
                     .first()
                     .satisfies(row -> {
-                        assertThat(row.get("procurementPath")).isEqualTo("DIRECT_PURCHASE");
-                        assertThat(row.get("requiresCommittee")).isEqualTo(false);
+                        assertThat(row.get("approverRole")).isEqualTo("HR_MANAGER");
+                        assertThat(row.get("approvalRequired")).isEqualTo(true);
                     });
         }
 
         /**
-         * Evaluates the {@code procurement_matrix} decision directly via Flowable's injected
-         * DmnDecisionService. The DMN is auto-deployed at boot from
-         * {@code dmn/procurement-matrix.dmn} without a tenantId.
-         * Uses {@code executeDecision()} (non-deprecated since Flowable 7.2).
+         * Short annual leave is auto-approved — confirms the EL guard does not interfere
+         * with FEEL evaluation across multiple rules under FIRST hit policy.
+         *
+         * <p>Inputs: leaveDays=2, leaveType="annual".
+         * Per leave-approval.dmn rule_casual_annual: approvalRequired=false, approverRole="AUTO".
          */
-        private List<Map<String, Object>> evaluateProcurementMatrixDirectly(Map<String, Object> inputs) {
+        @Test
+        @DisplayName("leave_approval DMN evaluates leaveDays=2 annual to AUTO approval")
+        void leaveApprovalDmn_shortAnnual_returnsAuto() {
+            // Arrange
+            Map<String, Object> inputs = Map.of(
+                    "leaveDays", 2,
+                    "leaveType", "annual"
+            );
+
+            // Act
+            List<Map<String, Object>> results = evaluateLeaveApprovalDirectly(inputs);
+
+            // Assert — rule_casual_annual fires: short annual → AUTO
+            assertThat(results)
+                    .isNotEmpty()
+                    .first()
+                    .satisfies(row -> {
+                        assertThat(row.get("approverRole")).isEqualTo("AUTO");
+                        assertThat(row.get("approvalRequired")).isEqualTo(false);
+                    });
+        }
+
+        private List<Map<String, Object>> evaluateLeaveApprovalDirectly(Map<String, Object> inputs) {
             return flowableDmnDecisionService.createExecuteDecisionBuilder()
-                    .decisionKey("procurement_matrix")
+                    .decisionKey("leave_approval")
                     .variables(inputs)
                     .executeDecision();
         }

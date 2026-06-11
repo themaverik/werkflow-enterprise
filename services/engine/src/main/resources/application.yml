@@ -128,7 +128,7 @@ flowable:
   create-diagram-on-deploy: ${FLOWABLE_CREATE_DIAGRAM_ON_DEPLOY:false}
 
   # DMN Decision Table Support
-  # Example DMNs live under classpath:dmn-examples/ (not the conventional dmn/)
+  # Example DMNs live under classpath:examples/tenants/default/dmn/
   # so Flowable's SpringBootAutoDeployment scan of classpath*:dmn/*.dmn finds
   # nothing. Werkflow's DmnExampleDeployer is the sole owner of example DMN
   # seeding under tenantId='default' — the BPMN designer's tenant-strict
@@ -260,7 +260,7 @@ werkflow:
     addr: ${WERKFLOW_VAULT_ADDR:http://localhost:8200}
     token: ${WERKFLOW_VAULT_TOKEN:}
 
-  # Set to true to auto-deploy example BPMN processes on startup from classpath:processes/examples/
+  # Set to true to auto-deploy example BPMN processes on startup from classpath:examples/tenants/default/bpmn/
   examples:
     deploy-on-startup: ${WERKFLOW_DEPLOY_EXAMPLES:true}
     reset-on-startup: ${WERKFLOW_RESET_EXAMPLES:false}

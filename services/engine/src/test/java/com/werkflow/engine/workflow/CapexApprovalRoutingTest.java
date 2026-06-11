@@ -88,13 +88,13 @@ class CapexApprovalRoutingTest {
 
         // Deploy DMN first — the BPMN's DMN service tasks reference these decision keys.
         repositoryService.createDeployment()
-                .addClasspathResource("dmn-examples/capex-approver-resolution.dmn")
+                .addClasspathResource("examples/tenants/default/dmn/capex-approver-resolution.dmn")
                 .name("capex-approver-resolution")
                 .deploy();
 
         // Deploy the REAL capex BPMN from classpath — same file as production uses.
         repositoryService.createDeployment()
-                .addClasspathResource("processes/examples/capex-approval-process.bpmn20.xml")
+                .addClasspathResource("examples/tenants/default/bpmn/capex-approval-process.bpmn20.xml")
                 .name("capex-approval-routing-test")
                 .deploy();
     }

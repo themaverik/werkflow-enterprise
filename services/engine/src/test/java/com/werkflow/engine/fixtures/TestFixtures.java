@@ -46,37 +46,6 @@ public class TestFixtures {
         return processInstance.getId();
     }
 
-    /**
-     * Starts a procurement approval process with given variables.
-     *
-     * @param runtimeService Flowable RuntimeService
-     * @param variables Process variables
-     * @return Process instance ID
-     */
-    public static String startProcurementProcess(RuntimeService runtimeService, Map<String, Object> variables) {
-        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey(
-                "procurement-approval-process",
-                (String) variables.get("requestId"),
-                variables
-        );
-        return processInstance.getId();
-    }
-
-    /**
-     * Starts an asset transfer process with given variables.
-     *
-     * @param runtimeService Flowable RuntimeService
-     * @param variables Process variables
-     * @return Process instance ID
-     */
-    public static String startAssetTransferProcess(RuntimeService runtimeService, Map<String, Object> variables) {
-        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey(
-                "asset-transfer-approval-process",
-                (String) variables.get("requestId"),
-                variables
-        );
-        return processInstance.getId();
-    }
 
     /**
      * Completes a task with given variables.

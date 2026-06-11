@@ -52,8 +52,8 @@ public class DmnExampleDeployer {
      * re-deploy as tenantless duplicates. This deployer is the sole owner of example
      * DMN seeding.
      */
-    private static final String DMN_RESOURCE_PATTERN = "classpath:dmn-examples/*.dmn";
-    private static final String DMN_RESOURCE_PREFIX = "dmn-examples/";
+    private static final String DMN_RESOURCE_PATTERN = "classpath:examples/tenants/default/dmn/*.dmn";
+    private static final String DMN_RESOURCE_PREFIX = "examples/tenants/default/dmn/";
 
     private final DmnRepositoryService dmnRepositoryService;
     private final ResourcePatternResolver resourcePatternResolver;

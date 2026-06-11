@@ -144,35 +144,6 @@ class DmnDecisionTaskExecutionTest {
                 .isEqualTo("DIRECT_PURCHASE");
     }
 
-    /**
-     * Verifies the shipped {@code procurement-matrix.dmn} (loaded from classpath) is JUEL-valid
-     * and routes every path via the native serviceTask form — guards both the FEEL→JUEL range
-     * fix and the comma-list / empty-cell input entries.
-     */
-    @Test
-    @DisplayName("real procurement-matrix.dmn routes all four paths via serviceTask type=dmn")
-    void realProcurementMatrixDmn_routesAllPaths() {
-        Deployment deployment = repositoryService.createDeployment()
-                .addClasspathResource("dmn-examples/procurement-matrix.dmn")
-                .addString("dmn-servicetask-form.bpmn20.xml", SERVICETASK_DMN_PROCESS)
-                .name("real-procurement-matrix")
-                .deploy();
-        this.deploymentId = deployment.getId();
-
-        assertThat(route(Map.of("amount", 1000, "category", "OFFICE")))
-                .as("<= 50000 → direct purchase").isEqualTo("DIRECT_PURCHASE");
-        assertThat(route(Map.of("amount", 100000, "category", "OFFICE")))
-                .as("50001–200000 → manager").isEqualTo("MANAGER_APPROVAL");
-        assertThat(route(Map.of("amount", 300000, "category", "OFFICE")))
-                .as("> 200000 non-IT → committee").isEqualTo("COMMITTEE_REVIEW");
-        assertThat(route(Map.of("amount", 600000, "category", "IT")))
-                .as("> 500000 IT → board (exercises the split category equality entry)")
-                .isEqualTo("BOARD_APPROVAL");
-        assertThat(route(Map.of("amount", 600000, "category", "OFFICE")))
-                .as("> 500000 non-IT/INFRA → committee, NOT board (board rules require IT/INFRASTRUCTURE)")
-                .isEqualTo("COMMITTEE_REVIEW");
-    }
-
     private String route(Map<String, Object> vars) {
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("dmn-servicetask-form", vars);
         return (String) runtimeService.getVariable(pi.getId(), "procurementPath");

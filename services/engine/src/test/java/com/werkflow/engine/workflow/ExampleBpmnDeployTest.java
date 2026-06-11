@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
- * Sanity-checks that all eight example BPMNs deploy and parse cleanly on the
+ * Sanity-checks that the two curated example BPMNs deploy and parse cleanly on the
  * in-memory engine.
  *
  * <p>Does NOT execute processes — deployment alone confirms that:
@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  * {@link AllProcessesDeployAndStartTest}.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@DisplayName("Example BPMN deploy-sanity — all eight example files parse and deploy cleanly")
+@DisplayName("Example BPMN deploy-sanity — curated example files parse and deploy cleanly")
 class ExampleBpmnDeployTest {
 
     private static final org.flowable.engine.delegate.JavaDelegate STUB =
@@ -56,84 +56,12 @@ class ExampleBpmnDeployTest {
     }
 
     @Test
-    @DisplayName("general-approval.bpmn20.xml deploys without error")
-    void generalApprovalDeploys() {
-        assertThatCode(() -> {
-            var deployment = repositoryService.createDeployment()
-                    .addClasspathResource("processes/examples/general-approval.bpmn20.xml")
-                    .name("sanity-general-approval")
-                    .deploy();
-            assertThat(deployment.getId()).isNotNull();
-        }).doesNotThrowAnyException();
-    }
-
-    @Test
-    @DisplayName("procurement-approval-process.bpmn20.xml deploys without error")
-    void procurementApprovalDeploys() {
-        assertThatCode(() -> {
-            var deployment = repositoryService.createDeployment()
-                    .addClasspathResource("processes/examples/procurement-approval-process.bpmn20.xml")
-                    .name("sanity-procurement-approval")
-                    .deploy();
-            assertThat(deployment.getId()).isNotNull();
-        }).doesNotThrowAnyException();
-    }
-
-    @Test
-    @DisplayName("asset-request-process.bpmn20.xml deploys without error")
-    void assetRequestDeploys() {
-        assertThatCode(() -> {
-            var deployment = repositoryService.createDeployment()
-                    .addClasspathResource("processes/examples/asset-request-process.bpmn20.xml")
-                    .name("sanity-asset-request")
-                    .deploy();
-            assertThat(deployment.getId()).isNotNull();
-        }).doesNotThrowAnyException();
-    }
-
-    @Test
-    @DisplayName("onboarding-checklist.bpmn20.xml deploys without error")
-    void onboardingChecklistDeploys() {
-        assertThatCode(() -> {
-            var deployment = repositoryService.createDeployment()
-                    .addClasspathResource("processes/examples/onboarding-checklist.bpmn20.xml")
-                    .name("sanity-onboarding-checklist")
-                    .deploy();
-            assertThat(deployment.getId()).isNotNull();
-        }).doesNotThrowAnyException();
-    }
-
-    @Test
     @DisplayName("capex-approval-process.bpmn20.xml deploys without error")
     void capexApprovalDeploys() {
         assertThatCode(() -> {
             var deployment = repositoryService.createDeployment()
-                    .addClasspathResource("processes/examples/capex-approval-process.bpmn20.xml")
+                    .addClasspathResource("examples/tenants/default/bpmn/capex-approval-process.bpmn20.xml")
                     .name("sanity-capex-approval")
-                    .deploy();
-            assertThat(deployment.getId()).isNotNull();
-        }).doesNotThrowAnyException();
-    }
-
-    @Test
-    @DisplayName("event-ticket-request.bpmn20.xml deploys without error")
-    void eventTicketRequestDeploys() {
-        assertThatCode(() -> {
-            var deployment = repositoryService.createDeployment()
-                    .addClasspathResource("processes/examples/event-ticket-request.bpmn20.xml")
-                    .name("sanity-event-ticket-request")
-                    .deploy();
-            assertThat(deployment.getId()).isNotNull();
-        }).doesNotThrowAnyException();
-    }
-
-    @Test
-    @DisplayName("finance-approval-process.bpmn20.xml deploys without error")
-    void financeApprovalDeploys() {
-        assertThatCode(() -> {
-            var deployment = repositoryService.createDeployment()
-                    .addClasspathResource("processes/examples/finance-approval-process.bpmn20.xml")
-                    .name("sanity-finance-approval")
                     .deploy();
             assertThat(deployment.getId()).isNotNull();
         }).doesNotThrowAnyException();
@@ -144,7 +72,7 @@ class ExampleBpmnDeployTest {
     void leaveRequestDeploys() {
         assertThatCode(() -> {
             var deployment = repositoryService.createDeployment()
-                    .addClasspathResource("processes/examples/leave-request.bpmn20.xml")
+                    .addClasspathResource("examples/tenants/default/bpmn/leave-request.bpmn20.xml")
                     .name("sanity-leave-request")
                     .deploy();
             assertThat(deployment.getId()).isNotNull();
