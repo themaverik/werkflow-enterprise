@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { Plus, RefreshCw, Building2, CheckCircle2 } from 'lucide-react'
+import { Plus, RefreshCw, Building2, CheckCircle2, Layers } from 'lucide-react'
 
 interface TenantRow {
   id: number
@@ -177,9 +177,40 @@ export default function TenantsPage() {
 
   const [editing, setEditing] = useState<TenantRow | null>(null)
   const [deleting, setDeleting] = useState<TenantRow | null>(null)
+  const [seedingId, setSeedingId] = useState<number | null>(null)
 
   if (!isSuperAdmin) {
     return null
+  }
+
+  async function handleSeedExamples(tenant: TenantRow) {
+    setSeedingId(tenant.id)
+    try {
+      const res = await fetch(`/api/proxy/admin/platform/tenants/${tenant.id}/seed-examples`, {
+        method: 'POST',
+      })
+      if (!res.ok) {
+        toast({
+          title: 'Seeding failed',
+          description: `Could not seed examples for ${tenant.name} (${res.status})`,
+          variant: 'destructive',
+        })
+        return
+      }
+      const data = await res.json()
+      toast({
+        title: 'Examples seeded',
+        description: `${data.deployed ?? 0} deployed, ${data.skipped ?? 0} skipped for ${tenant.name}`,
+      })
+    } catch (err) {
+      toast({
+        title: 'Seeding failed',
+        description: err instanceof Error ? err.message : 'Unexpected error',
+        variant: 'destructive',
+      })
+    } finally {
+      setSeedingId(null)
+    }
   }
 
   async function handleDelete() {
@@ -310,6 +341,21 @@ export default function TenantsPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs"
+                          aria-label={`Seed examples for ${tenant.name}`}
+                          title={`Seed examples for ${tenant.name}`}
+                          disabled={seedingId === tenant.id}
+                          onClick={() => handleSeedExamples(tenant)}
+                        >
+                          {seedingId === tenant.id ? (
+                            <RefreshCw className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Layers className="h-3 w-3" />
+                          )}
+                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"

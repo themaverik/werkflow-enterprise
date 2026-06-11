@@ -40,6 +40,7 @@ public class TenantProvisioningService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final KeycloakUserService keycloakUserService;
+    private final ExampleSeedClient exampleSeedClient;
 
     @Value("${app.keycloak.realm:werkflow}")
     private String keycloakRealm;
@@ -119,6 +120,16 @@ public class TenantProvisioningService {
         saved.setKeycloakRealm(keycloakRealm);
         tenantRepository.save(saved);
         log.info("Tenant provisioned: tenantCode={}, adminEmail={}", saved.getTenantCode(), request.getAdminEmail());
+
+        if (request.isSeedExamples()) {
+            exampleSeedClient.seed(request.getTenantCode()).ifPresentOrElse(
+                result -> log.info("Examples seeded for tenant={}: deployed={} skipped={} failed={}",
+                    request.getTenantCode(), result.deployed(), result.skipped(), result.failed()),
+                () -> log.warn("Example seeding skipped or failed for tenant={} — can be re-triggered via portal",
+                    request.getTenantCode())
+            );
+        }
+
         return TenantResponse.from(saved);
     }
 }
