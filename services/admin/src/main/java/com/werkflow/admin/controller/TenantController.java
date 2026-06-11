@@ -1,9 +1,11 @@
 package com.werkflow.admin.controller;
 
+import com.werkflow.admin.dto.EngineSeedResult;
 import com.werkflow.admin.dto.TenantProvisioningRequest;
 import com.werkflow.admin.dto.TenantResponse;
 import com.werkflow.admin.dto.TenantUpdateRequest;
 import com.werkflow.admin.repository.TenantRepository;
+import com.werkflow.admin.service.ExampleSeedClient;
 import com.werkflow.admin.service.TenantProvisioningService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ public class TenantController {
 
     private final TenantProvisioningService tenantProvisioningService;
     private final TenantRepository tenantRepository;
+    private final ExampleSeedClient exampleSeedClient;
 
     /**
      * Lists all tenants in the platform.
@@ -89,5 +92,21 @@ public class TenantController {
         }
         tenantRepository.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Triggers example workflow seeding for an existing tenant via the engine service.
+     *
+     * @param id the tenant ID
+     * @return the seed result, 503 if the engine is unavailable, or 404 if tenant not found
+     */
+    @PostMapping("/{id}/seed-examples")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<EngineSeedResult> seedExamples(@PathVariable Long id) {
+        return tenantRepository.findById(id)
+            .map(tenant -> exampleSeedClient.seed(tenant.getTenantCode())
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(503).build()))
+            .orElse(ResponseEntity.notFound().build());
     }
 }

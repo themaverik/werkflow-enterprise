@@ -6,6 +6,7 @@ import { useAuthorization } from '@/lib/auth/use-authorization'
 import { PageSurface } from '@/components/layout/page-surface'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
@@ -17,6 +18,7 @@ interface FormState {
   adminEmail: string
   adminFirstName: string
   adminLastName: string
+  seedExamples: boolean
 }
 
 const EMPTY_FORM: FormState = {
@@ -25,6 +27,7 @@ const EMPTY_FORM: FormState = {
   adminEmail: '',
   adminFirstName: '',
   adminLastName: '',
+  seedExamples: true,
 }
 
 export default function NewTenantPage() {
@@ -167,6 +170,22 @@ export default function NewTenantPage() {
                   </div>
                 </div>
               </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <Checkbox
+                  id="seedExamples"
+                  checked={form.seedExamples}
+                  onCheckedChange={(checked: boolean | 'indeterminate') =>
+                    setForm((prev) => ({ ...prev, seedExamples: checked === true }))
+                  }
+                />
+                <Label htmlFor="seedExamples" className="font-normal cursor-pointer">
+                  Seed starter content
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground -mt-1 pl-6">
+                Deploys example workflows (Capex Approval, Leave Request) for this tenant.
+              </p>
 
               {error && (
                 <p className="text-sm text-destructive rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
