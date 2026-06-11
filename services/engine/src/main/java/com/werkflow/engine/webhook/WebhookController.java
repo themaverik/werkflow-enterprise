@@ -81,6 +81,10 @@ public class WebhookController {
 
         // ── 2. HMAC verification ────────────────────────────────────────────
         String hmacStrategy = webhookCfg.path("hmac").path("strategy").asText("none");
+        if (hmacStrategy.isBlank() || "none".equalsIgnoreCase(hmacStrategy)) {
+            log.info("WebhookController: connector='{}' tenant='{}' has hmacStrategy=none — accepting unauthenticated webhook",
+                    connectorKey, tenantCode);
+        }
         String hmacHeader   = webhookCfg.path("hmac").path("headerName").asText("X-Werkflow-Signature");
         String secret       = resolveSecret(webhookCfg.path("hmac").path("secretRef").asText(null));
 
