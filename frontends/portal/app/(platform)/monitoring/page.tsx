@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { RefreshCw, CheckCircle, XCircle, AlertCircle, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
 
 interface ServiceDetail {
   status: string
@@ -24,20 +25,10 @@ interface HealthResponse {
   services: ServiceHealth[]
 }
 
-const STATUS_CONFIG: Record<string, { label: string; icon: typeof CheckCircle; bg: string; text: string; border: string; dot: string }> = {
-  UP:      { label: 'Healthy',  icon: CheckCircle,  bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0', dot: '#16a34a' },
-  DOWN:    { label: 'Down',     icon: XCircle,      bg: '#fef2f2', text: '#dc2626', border: '#fecaca', dot: '#dc2626' },
-  DEGRADED:{ label: 'Degraded', icon: AlertCircle,  bg: '#fffbeb', text: '#c27b00', border: '#fde68a', dot: '#c27b00' },
-}
-
-function StatusPill({ status }: { status: string }) {
-  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.DEGRADED
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 99, background: cfg.bg, border: `1px solid ${cfg.border}`, fontSize: 12, fontWeight: 600, color: cfg.text }}>
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
-      {cfg.label}
-    </span>
-  )
+const STATUS_CONFIG: Record<string, { label: string; icon: typeof CheckCircle; bg: string; text: string; border: string }> = {
+  UP:      { label: 'Healthy',  icon: CheckCircle,  bg: 'var(--badge-success-bg)', text: 'var(--badge-success)', border: 'var(--badge-success-border)' },
+  DOWN:    { label: 'Down',     icon: XCircle,      bg: 'var(--badge-danger-bg)',  text: 'var(--badge-danger)',  border: 'var(--badge-danger-border)'  },
+  DEGRADED:{ label: 'Degraded', icon: AlertCircle,  bg: 'var(--badge-warning-bg)', text: 'var(--badge-warning)', border: 'var(--badge-warning-border)' },
 }
 
 function SubComponent({ name, status }: { name: string; status: string }) {
@@ -99,7 +90,7 @@ export default function ProcessHealthPage() {
             </div>
             <div>
               <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider text-xs mb-0.5">Overall Status</p>
-              <StatusPill status={health.status} />
+              <StatusBadge status={health.status} />
             </div>
           </div>
           <div className="text-right">
@@ -129,7 +120,7 @@ export default function ProcessHealthPage() {
                   </div>
                   <Icon size={18} strokeWidth={2} style={{ color: cfg.text, flexShrink: 0, marginTop: 2 }} />
                 </div>
-                <StatusPill status={svc.status} />
+                <StatusBadge status={svc.status} />
                 {Object.keys(components).length > 0 && (
                   <div className="mt-1">
                     {Object.entries(components).map(([name, comp]) => (

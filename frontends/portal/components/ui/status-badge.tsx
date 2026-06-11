@@ -5,7 +5,10 @@ const STATUS_STYLES: Record<string, { bg: string; color: string; border: string;
   completed: { bg: 'var(--badge-success-bg)', color: 'var(--badge-success)', border: 'var(--badge-success-border)', label: 'Completed' },
   suspended: { bg: 'var(--badge-warning-bg)', color: 'var(--badge-warning)', border: 'var(--badge-warning-border)', label: 'Suspended' },
   failed:    { bg: 'var(--badge-danger-bg)',  color: 'var(--badge-danger)',  border: 'var(--badge-danger-border)',  label: 'Failed' },
-  draft:     { bg: 'hsl(220 13% 91%)',        color: 'hsl(220 13% 40%)',     border: 'hsl(220 13% 80%)',            label: 'Draft' },
+  draft:     { bg: 'var(--badge-neutral-bg)', color: 'var(--badge-neutral)', border: 'var(--badge-neutral-border)', label: 'Draft' },
+  UP:        { bg: 'var(--badge-success-bg)', color: 'var(--badge-success)', border: 'var(--badge-success-border)', label: 'Healthy' },
+  DOWN:      { bg: 'var(--badge-danger-bg)',  color: 'var(--badge-danger)',  border: 'var(--badge-danger-border)',  label: 'Down' },
+  DEGRADED:  { bg: 'var(--badge-warning-bg)', color: 'var(--badge-warning)', border: 'var(--badge-warning-border)', label: 'Degraded' },
 }
 
 export function StatusBadge({ status }: { status: Status }) {
