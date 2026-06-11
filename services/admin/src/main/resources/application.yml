@@ -98,6 +98,18 @@ resilience4j:
         limitForPeriod: 5
         limitRefreshPeriod: 60s
         timeoutDuration: 0s
+      user-create:
+        limitForPeriod: 10
+        limitRefreshPeriod: 60s
+        timeoutDuration: 0s
+      user-invite:
+        limitForPeriod: 5
+        limitRefreshPeriod: 60s
+        timeoutDuration: 0s
+      credential-create:
+        limitForPeriod: 10
+        limitRefreshPeriod: 60s
+        timeoutDuration: 0s
 
 app:
   name: ${APP_NAME:Werkflow Admin Service}

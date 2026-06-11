@@ -8,6 +8,10 @@ const isDockerBuild = process.env.DOCKER_BUILD === 'true'
 // Backend base URLs — override in Netlify env vars to point at the deployed backend.
 const engineBaseUrl = process.env.ENGINE_BASE_URL || 'http://localhost:8081'
 const adminBaseUrl = process.env.ADMIN_BASE_URL || 'http://localhost:8083'
+// KC public URL — browser makes direct cross-origin requests (not proxied through Next.js).
+const keycloakPublicUrl = process.env.NEXT_PUBLIC_KEYCLOAK_URL || 'http://localhost:8090'
+// API base origin — used by any client code that calls NEXT_PUBLIC_API_URL directly.
+const apiBaseOrigin = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api').replace(/\/api.*$/, '')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -33,6 +37,12 @@ const nextConfig = {
           {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          {
+            key: 'Content-Security-Policy',
+            // unsafe-eval required by bpmn-js/dmn-js rendering pipeline (accepted trade-off).
+            // unsafe-inline required by bpmn-js Preact renderer and shadcn CSS tokens.
+            value: `default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; worker-src 'self' blob:; connect-src 'self' ${engineBaseUrl} ${adminBaseUrl} ${keycloakPublicUrl} ${apiBaseOrigin}; frame-ancestors 'none'; object-src 'none'; base-uri 'self'`,
           },
         ],
       },

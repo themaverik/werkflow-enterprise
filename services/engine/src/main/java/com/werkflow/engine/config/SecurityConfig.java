@@ -20,6 +20,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import com.werkflow.engine.security.PermissionConfig;
 import com.werkflow.engine.security.WerkflowPermissionEvaluator;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.authentication.AuthenticationEventPublisher;
+import org.springframework.security.authentication.DefaultAuthenticationEventPublisher;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -127,6 +130,12 @@ public class SecurityConfig {
         });
 
         return converter;
+    }
+
+    @Bean
+    public AuthenticationEventPublisher authenticationEventPublisher(
+            ApplicationEventPublisher applicationEventPublisher) {
+        return new DefaultAuthenticationEventPublisher(applicationEventPublisher);
     }
 
     @Bean
