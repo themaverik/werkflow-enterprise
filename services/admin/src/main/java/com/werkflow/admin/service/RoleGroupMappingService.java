@@ -5,8 +5,10 @@ import com.werkflow.admin.dto.RoleGroupMappingResponse;
 import com.werkflow.admin.entity.RoleGroupMapping;
 import com.werkflow.admin.repository.RoleGroupMappingRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -59,18 +61,32 @@ public class RoleGroupMappingService {
 
     /** Deletes the mapping and returns its tenantCode so callers can evict caches. */
     @Transactional
-    public String delete(Long id) {
+    public String delete(Long id, String callerTenantCode) {
         RoleGroupMapping mapping = repository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Role group mapping not found: " + id));
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Role group mapping not found: " + id));
+        if (callerTenantCode != null && !callerTenantCode.equals(mapping.getTenantCode())) {
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Access denied: tenant mismatch");
+        }
         String tenantCode = mapping.getTenantCode();
         repository.delete(mapping);
         return tenantCode;
     }
 
     @Transactional
-    public RoleGroupMappingResponse setManagerTier(Long id, boolean isManagerTier) {
+    public RoleGroupMappingResponse setManagerTier(Long id, boolean isManagerTier, String callerTenantCode) {
         RoleGroupMapping mapping = repository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Role group mapping not found: " + id));
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Role group mapping not found: " + id));
+        if (callerTenantCode != null && !callerTenantCode.equals(mapping.getTenantCode())) {
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Access denied: tenant mismatch");
+        }
         mapping.setManagerTier(isManagerTier);
         return toResponse(repository.save(mapping));
     }

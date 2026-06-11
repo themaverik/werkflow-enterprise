@@ -40,7 +40,7 @@ public class RoleGroupMappingController {
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<RoleGroupMappingResponse>> list(
             @RequestParam(required = false) String tenantCode,
             @AuthenticationPrincipal Jwt jwt) {
@@ -51,7 +51,7 @@ public class RoleGroupMappingController {
      * Returns role→groups map for the engine's AdminServiceClient (internal use).
      */
     @GetMapping("/by-role")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'ENGINE_SERVICE')")
     public ResponseEntity<Map<String, List<String>>> byRole(
             @RequestParam(required = false) String tenantCode,
             @AuthenticationPrincipal Jwt jwt) {
@@ -75,18 +75,23 @@ public class RoleGroupMappingController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<RoleGroupMappingResponse> setManagerTier(
             @PathVariable Long id,
-            @RequestBody Map<String, Boolean> body) {
+            @RequestBody Map<String, Boolean> body,
+            @AuthenticationPrincipal Jwt jwt) {
         Boolean flag = body.get("isManagerTier");
         if (flag == null) {
             return ResponseEntity.badRequest().build();
         }
-        return ResponseEntity.ok(service.setManagerTier(id, flag));
+        boolean isSuperAdmin = jwtClaimsExtractor.hasRole(jwt, "SUPER_ADMIN");
+        String callerTenant = isSuperAdmin ? null : jwtClaimsExtractor.getTenantId(jwt);
+        return ResponseEntity.ok(service.setManagerTier(id, flag, callerTenant));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        String tenantCode = service.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+        boolean isSuperAdmin = jwtClaimsExtractor.hasRole(jwt, "SUPER_ADMIN");
+        String callerTenant = isSuperAdmin ? null : jwtClaimsExtractor.getTenantId(jwt);
+        String tenantCode = service.delete(id, callerTenant);
         candidateGroupsAggregator.evict(tenantCode);
         return ResponseEntity.noContent().build();
     }
