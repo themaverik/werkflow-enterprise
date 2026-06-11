@@ -54,7 +54,6 @@ export function ConfirmDialog({
           </Button>
           <Button
             variant={variant}
-            style={variant === 'destructive' ? { backgroundColor: '#BA3920', color: 'white' } : undefined}
             onClick={handleConfirm}
           >
             {resolvedConfirmLabel}

@@ -368,7 +368,7 @@ export default function TenantsPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-7 text-xs text-destructive hover:text-destructive"
+                          className="h-7 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
                           aria-label={`Delete ${tenant.name}`}
                           onClick={() => setDeleting(tenant)}
                         >

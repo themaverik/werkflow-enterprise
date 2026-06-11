@@ -144,6 +144,9 @@
     --badge-teal: #149ba5;
     --badge-teal-bg: #e6f7f8;
     --badge-teal-border: #a8dde0;
+    --badge-neutral: hsl(220 13% 40%);
+    --badge-neutral-bg: hsl(220 13% 91%);
+    --badge-neutral-border: hsl(220 13% 80%);
   }
 }
 
