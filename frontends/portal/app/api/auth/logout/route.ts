@@ -3,7 +3,7 @@ import { auth } from '@/auth'
 
 export async function GET(request: NextRequest) {
   const session = await auth()
-  const idToken = (session as any)?.idToken
+  const idToken = session?.idToken
 
   const keycloakIssuer =
     process.env.KEYCLOAK_ISSUER_BROWSER || process.env.KEYCLOAK_ISSUER

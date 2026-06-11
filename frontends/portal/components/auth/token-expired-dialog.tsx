@@ -22,14 +22,14 @@ export function TokenExpiredDialog() {
 
   // Auto-redirect on token refresh failure (e.g., due to backend redeployment)
   useEffect(() => {
-    if ((session as any)?.error === 'RefreshAccessTokenError') {
+    if (session?.error === 'RefreshAccessTokenError') {
       signIn('keycloak', { callbackUrl: window.location.pathname })
     }
-  }, [(session as any)?.error])
+  }, [session?.error])
 
   useEffect(() => {
     // If we have a valid session, close the dialog
-    if (session?.user && (session as any)?.accessToken) {
+    if (session?.user && session?.accessToken) {
       setIsOpen(false)
       return
     }

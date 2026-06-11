@@ -163,10 +163,10 @@ export default function TenantsPage() {
   const { toast } = useToast()
 
   useEffect(() => {
-    if (!isSuperAdmin) {
+    if (status !== 'loading' && !isSuperAdmin) {
       router.replace('/dashboard')
     }
-  }, [isSuperAdmin, router])
+  }, [status, isSuperAdmin, router])
 
   const { data: tenants, isLoading, error, refetch } = useQuery({
     queryKey: ['platform-tenants'],

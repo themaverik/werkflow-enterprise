@@ -12,7 +12,6 @@ import { getProcessStartForm } from "@/lib/api/flowable"
 import { startProcess } from "@/lib/api/workflows"
 import FormJsViewer from "@/components/forms/FormJsViewer"
 import { resolveFormData, resolveDependentData } from '@/lib/forms/resolveFormData'
-import { apiClient } from '@/lib/api/client'
 import { useSession } from 'next-auth/react'
 
 export default function StartProcessPage() {
@@ -39,12 +38,24 @@ export default function StartProcessPage() {
     retry: false,
   })
 
+  const proxyFetch = async (url: string, params?: Record<string, any>): Promise<any[]> => {
+    const cleanPath = url.startsWith('/api/v1/') ? url.slice('/api/v1'.length) : url
+    const qs = params
+      ? '?' + new URLSearchParams(
+          Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))
+        )
+      : ''
+    const res = await fetch(`/api/proxy/engine${cleanPath}${qs}`)
+    if (!res.ok) throw new Error('Failed to fetch form data')
+    return res.json()
+  }
+
   const { data: initialFormData } = useQuery({
     queryKey: ['startFormData', processDefinitionId],
     queryFn: () =>
       resolveFormData(
         startForm!.schema,
-        (url, params) => apiClient.get(url, { params }).then((r) => r.data),
+        proxyFetch,
         (url) =>
           toast({
             title: 'Failed to load options',
@@ -105,7 +116,7 @@ export default function StartProcessPage() {
       startForm.schema,
       changedKey,
       changedValue,
-      (url, params) => apiClient.get(url, { params }).then((r) => r.data),
+      proxyFetch,
       (url) =>
         toast({
           title: 'Failed to load options',

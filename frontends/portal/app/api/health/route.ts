@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@/auth'
 
 interface ServiceHealth {
   name: string
@@ -22,6 +23,11 @@ async function checkService(name: string, url: string): Promise<ServiceHealth> {
 }
 
 export async function GET() {
+  const session = await auth()
+  if (!session) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
   const engineUrl = process.env.ENGINE_BASE_URL ?? 'http://localhost:8081'
   const adminUrl  = process.env.ADMIN_BASE_URL  ?? 'http://localhost:8083'
 

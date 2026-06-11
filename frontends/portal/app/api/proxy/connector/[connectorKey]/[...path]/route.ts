@@ -1,7 +1,7 @@
 import { auth } from '@/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
-const ADMIN_BASE = process.env.NEXT_PUBLIC_ADMIN_SERVICE_URL ?? 'http://localhost:8083'
+const ADMIN_BASE = process.env.ADMIN_SERVICE_URL ?? 'http://localhost:8083'
 
 type RouteContext = { params: Promise<{ connectorKey: string; path: string[] }> }
 

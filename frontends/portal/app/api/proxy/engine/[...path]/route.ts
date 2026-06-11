@@ -1,7 +1,7 @@
 import { auth } from '@/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
-const ENGINE_BASE = process.env.NEXT_PUBLIC_ENGINE_API_URL ?? 'http://localhost:8081'
+const ENGINE_BASE = process.env.ENGINE_BASE_URL ?? 'http://localhost:8081'
 
 async function proxy(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const session = await auth()
