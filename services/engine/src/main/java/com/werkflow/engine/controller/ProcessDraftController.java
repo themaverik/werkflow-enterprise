@@ -44,6 +44,7 @@ public class ProcessDraftController {
         return ResponseEntity.ok(processDraftService.listDrafts(extractTenantCode(authentication)));
     }
 
+    @PreAuthorize("hasPermission(null, 'WORKFLOW:DESIGN')")
     @PostMapping
     public ResponseEntity<ProcessDraft> saveDraft(
             @RequestBody SaveDraftRequest request,
@@ -57,6 +58,7 @@ public class ProcessDraftController {
         return ResponseEntity.ok(draft);
     }
 
+    @PreAuthorize("hasPermission(null, 'WORKFLOW:DESIGN')")
     @GetMapping("/{processKey}")
     public ResponseEntity<ProcessDraft> getDraft(@PathVariable String processKey, Authentication authentication) {
         Optional<ProcessDraft> draft = processDraftService.getDraft(processKey, extractTenantCode(authentication));
@@ -64,6 +66,7 @@ public class ProcessDraftController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize("hasPermission(null, 'WORKFLOW:DESIGN')")
     @DeleteMapping("/{processKey}")
     public ResponseEntity<Void> deleteDraft(@PathVariable String processKey, Authentication authentication) {
         processDraftService.deleteDraft(processKey, extractTenantCode(authentication));
@@ -74,7 +77,8 @@ public class ProcessDraftController {
         if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
             return new JwtUserContext(jwt).getUserId();
         }
-        return "system";
+        throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.UNAUTHORIZED, "Authentication required");
     }
 
     private String extractTenantCode(Authentication authentication) {

@@ -86,12 +86,16 @@ public class ConfigurationVariableService {
     }
 
     @Transactional
-    public void delete(Long id) {
-        if (!repository.existsById(id)) {
+    public void delete(Long id, String callerTenantCode) {
+        ConfigurationVariable existing = repository.findById(id)
+            .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.NOT_FOUND, "Config var not found: " + id));
+        if (callerTenantCode != null && !callerTenantCode.equals(existing.getTenantCode())) {
             throw new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.NOT_FOUND, "Config var not found: " + id);
+                org.springframework.http.HttpStatus.FORBIDDEN,
+                "Access denied: tenant mismatch");
         }
-        repository.deleteById(id);
+        repository.delete(existing);
     }
 
     private ConfigurationVariable fromRequest(ConfigurationVariable v, ConfigVarRequest r) {

@@ -144,15 +144,17 @@ class ConfigurationVariableServiceTest {
 
     @Test
     void delete_removesById() {
-        when(repository.existsById(1L)).thenReturn(true);
-        service.delete(1L);
-        verify(repository).deleteById(1L);
+        ConfigurationVariable existing = new ConfigurationVariable();
+        existing.setTenantCode("acme");
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        service.delete(1L, "acme");
+        verify(repository).delete(existing);
     }
 
     @Test
     void delete_throwsWhenNotFound() {
-        when(repository.existsById(99L)).thenReturn(false);
-        assertThatThrownBy(() -> service.delete(99L))
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.delete(99L, "acme"))
             .isInstanceOf(RuntimeException.class)
             .hasMessageContaining("99");
     }

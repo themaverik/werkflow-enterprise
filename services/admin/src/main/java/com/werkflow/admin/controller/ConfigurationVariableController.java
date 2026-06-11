@@ -85,8 +85,10 @@ public class ConfigurationVariableController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        service.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+        boolean isSuperAdmin = jwtClaimsExtractor.hasRole(jwt, "SUPER_ADMIN");
+        String callerTenant = isSuperAdmin ? null : jwtClaimsExtractor.getTenantId(jwt);
+        service.delete(id, callerTenant);
         return ResponseEntity.noContent().build();
     }
 
@@ -111,19 +113,10 @@ public class ConfigurationVariableController {
      * SUPER_ADMIN may access any tenant.
      */
     private void enforceTenantOwnership(Jwt jwt, String requestedTenantCode) {
-        // Check for SUPER_ADMIN role in realm_access
-        java.util.Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-        if (realmAccess != null) {
-            Object roles = realmAccess.get("roles");
-            if (roles instanceof java.util.Collection<?> r
-                    && (r.contains("SUPER_ADMIN") || r.contains("super_admin"))) {
-                return; // SUPER_ADMIN bypass
-            }
+        if (jwtClaimsExtractor.hasRole(jwt, "SUPER_ADMIN")) {
+            return;
         }
-        String callerTenant = jwt.getClaimAsString("tenant_id");
-        if (callerTenant == null || callerTenant.isBlank()) {
-            callerTenant = "default";
-        }
+        String callerTenant = jwtClaimsExtractor.getTenantId(jwt);
         if (!callerTenant.equals(requestedTenantCode)) {
             throw new ResponseStatusException(
                 org.springframework.http.HttpStatus.FORBIDDEN,

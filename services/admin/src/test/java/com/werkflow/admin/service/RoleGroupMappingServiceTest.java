@@ -83,7 +83,7 @@ class RoleGroupMappingServiceTest {
     @Test
     void delete_throwsWhenNotFound() {
         when(repository.findById(99L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.delete(99L))
+        assertThatThrownBy(() -> service.delete(99L, "acme"))
             .isInstanceOf(RuntimeException.class)
             .hasMessageContaining("99");
     }
@@ -94,7 +94,7 @@ class RoleGroupMappingServiceTest {
         mapping.setTenantCode("acme");
         when(repository.findById(1L)).thenReturn(Optional.of(mapping));
 
-        String tenantCode = service.delete(1L);
+        String tenantCode = service.delete(1L, "acme");
 
         verify(repository).delete(mapping);
         assertThat(tenantCode).isEqualTo("acme");
