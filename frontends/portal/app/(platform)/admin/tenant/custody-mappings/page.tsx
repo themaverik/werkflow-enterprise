@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
+import { useAuth } from '@/lib/auth/auth-context'
 import { useAuthorization } from '@/lib/auth/use-authorization'
 import { useCandidateGroups } from '@/lib/platform/usePlatformCapabilities'
 import { Button } from '@/components/ui/button'
@@ -199,9 +200,9 @@ function CustodyOwnerWarning({ value, codes }: { value: string; codes: Set<strin
 }
 
 export default function CustodyMappingsPage() {
-  const { status, data: session } = useSession()
+  const { status } = useSession()
   const { hasAnyRole } = useAuthorization()
-  const token = (session?.accessToken as string) ?? ''
+  const { token } = useAuth()
   const qc = useQueryClient()
 
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -215,20 +216,20 @@ export default function CustodyMappingsPage() {
 
   const { data: departmentCodes = EMPTY_DEPT_CODES } = useQuery({
     queryKey: ['erp-department-codes'],
-    queryFn: () => fetchDepartmentCodes(token),
+    queryFn: () => fetchDepartmentCodes(token ?? ''),
     enabled: status === 'authenticated',
     staleTime: 5 * 60 * 1000,
   })
 
   const { data: mappings = [], isLoading } = useQuery({
     queryKey: ['custodyMappings'],
-    queryFn: () => fetchCustodyMappings(token),
+    queryFn: () => fetchCustodyMappings(token ?? ''),
     enabled: status === 'authenticated',
     staleTime: 60_000,
   })
 
   const createMutation = useMutation({
-    mutationFn: (body: { custodyOwner: string; candidateGroups: string[] }) => createMapping(body, token),
+    mutationFn: (body: { custodyOwner: string; candidateGroups: string[] }) => createMapping(body, token ?? ''),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['custodyMappings'] })
       setAddingNew(false)
@@ -240,7 +241,7 @@ export default function CustodyMappingsPage() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, body }: { id: number; body: { custodyOwner: string; candidateGroups: string[] } }) =>
-      updateMapping(id, body, token),
+      updateMapping(id, body, token ?? ''),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['custodyMappings'] })
       setEditingId(null)
@@ -251,7 +252,7 @@ export default function CustodyMappingsPage() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => deleteMapping(id, token),
+    mutationFn: (id: number) => deleteMapping(id, token ?? ''),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['custodyMappings'] })
       toast.success('Custody mapping deleted')

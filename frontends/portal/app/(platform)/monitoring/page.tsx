@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
+import { useAuth } from '@/lib/auth/auth-context'
 import { RefreshCw, CheckCircle, XCircle, AlertCircle, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -46,13 +47,13 @@ function SubComponent({ name, status }: { name: string; status: string }) {
 }
 
 export default function ProcessHealthPage() {
-  const { status, data: session } = useSession()
-  const token = (session?.accessToken as string) ?? ''
+  const { status } = useSession()
+  const { token } = useAuth()
 
   const { data: health, isLoading, dataUpdatedAt, refetch, isFetching } = useQuery<HealthResponse>({
     queryKey: ['portalHealth'],
     queryFn: async () => {
-      const res = await fetch('/api/health', { headers: { Authorization: `Bearer ${token}` } })
+      const res = await fetch('/api/health', { headers: { Authorization: `Bearer ${token ?? ''}` } })
       if (!res.ok) throw new Error('Health check failed')
       return res.json()
     },

@@ -31,6 +31,7 @@ import {
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Plus, RefreshCw, Building2, CheckCircle2, Layers } from 'lucide-react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface TenantRow {
   id: number
@@ -277,35 +278,35 @@ export default function TenantsPage() {
 
         {!isLoading && !error && tenants && tenants.length > 0 && (
           <div className="rounded-xl border border-border overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Tenant Code</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Name</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Status</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Created</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">KC Status</th>
-                  <th className="px-4 py-3 font-semibold text-muted-foreground text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tenant Code</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>KC Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {tenants.map((tenant) => (
-                  <tr key={tenant.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3">
+                  <TableRow key={tenant.id}>
+                    <TableCell>
                       <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{tenant.tenantCode}</code>
-                    </td>
-                    <td className="px-4 py-3 font-medium text-foreground">{tenant.name}</td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="font-medium text-foreground">{tenant.name}</TableCell>
+                    <TableCell>
                       <Badge variant={tenant.active ? 'default' : 'secondary'}>
                         {tenant.active ? 'Active' : 'Inactive'}
                       </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
                       {tenant.createdAt
                         ? new Date(tenant.createdAt).toLocaleDateString()
                         : '—'}
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       {tenant.keycloakProvisioned ? (
                         <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
                           <CheckCircle2 className="h-3.5 w-3.5" />
@@ -316,8 +317,8 @@ export default function TenantsPage() {
                           Pending KC
                         </Badge>
                       )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
+                    </TableCell>
+                    <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button
                           size="sm"
@@ -353,11 +354,11 @@ export default function TenantsPage() {
                           Delete
                         </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
 
