@@ -62,10 +62,17 @@ public class ExampleSeedService {
     /**
      * Seeds all example workflows for {@code tenantId}.
      *
-     * @param tenantId Flowable tenant identifier (must be non-null, non-blank)
+     * @param tenantId Flowable tenant identifier — alphanumeric, hyphens, and underscores only
      * @return aggregate seed result; never {@code null}
+     * @throws IllegalArgumentException if tenantId is blank or contains invalid characters
      */
     public SeedResult seedForTenant(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("tenantId must not be blank");
+        }
+        if (!tenantId.matches("[a-zA-Z0-9][a-zA-Z0-9_-]*")) {
+            throw new IllegalArgumentException("tenantId contains invalid characters: " + tenantId);
+        }
         String folder = resolveFolder(tenantId);
         log.info("Seeding examples for tenant '{}' from folder '{}'", tenantId, folder);
 
@@ -97,7 +104,7 @@ public class ExampleSeedService {
         }
 
         try {
-            Document doc = parseBpmn(bpmnXml);
+            Document doc = parseXml(bpmnXml);
             Map<String, FormSchema.FormType> formRefs = extractFormRefs(doc);
             Set<String> decisionKeys = extractDecisionKeys(doc);
 
@@ -175,19 +182,30 @@ public class ExampleSeedService {
     // DMN seeding
     // -------------------------------------------------------------------------
 
-    private List<String> seedDmns(String folder, String tenantId, Set<String> decisionKeys)
-            throws IOException {
+    private List<String> seedDmns(String folder, String tenantId, Set<String> decisionKeys) {
         if (decisionKeys.isEmpty()) {
             return List.of();
         }
 
-        Resource[] dmnResources = resourcePatternResolver.getResources(
-                "classpath:" + EXAMPLES_BASE + folder + "/dmn/*.dmn");
+        Resource[] dmnResources;
+        try {
+            dmnResources = resourcePatternResolver.getResources(
+                    "classpath:" + EXAMPLES_BASE + folder + "/dmn/*.dmn");
+        } catch (IOException e) {
+            log.warn("Failed to scan DMN resources in folder '{}': {}", folder, e.getMessage());
+            return List.of();
+        }
 
         List<String> newDmns = new ArrayList<>();
         for (Resource dmnResource : dmnResources) {
             String filename = dmnResource.getFilename();
-            String dmnXml   = readResource(dmnResource);
+            String dmnXml;
+            try {
+                dmnXml = readResource(dmnResource);
+            } catch (IOException e) {
+                log.warn("Failed to read DMN resource '{}': {}", filename, e.getMessage());
+                continue;
+            }
 
             Set<String> decisionIdsInFile = extractDmnDecisionIds(dmnXml);
             if (decisionIdsInFile.stream().noneMatch(decisionKeys::contains)) {
@@ -309,10 +327,6 @@ public class ExampleSeedService {
             log.warn("Failed to parse DMN XML for decision IDs: {}", e.getMessage());
         }
         return Set.copyOf(ids);
-    }
-
-    private Document parseBpmn(String xml) {
-        return parseXml(xml);
     }
 
     private Document parseXml(String xml) {

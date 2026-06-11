@@ -31,6 +31,8 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -185,6 +187,26 @@ class ExampleSeedServiceTest {
     }
 
     // -------------------------------------------------------------------------
+    // Input validation
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("seedForTenant: blank tenantId → IllegalArgumentException")
+    void blankTenantId_throws() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.seedForTenant(""))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("blank");
+    }
+
+    @Test
+    @DisplayName("seedForTenant: path-traversal tenantId → IllegalArgumentException")
+    void pathTraversalTenantId_throws() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.seedForTenant("../etc"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("invalid characters");
+    }
+
+    // -------------------------------------------------------------------------
     // Idempotency: BPMN already deployed → SKIPPED
     // -------------------------------------------------------------------------
 
@@ -195,7 +217,7 @@ class ExampleSeedServiceTest {
         when(repositoryService.createProcessDefinitionQuery()).thenReturn(pdq);
 
         Resource bpmnResource = namedResource("capex-approval-process.bpmn20.xml", CAPEX_BPMN);
-        mockBpmnFolder("default", bpmnResource);
+        mockBpmnFolder(bpmnResource);
 
         SeedResult result = service.seedForTenant("acme");
 
@@ -230,12 +252,12 @@ class ExampleSeedServiceTest {
         DmnDeploymentQuery ddq = mockDmnDeploymentQuery(0L);
         when(dmnRepositoryService.createDeploymentQuery()).thenReturn(ddq);
         when(dmnRepositoryService.createDeployment()).thenReturn(
-                org.mockito.Mockito.mock(org.flowable.dmn.api.DmnDeploymentBuilder.class,
+                mock(org.flowable.dmn.api.DmnDeploymentBuilder.class,
                         org.mockito.Answers.RETURNS_DEEP_STUBS));
 
         // Resources: one BPMN, one DMN, two form JSONs
         Resource bpmnResource = namedResource("capex-approval-process.bpmn20.xml", CAPEX_BPMN);
-        mockBpmnFolder("default", bpmnResource);
+        mockBpmnFolder(bpmnResource);
 
         String capexDmn = """
             <?xml version="1.0" encoding="UTF-8"?>
@@ -257,7 +279,7 @@ class ExampleSeedServiceTest {
                 .thenReturn(new Resource[]{namedResource("capex-approval-form.json", formJson)});
 
         when(processDefinitionService.deployExampleProcessDefinition(anyString(), anyString(), anyString()))
-                .thenReturn(org.mockito.Mockito.mock(com.werkflow.engine.dto.ProcessDefinitionResponse.class));
+                .thenReturn(mock(com.werkflow.engine.dto.ProcessDefinitionResponse.class));
 
         SeedResult result = service.seedForTenant("acme");
 
@@ -284,18 +306,18 @@ class ExampleSeedServiceTest {
 
         // capex-request-form already exists; capex-approval-form does not
         when(formSchemaService.loadFormSchema("capex-request-form"))
-                .thenReturn(org.mockito.Mockito.mock(FormSchema.class));
+                .thenReturn(mock(FormSchema.class));
         when(formSchemaService.loadFormSchema("capex-approval-form"))
                 .thenThrow(new FormNotFoundException("capex-approval-form"));
 
         DmnDeploymentQuery ddq = mockDmnDeploymentQuery(0L);
         when(dmnRepositoryService.createDeploymentQuery()).thenReturn(ddq);
         when(dmnRepositoryService.createDeployment()).thenReturn(
-                org.mockito.Mockito.mock(org.flowable.dmn.api.DmnDeploymentBuilder.class,
+                mock(org.flowable.dmn.api.DmnDeploymentBuilder.class,
                         org.mockito.Answers.RETURNS_DEEP_STUBS));
 
         Resource bpmnResource = namedResource("capex-approval-process.bpmn20.xml", CAPEX_BPMN);
-        mockBpmnFolder("default", bpmnResource);
+        mockBpmnFolder(bpmnResource);
 
         String capexDmn = """
             <?xml version="1.0" encoding="UTF-8"?>
@@ -312,17 +334,15 @@ class ExampleSeedServiceTest {
                 "classpath:examples/tenants/default/forms/capex-approval-form.json"))
                 .thenReturn(new Resource[]{namedResource("capex-approval-form.json", formJson)});
         when(processDefinitionService.deployExampleProcessDefinition(anyString(), anyString(), anyString()))
-                .thenReturn(org.mockito.Mockito.mock(com.werkflow.engine.dto.ProcessDefinitionResponse.class));
+                .thenReturn(mock(com.werkflow.engine.dto.ProcessDefinitionResponse.class));
 
         service.seedForTenant("acme");
 
         // Only capex-approval-form should have been saved (request-form already existed)
         verify(formSchemaService).saveFormSchema(
-                org.mockito.ArgumentMatchers.eq("capex-approval-form"),
-                any(), anyString(), any(), anyString());
+                eq("capex-approval-form"), any(), anyString(), any(), anyString());
         verify(formSchemaService, never()).saveFormSchema(
-                org.mockito.ArgumentMatchers.eq("capex-request-form"),
-                any(), anyString(), any(), anyString());
+                eq("capex-request-form"), any(), anyString(), any(), anyString());
     }
 
     // -------------------------------------------------------------------------
@@ -349,8 +369,7 @@ class ExampleSeedServiceTest {
         };
     }
 
-    private void mockBpmnFolder(String folder, Resource... resources) throws Exception {
-        // No tenant-specific folder
+    private void mockBpmnFolder(Resource... resources) throws Exception {
         when(resourcePatternResolver.getResources(
                 "classpath:examples/tenants/acme/bpmn/*.bpmn20.xml"))
                 .thenReturn(new Resource[0]);
