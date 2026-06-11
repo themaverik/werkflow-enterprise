@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useAuthorization } from '@/lib/auth/use-authorization'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from 'sonner'
+import { FilterPills } from '@/components/ui/filter-pills'
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const ACCENT = '#149ba5'
@@ -312,33 +313,11 @@ export default function FormsPage() {
         <div style={{
           flex: 1, display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2,
         }}>
-          <button
-            onClick={() => setActiveTag(null)}
-            style={{
-              flexShrink: 0, padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 500,
-              cursor: 'pointer', fontFamily: 'inherit',
-              background: activeTag === null ? ACCENT : T.bg,
-              color: activeTag === null ? '#fff' : T.muted,
-              border: '1px solid ' + (activeTag === null ? ACCENT : T.border),
-            }}
-          >
-            All
-          </button>
-          {tags.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-              style={{
-                flexShrink: 0, padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 500,
-                cursor: 'pointer', fontFamily: 'inherit',
-                background: activeTag === tag ? ACCENT : T.bg,
-                color: activeTag === tag ? '#fff' : T.muted,
-                border: '1px solid ' + (activeTag === tag ? ACCENT : T.border),
-              }}
-            >
-              {tag}
-            </button>
-          ))}
+          <FilterPills
+            options={[{ key: '', label: 'All' }, ...tags.map((tag) => ({ key: tag, label: tag }))]}
+            active={activeTag ?? ''}
+            onChange={(key) => setActiveTag(key === '' ? null : key)}
+          />
         </div>
       </div>
 
