@@ -8,6 +8,8 @@ import { emitTokenExpired } from '@/lib/auth/token-expired-event'
 // - Service Registry: /werkflow/api/services/*
 // - Process Definitions: /werkflow/api/process-definitions/*
 // - Forms: /werkflow/api/forms/*
+// Client-side Axios client. Only for use in browser components.
+// Route handlers must use ENGINE_API_URL (no NEXT_PUBLIC_) to avoid leaking internal hostnames.
 const API_BASE_URL = process.env.NEXT_PUBLIC_ENGINE_API_URL || 'http://localhost:8081'
 const ADMIN_API_BASE_URL = process.env.NEXT_PUBLIC_ADMIN_SERVICE_URL || 'http://localhost:8083'
 const ERP_API_BASE_URL = process.env.NEXT_PUBLIC_ERP_API_URL || 'http://localhost:8084'

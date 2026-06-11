@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // MED-11: force sign-out when the refresh token has expired
   useEffect(() => {
-    if (status === 'authenticated' && (session as any)?.error === 'RefreshAccessTokenError') {
+    if (status === 'authenticated' && session?.error === 'RefreshAccessTokenError') {
       signOut({ redirect: true, callbackUrl: '/login' })
     }
   }, [session, status])
@@ -43,17 +43,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Update user when session changes
   useEffect(() => {
     if (status === 'authenticated' && session) {
-      const s = session as any
       const sessionUser: User = {
-        username: s.user?.name || '',
-        email: s.user?.email || '',
-        firstName: s.user?.given_name,
-        lastName: s.user?.family_name,
-        roles: s.user?.roles || [],
-        groups: s.groups || [],
-        doaLevel: typeof s.doa_level === 'number' ? s.doa_level : Number(s.doa_level) || undefined,
-        department: s.department,
-        tenantId: s.tenantId ?? 'default',
+        username: session.user?.name || '',
+        email: session.user?.email || '',
+        firstName: session.user?.given_name,
+        lastName: session.user?.family_name,
+        roles: session.user?.roles || [],
+        groups: session.groups || [],
+        doaLevel: typeof session.doa_level === 'number' ? session.doa_level : Number(session.doa_level) || undefined,
+        department: session.department,
+        tenantId: session.tenantId ?? 'default',
       }
       setUser(sessionUser)
     } else if (status === 'unauthenticated') {
@@ -88,15 +87,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshToken = useCallback(async (): Promise<string | null> => {
     // Token refresh is handled by next-auth automatically
     // This is a placeholder for explicit refresh if needed
-    return (session as any)?.accessToken || null
+    return session?.accessToken || null
   }, [session])
 
   const value: AuthContextType = {
     user,
     isAuthenticated: status === 'authenticated',
     isLoading,
-    token: (session as any)?.accessToken || null,
-    idToken: (session as any)?.idToken || null,
+    token: session?.accessToken || null,
+    idToken: session?.idToken || null,
     login,
     logout,
     refreshToken,

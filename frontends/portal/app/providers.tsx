@@ -42,7 +42,7 @@ function ApiTokenProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession()
   const tokenRef = useRef<string | null>(null)
   // Update ref synchronously on every render so the getter always reads the current token
-  tokenRef.current = (session as any)?.accessToken || null
+  tokenRef.current = session?.accessToken || null
 
   // Register synchronously during render so the getter is available before any child effects fire
   setApiClientToken(async () => tokenRef.current)

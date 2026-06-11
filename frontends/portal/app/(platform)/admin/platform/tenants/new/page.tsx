@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useAuthorization } from '@/lib/auth/use-authorization'
 import { PageSurface } from '@/components/layout/page-surface'
@@ -32,6 +33,7 @@ const EMPTY_FORM: FormState = {
 
 export default function NewTenantPage() {
   const router = useRouter()
+  const { status } = useSession()
   const { hasRole } = useAuthorization()
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
@@ -40,10 +42,10 @@ export default function NewTenantPage() {
   const isSuperAdmin = hasRole('SUPER_ADMIN')
 
   useEffect(() => {
-    if (!isSuperAdmin) {
+    if (status !== 'loading' && !isSuperAdmin) {
       router.replace('/dashboard')
     }
-  }, [isSuperAdmin, router])
+  }, [status, isSuperAdmin, router])
 
   if (!isSuperAdmin) {
     return null

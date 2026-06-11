@@ -1,4 +1,5 @@
-import type { NextAuthConfig } from "next-auth"
+import type { NextAuthConfig, Session } from "next-auth"
+import type { JWT } from "next-auth/jwt"
 import Keycloak from "next-auth/providers/keycloak"
 import { decodeJwt, JWTPayload } from 'jose'; // Import the decode function from jose
 
@@ -12,7 +13,13 @@ interface KeycloakJWTPayload extends JWTPayload {
       roles: string[];
     };
   };
-  // Add other custom claims here if needed
+  groups?: string[];
+  doa_level?: string | number;
+  department?: string;
+  preferred_username?: string;
+  given_name?: string;
+  family_name?: string;
+  tenant_id?: string;
 }
 
 /**
@@ -83,9 +90,9 @@ export const authConfig = {
           const decodedToken = decodeJwt(account.access_token || '') as KeycloakJWTPayload;
 
           token.roles = decodedToken.realm_access?.roles || [];
-          token.groups = (decodedToken as any).groups || [];
+          token.groups = decodedToken.groups || [];
           // Derive DOA level from doa_approver_levelN roles if not explicitly set as a claim
-          const doaLevelFromClaim = (decodedToken as any).doa_level;
+          const doaLevelFromClaim = decodedToken.doa_level;
           if (doaLevelFromClaim !== undefined) {
             token.doa_level = doaLevelFromClaim;
           } else {
@@ -94,11 +101,11 @@ export const authConfig = {
             const match = doaRole?.match(/^doa_approver_level(\d+)$/);
             token.doa_level = match ? parseInt(match[1], 10) : undefined;
           }
-          token.department = (decodedToken as any).department;
-          token.preferred_username = (decodedToken as any).preferred_username;
-          token.given_name = (decodedToken as any).given_name;
-          token.family_name = (decodedToken as any).family_name;
-          token.tenantId = (decodedToken as any).tenant_id ?? 'default';
+          token.department = decodedToken.department;
+          token.preferred_username = decodedToken.preferred_username;
+          token.given_name = decodedToken.given_name;
+          token.family_name = decodedToken.family_name;
+          token.tenantId = decodedToken.tenant_id ?? 'default';
 
         } catch (error) {
           console.error("Error decoding access token with jose:", error);
@@ -143,29 +150,28 @@ export const authConfig = {
 
       return token
     },
-    async session({ session, token }) {
-      const s = session as any
-      s.accessToken = token.accessToken as string
-      s.idToken = token.idToken as string
-      if (s.user) {
-        s.user.roles = token.roles as string[]
-        s.user.name = (token.preferred_username as string) || s.user.name
-        s.user.given_name = token.given_name
-        s.user.family_name = token.family_name
+    async session({ session, token }: { session: Session; token: JWT }) {
+      session.accessToken = token.accessToken ?? ''
+      session.idToken = token.idToken ?? ''
+      if (session.user) {
+        session.user.roles = token.roles
+        session.user.name = token.preferred_username || session.user.name
+        session.user.given_name = token.given_name
+        session.user.family_name = token.family_name
       }
-      s.groups = token.groups as string[]
-      s.doa_level = token.doa_level
-      s.department = token.department
-      s.tenantId = token.tenantId as string
+      session.groups = token.groups
+      session.doa_level = token.doa_level
+      session.department = token.department
+      session.tenantId = token.tenantId ?? ''
       if (token.error) {
-        s.error = token.error
+        session.error = token.error
       }
 
       return session
     },
     authorized({ auth, request: { nextUrl } }) {
       // MED-11: force re-auth when refresh token has expired
-      if ((auth as any)?.error === 'RefreshAccessTokenError') {
+      if (auth?.error === 'RefreshAccessTokenError') {
         return false
       }
 
@@ -181,7 +187,7 @@ export const authConfig = {
       // Admin routes require authentication + ADMIN or SUPER_ADMIN role
       if (pathname.startsWith('/admin')) {
         if (!isLoggedIn) return false
-        const roles: string[] = ((auth?.user as any)?.roles ?? []) as string[]
+        const roles: string[] = auth?.user?.roles ?? []
         const isAdmin = roles.some(r => r.toUpperCase() === 'ADMIN' || r.toUpperCase() === 'SUPER_ADMIN')
         if (!isAdmin) {
           return Response.redirect(new URL('/dashboard', nextUrl))
