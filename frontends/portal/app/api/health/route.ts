@@ -22,8 +22,8 @@ async function checkService(name: string, url: string): Promise<ServiceHealth> {
 }
 
 export async function GET() {
-  const engineUrl = process.env.NEXT_PUBLIC_ENGINE_API_URL ?? 'http://localhost:8081'
-  const adminUrl  = process.env.NEXT_PUBLIC_ADMIN_SERVICE_URL ?? 'http://localhost:8083'
+  const engineUrl = process.env.ENGINE_BASE_URL ?? 'http://localhost:8081'
+  const adminUrl  = process.env.ADMIN_BASE_URL  ?? 'http://localhost:8083'
 
   const [engine, admin] = await Promise.all([
     checkService('engine', engineUrl),

@@ -134,11 +134,15 @@ public class ProcessDefinitionService {
      * @param bpmnXml      the BPMN XML content
      * @param resourceName the filename used as both the deployment name and the resource
      *                     name — must be stable across restarts for deduplication to work
+     * @param tenantId     the tenant under which the example is deployed; must match the
+     *                     tenant used by portal queries (processDefinitionTenantId filter)
      */
     @Transactional
-    public ProcessDefinitionResponse deployExampleProcessDefinition(String bpmnXml, String resourceName) {
+    public ProcessDefinitionResponse deployExampleProcessDefinition(String bpmnXml, String resourceName,
+                                                                    String tenantId) {
         validateBpmnExpressions(bpmnXml);
-        log.info("Deploying example process definition with duplicate filtering: {}", resourceName);
+        log.info("Deploying example process definition with duplicate filtering: {} (tenantId={})",
+            resourceName, tenantId);
 
         try (InputStream inputStream = new java.io.ByteArrayInputStream(
                 bpmnXml.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
@@ -147,13 +151,32 @@ public class ProcessDefinitionService {
                 .name(resourceName)
                 .addInputStream(resourceName, inputStream)
                 .enableDuplicateFiltering()
+                .tenantId(tenantId)
                 .deploy();
 
             log.info("Example process definition deployed/reused. Deployment ID: {}", deployment.getId());
 
             ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery()
                 .deploymentId(deployment.getId())
+                .processDefinitionTenantId(tenantId)
                 .singleResult();
+
+            if (processDefinition == null) {
+                // Duplicate-filter returned a pre-existing deployment under a different tenant.
+                // Fall back to latest version query for this resource name + tenant.
+                processDefinition = repositoryService.createProcessDefinitionQuery()
+                    .processDefinitionResourceName(resourceName)
+                    .processDefinitionTenantId(tenantId)
+                    .latestVersion()
+                    .singleResult();
+            }
+            if (processDefinition == null) {
+                log.warn("deployExampleProcessDefinition: no process definition found for '{}' " +
+                         "under tenant '{}' — indicators not persisted", resourceName, tenantId);
+                return mapToResponse(repositoryService.createProcessDefinitionQuery()
+                    .deploymentId(deployment.getId())
+                    .singleResult());
+            }
 
             persistIndicators(bpmnXml, processDefinition.getId());
 
