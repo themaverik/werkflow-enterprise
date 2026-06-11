@@ -1,5 +1,6 @@
 package com.werkflow.engine.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,18 +29,34 @@ import java.net.URI;
  * <p>The KV-v2 secret engine is expected to be mounted at {@code secret} (OpenBao default in
  * dev mode; the {@code openbao-init} container guarantees this in our compose stack).
  */
+@Slf4j
 @Configuration
 public class VaultClientConfig {
 
     private final String vaultAddr;
     private final String vaultToken;
+    private final String appEnvironment;
 
     public VaultClientConfig(
             @Value("${werkflow.vault.addr}") String vaultAddr,
-            @Value("${werkflow.vault.token}") String vaultToken
+            @Value("${werkflow.vault.token}") String vaultToken,
+            @Value("${app.environment:production}") String appEnvironment
     ) {
         this.vaultAddr = vaultAddr;
         this.vaultToken = vaultToken;
+        this.appEnvironment = appEnvironment;
+    }
+
+    @jakarta.annotation.PostConstruct
+    public void assertProductionSafety() {
+        if (vaultToken.endsWith("-do-not-use-in-prod")) {
+            if (!"development".equalsIgnoreCase(appEnvironment)) {
+                throw new IllegalStateException(
+                    "OpenBao dev token detected in non-development environment (" + appEnvironment + "). " +
+                    "Set WERKFLOW_VAULT_TOKEN to a production token.");
+            }
+            log.warn("VaultClientConfig: using dev OpenBao token — ensure this is a development environment");
+        }
     }
 
     @Bean

@@ -41,6 +41,10 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class WebhookController {
 
+    private static final java.util.Set<String> SENSITIVE_HEADER_KEYS = java.util.Set.of(
+        "authorization", "cookie", "x-api-key", "x-auth-token", "proxy-authorization"
+    );
+
     private final AdminServiceClient adminServiceClient;
     private final HmacVerifier hmacVerifier;
     private final ReplayProtectionService replayProtection;
@@ -154,7 +158,9 @@ public class WebhookController {
             String tenantCode, String connectorKey, String idempotencyKey,
             String rawBody, Map<String, String> headers, String reason) {
         try {
-            String headersJson = objectMapper.writeValueAsString(headers);
+            Map<String, String> safeHeaders = new java.util.HashMap<>(headers);
+            SENSITIVE_HEADER_KEYS.forEach(safeHeaders::remove);
+            String headersJson = objectMapper.writeValueAsString(safeHeaders);
             deadLetterRepo.save(WebhookUndelivered.of(
                     tenantCode, connectorKey, idempotencyKey, rawBody, headersJson, reason));
         } catch (Exception e) {
@@ -162,8 +168,8 @@ public class WebhookController {
         }
         log.warn("WebhookController: undelivered webhook [tenant={}, connector={}]: {}",
                 tenantCode, connectorKey, reason);
-        // Return 200 so the sender stops retrying for uncorrelated events
-        return ResponseEntity.ok(Map.of("status", "undelivered", "reason", reason));
+        // Return 202 Accepted (still 2xx — senders stop retrying) for undelivered events
+        return ResponseEntity.status(202).body(Map.of("status", "undelivered"));
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

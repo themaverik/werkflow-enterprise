@@ -58,7 +58,6 @@ export default function FormJsDemoPage() {
         setPrSchema(prData);
         setEditorSchema(capexData);
       } catch (err) {
-        console.error('Error fetching schemas:', err);
         setError(err instanceof Error ? err.message : 'Failed to load form schemas');
         // Set default empty schemas on error
         setCapexRequestSchema({ type: 'default', components: [] });
@@ -74,9 +73,8 @@ export default function FormJsDemoPage() {
   }, []);
 
   const handleSubmit = (data: Record<string, any>) => {
-    console.log('Form submitted:', data);
     setSubmittedData(data);
-    alert('Form submitted successfully! Check console for data.');
+    alert('Form submitted successfully!');
   };
 
   const handleChange = (data: Record<string, any>) => {
@@ -87,8 +85,7 @@ export default function FormJsDemoPage() {
     setEditorSchema(schema);
   };
 
-  const handleSaveSchema = async (schema: any) => {
-    console.log('Saving schema:', schema);
+  const handleSaveSchema = async (_schema: any) => {
     // In production, save to backend
     return Promise.resolve();
   };

@@ -4,7 +4,9 @@
   "loginTheme": "werkflow",
   "accessTokenLifespan": 300,
   "ssoSessionIdleTimeout": 1800,
-  "ssoSessionMaxLifespan": 36000,
+  "ssoSessionMaxLifespan": 14400,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
   "passwordPolicy": "length(12) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1)",
   "bruteForceProtected": true,
   "failureFactor": 5,
@@ -33,7 +35,9 @@
       "publicClient": false,
       "protocol": "openid-connect",
       "attributes": {
-        "post.logout.redirect.uris": "+"
+        "post.logout.redirect.uris": "+",
+        "use.refresh.tokens": "true",
+        "refresh.token.max.reuse": "0"
       },
       "protocolMappers": [
         {
