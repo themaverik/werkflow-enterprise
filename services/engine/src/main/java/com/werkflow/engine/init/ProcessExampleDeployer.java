@@ -43,19 +43,22 @@ public class ProcessExampleDeployer {
     private final ResourcePatternResolver resourcePatternResolver;
     private final boolean deployOnStartup;
     private final boolean resetOnStartup;
+    private final String exampleTenantId;
 
     public ProcessExampleDeployer(ProcessDefinitionService processDefinitionService,
                                    RepositoryService repositoryService,
                                    JdbcTemplate jdbcTemplate,
                                    ResourcePatternResolver resourcePatternResolver,
                                    @Value("${werkflow.examples.deploy-on-startup:false}") boolean deployOnStartup,
-                                   @Value("${werkflow.examples.reset-on-startup:false}") boolean resetOnStartup) {
+                                   @Value("${werkflow.examples.reset-on-startup:false}") boolean resetOnStartup,
+                                   @Value("${werkflow.examples.tenant-id:default}") String exampleTenantId) {
         this.processDefinitionService = processDefinitionService;
         this.repositoryService = repositoryService;
         this.jdbcTemplate = jdbcTemplate;
         this.resourcePatternResolver = resourcePatternResolver;
         this.deployOnStartup = deployOnStartup;
         this.resetOnStartup = resetOnStartup;
+        this.exampleTenantId = exampleTenantId;
     }
 
     @PostConstruct
@@ -80,8 +83,8 @@ public class ProcessExampleDeployer {
                     resetExampleDeployments(filename);
                 }
                 String bpmnXml = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-                ProcessDefinitionResponse def = processDefinitionService.deployExampleProcessDefinition(bpmnXml, filename);
-                upsertCatalogEntry(def.getKey(), def.getName(), bpmnXml);
+                ProcessDefinitionResponse def = processDefinitionService.deployExampleProcessDefinition(bpmnXml, filename, exampleTenantId);
+                upsertCatalogEntry(def.getKey(), def.getName(), bpmnXml, exampleTenantId);
                 log.info("Deployed example process: {}", filename);
             } catch (Exception e) {
                 log.error("Failed to deploy example process '{}': {}", filename, e.getMessage());
@@ -93,16 +96,19 @@ public class ProcessExampleDeployer {
      * Ensures a process_draft catalog entry exists for a deployed example. Uses
      * ON CONFLICT DO NOTHING so admin-edited drafts are never overwritten.
      * Skips silently if process_draft is absent (e.g. Flyway not yet applied).
+     *
+     * <p>The conflict target uses (process_key, tenant_id) — the composite unique
+     * constraint introduced in V17 (the single-column process_key constraint was dropped).
      */
-    private void upsertCatalogEntry(String processKey, String name, String bpmnXml) {
+    private void upsertCatalogEntry(String processKey, String name, String bpmnXml, String tenantId) {
         try {
             jdbcTemplate.update(
                 """
-                INSERT INTO process_draft (process_key, name, bpmn_xml, created_by, updated_by, department_code)
-                VALUES (?, ?, ?, 'system', 'system', NULL)
-                ON CONFLICT (process_key) DO NOTHING
+                INSERT INTO process_draft (process_key, tenant_id, name, bpmn_xml, created_by, updated_by, department_code)
+                VALUES (?, ?, ?, ?, 'system', 'system', NULL)
+                ON CONFLICT (process_key, tenant_id) DO NOTHING
                 """,
-                processKey, name, bpmnXml);
+                processKey, tenantId, name, bpmnXml);
         } catch (DataAccessException e) {
             log.debug("Catalog entry skipped for '{}': {}", processKey, e.getMessage());
         }
@@ -124,7 +130,8 @@ public class ProcessExampleDeployer {
      */
     private void resetExampleDraftAndBundle(String processKey) {
         try {
-            int n = jdbcTemplate.update("DELETE FROM process_draft WHERE process_key = ?", processKey);
+            int n = jdbcTemplate.update("DELETE FROM process_draft WHERE process_key = ? AND tenant_id = ?",
+                    processKey, exampleTenantId);
             if (n > 0) {
                 log.info("Reset mode: removed {} orphan draft(s) for '{}'", n, processKey);
             }
@@ -165,6 +172,7 @@ public class ProcessExampleDeployer {
     private void resetExampleDeployments(String deploymentName) {
         List<Deployment> existing = repositoryService.createDeploymentQuery()
             .deploymentName(deploymentName)
+            .deploymentTenantId(exampleTenantId)
             .list();
         if (existing.isEmpty()) {
             return;

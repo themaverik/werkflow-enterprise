@@ -309,6 +309,8 @@ services:
     environment:
       PORT: 4000
       NODE_ENV: production
+      ENGINE_BASE_URL: http://engine-service:8081
+      ADMIN_BASE_URL: http://admin-service:8083
 
       # Backend API URLs (internal Docker network)
       NEXT_PUBLIC_ENGINE_API_URL: http://engine-service:8081/api
