@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.Optional;
 
@@ -48,7 +49,10 @@ public class ExampleSeedClient {
      * @return the seed result, or empty on failure
      */
     public Optional<EngineSeedResult> seed(String tenantId) {
-        String url = engineServiceUrl + "/api/internal/examples/seed/" + tenantId;
+        String url = UriComponentsBuilder.fromHttpUrl(engineServiceUrl)
+                .path("/api/internal/examples/seed/{tenantId}")
+                .buildAndExpand(tenantId)
+                .toUriString();
         try {
             ResponseEntity<EngineSeedResult> response = restTemplate.postForEntity(url, null, EngineSeedResult.class);
             if (response.getStatusCode().is2xxSuccessful()) {

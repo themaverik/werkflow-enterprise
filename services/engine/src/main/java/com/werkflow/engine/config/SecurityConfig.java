@@ -94,6 +94,9 @@ public class SecurityConfig {
                     .requestMatchers(new AntPathRequestMatcher("/api/forms/**")).authenticated()
                     .requestMatchers(new AntPathRequestMatcher("/api/services/**")).authenticated()
                     .requestMatchers(new AntPathRequestMatcher("/werkflow/api/**")).authenticated()
+                    // Internal S2S endpoints — restrict at filter-chain level as defence-in-depth
+                    .requestMatchers(new AntPathRequestMatcher("/api/internal/**"))
+                        .hasAnyRole("ADMIN_SERVICE", "SUPER_ADMIN")
                     .anyRequest().authenticated();
             })
             .oauth2ResourceServer(oauth2 -> oauth2
