@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useAuthorization } from '@/lib/auth/use-authorization'
 import { listDecisions, deleteDeployment, type DmnDecisionDto } from '@/lib/api/dmn'
+import { FilterPills } from '@/components/ui/filter-pills'
 
 // ---------------------------------------------------------------------------
 // Design tokens
@@ -679,27 +680,11 @@ export default function DecisionsPage() {
 
         {/* Tag pills */}
         {allTags.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {allTags.map((tag) => (
-              <button
-                key={tag}
-                onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: 20,
-                  border: '1px solid ' + (activeTag === tag ? ACCENT : T.border),
-                  background: activeTag === tag ? ACCENT + '12' : T.card,
-                  color: activeTag === tag ? ACCENT : T.muted,
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
+          <FilterPills
+            options={[{ key: '', label: 'All' }, ...allTags.map((tag) => ({ key: tag, label: tag }))]}
+            active={activeTag ?? ''}
+            onChange={(key) => setActiveTag(key === '' ? null : key)}
+          />
         )}
       </div>
 
