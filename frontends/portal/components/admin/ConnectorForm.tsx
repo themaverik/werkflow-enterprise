@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import {
   RefreshCw, Send, Copy, Check, Eye, EyeOff,
   Plus, Trash2, Save, ChevronDown, ChevronUp, AlertTriangle,
@@ -118,7 +118,6 @@ export function ConnectorForm({
   defaultTab,
   onSaved,
 }: ConnectorFormProps) {
-  const { toast } = useToast()
   const isEdit = !!existingConnector
 
   // ── General
@@ -188,14 +187,10 @@ export function ConnectorForm({
       .then(setCredentials)
       .catch((err: unknown) => {
         setCredentials([])
-        toast({
-          title: 'Could not load credentials',
-          description: err instanceof Error ? err.message : 'The credential picker may be empty.',
-          variant: 'destructive',
-        })
+        toast.error('Could not load credentials', { description: err instanceof Error ? err.message : 'The credential picker may be empty.' })
       })
       .finally(() => setCredentialsLoading(false))
-  }, [toast])
+  }, [])
 
   const credentialType = AUTH_SCHEME_TO_CREDENTIAL_TYPE[authScheme]
   const matchingCredentials = useMemo(
@@ -260,7 +255,7 @@ export function ConnectorForm({
       })
       setTestResult(result)
     } catch (err: unknown) {
-      toast({ title: 'Test failed', description: (err as Error).message, variant: 'destructive' })
+      toast.error('Test failed', { description: (err as Error).message })
     } finally {
       setTestLoading(false)
     }
@@ -277,9 +272,9 @@ export function ConnectorForm({
       const updated: ConnectorSchema = { version: 2, requests: [...filtered, newReq] }
       await updateEndpointSchema(connectorKey, ep.endpointId, serializeSchema(updated))
       setEndpointSchemas(prev => ({ ...prev, [ep.endpointId]: updated }))
-      toast({ title: 'Contract saved', description: `${newReq.method} ${newReq.path} saved for ${ep.environment}.` })
+      toast.success('Contract saved', { description: `${newReq.method} ${newReq.path} saved for ${ep.environment}.` })
     } catch (err: unknown) {
-      toast({ title: 'Failed to save', description: (err as Error).message, variant: 'destructive' })
+      toast.error('Failed to save', { description: (err as Error).message })
     } finally {
       setSavingContract(false)
       setPendingContractSave(null)
@@ -320,7 +315,7 @@ export function ConnectorForm({
       await updateEndpointSchema(connectorKey, ep.endpointId, serializeSchema(updated))
       setEndpointSchemas(prev => ({ ...prev, [ep.endpointId]: updated }))
     } catch (err: unknown) {
-      toast({ title: 'Failed to delete', description: (err as Error).message, variant: 'destructive' })
+      toast.error('Failed to delete', { description: (err as Error).message })
     }
   }
 
@@ -338,10 +333,10 @@ export function ConnectorForm({
       })
       setGeneratedRawKey(rawKey)
       setShowRawKey(true)
-      toast({ title: 'API key registered', description: 'Copy the key now — it will not be shown again.' })
+      toast.success('API key registered', { description: 'Copy the key now — it will not be shown again.' })
       onSaved?.()
     } catch (err: unknown) {
-      toast({ title: 'Key registration failed', description: (err as Error).message, variant: 'destructive' })
+      toast.error('Key registration failed', { description: (err as Error).message })
     } finally {
       setErpKeyLoading(false)
     }
@@ -393,10 +388,10 @@ export function ConnectorForm({
       setEndpoints(sorted)
       setAddingEndpoint(false)
       setNewEpUrl('')
-      toast({ title: 'Endpoint added', description: `${newEpEnv} endpoint registered.` })
+      toast.success('Endpoint added', { description: `${newEpEnv} endpoint registered.` })
       onSaved?.()
     } catch (err: unknown) {
-      toast({ title: 'Failed to add endpoint', description: (err as Error).message, variant: 'destructive' })
+      toast.error('Failed to add endpoint', { description: (err as Error).message })
     } finally {
       setAddEpLoading(false)
     }
@@ -411,10 +406,10 @@ export function ConnectorForm({
         delete next[ep.endpointId]
         return next
       })
-      toast({ title: 'Endpoint removed', description: `${ep.environment} endpoint deleted.` })
+      toast.success('Endpoint removed', { description: `${ep.environment} endpoint deleted.` })
       onSaved?.()
     } catch (err: unknown) {
-      toast({ title: 'Failed to remove endpoint', description: (err as Error).message, variant: 'destructive' })
+      toast.error('Failed to remove endpoint', { description: (err as Error).message })
     }
   }
 
@@ -431,7 +426,7 @@ export function ConnectorForm({
           authScheme,
           credentialRef: authScheme === 'NONE' ? undefined : (credentialRef || undefined),
         })
-        toast({ title: 'Connector updated', description: `${displayName} saved.` })
+        toast.success('Connector updated', { description: `${displayName} saved.` })
       } else {
         const req: ConnectorRequest = {
           // tenantCode omitted — backend resolves from JWT tenant_id claim
@@ -445,15 +440,11 @@ export function ConnectorForm({
           credentialRef: authScheme === 'NONE' ? undefined : credentialRef,
         }
         await createConnector(req)
-        toast({ title: 'Connector created', description: `${displayName} registered successfully.` })
+        toast.success('Connector created', { description: `${displayName} registered successfully.` })
       }
       onSaved?.()
     } catch (err: unknown) {
-      toast({
-        title: isEdit ? 'Failed to update connector' : 'Failed to create connector',
-        description: (err as Error).message,
-        variant: 'destructive',
-      })
+      toast.error(isEdit ? 'Failed to update connector' : 'Failed to create connector', { description: (err as Error).message })
     } finally {
       setSaving(false)
     }

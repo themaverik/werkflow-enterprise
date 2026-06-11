@@ -9,7 +9,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { ErrorDisplay, LoadingState } from '@/components/ui/error-display'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import { getDecisionXml, getDecision, redeployDecision } from '@/lib/api/dmn'
 import type { DmnEditorHandle } from '@/components/dmn/DmnEditor'
 import DmnTestPanel from '@/components/dmn/DmnTestPanel'
@@ -26,7 +26,6 @@ export default function EditDecisionPage({ params }: EditDecisionPageProps) {
   const t = useTranslations('decisions')
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { toast } = useToast()
   const editorRef = useRef<DmnEditorHandle | null>(null)
   const [showTestPanel, setShowTestPanel] = useState(false)
   const [showFeelPanel, setShowFeelPanel] = useState(false)
@@ -51,11 +50,11 @@ export default function EditDecisionPage({ params }: EditDecisionPageProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dmnDecisions'] })
       queryClient.invalidateQueries({ queryKey: ['dmnDecisionXml', key] })
-      toast({ title: t('editor.redeploySuccess') })
+      toast.success(t('editor.redeploySuccess'))
       router.push('/decisions')
     },
     onError: (err: Error) => {
-      toast({ title: t('editor.deployFailed'), description: err.message, variant: 'destructive' })
+      toast.error(t('editor.deployFailed'), { description: err.message })
     },
   })
 

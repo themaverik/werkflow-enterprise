@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useState } from 'react'
 import { Info, Lock, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { PageSurface } from '@/components/layout/page-surface'
 
 interface Tier1Mapping { role: string; groups: string[] }
@@ -76,6 +77,8 @@ export default function RoleMappingsPage() {
   const qc = useQueryClient()
   const [newRole, setNewRole] = useState('')
   const [newGroup, setNewGroup] = useState('')
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   const { data: tier1 = [], isLoading: loadingTier1 } = useQuery({
     queryKey: ['tier1Mappings'],
@@ -219,11 +222,7 @@ export default function RoleMappingsPage() {
                       className="text-destructive hover:text-destructive"
                       aria-label={`Delete mapping for ${m.roleName}`}
                       disabled={deleteMutation.isPending}
-                      onClick={() => {
-                        if (window.confirm(`Delete mapping for role "${m.roleName}"?`)) {
-                          deleteMutation.mutate(m.id)
-                        }
-                      }}
+                      onClick={() => { setPendingDeleteId(m.id); setConfirmOpen(true) }}
                     >
                       <Trash2 size={14} strokeWidth={1.8} />
                     </Button>
@@ -309,6 +308,13 @@ export default function RoleMappingsPage() {
           </Button>
         </div>
       </section>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Confirm Deletion"
+        description="This action cannot be undone."
+        onConfirm={() => { if (pendingDeleteId !== null) { deleteMutation.mutate(pendingDeleteId); setPendingDeleteId(null) } }}
+      />
     </div>
     </PageSurface>
   )

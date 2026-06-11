@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator"
 import { CheckCircle2, XCircle, Loader2, FileText, Building, User as UserIcon, Calendar, DollarSign, ArrowUp, AlertTriangle } from "lucide-react"
 import { DOAIndicator } from './DOAIndicator'
 import { useDoaLevels, parseDoaLevelNumber } from '@/lib/hooks/useDoaLevels'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import type { Task } from '@/lib/types/task'
 import type { User } from '@/lib/auth/auth-context'
 
@@ -37,7 +37,6 @@ export function ApprovalPanel({
   onEscalate,
   isSubmitting = false,
 }: ApprovalPanelProps) {
-  const { toast } = useToast()
   const [selectedAction, setSelectedAction] = useState<ApprovalAction>('approve')
   const [comment, setComment] = useState('')
   const [validationError, setValidationError] = useState('')
@@ -96,11 +95,7 @@ export function ApprovalPanel({
   // !isLoadingDoa guard prevents a spurious re-fire during the loading bounce.
   useEffect(() => {
     if (!isLoadingDoa && isDeadEnd && isAssignedToUser) {
-      toast({
-        title: 'Approval Authority Insufficient',
-        description: DEAD_END_MESSAGE,
-        variant: 'destructive',
-      })
+      toast.error('Approval Authority Insufficient', { description: DEAD_END_MESSAGE })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDeadEnd, isAssignedToUser])
@@ -142,11 +137,7 @@ export function ApprovalPanel({
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'An unexpected error occurred'
-      toast({
-        title: 'Action Failed',
-        description: message,
-        variant: 'destructive',
-      })
+      toast.error('Action Failed', { description: message })
     }
   }
 

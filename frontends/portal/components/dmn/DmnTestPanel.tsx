@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import { testDecision, type DmnTestResultDto } from '@/lib/api/dmn'
 
 interface DmnTestPanelProps {
@@ -28,7 +28,6 @@ interface InputField {
  */
 export default function DmnTestPanel({ decisionKey }: DmnTestPanelProps) {
   const t = useTranslations('decisions')
-  const { toast } = useToast()
   const [fields, setFields] = useState<InputField[]>([{ id: '1', key: '', value: '' }])
   const [result, setResult] = useState<DmnTestResultDto | null>(null)
 
@@ -48,11 +47,7 @@ export default function DmnTestPanel({ decisionKey }: DmnTestPanelProps) {
       setResult(data)
     },
     onError: (err: Error) => {
-      toast({
-        title: t('editor.testFailed'),
-        description: err.message,
-        variant: 'destructive',
-      })
+      toast.error(t('editor.testFailed'), { description: err.message })
     },
   })
 

@@ -7,6 +7,7 @@ import { useAuthorization } from '@/lib/auth/use-authorization'
 import { useCandidateGroups } from '@/lib/platform/usePlatformCapabilities'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Plus, Pencil, Trash2, X, Check, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import type { CandidateGroupEntry } from '@/lib/platform/types'
@@ -207,6 +208,8 @@ export default function CustodyMappingsPage() {
   const [editState, setEditState] = useState<EditState>(blankEditState())
   const [addingNew, setAddingNew] = useState(false)
   const [newState, setNewState] = useState<EditState>(blankEditState())
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
 
   const { data: availableGroups = [], isLoading: isLoadingGroups } = useCandidateGroups()
 
@@ -403,11 +406,7 @@ export default function CustodyMappingsPage() {
                         className="h-8 px-2 text-destructive hover:text-destructive"
                         aria-label={`Delete mapping for ${m.custodyOwner}`}
                         disabled={deleteMutation.isPending}
-                        onClick={() => {
-                          if (window.confirm(`Delete custody mapping "${m.custodyOwner}"?`)) {
-                            deleteMutation.mutate(m.id)
-                          }
-                        }}
+                        onClick={() => { setPendingDeleteId(m.id); setConfirmOpen(true) }}
                       >
                         <Trash2 size={13} strokeWidth={1.8} />
                       </Button>
@@ -482,6 +481,14 @@ export default function CustodyMappingsPage() {
           Add Custody Mapping
         </Button>
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Confirm Deletion"
+        description="This action cannot be undone."
+        onConfirm={() => { if (pendingDeleteId !== null) { deleteMutation.mutate(pendingDeleteId); setPendingDeleteId(null) } }}
+      />
 
       <details className="text-sm text-muted-foreground mt-8 border rounded-md p-3">
         <summary className="cursor-pointer font-medium text-foreground select-none">Terminology</summary>

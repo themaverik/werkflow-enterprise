@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/auth/auth-context'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import { PageSurface } from '@/components/layout/page-surface'
-import { Card, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -109,7 +109,6 @@ async function inviteUser(payload: InvitePayload): Promise<UserRow> {
 export default function TenantUsersPage() {
   const { user } = useAuth()
   const tenantCode = user?.tenantId ?? ''
-  const { toast } = useToast()
   const queryClient = useQueryClient()
 
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -132,10 +131,7 @@ export default function TenantUsersPage() {
     mutationFn: inviteUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users', org?.id] })
-      toast({
-        title: 'Invite sent',
-        description: `${form.email} will receive an email to set their password.`,
-      })
+      toast.success('Invite sent', { description: `${form.email} will receive an email to set their password.` })
       setInviteOpen(false)
       setForm(EMPTY_FORM)
       setFormError(null)
@@ -189,15 +185,11 @@ export default function TenantUsersPage() {
         </div>
 
         {!isFetching && users.length === 0 && (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <User className="h-10 w-10 text-muted-foreground mb-3" strokeWidth={1.5} />
-              <p className="text-sm font-medium text-foreground mb-1">No users yet</p>
-              <p className="text-xs text-muted-foreground mb-4">
-                Use Invite User to add members to this tenant.
-              </p>
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={User}
+            title="No users yet"
+            description="Use Invite User to add members to this tenant."
+          />
         )}
 
         {users.length > 0 && (
