@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Map;
 
@@ -29,6 +30,7 @@ import java.util.Map;
 public class HmacVerifier {
 
     private static final String ALGO = "HmacSHA256";
+    private static final long STRIPE_TIMESTAMP_TOLERANCE_SECONDS = 300;
 
     /**
      * @param strategy     hmac.strategy from connector definition
@@ -81,7 +83,18 @@ public class HmacVerifier {
             if (part.startsWith("v1=")) v1 = part.substring(3);
         }
         if (timestamp == null || v1 == null) {
-            log.warn("HmacVerifier[stripe]: malformed X-Stripe-Signature: {}", sig);
+            log.warn("HmacVerifier[stripe]: malformed X-Stripe-Signature — missing t= or v1= field");
+            return false;
+        }
+        try {
+            long ts = Long.parseLong(timestamp);
+            long nowSeconds = Instant.now().getEpochSecond();
+            if (Math.abs(nowSeconds - ts) > STRIPE_TIMESTAMP_TOLERANCE_SECONDS) {
+                log.warn("HmacVerifier[stripe]: timestamp too old or too new: {}", timestamp);
+                return false;
+            }
+        } catch (NumberFormatException e) {
+            log.warn("HmacVerifier[stripe]: non-numeric timestamp: {}", timestamp);
             return false;
         }
         byte[] payload = (timestamp + "." + new String(rawBody, StandardCharsets.UTF_8))

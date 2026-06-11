@@ -5,6 +5,8 @@ import com.werkflow.admin.dto.UserRequest;
 import com.werkflow.admin.dto.UserResponse;
 import com.werkflow.admin.security.JwtClaimsExtractor;
 import com.werkflow.admin.service.UserService;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -29,6 +31,7 @@ public class UserController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @RateLimiter(name = "user-create", fallbackMethod = "createUserRateLimited")
     @Operation(summary = "Create user", description = "Create a new user (ADMIN, SUPER_ADMIN)")
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserRequest request) {
         UserResponse response = userService.createUser(request);
@@ -37,6 +40,7 @@ public class UserController {
 
     @PostMapping("/invite")
     @PreAuthorize("hasRole('ADMIN')")
+    @RateLimiter(name = "user-invite", fallbackMethod = "inviteUserRateLimited")
     @Operation(summary = "Invite user", description = "Create KC user + admin DB row via email invite (ADMIN only)")
     public ResponseEntity<UserResponse> inviteUser(
             @Valid @RequestBody UserInviteRequest request,
@@ -106,5 +110,13 @@ public class UserController {
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private ResponseEntity<UserResponse> createUserRateLimited(UserRequest request, RequestNotPermitted ex) {
+        return ResponseEntity.status(429).build();
+    }
+
+    private ResponseEntity<UserResponse> inviteUserRateLimited(UserInviteRequest request, Jwt jwt, RequestNotPermitted ex) {
+        return ResponseEntity.status(429).build();
     }
 }

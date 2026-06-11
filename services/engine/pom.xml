@@ -336,7 +336,7 @@
                 <artifactId>dependency-check-maven</artifactId>
                 <version>10.0.3</version>
                 <configuration>
-                    <failBuildOnCVSS>9</failBuildOnCVSS>
+                    <failBuildOnCVSS>7</failBuildOnCVSS>
                     <suppressionFile>${project.basedir}/owasp-suppressions.xml</suppressionFile>
                     <skipProvidedScope>true</skipProvidedScope>
                 </configuration>

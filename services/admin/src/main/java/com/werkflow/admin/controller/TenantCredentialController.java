@@ -7,6 +7,8 @@ import com.werkflow.admin.dto.credential.TenantCredentialResponse;
 import com.werkflow.admin.dto.credential.UpdateTenantCredentialRequest;
 import com.werkflow.admin.security.JwtClaimsExtractor;
 import com.werkflow.admin.service.TenantCredentialService;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -68,6 +70,7 @@ public class TenantCredentialController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('WORKFLOW_ADMIN','ADMIN','SUPER_ADMIN')")
+    @RateLimiter(name = "credential-create", fallbackMethod = "createCredentialRateLimited")
     @Operation(summary = "Register a new credential — writes values to OpenBao + inserts metadata row")
     public ResponseEntity<TenantCredentialResponse> create(
             @Valid @RequestBody CreateTenantCredentialRequest request,
@@ -111,6 +114,11 @@ public class TenantCredentialController {
             @AuthenticationPrincipal Jwt jwt) {
         String tenantId = jwtClaimsExtractor.getTenantId(jwt);
         return ResponseEntity.ok(credentialService.testConnection(tenantId, id));
+    }
+
+    private ResponseEntity<TenantCredentialResponse> createCredentialRateLimited(
+            CreateTenantCredentialRequest request, Jwt jwt, RequestNotPermitted ex) {
+        return ResponseEntity.status(429).build();
     }
 
     // -- Engine-internal lookup ----------------------------------------------
