@@ -1,7 +1,7 @@
 import { auth } from '@/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
-const ERP_BASE = process.env.NEXT_PUBLIC_ERP_API_URL ?? 'http://localhost:8084'
+const ERP_BASE = process.env.ERP_BASE_URL ?? 'http://localhost:8084'
 
 async function proxy(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const session = await auth()
