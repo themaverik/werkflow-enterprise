@@ -71,7 +71,7 @@ public class ExampleSeedService {
             throw new IllegalArgumentException("tenantId must not be blank");
         }
         if (!tenantId.matches("[a-zA-Z0-9][a-zA-Z0-9_-]*")) {
-            throw new IllegalArgumentException("tenantId contains invalid characters: " + tenantId);
+            throw new IllegalArgumentException("tenantId contains invalid characters");
         }
         String folder = resolveFolder(tenantId);
         log.info("Seeding examples for tenant '{}' from folder '{}'", tenantId, folder);
