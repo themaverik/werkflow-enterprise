@@ -12,11 +12,10 @@ import {
   getProcessDefinitions, deleteDeployment,
   listDrafts, deleteDraft,
 } from '@/lib/api/flowable'
-import { useState, useEffect, CSSProperties } from 'react'
+import { useState, useEffect, useRef, CSSProperties } from 'react'
 import { useTranslations } from 'next-intl'
 import { useAuthorization } from '@/lib/auth/use-authorization'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { useToast } from '@/hooks/use-toast'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -144,6 +143,8 @@ export default function ProcessesPage() {
   const { status } = useSession()
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deletingDraftKey, setDeletingDraftKey] = useState<string | null>(null)
+  const processesErrorShown = useRef(false)
+  const draftsErrorShown = useRef(false)
   const [pendingConfirm, setPendingConfirm] = useState<{
     title: string
     description: string
@@ -153,7 +154,6 @@ export default function ProcessesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTag, setActiveTag] = useState<string | null>(null)
   const queryClient = useQueryClient()
-  const { toast: toastHook } = useToast()
   const { hasAnyRole, getDepartment } = useAuthorization()
 
   const isManagerOrAbove = hasAnyRole(MANAGER_ROLES)
@@ -193,14 +193,17 @@ export default function ProcessesPage() {
   })
 
   // Surface query errors via toast (no onError in query options — v5 pattern)
+  // useRef guard prevents re-firing on every re-render when error is persistent
   useEffect(() => {
-    if (processesError) {
+    if (processesError && !processesErrorShown.current) {
+      processesErrorShown.current = true
       toast.error(t('failedToLoad') + ': ' + (processesError as Error).message)
     }
   }, [processesError, t])
 
   useEffect(() => {
-    if (draftsError) {
+    if (draftsError && !draftsErrorShown.current) {
+      draftsErrorShown.current = true
       toast.error(t('failedToLoadDrafts') + ': ' + (draftsError as Error).message)
     }
   }, [draftsError, t])
@@ -211,10 +214,10 @@ export default function ProcessesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['processDefinitions'] })
       setDeletingId(null)
-      toastHook({ title: t('processDeleted'), description: t('processDeletedDesc') })
+      toast.success(t('processDeleted'), { description: t('processDeletedDesc') })
     },
     onError: (error: Error) => {
-      toastHook({ title: t('deleteFailed'), description: error.message, variant: 'destructive' })
+      toast.error(t('deleteFailed'), { description: error.message })
       setDeletingId(null)
     },
   })
@@ -226,7 +229,7 @@ export default function ProcessesPage() {
       setDeletingDraftKey(null)
     },
     onError: (error: Error) => {
-      toastHook({ title: t('deleteFailed'), description: error.message, variant: 'destructive' })
+      toast.error(t('deleteFailed'), { description: error.message })
       setDeletingDraftKey(null)
     },
   })

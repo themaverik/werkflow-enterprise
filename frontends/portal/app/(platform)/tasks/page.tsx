@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { TaskList } from './components/TaskList'
 import { useTasks, useClaimTask, useTaskSummary } from '@/lib/hooks/useTasks'
 import { useAuth } from '@/lib/auth/auth-context'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 
 const TAB_OPTIONS = [
   { key: 'all',        label: 'All' },
@@ -22,7 +22,6 @@ const TAB_OPTIONS = [
 
 export default function TasksPage() {
   const t = useTranslations('tasks')
-  const { toast } = useToast()
   const { user } = useAuth()
   const [page, setPage] = useState(0)
   const [pageSize] = useState(20)
@@ -56,10 +55,10 @@ export default function TasksPage() {
     setClaimingTaskId(taskId)
     try {
       await claimTaskMutation.mutateAsync({ taskId, assignee: user.username })
-      toast({ title: t('taskClaimed'), description: t('taskClaimedDesc') })
+      toast.success(t('taskClaimed'), { description: t('taskClaimedDesc') })
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : t('claimFailedDesc')
-      toast({ title: t('claimFailed'), description: msg, variant: 'destructive' })
+      toast.error(t('claimFailed'), { description: msg })
     } finally {
       setClaimingTaskId(undefined)
     }

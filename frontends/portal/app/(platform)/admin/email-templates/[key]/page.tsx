@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import { ArrowLeft, Save } from 'lucide-react'
 import Link from 'next/link'
 import { getEmailTemplate, updateEmailTemplate } from '@/lib/api/email-templates'
@@ -36,7 +36,6 @@ function extractFormFields(formJson: string): string[] {
 export default function EditEmailTemplatePage() {
   const params = useParams()
   const router = useRouter()
-  const { toast } = useToast()
   const { status } = useSession()
   const queryClient = useQueryClient()
   const editorApiRef = useRef<EmailTemplateEditorApi | null>(null)
@@ -93,11 +92,11 @@ export default function EditEmailTemplatePage() {
       queryClient.invalidateQueries({ queryKey: ['emailTemplates'] })
       queryClient.invalidateQueries({ queryKey: ['emailTemplate', templateKey] })
       queryClient.invalidateQueries({ queryKey: ['notificationTemplates'] })
-      toast({ title: 'Template saved' })
+      toast.success('Template saved')
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || 'Failed to save template'
-      toast({ title: 'Save failed', description: msg, variant: 'destructive' })
+      toast.error('Save failed', { description: msg })
     },
   })
 

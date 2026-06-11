@@ -15,6 +15,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { RefreshCw, Plus, Pencil, FlaskConical, Trash2, Upload, Plug } from 'lucide-react'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from 'next-intl'
 import { PageSurface } from '@/components/layout/page-surface'
@@ -63,7 +65,6 @@ export default function ConnectorsPage() {
   const [editingGroup, setEditingGroup] = useState<ConnectorGroup | null>(null)
   const [editDefaultTab, setEditDefaultTab] = useState<'general' | 'auth' | 'contract' | 'test'>('general')
   const [deletingGroup, setDeletingGroup] = useState<ConnectorGroup | null>(null)
-  const [deleteLoading, setDeleteLoading] = useState(false)
   const [importOpenApiOpen, setImportOpenApiOpen] = useState(false)
 
   const dtdsConnectors = useDtdsConnectors()
@@ -89,12 +90,10 @@ export default function ConnectorsPage() {
 
   const handleDeleteConfirm = async () => {
     if (!deletingGroup) return
-    setDeleteLoading(true)
     try {
       await deleteConnector(deletingGroup.connectorKey)
       invalidate()
     } finally {
-      setDeleteLoading(false)
       setDeletingGroup(null)
     }
   }
@@ -172,17 +171,17 @@ export default function ConnectorsPage() {
       )}
 
       {!isLoading && !error && groups.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <Plug className="h-10 w-10 text-muted-foreground mb-3" strokeWidth={1.5} />
-            <p className="text-sm font-medium text-foreground mb-1">No connectors configured</p>
-            <p className="text-xs text-muted-foreground mb-4">Register an external API connector to use in your BPMN processes.</p>
+        <EmptyState
+          icon={Plug}
+          title="No connectors configured"
+          description="Register an external API connector to use in your BPMN processes."
+          action={
             <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add connector
             </Button>
-          </CardContent>
-        </Card>
+          }
+        />
       )}
 
       {!isLoading && !error && groups.length > 0 && (
@@ -261,25 +260,13 @@ export default function ConnectorsPage() {
       )}
 
       {/* Delete confirmation */}
-      <Dialog open={!!deletingGroup} onOpenChange={(open) => !open && setDeletingGroup(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Delete {deletingGroup?.displayName}?</DialogTitle>
-            <DialogDescription>
-              This permanently removes all endpoints and the stored credential for{' '}
-              <code className="font-mono text-xs">{deletingGroup?.connectorKey}</code>.
-              Any BPMN processes referencing this connector will fail at runtime.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDeletingGroup(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={deleteLoading}>
-              {deleteLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
-              Delete
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={!!deletingGroup}
+        onOpenChange={(open) => !open && setDeletingGroup(null)}
+        title={`Delete ${deletingGroup?.displayName}?`}
+        description={`This permanently removes all endpoints and the stored credential for ${deletingGroup?.connectorKey ?? ''}. Any BPMN processes referencing this connector will fail at runtime.`}
+        onConfirm={handleDeleteConfirm}
+      />
 
       {/* Edit / Test dialog */}
       <Dialog open={!!editingGroup} onOpenChange={(open) => !open && setEditingGroup(null)}>

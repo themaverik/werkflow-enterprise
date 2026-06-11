@@ -23,7 +23,7 @@ import {
   type HealthCheckResult,
   NetworkError
 } from '@/lib/api/services'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 
 /**
  * Phase 4 Service Registry Hooks
@@ -169,7 +169,6 @@ export function useServiceHealth(serviceId: string) {
  */
 export function useCreateService() {
   const queryClient = useQueryClient()
-  const { toast } = useToast()
 
   return useMutation({
     mutationFn: (data: CreateServiceRequest) => createService(data),
@@ -177,17 +176,10 @@ export function useCreateService() {
       // Invalidate services list to trigger refetch
       queryClient.invalidateQueries({ queryKey: ['services'] })
 
-      toast({
-        title: 'Service created',
-        description: `Service '${data.displayName}' has been registered successfully.`
-      })
+      toast.success('Service created', { description: `Service '${data.displayName}' has been registered successfully.` })
     },
     onError: (error: any) => {
-      toast({
-        title: 'Failed to create service',
-        description: error.message || 'An unexpected error occurred.',
-        variant: 'destructive'
-      })
+      toast.error('Failed to create service', { description: error.message || 'An unexpected error occurred.' })
     }
   })
 }
@@ -197,7 +189,6 @@ export function useCreateService() {
  */
 export function useUpdateService() {
   const queryClient = useQueryClient()
-  const { toast } = useToast()
 
   return useMutation({
     mutationFn: ({ serviceId, data }: { serviceId: string; data: UpdateServiceRequest }) =>
@@ -207,17 +198,10 @@ export function useUpdateService() {
       queryClient.invalidateQueries({ queryKey: ['services'] })
       queryClient.invalidateQueries({ queryKey: ['services', variables.serviceId] })
 
-      toast({
-        title: 'Service updated',
-        description: `Service configuration has been updated successfully.`
-      })
+      toast.success('Service updated', { description: 'Service configuration has been updated successfully.' })
     },
     onError: (error: any, variables) => {
-      toast({
-        title: 'Failed to update service',
-        description: error.message || 'An unexpected error occurred.',
-        variant: 'destructive'
-      })
+      toast.error('Failed to update service', { description: error.message || 'An unexpected error occurred.' })
     }
   })
 }
@@ -229,7 +213,6 @@ export function useUpdateService() {
  */
 export function useUpdateServiceUrl() {
   const queryClient = useQueryClient()
-  const { toast } = useToast()
 
   return useMutation({
     mutationFn: ({
@@ -245,17 +228,10 @@ export function useUpdateServiceUrl() {
       queryClient.invalidateQueries({ queryKey: ['services'] })
       queryClient.invalidateQueries({ queryKey: ['services', variables.serviceId] })
 
-      toast({
-        title: 'Service URL updated',
-        description: 'Service URL has been updated successfully.'
-      })
+      toast.success('Service URL updated', { description: 'Service URL has been updated successfully.' })
     },
     onError: (error: any) => {
-      toast({
-        title: 'Failed to update service URL',
-        description: error.message || 'An unexpected error occurred.',
-        variant: 'destructive'
-      })
+      toast.error('Failed to update service URL', { description: error.message || 'An unexpected error occurred.' })
     }
   })
 }
@@ -265,7 +241,6 @@ export function useUpdateServiceUrl() {
  */
 export function useUpdateServiceEnvironmentUrl() {
   const queryClient = useQueryClient()
-  const { toast } = useToast()
 
   return useMutation({
     mutationFn: ({
@@ -290,17 +265,10 @@ export function useUpdateServiceEnvironmentUrl() {
         queryKey: ['services', 'resolve', undefined, variables.environment]
       })
 
-      toast({
-        title: 'Environment URL updated',
-        description: `${variables.environment} URL has been configured successfully.`
-      })
+      toast.success('Environment URL updated', { description: `${variables.environment} URL has been configured successfully.` })
     },
     onError: (error: any, variables) => {
-      toast({
-        title: 'Failed to update environment URL',
-        description: error.message || 'An unexpected error occurred.',
-        variant: 'destructive'
-      })
+      toast.error('Failed to update environment URL', { description: error.message || 'An unexpected error occurred.' })
     }
   })
 }
@@ -310,7 +278,6 @@ export function useUpdateServiceEnvironmentUrl() {
  */
 export function useDeleteService() {
   const queryClient = useQueryClient()
-  const { toast } = useToast()
 
   return useMutation({
     mutationFn: (serviceId: string) => deleteService(serviceId),
@@ -319,17 +286,10 @@ export function useDeleteService() {
       queryClient.invalidateQueries({ queryKey: ['services'] })
       queryClient.removeQueries({ queryKey: ['services', serviceId] })
 
-      toast({
-        title: 'Service deleted',
-        description: 'Service has been removed from the registry.'
-      })
+      toast.success('Service deleted', { description: 'Service has been removed from the registry.' })
     },
     onError: (error: any) => {
-      toast({
-        title: 'Failed to delete service',
-        description: error.message || 'An unexpected error occurred.',
-        variant: 'destructive'
-      })
+      toast.error('Failed to delete service', { description: error.message || 'An unexpected error occurred.' })
     }
   })
 }
@@ -338,30 +298,18 @@ export function useDeleteService() {
  * Hook to test service connectivity
  */
 export function useTestServiceConnectivity() {
-  const { toast } = useToast()
 
   return useMutation({
     mutationFn: (serviceUrl: string) => testServiceConnectivity(serviceUrl),
     onSuccess: (result) => {
       if (result.online) {
-        toast({
-          title: 'Service is online',
-          description: `Response time: ${result.responseTime}ms`
-        })
+        toast.success('Service is online', { description: `Response time: ${result.responseTime}ms` })
       } else {
-        toast({
-          title: 'Service is offline',
-          description: result.error || 'Unable to connect to service',
-          variant: 'destructive'
-        })
+        toast.error('Service is offline', { description: result.error || 'Unable to connect to service' })
       }
     },
     onError: (error: any) => {
-      toast({
-        title: 'Connectivity test failed',
-        description: error.message || 'An unexpected error occurred.',
-        variant: 'destructive'
-      })
+      toast.error('Connectivity test failed', { description: error.message || 'An unexpected error occurred.' })
     }
   })
 }
@@ -371,7 +319,6 @@ export function useTestServiceConnectivity() {
  */
 export function useTriggerHealthCheck() {
   const queryClient = useQueryClient()
-  const { toast } = useToast()
 
   return useMutation({
     mutationFn: (serviceId: string) => triggerHealthCheck(serviceId),
@@ -382,24 +329,13 @@ export function useTriggerHealthCheck() {
       queryClient.invalidateQueries({ queryKey: ['services'] })
 
       if (result.status === 'HEALTHY') {
-        toast({
-          title: 'Service is healthy',
-          description: `Response time: ${result.responseTime}ms`
-        })
+        toast.success('Service is healthy', { description: `Response time: ${result.responseTime}ms` })
       } else {
-        toast({
-          title: 'Service is unhealthy',
-          description: result.errorMessage || 'Health check failed',
-          variant: 'destructive'
-        })
+        toast.error('Service is unhealthy', { description: result.errorMessage || 'Health check failed' })
       }
     },
     onError: (error: any) => {
-      toast({
-        title: 'Health check failed',
-        description: error.message || 'An unexpected error occurred.',
-        variant: 'destructive'
-      })
+      toast.error('Health check failed', { description: error.message || 'An unexpected error occurred.' })
     }
   })
 }

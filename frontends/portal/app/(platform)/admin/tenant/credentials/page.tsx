@@ -7,13 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Plus, RefreshCw, Pencil, Trash2, KeyRound, Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -230,31 +224,15 @@ export default function CredentialsPage() {
       )}
 
       {/* Delete confirmation */}
-      <Dialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('deleteTitle')}</DialogTitle>
-            <DialogDescription>
-              {t('deleteDesc', {
-                label: credentials.find((c) => c.id === deletingId)?.label ?? deletingId ?? '',
-              })}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDeletingId(null)}>
-              {t('cancel')}
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={deleteMutation.isPending}
-              onClick={() => deletingId && deleteMutation.mutate(deletingId)}
-            >
-              {deleteMutation.isPending && <RefreshCw className="h-4 w-4 animate-spin mr-2" />}
-              {t('delete')}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={!!deletingId}
+        onOpenChange={(open) => !open && setDeletingId(null)}
+        title={t('deleteTitle')}
+        description={t('deleteDesc', {
+          label: credentials.find((c) => c.id === deletingId)?.label ?? deletingId ?? '',
+        })}
+        onConfirm={() => { if (deletingId) deleteMutation.mutate(deletingId) }}
+      />
 
       {/* Create / edit modal */}
       <CredentialForm

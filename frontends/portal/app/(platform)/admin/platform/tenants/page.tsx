@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuthorization } from '@/lib/auth/use-authorization'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import { PageSurface } from '@/components/layout/page-surface'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Plus, RefreshCw, Building2, CheckCircle2, Layers } from 'lucide-react'
 
 interface TenantRow {
@@ -160,8 +161,6 @@ export default function TenantsPage() {
   const router = useRouter()
 
   const isSuperAdmin = hasRole('SUPER_ADMIN')
-  const { toast } = useToast()
-
   useEffect(() => {
     if (status !== 'loading' && !isSuperAdmin) {
       router.replace('/dashboard')
@@ -190,24 +189,13 @@ export default function TenantsPage() {
         method: 'POST',
       })
       if (!res.ok) {
-        toast({
-          title: 'Seeding failed',
-          description: `Could not seed examples for ${tenant.name} (${res.status})`,
-          variant: 'destructive',
-        })
+        toast.error('Seeding failed', { description: `Could not seed examples for ${tenant.name} (${res.status})` })
         return
       }
       const data = await res.json()
-      toast({
-        title: 'Examples seeded',
-        description: `${data.deployed ?? 0} deployed, ${data.skipped ?? 0} skipped for ${tenant.name}`,
-      })
+      toast.success('Examples seeded', { description: `${data.deployed ?? 0} deployed, ${data.skipped ?? 0} skipped for ${tenant.name}` })
     } catch (err) {
-      toast({
-        title: 'Seeding failed',
-        description: err instanceof Error ? err.message : 'Unexpected error',
-        variant: 'destructive',
-      })
+      toast.error('Seeding failed', { description: err instanceof Error ? err.message : 'Unexpected error' })
     } finally {
       setSeedingId(null)
     }
@@ -220,21 +208,13 @@ export default function TenantsPage() {
         method: 'DELETE',
       })
       if (!res.ok) {
-        toast({
-          title: 'Delete failed',
-          description: `Could not delete ${deleting.name} (${res.status})`,
-          variant: 'destructive',
-        })
+        toast.error('Delete failed', { description: `Could not delete ${deleting.name} (${res.status})` })
         return
       }
       setDeleting(null)
       refetch()
     } catch (err) {
-      toast({
-        title: 'Delete failed',
-        description: err instanceof Error ? err.message : 'Unexpected error',
-        variant: 'destructive',
-      })
+      toast.error('Delete failed', { description: err instanceof Error ? err.message : 'Unexpected error' })
     }
   }
 
@@ -280,21 +260,19 @@ export default function TenantsPage() {
         )}
 
         {!isLoading && !error && tenants?.length === 0 && (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <Building2 className="h-10 w-10 text-muted-foreground mb-3" strokeWidth={1.5} />
-              <p className="text-sm font-medium text-foreground mb-1">No tenants yet</p>
-              <p className="text-xs text-muted-foreground mb-4">
-                Create the first tenant to get started.
-              </p>
+          <EmptyState
+            icon={Building2}
+            title="No tenants yet"
+            description="Create the first tenant to get started."
+            action={
               <Button variant="outline" size="sm" asChild>
                 <Link href="/admin/platform/tenants/new">
                   <Plus className="h-4 w-4 mr-2" />
                   New Tenant
                 </Link>
               </Button>
-            </CardContent>
-          </Card>
+            }
+          />
         )}
 
         {!isLoading && !error && tenants && tenants.length > 0 && (

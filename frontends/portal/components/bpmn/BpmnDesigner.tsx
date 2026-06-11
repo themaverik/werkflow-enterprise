@@ -13,7 +13,7 @@ import { generateBlankBpmn, downloadBpmn, extractProcessName } from '@/lib/bpmn/
 import { Save, Download, Upload, ZoomIn, ZoomOut, Maximize2, Settings, CheckCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import { fetchDoaLevels, DoaLevel } from '@/lib/api/doa'
 import { listCustodyMappings, CustodyMappingResponse } from '@/lib/api/custody'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -196,7 +196,6 @@ const DEFAULT_METADATA: ArtifactMetadata = { tags: [] }
 
 export default function BpmnDesigner({ initialXml, processId, initialMetadata }: BpmnDesignerProps) {
   const t = useTranslations('bpmn')
-  const { toast } = useToast()
   const { user, token } = useAuth()
   const { capabilitiesUnavailable } = usePlatformCapabilities()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -758,8 +757,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
       // Surface any referenced decisions that could not be pinned into the bundle —
       // they will resolve to their latest deployed version at runtime (ADR-026).
       if (data.unbundledDecisions.length > 0) {
-        toast({
-          title: 'Deployed — some decisions not version-pinned',
+        toast('Deployed — some decisions not version-pinned', {
           description:
             `These decision tables will resolve to their latest version: ${data.unbundledDecisions.join(', ')}. ` +
             'Deploy them, then redeploy this process to pin them.',
@@ -778,11 +776,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
         typeof responseData === 'string'
           ? responseData
           : responseData?.message ?? responseData?.error ?? null
-      toast({
-        title: 'Deploy Failed',
-        description: engineMsg || error.message,
-        variant: 'destructive',
-      })
+      toast.error('Deploy Failed', { description: engineMsg || error.message })
     }
   })
 

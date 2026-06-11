@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import { ArrowLeft, Save } from 'lucide-react'
 import Link from 'next/link'
 import { createEmailTemplate } from '@/lib/api/email-templates'
@@ -35,7 +35,6 @@ function extractFormFields(formJson: string): string[] {
 
 export default function NewEmailTemplatePage() {
   const router = useRouter()
-  const { toast } = useToast()
   const { status } = useSession()
   const queryClient = useQueryClient()
   const editorApiRef = useRef<EmailTemplateEditorApi | null>(null)
@@ -75,12 +74,12 @@ export default function NewEmailTemplatePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['emailTemplates'] })
       queryClient.invalidateQueries({ queryKey: ['notificationTemplates'] })
-      toast({ title: 'Template created' })
+      toast.success('Template created')
       router.push('/admin/email-templates')
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || 'Failed to create template'
-      toast({ title: 'Create failed', description: msg, variant: 'destructive' })
+      toast.error('Create failed', { description: msg })
     },
   })
 

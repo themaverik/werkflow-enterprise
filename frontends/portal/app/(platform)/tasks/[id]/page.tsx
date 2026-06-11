@@ -10,7 +10,7 @@ import { ArrowLeft, CheckCircle2, XCircle, UserPlus, Clock, User as UserIcon, Ca
 import Link from "next/link"
 import { useTask, useTaskFormData, useTaskHistory, useCompleteTask, useClaimTask, useUnclaimTask, useDelegateTask, useSubmitTaskForm } from '@/lib/hooks/useTasks'
 import { useAuth } from '@/lib/auth/auth-context'
-import { useToast } from "@/hooks/use-toast"
+import { toast } from 'sonner'
 import { ApprovalPanel } from '../components/ApprovalPanel'
 import { DelegationModal } from '../components/DelegationModal'
 import { FormSection } from '../components/FormSection'
@@ -20,7 +20,6 @@ import { formatDateTime } from '@/lib/utils/format'
 export default function TaskDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const { toast } = useToast()
   const { user } = useAuth()
   const taskId = params.id as string
 
@@ -51,11 +50,7 @@ export default function TaskDetailPage() {
 
   const handleClaim = async () => {
     if (!user) {
-      toast({
-        title: 'Authentication Required',
-        description: 'Please log in to claim tasks.',
-        variant: 'destructive',
-      })
+      toast.error('Authentication Required', { description: 'Please log in to claim tasks.' })
       return
     }
 
@@ -65,16 +60,9 @@ export default function TaskDetailPage() {
         assignee: user.username,
       })
 
-      toast({
-        title: 'Task Claimed',
-        description: 'You have successfully claimed this task.',
-      })
+      toast.success('Task Claimed', { description: 'You have successfully claimed this task.' })
     } catch (error: any) {
-      toast({
-        title: 'Failed to Claim Task',
-        description: error.message || 'An error occurred while claiming the task.',
-        variant: 'destructive',
-      })
+      toast.error('Failed to Claim Task', { description: error.message || 'An error occurred while claiming the task.' })
     }
   }
 
@@ -85,18 +73,11 @@ export default function TaskDetailPage() {
         data: {},
       })
 
-      toast({
-        title: 'Task Completed',
-        description: 'The task has been completed successfully.',
-      })
+      toast.success('Task Completed', { description: 'The task has been completed successfully.' })
 
       router.push('/tasks')
     } catch (error: any) {
-      toast({
-        title: 'Failed to Complete Task',
-        description: error.message || 'An error occurred while completing the task.',
-        variant: 'destructive',
-      })
+      toast.error('Failed to Complete Task', { description: error.message || 'An error occurred while completing the task.' })
     }
   }
 
@@ -115,18 +96,11 @@ export default function TaskDetailPage() {
         },
       })
 
-      toast({
-        title: 'Request Approved',
-        description: 'The request has been approved successfully.',
-      })
+      toast.success('Request Approved', { description: 'The request has been approved successfully.' })
 
       router.push('/tasks')
     } catch (error: any) {
-      toast({
-        title: 'Approval Failed',
-        description: error.message || 'An error occurred while approving the request.',
-        variant: 'destructive',
-      })
+      toast.error('Approval Failed', { description: error.message || 'An error occurred while approving the request.' })
     }
   }
 
@@ -145,18 +119,11 @@ export default function TaskDetailPage() {
         },
       })
 
-      toast({
-        title: 'Request Rejected',
-        description: 'The request has been rejected.',
-      })
+      toast.success('Request Rejected', { description: 'The request has been rejected.' })
 
       router.push('/tasks')
     } catch (error: any) {
-      toast({
-        title: 'Rejection Failed',
-        description: error.message || 'An error occurred while rejecting the request.',
-        variant: 'destructive',
-      })
+      toast.error('Rejection Failed', { description: error.message || 'An error occurred while rejecting the request.' })
     }
   }
 
@@ -174,19 +141,12 @@ export default function TaskDetailPage() {
         },
       })
 
-      toast({
-        title: 'Escalated',
-        description: 'The request has been escalated to a higher authority.',
-      })
+      toast.success('Escalated', { description: 'The request has been escalated to a higher authority.' })
 
       router.push('/tasks')
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'An error occurred while escalating the request.'
-      toast({
-        title: 'Escalation Failed',
-        description: message,
-        variant: 'destructive',
-      })
+      toast.error('Escalation Failed', { description: message })
     }
   }
 
@@ -200,35 +160,21 @@ export default function TaskDetailPage() {
         },
       })
 
-      toast({
-        title: 'Task Delegated',
-        description: 'The task has been delegated successfully.',
-      })
+      toast.success('Task Delegated', { description: 'The task has been delegated successfully.' })
 
       setShowDelegationModal(false)
       router.push('/tasks')
     } catch (error: any) {
-      toast({
-        title: 'Delegation Failed',
-        description: error.message || 'An error occurred while delegating the task.',
-        variant: 'destructive',
-      })
+      toast.error('Delegation Failed', { description: error.message || 'An error occurred while delegating the task.' })
     }
   }
 
   const handleUnclaim = async () => {
     try {
       await unclaimTaskMutation.mutateAsync(taskId)
-      toast({
-        title: 'Task Unclaimed',
-        description: 'Task has been returned to the queue.',
-      })
+      toast.success('Task Unclaimed', { description: 'Task has been returned to the queue.' })
     } catch (error: any) {
-      toast({
-        title: 'Failed to Unclaim',
-        description: error.message || 'An error occurred.',
-        variant: 'destructive',
-      })
+      toast.error('Failed to Unclaim', { description: error.message || 'An error occurred.' })
     }
   }
 
@@ -238,14 +184,10 @@ export default function TaskDetailPage() {
         taskId,
         formData: data,
       })
-      toast({ title: 'Task Completed', description: 'Form submitted successfully.' })
+      toast.success('Task Completed', { description: 'Form submitted successfully.' })
       router.push('/tasks')
     } catch (error: any) {
-      toast({
-        title: 'Submission Failed',
-        description: error.message || 'Failed to submit form.',
-        variant: 'destructive',
-      })
+      toast.error('Submission Failed', { description: error.message || 'Failed to submit form.' })
     }
   }
 
