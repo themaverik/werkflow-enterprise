@@ -28,8 +28,12 @@ export async function GET() {
     return new Response('Unauthorized', { status: 401 })
   }
 
-  const engineUrl = process.env.ENGINE_BASE_URL ?? 'http://localhost:8081'
-  const adminUrl  = process.env.ADMIN_BASE_URL  ?? 'http://localhost:8083'
+  const isAdmin = (session.user?.roles ?? []).some(
+    (r) => r.toUpperCase() === 'ADMIN' || r.toUpperCase() === 'SUPER_ADMIN',
+  )
+
+  const engineUrl = process.env.ENGINE_BASE_URL  ?? 'http://localhost:8081'
+  const adminUrl  = process.env.ADMIN_SERVICE_URL ?? 'http://localhost:8083'
 
   const [engine, admin] = await Promise.all([
     checkService('engine', engineUrl),
@@ -37,14 +41,18 @@ export async function GET() {
   ])
 
   const portal: ServiceHealth = { name: 'portal', status: 'UP', url: 'self' }
-  const services = [portal, engine, admin]
-  const overallUp = services.every((s) => s.status === 'UP')
+  const allServices = [portal, engine, admin]
+  const overallUp = allServices.every((s) => s.status === 'UP')
 
   return NextResponse.json(
     {
       status: overallUp ? 'UP' : 'DEGRADED',
       timestamp: new Date().toISOString(),
-      services,
+      services: allServices.map(({ name, status, url, details }) => ({
+        name,
+        status,
+        ...(isAdmin ? { url, details } : {}),
+      })),
     },
     { status: 200 }
   )
