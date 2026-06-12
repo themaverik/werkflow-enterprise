@@ -272,7 +272,8 @@ services:
       KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/werkflow/protocol/openid-connect/certs
       KEYCLOAK_REALM: werkflow
       KEYCLOAK_CLIENT_ID: werkflow-portal
-      KEYCLOAK_CLIENT_SECRET: REDACTED_KC_SECRET
+      # KEYCLOAK_CLIENT_SECRET comes from .env.shared (BGd4yW0m...) — the werkflow-portal client secret.
+      # Do NOT override here: REDACTED_KC_SECRET is the werkflow-admin secret, not portal's.
       KEYCLOAK_TOKEN_URI: http://keycloak:8080/realms/werkflow/protocol/openid-connect/token
       # OpenBao — credential store. Admin writes tenant secrets here.
       WERKFLOW_VAULT_ADDR: http://openbao:8200

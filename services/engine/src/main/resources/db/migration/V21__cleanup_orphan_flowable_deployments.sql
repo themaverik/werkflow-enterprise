@@ -121,6 +121,32 @@ EXCEPTION WHEN undefined_table THEN NULL;
 END $$;
 
 -- ============================================================
+-- 4.5. Remove act_ge_bytearray rows for deployments to be deleted in step 5.
+--      FK act_fk_bytearr_depl: act_ge_bytearray.deployment_id_ → act_re_deployment.id_
+--      Must precede act_re_deployment deletion (FK child first).
+-- ============================================================
+
+DO $$ BEGIN
+    DELETE FROM act_ge_bytearray
+    WHERE deployment_id_ IN (
+        SELECT id_ FROM act_re_deployment
+        WHERE name_ = 'quality-gate-bpmn-all'
+           OR id_ IN (
+                SELECT DISTINCT d.id_
+                FROM act_re_deployment d
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM act_re_procdef p WHERE p.deployment_id_ = d.id_
+                )
+                AND d.name_ NOT IN (
+                    'capex-approval-process.bpmn20.xml',
+                    'leave-request.bpmn20.xml'
+                )
+            )
+    );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+-- ============================================================
 -- 5. Remove orphaned E2E test deployments (no procdef references them)
 --    Scoped to quality-gate-bpmn-all only — no broad orphan sweep.
 -- ============================================================

@@ -4,12 +4,15 @@ import com.werkflow.admin.dto.EngineSeedResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -65,6 +68,37 @@ public class ExampleSeedClient {
             log.warn("Example seed: transport failure for tenantId={} — {} — seeding can be re-triggered via portal",
                 tenantId, ex.getMessage());
             return Optional.empty();
+        }
+    }
+
+    /**
+     * Returns {@code true} if the engine reports active (non-ended) process instances for the
+     * given tenant. Fail-open: if the engine is unreachable, returns {@code false} so that
+     * tenant deletion is not blocked by a transient engine outage.
+     *
+     * @param tenantId the tenant code to check
+     * @return true when at least one active process instance exists
+     */
+    public boolean hasActiveProcessInstances(String tenantId) {
+        String url = UriComponentsBuilder.fromHttpUrl(engineServiceUrl)
+                .path("/api/internal/tenants/{tenantId}/running-count")
+                .buildAndExpand(tenantId)
+                .toUriString();
+        try {
+            ResponseEntity<Map<String, Long>> response = restTemplate.exchange(
+                    url, HttpMethod.GET, null,
+                    new ParameterizedTypeReference<>() {});
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                Long count = response.getBody().get("count");
+                return count != null && count > 0;
+            }
+            return false;
+        } catch (RestClientException ex) {
+            // Fail-closed: engine unreachable → assume instances may be running → block deletion.
+            // A hard-delete with orphaned ACT_RU_* rows is irreversible; a temporary 409 is not.
+            log.warn("Active instance check failed for tenantId={}: {} — blocking deletion (fail-closed)",
+                    tenantId, ex.getMessage());
+            return true;
         }
     }
 }

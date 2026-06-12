@@ -9,9 +9,13 @@ import com.werkflow.admin.service.ExampleSeedClient;
 import com.werkflow.admin.service.TenantProvisioningService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -81,17 +85,51 @@ public class TenantController {
     /**
      * Hard-deletes a tenant by ID.
      *
-     * @param id the tenant ID
-     * @return 204 No Content, or 404 if not found
+     * <p>Guards:
+     * <ol>
+     *   <li>The caller's own tenant (from JWT {@code tenant_id} claim) cannot be deleted.</li>
+     *   <li>Tenants with active process instances cannot be deleted — the caller must complete
+     *       or cancel all running instances first.</li>
+     * </ol>
+     *
+     * @param id             the tenant ID
+     * @param authentication the caller's JWT authentication (injected by Spring Security)
+     * @return 204 No Content, 404 if not found, or 409 Conflict if a guard fires
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    public ResponseEntity<Void> deleteTenant(@PathVariable Long id) {
-        if (!tenantRepository.existsById(id)) {
+    public ResponseEntity<Void> deleteTenant(
+            @PathVariable Long id,
+            Authentication authentication) {
+        var tenant = tenantRepository.findById(id).orElse(null);
+        if (tenant == null) {
             return ResponseEntity.notFound().build();
         }
+
+        // Guard (a): prevent deleting the tenant the caller is currently logged in with.
+        // callerTenantId is null for platform-level super_admins with no tenant scope;
+        // in that case the guard passes (null cannot match any tenantCode).
+        String callerTenantId = extractTenantId(authentication);
+        if (callerTenantId != null && callerTenantId.equals(tenant.getTenantCode())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Cannot delete the tenant you are currently logged in with");
+        }
+
+        // Guard (b): prevent deleting a tenant with active process instances
+        if (exampleSeedClient.hasActiveProcessInstances(tenant.getTenantCode())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Cannot delete tenant with active process instances — complete or cancel all running processes first");
+        }
+
         tenantRepository.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private String extractTenantId(Authentication authentication) {
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            return jwtAuth.getToken().getClaimAsString("tenant_id");
+        }
+        return null;
     }
 
     /**
