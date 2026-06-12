@@ -30,8 +30,9 @@ import {
 } from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Plus, RefreshCw, Building2, CheckCircle2, Layers } from 'lucide-react'
+import { Plus, RefreshCw, Building2, CheckCircle2, Layers, Info } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface TenantRow {
   id: number
@@ -285,7 +286,26 @@ export default function TenantsPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
-                  <TableHead>KC Status</TableHead>
+                  <TableHead>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="flex items-center gap-1.5 cursor-default">
+                            KC Status
+                            <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-[260px]">
+                          <p className="font-semibold">Keycloak (KC)</p>
+                          <p className="mt-1">is the identity provider that manages user authentication.</p>
+                          <p className="mt-2 font-semibold">KC Ready</p>
+                          <p className="mt-0.5">the tenant admin account has been created in Keycloak and can log in.</p>
+                          <p className="mt-2 font-semibold">Pending KC</p>
+                          <p className="mt-0.5">the admin account has not yet been provisioned in Keycloak (e.g. creation failed or is deferred).</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
