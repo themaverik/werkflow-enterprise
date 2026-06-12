@@ -111,7 +111,7 @@ export default function ServiceCatalogPage() {
   const { data: visibleKeys } = useQuery<VisibleProcessEntry[] | null>({
     queryKey: ['pss', 'visibleProcesses'],
     queryFn: async () => {
-      const res = await fetch('/api/proxy/admin/platform/visible-processes', {
+      const res = await fetch('/api/proxy/admin/design/platform/visible-processes', {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) return null // null = unrestricted (admin or endpoint unavailable)
