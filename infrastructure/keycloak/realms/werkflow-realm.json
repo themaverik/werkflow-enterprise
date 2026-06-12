@@ -90,97 +90,235 @@
   ],
   "roles": {
     "realm": [
-      { "name": "admin", "description": "Platform administrator — full access" },
-      { "name": "super_admin", "description": "Super administrator — unlimited approval authority" },
-      { "name": "user", "description": "Authenticated user — platform access" },
-      { "name": "employee", "description": "Base employee role — login access" },
-      { "name": "workflow-designer", "description": "Can access BPMN / DMN / Form editors" },
-      { "name": "process-owner", "description": "Process owner" },
-      { "name": "ENGINE_SERVICE", "description": "Service-to-service principal for engine" },
-      { "name": "ADMIN_SERVICE", "description": "Service-to-service principal for admin service" },
-      { "name": "doa_approver_level1", "description": "DOA Approver Level 1" },
-      { "name": "doa_approver_level2", "description": "DOA Approver Level 2" },
-      { "name": "doa_approver_level3", "description": "DOA Approver Level 3" },
-      { "name": "doa_approver_level4", "description": "DOA Approver Level 4" },
-      { "name": "asset_request_requester", "description": "Can submit asset requests" },
-      { "name": "asset_request_approver", "description": "Can approve asset requests" },
-      { "name": "asset_assignment_requester", "description": "Can request asset assignment" },
-      { "name": "asset_assignment_approver", "description": "Can approve asset assignments" },
-      { "name": "inventory_manager", "description": "Manage inventory system" },
-      { "name": "hub_manager", "description": "Manage specific warehouse hub" },
-      { "name": "procurement_approver", "description": "Approve purchase orders" },
-      { "name": "transport_approver", "description": "Approve transport requests" },
-      { "name": "hub_request_approver", "description": "Approve hub assignment requests" },
-      { "name": "leave_request_approver", "description": "Approve leave requests" },
-      { "name": "department_poc", "description": "Department point of contact" },
-      { "name": "department_head", "description": "Department head authority" },
-      { "name": "driver", "description": "Transport driver" },
-      { "name": "warehouse_staff", "description": "Warehouse staff" },
+      {
+        "name": "admin",
+        "description": "Platform administrator \u2014 full access"
+      },
+      {
+        "name": "super_admin",
+        "description": "Super administrator \u2014 unlimited approval authority"
+      },
+      {
+        "name": "user",
+        "description": "Authenticated user \u2014 platform access"
+      },
+      {
+        "name": "employee",
+        "description": "Base employee role \u2014 login access"
+      },
+      {
+        "name": "workflow-designer",
+        "description": "Can access BPMN / DMN / Form editors"
+      },
+      {
+        "name": "process-owner",
+        "description": "Process owner"
+      },
+      {
+        "name": "ENGINE_SERVICE",
+        "description": "Service-to-service principal for engine"
+      },
+      {
+        "name": "ADMIN_SERVICE",
+        "description": "Service-to-service principal for admin service"
+      },
+      {
+        "name": "doa_approver_level1",
+        "description": "DOA Approver Level 1"
+      },
+      {
+        "name": "doa_approver_level2",
+        "description": "DOA Approver Level 2"
+      },
+      {
+        "name": "doa_approver_level3",
+        "description": "DOA Approver Level 3"
+      },
+      {
+        "name": "doa_approver_level4",
+        "description": "DOA Approver Level 4"
+      },
+      {
+        "name": "asset_request_requester",
+        "description": "Can submit asset requests"
+      },
+      {
+        "name": "asset_request_approver",
+        "description": "Can approve asset requests"
+      },
+      {
+        "name": "asset_assignment_requester",
+        "description": "Can request asset assignment"
+      },
+      {
+        "name": "asset_assignment_approver",
+        "description": "Can approve asset assignments"
+      },
+      {
+        "name": "inventory_manager",
+        "description": "Manage inventory system"
+      },
+      {
+        "name": "hub_manager",
+        "description": "Manage specific warehouse hub"
+      },
+      {
+        "name": "procurement_approver",
+        "description": "Approve purchase orders"
+      },
+      {
+        "name": "transport_approver",
+        "description": "Approve transport requests"
+      },
+      {
+        "name": "hub_request_approver",
+        "description": "Approve hub assignment requests"
+      },
+      {
+        "name": "leave_request_approver",
+        "description": "Approve leave requests"
+      },
+      {
+        "name": "department_poc",
+        "description": "Department point of contact"
+      },
+      {
+        "name": "department_head",
+        "description": "Department head authority"
+      },
+      {
+        "name": "driver",
+        "description": "Transport driver"
+      },
+      {
+        "name": "warehouse_staff",
+        "description": "Warehouse staff"
+      },
       {
         "name": "hr_manager",
         "description": "HR department manager",
         "composite": true,
-        "composites": { "realm": ["asset_request_approver", "doa_approver_level1"] }
+        "composites": {
+          "realm": [
+            "asset_request_approver",
+            "doa_approver_level1"
+          ]
+        }
       },
       {
         "name": "hr_head",
         "description": "HR department head",
         "composite": true,
-        "composites": { "realm": ["asset_request_approver", "doa_approver_level2", "department_head"] }
+        "composites": {
+          "realm": [
+            "asset_request_approver",
+            "doa_approver_level2",
+            "department_head"
+          ]
+        }
       },
       {
         "name": "it_manager",
         "description": "IT department manager",
         "composite": true,
-        "composites": { "realm": ["asset_request_approver", "inventory_manager", "doa_approver_level1"] }
+        "composites": {
+          "realm": [
+            "asset_request_approver",
+            "inventory_manager",
+            "doa_approver_level1"
+          ]
+        }
       },
       {
         "name": "it_head",
         "description": "IT department head",
         "composite": true,
-        "composites": { "realm": ["asset_request_approver", "inventory_manager", "doa_approver_level2", "department_head"] }
+        "composites": {
+          "realm": [
+            "asset_request_approver",
+            "inventory_manager",
+            "doa_approver_level2",
+            "department_head"
+          ]
+        }
       },
       {
         "name": "finance_manager",
         "description": "Finance department manager",
         "composite": true,
-        "composites": { "realm": ["doa_approver_level1", "doa_approver_level2"] }
+        "composites": {
+          "realm": [
+            "doa_approver_level1",
+            "doa_approver_level2"
+          ]
+        }
       },
       {
         "name": "finance_head",
         "description": "Finance department head / CFO",
         "composite": true,
-        "composites": { "realm": ["doa_approver_level3", "doa_approver_level4", "department_head"] }
+        "composites": {
+          "realm": [
+            "doa_approver_level3",
+            "doa_approver_level4",
+            "department_head"
+          ]
+        }
       },
       {
         "name": "procurement_manager",
         "description": "Procurement department manager",
         "composite": true,
-        "composites": { "realm": ["procurement_approver", "doa_approver_level1"] }
+        "composites": {
+          "realm": [
+            "procurement_approver",
+            "doa_approver_level1"
+          ]
+        }
       },
       {
         "name": "procurement_head",
         "description": "Procurement department head",
         "composite": true,
-        "composites": { "realm": ["procurement_approver", "doa_approver_level2", "department_head"] }
+        "composites": {
+          "realm": [
+            "procurement_approver",
+            "doa_approver_level2",
+            "department_head"
+          ]
+        }
       },
       {
         "name": "logistics_manager",
         "description": "Logistics / transport manager",
         "composite": true,
-        "composites": { "realm": ["transport_approver", "doa_approver_level1"] }
+        "composites": {
+          "realm": [
+            "transport_approver",
+            "doa_approver_level1"
+          ]
+        }
       },
       {
         "name": "transport_head",
         "description": "Transport department head",
         "composite": true,
-        "composites": { "realm": ["transport_approver", "department_head"] }
+        "composites": {
+          "realm": [
+            "transport_approver",
+            "department_head"
+          ]
+        }
       },
       {
         "name": "central_hub_manager",
         "description": "Central hub manager",
         "composite": true,
-        "composites": { "realm": ["hub_manager"] }
+        "composites": {
+          "realm": [
+            "hub_manager"
+          ]
+        }
       }
     ]
   },
@@ -192,9 +330,23 @@
       "firstName": "Admin",
       "lastName": "User",
       "email": "admin@werkflow.local",
-      "attributes": { "tenant_id": ["default"] },
-      "credentials": [{ "type": "password", "value": "Werkflow@2026!", "temporary": true }],
-      "realmRoles": ["admin", "super_admin", "doa_approver_level4"]
+      "attributes": {
+        "tenant_id": [
+          "default"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Werkflow@2026!",
+          "temporary": true
+        }
+      ],
+      "realmRoles": [
+        "admin",
+        "super_admin",
+        "doa_approver_level4"
+      ]
     },
     {
       "username": "demo.admin",
@@ -203,9 +355,22 @@
       "firstName": "Demo",
       "lastName": "Admin",
       "email": "demo.admin@company.com",
-      "attributes": { "tenant_id": ["default"] },
-      "credentials": [{ "type": "password", "value": "Werkflow@2026!", "temporary": true }],
-      "realmRoles": ["admin", "doa_approver_level4"]
+      "attributes": {
+        "tenant_id": [
+          "default"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Werkflow@2026!",
+          "temporary": true
+        }
+      ],
+      "realmRoles": [
+        "admin",
+        "doa_approver_level4"
+      ]
     },
     {
       "username": "demo.employee",
@@ -214,9 +379,22 @@
       "firstName": "Demo",
       "lastName": "Employee",
       "email": "demo.employee@company.com",
-      "attributes": { "tenant_id": ["default"] },
-      "credentials": [{ "type": "password", "value": "Werkflow@2026!", "temporary": true }],
-      "realmRoles": ["user", "employee"]
+      "attributes": {
+        "tenant_id": [
+          "default"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Werkflow@2026!",
+          "temporary": true
+        }
+      ],
+      "realmRoles": [
+        "user",
+        "employee"
+      ]
     },
     {
       "username": "demo.manager",
@@ -225,9 +403,23 @@
       "firstName": "Demo",
       "lastName": "Manager",
       "email": "demo.manager@company.com",
-      "attributes": { "tenant_id": ["default"] },
-      "credentials": [{ "type": "password", "value": "Werkflow@2026!", "temporary": true }],
-      "realmRoles": ["user", "employee", "doa_approver_level2"]
+      "attributes": {
+        "tenant_id": [
+          "default"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Werkflow@2026!",
+          "temporary": true
+        }
+      ],
+      "realmRoles": [
+        "user",
+        "employee",
+        "doa_approver_level2"
+      ]
     },
     {
       "username": "john.manager",
@@ -236,9 +428,24 @@
       "firstName": "John",
       "lastName": "Manager",
       "email": "john.manager@company.com",
-      "attributes": { "tenant_id": ["default"] },
-      "credentials": [{ "type": "password", "value": "Werkflow@2026!", "temporary": true }],
-      "realmRoles": ["user", "employee", "asset_request_approver", "doa_approver_level1"]
+      "attributes": {
+        "tenant_id": [
+          "default"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Werkflow@2026!",
+          "temporary": true
+        }
+      ],
+      "realmRoles": [
+        "user",
+        "employee",
+        "asset_request_approver",
+        "doa_approver_level1"
+      ]
     },
     {
       "username": "sarah.finance",
@@ -247,9 +454,25 @@
       "firstName": "Sarah",
       "lastName": "Finance",
       "email": "sarah.finance@company.com",
-      "attributes": { "tenant_id": ["default"] },
-      "credentials": [{ "type": "password", "value": "Werkflow@2026!", "temporary": true }],
-      "realmRoles": ["user", "employee", "doa_approver_level3", "finance_head", "doa_approver_level4"]
+      "attributes": {
+        "tenant_id": [
+          "default"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Werkflow@2026!",
+          "temporary": true
+        }
+      ],
+      "realmRoles": [
+        "user",
+        "employee",
+        "doa_approver_level3",
+        "finance_head",
+        "doa_approver_level4"
+      ]
     },
     {
       "username": "jane.employee",
@@ -258,9 +481,22 @@
       "firstName": "Jane",
       "lastName": "Employee",
       "email": "jane.employee@company.com",
-      "attributes": { "tenant_id": ["default"] },
-      "credentials": [{ "type": "password", "value": "Werkflow@2026!", "temporary": true }],
-      "realmRoles": ["employee", "asset_request_requester"]
+      "attributes": {
+        "tenant_id": [
+          "default"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Werkflow@2026!",
+          "temporary": true
+        }
+      ],
+      "realmRoles": [
+        "employee",
+        "asset_request_requester"
+      ]
     },
     {
       "username": "mike.it",
@@ -269,9 +505,24 @@
       "firstName": "Mike",
       "lastName": "IT",
       "email": "mike.it@company.com",
-      "attributes": { "tenant_id": ["default"] },
-      "credentials": [{ "type": "password", "value": "Werkflow@2026!", "temporary": true }],
-      "realmRoles": ["employee", "asset_request_approver", "doa_approver_level1", "department_poc"]
+      "attributes": {
+        "tenant_id": [
+          "default"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Werkflow@2026!",
+          "temporary": true
+        }
+      ],
+      "realmRoles": [
+        "employee",
+        "asset_request_approver",
+        "doa_approver_level1",
+        "department_poc"
+      ]
     },
     {
       "username": "bob.driver",
@@ -280,9 +531,22 @@
       "firstName": "Bob",
       "lastName": "Driver",
       "email": "bob.driver@company.com",
-      "attributes": { "tenant_id": ["default"] },
-      "credentials": [{ "type": "password", "value": "Werkflow@2026!", "temporary": true }],
-      "realmRoles": ["employee", "driver"]
+      "attributes": {
+        "tenant_id": [
+          "default"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Werkflow@2026!",
+          "temporary": true
+        }
+      ],
+      "realmRoles": [
+        "employee",
+        "driver"
+      ]
     },
     {
       "username": "lisa.hub",
@@ -291,9 +555,22 @@
       "firstName": "Lisa",
       "lastName": "Hub",
       "email": "lisa.hub@company.com",
-      "attributes": { "tenant_id": ["default"] },
-      "credentials": [{ "type": "password", "value": "Werkflow@2026!", "temporary": true }],
-      "realmRoles": ["employee", "central_hub_manager"]
+      "attributes": {
+        "tenant_id": [
+          "default"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Werkflow@2026!",
+          "temporary": true
+        }
+      ],
+      "realmRoles": [
+        "employee",
+        "central_hub_manager"
+      ]
     },
     {
       "username": "tom.procurement",
@@ -302,29 +579,52 @@
       "firstName": "Tom",
       "lastName": "Procurement",
       "email": "tom.procurement@company.com",
-      "attributes": { "tenant_id": ["default"] },
-      "credentials": [{ "type": "password", "value": "Werkflow@2026!", "temporary": true }],
-      "realmRoles": ["employee", "procurement_approver", "department_poc"]
+      "attributes": {
+        "tenant_id": [
+          "default"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Werkflow@2026!",
+          "temporary": true
+        }
+      ],
+      "realmRoles": [
+        "employee",
+        "procurement_approver",
+        "department_poc"
+      ]
     },
     {
       "username": "service-account-werkflow-portal",
       "enabled": true,
       "serviceAccountClientId": "werkflow-portal",
       "clientRoles": {
-        "realm-management": ["view-realm", "query-users", "manage-users", "manage-groups"]
+        "realm-management": [
+          "view-realm",
+          "query-users",
+          "manage-users",
+          "manage-groups"
+        ]
       }
     },
     {
       "username": "service-account-werkflow-engine",
       "enabled": true,
       "serviceAccountClientId": "werkflow-engine",
-      "realmRoles": ["ENGINE_SERVICE"]
+      "realmRoles": [
+        "ENGINE_SERVICE"
+      ]
     },
     {
       "username": "service-account-werkflow-admin",
       "enabled": true,
       "serviceAccountClientId": "werkflow-admin",
-      "realmRoles": ["ADMIN_SERVICE"]
+      "realmRoles": [
+        "ADMIN_SERVICE"
+      ]
     }
   ],
   "identityProviders": [
@@ -356,25 +656,54 @@
       "name": "google-email-mapper",
       "identityProviderAlias": "google",
       "identityProviderMapper": "oidc-user-attribute-idp-mapper",
-      "config": { "syncMode": "INHERIT", "user.attribute": "email", "claim": "email" }
+      "config": {
+        "syncMode": "INHERIT",
+        "user.attribute": "email",
+        "claim": "email"
+      }
     },
     {
       "name": "google-first-name-mapper",
       "identityProviderAlias": "google",
       "identityProviderMapper": "oidc-user-attribute-idp-mapper",
-      "config": { "syncMode": "INHERIT", "user.attribute": "firstName", "claim": "given_name" }
+      "config": {
+        "syncMode": "INHERIT",
+        "user.attribute": "firstName",
+        "claim": "given_name"
+      }
     },
     {
       "name": "google-last-name-mapper",
       "identityProviderAlias": "google",
       "identityProviderMapper": "oidc-user-attribute-idp-mapper",
-      "config": { "syncMode": "INHERIT", "user.attribute": "lastName", "claim": "family_name" }
+      "config": {
+        "syncMode": "INHERIT",
+        "user.attribute": "lastName",
+        "claim": "family_name"
+      }
     },
     {
       "name": "google-user-role-mapper",
       "identityProviderAlias": "google",
       "identityProviderMapper": "oidc-hardcoded-role-idp-mapper",
-      "config": { "syncMode": "INHERIT", "role": "user" }
+      "config": {
+        "syncMode": "INHERIT",
+        "role": "user"
+      }
     }
-  ]
+  ],
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "noreply@werkflow.local",
+    "fromDisplayName": "Werkflow Platform",
+    "replyTo": "",
+    "replyToDisplayName": "",
+    "envelopeFrom": "",
+    "ssl": "false",
+    "starttls": "false",
+    "auth": "false",
+    "user": "",
+    "password": ""
+  }
 }
