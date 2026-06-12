@@ -4,6 +4,18 @@ import { STORAGE_STATES } from '../fixtures/auth'
 test.describe('Form management', () => {
   test.use({ storageState: STORAGE_STATES.admin })
 
+  test.beforeAll(async ({ request }) => {
+    // Clean up any e2e-test-form-* artifacts left over from a previous interrupted run.
+    const resp = await request.get('/api/forms')
+    if (!resp.ok()) return
+    const forms = await resp.json()
+    for (const form of forms) {
+      if (form.key?.startsWith('e2e-test-form-')) {
+        await request.delete(`/api/forms/${form.key}`)
+      }
+    }
+  })
+
   test.afterAll(async ({ request }) => {
     const resp = await request.get('/api/forms')
     if (!resp.ok()) return
