@@ -37,7 +37,7 @@ function ActivityIcon({ type }: { type: ActivityLogEntry['type'] }) {
 export default function DashboardPage() {
   const t = useTranslations('dashboard')
   const { status } = useSession()
-  const { data: summary, isLoading: loadingSummary } = useTaskSummary()
+  const { data: summary, isLoading: loadingSummary } = useTaskSummary({ enabled: status === 'authenticated' })
   const { data: activityLogs, isLoading: loadingActivity } = useQuery({
     queryKey: ['dashboard-activity'],
     queryFn: () => getActivityLogs(5),
