@@ -7,13 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Plus, RefreshCw, Pencil, Trash2, KeyRound, Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -26,6 +20,7 @@ import {
 } from '@/lib/api/credentials'
 import { CredentialForm } from '@/components/admin/CredentialForm'
 import { PageSurface } from '@/components/layout/page-surface'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 type TestState = CredentialTestResult | 'testing'
 
@@ -152,39 +147,39 @@ export default function CredentialsPage() {
 
       {!isLoading && !error && credentials.length > 0 && (
         <div className="overflow-hidden rounded-lg border bg-card">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/40">
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">{t('colType')}</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">{t('colLabel')}</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">{t('colCreated')}</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">{t('colRotated')}</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">{t('colLastTest')}</th>
-                <th className="w-28" />
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('colType')}</TableHead>
+                <TableHead>{t('colLabel')}</TableHead>
+                <TableHead>{t('colCreated')}</TableHead>
+                <TableHead>{t('colRotated')}</TableHead>
+                <TableHead>{t('colLastTest')}</TableHead>
+                <TableHead className="w-28" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {credentials.map((cred) => {
                 const typeSchema = getCredentialType(cred.credentialType)
                 const displayName = typeSchema?.displayName ?? cred.credentialType
                 const testState = testResults[cred.id]
                 return (
-                  <tr key={cred.id} className="group hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-3 text-sm font-medium">{displayName}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{cred.label}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(cred.createdAt)}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                  <TableRow key={cred.id} className="group hover:bg-muted/20 transition-colors">
+                    <TableCell className="text-sm font-medium">{displayName}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{cred.label}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{formatDate(cred.createdAt)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
                       {cred.rotatedAt ? formatDate(cred.rotatedAt) : <span className="italic">{t('never')}</span>}
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       <TestCell
                         state={testState}
                         neverLabel={t('notTested')}
                         okLabel={t('testOk')}
                         failedShortLabel={t('testFailedShort')}
                       />
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-1 justify-end">
                         <Button
                           variant="outline"
@@ -220,41 +215,25 @@ export default function CredentialsPage() {
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 
       {/* Delete confirmation */}
-      <Dialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('deleteTitle')}</DialogTitle>
-            <DialogDescription>
-              {t('deleteDesc', {
-                label: credentials.find((c) => c.id === deletingId)?.label ?? deletingId ?? '',
-              })}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDeletingId(null)}>
-              {t('cancel')}
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={deleteMutation.isPending}
-              onClick={() => deletingId && deleteMutation.mutate(deletingId)}
-            >
-              {deleteMutation.isPending && <RefreshCw className="h-4 w-4 animate-spin mr-2" />}
-              {t('delete')}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={!!deletingId}
+        onOpenChange={(open) => !open && setDeletingId(null)}
+        title={t('deleteTitle')}
+        description={t('deleteDesc', {
+          label: credentials.find((c) => c.id === deletingId)?.label ?? deletingId ?? '',
+        })}
+        onConfirm={() => { if (deletingId) deleteMutation.mutate(deletingId) }}
+      />
 
       {/* Create / edit modal */}
       <CredentialForm

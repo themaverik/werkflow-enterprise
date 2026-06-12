@@ -89,7 +89,7 @@ export function useTaskHistory(
   })
 }
 
-export function useTaskSummary(options?: UseQueryOptions<TaskSummary, Error>) {
+export function useTaskSummary(options?: Omit<UseQueryOptions<TaskSummary, Error>, 'queryKey' | 'queryFn'>) {
   return useQuery<TaskSummary, Error>({
     queryKey: TASK_QUERY_KEYS.summary(),
     queryFn: getTaskSummary,

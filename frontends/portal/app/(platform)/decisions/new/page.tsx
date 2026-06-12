@@ -10,7 +10,7 @@ import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import { deployDecision } from '@/lib/api/dmn'
 import type { DmnEditorHandle } from '@/components/dmn/DmnEditor'
 import DmnTestPanel from '@/components/dmn/DmnTestPanel'
@@ -43,7 +43,6 @@ function patchDecisionXml(xml: string, name: string): string {
 export default function NewDecisionPage() {
   const t = useTranslations('decisions')
   const router = useRouter()
-  const { toast } = useToast()
   const editorRef = useRef<DmnEditorHandle | null>(null)
   const [name, setName] = useState('')
   const [showTestPanel, setShowTestPanel] = useState(false)
@@ -61,11 +60,11 @@ export default function NewDecisionPage() {
       return deployDecision(name.trim(), patchedXml)
     },
     onSuccess: (result) => {
-      toast({ title: t('editor.deploySuccess'), description: result.name ?? result.key })
+      toast.success(t('editor.deploySuccess'), { description: result.name ?? result.key })
       router.push('/decisions')
     },
     onError: (err: Error) => {
-      toast({ title: t('editor.deployFailed'), description: err.message, variant: 'destructive' })
+      toast.error(t('editor.deployFailed'), { description: err.message })
     },
   })
 

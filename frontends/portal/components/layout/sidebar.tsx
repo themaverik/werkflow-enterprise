@@ -84,11 +84,11 @@ const sidebarSections: SidebarSection[] = [
 
 export function Sidebar() {
   const pathname = usePathname()
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated, isLoading, user } = useAuth()
   const { hasAnyRole } = useAuthorization()
   const t = useTranslations('nav')
 
-  if (!isAuthenticated) return null
+  if (!isAuthenticated && !isLoading) return null
 
   const firstName = user?.firstName ?? ''
   const lastName = user?.lastName ?? ''

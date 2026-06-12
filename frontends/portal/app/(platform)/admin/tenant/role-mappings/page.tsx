@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
+import { useAuth } from '@/lib/auth/auth-context'
 import { useAuthorization } from '@/lib/auth/use-authorization'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useState } from 'react'
 import { Info, Lock, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { PageSurface } from '@/components/layout/page-surface'
 
 interface Tier1Mapping { role: string; groups: string[] }
@@ -70,23 +72,25 @@ async function deleteMapping(id: string, token: string) {
 }
 
 export default function RoleMappingsPage() {
-  const { status, data: session } = useSession()
+  const { status } = useSession()
   const { hasAnyRole } = useAuthorization()
-  const token = (session?.accessToken as string) ?? ''
+  const { token } = useAuth()
   const qc = useQueryClient()
   const [newRole, setNewRole] = useState('')
   const [newGroup, setNewGroup] = useState('')
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   const { data: tier1 = [], isLoading: loadingTier1 } = useQuery({
     queryKey: ['tier1Mappings'],
-    queryFn: () => fetchTier1(token),
+    queryFn: () => fetchTier1(token ?? ''),
     enabled: status === 'authenticated',
     staleTime: 300_000,
   })
 
   const { data: tier2 = [], isLoading: loadingTier2 } = useQuery({
     queryKey: ['tier2Mappings'],
-    queryFn: () => fetchTier2(token),
+    queryFn: () => fetchTier2(token ?? ''),
     enabled: status === 'authenticated',
     staleTime: 60_000,
   })
@@ -97,21 +101,21 @@ export default function RoleMappingsPage() {
     isError: groupsError,
   } = useQuery({
     queryKey: ['pss', 'candidateGroups'],
-    queryFn: () => fetchCandidateGroups(token),
+    queryFn: () => fetchCandidateGroups(token ?? ''),
     enabled: status === 'authenticated',
     staleTime: 300_000,
   })
 
   const { data: realmRoles = [], isLoading: loadingRoles, isError: rolesError } = useQuery({
     queryKey: ['realmRoles'],
-    queryFn: () => fetchRealmRoles(token),
+    queryFn: () => fetchRealmRoles(token ?? ''),
     enabled: status === 'authenticated',
     staleTime: 300_000,
     retry: 1,
   })
 
   const addMutation = useMutation({
-    mutationFn: (body: { roleName: string; groupName: string }) => addMapping(body, token),
+    mutationFn: (body: { roleName: string; groupName: string }) => addMapping(body, token ?? ''),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tier2Mappings'] })
       qc.invalidateQueries({ queryKey: ['pss', 'candidateGroups'] })
@@ -123,7 +127,7 @@ export default function RoleMappingsPage() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteMapping(id, token),
+    mutationFn: (id: string) => deleteMapping(id, token ?? ''),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tier2Mappings'] })
       qc.invalidateQueries({ queryKey: ['pss', 'candidateGroups'] })
@@ -219,11 +223,7 @@ export default function RoleMappingsPage() {
                       className="text-destructive hover:text-destructive"
                       aria-label={`Delete mapping for ${m.roleName}`}
                       disabled={deleteMutation.isPending}
-                      onClick={() => {
-                        if (window.confirm(`Delete mapping for role "${m.roleName}"?`)) {
-                          deleteMutation.mutate(m.id)
-                        }
-                      }}
+                      onClick={() => { setPendingDeleteId(m.id); setConfirmOpen(true) }}
                     >
                       <Trash2 size={14} strokeWidth={1.8} />
                     </Button>
@@ -309,6 +309,13 @@ export default function RoleMappingsPage() {
           </Button>
         </div>
       </section>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Confirm Deletion"
+        description="This action cannot be undone."
+        onConfirm={() => { if (pendingDeleteId !== null) { deleteMutation.mutate(pendingDeleteId); setPendingDeleteId(null) } }}
+      />
     </div>
     </PageSurface>
   )

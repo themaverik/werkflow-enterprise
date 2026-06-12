@@ -40,9 +40,16 @@ interface DmnEditorProps {
  * Exposes a getXml() handle via the onInit callback (not forwardRef) so it
  * works correctly when loaded through next/dynamic.
  */
+interface DmnModelerInstance {
+  importXML: (xml: string) => Promise<{ warnings: unknown[] }>
+  saveXML: (options?: { format?: boolean }) => Promise<{ xml: string }>
+  destroy: () => void
+  on: (event: string, callback: (...args: unknown[]) => void | Promise<void>) => void
+}
+
 function DmnEditor({ xml, readOnly = false, onChange, onInit }: DmnEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const modelerRef = useRef<any>(null)
+  const modelerRef = useRef<DmnModelerInstance | null>(null)
 
   useEffect(() => {
     if (!containerRef.current) return

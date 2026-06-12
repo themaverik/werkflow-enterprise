@@ -7,11 +7,9 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -207,94 +205,4 @@ public class KeycloakUserService {
                 new HttpEntity<>(List.of(role), assignHeaders), Void.class);
     }
 
-    // ---- Legacy stub methods kept for backward compatibility ----
-
-    public List<KeycloakUserInfo> findUsersByDoALevel(int doaLevel, String department) {
-        log.debug("findUsersByDoALevel: doaLevel={}, department={}", doaLevel, department);
-        List<KeycloakUserInfo> results = new ArrayList<>();
-        if (doaLevel >= 1) {
-            results.add(new KeycloakUserInfo("manager1", "John Manager", "manager@company.com", 1, "HR"));
-            results.add(new KeycloakUserInfo("manager2", "Jane Manager", "jmanager@company.com", 1, "Finance"));
-        }
-        if (doaLevel >= 2) {
-            results.add(new KeycloakUserInfo("hr_head", "HR Head", "hrhead@company.com", 2, "HR"));
-            results.add(new KeycloakUserInfo("fin_head", "Finance Head", "finhead@company.com", 2, "Finance"));
-        }
-        if (doaLevel >= 3) results.add(new KeycloakUserInfo("cfo", "CFO", "cfo@company.com", 3, "Finance"));
-        if (doaLevel >= 4) results.add(new KeycloakUserInfo("ceo", "CEO", "ceo@company.com", 4, "Executive"));
-        if (department != null && !department.isEmpty()) {
-            results = results.stream()
-                    .filter(u -> u.getDepartment().equalsIgnoreCase(department))
-                    .collect(Collectors.toList());
-        }
-        return results;
-    }
-
-    public List<KeycloakUserInfo> findUsersByGroup(String groupName) {
-        log.debug("findUsersByGroup: {}", groupName);
-        List<KeycloakUserInfo> results = new ArrayList<>();
-        switch (groupName.toLowerCase()) {
-            case "department_managers" -> {
-                results.add(new KeycloakUserInfo("manager1", "John Manager", "manager@company.com", 1, "HR"));
-                results.add(new KeycloakUserInfo("manager2", "Jane Manager", "jmanager@company.com", 1, "Finance"));
-            }
-            case "department_heads" -> {
-                results.add(new KeycloakUserInfo("hr_head", "HR Head", "hrhead@company.com", 2, "HR"));
-                results.add(new KeycloakUserInfo("fin_head", "Finance Head", "finhead@company.com", 2, "Finance"));
-            }
-            case "finance_approvers" -> results.add(new KeycloakUserInfo("cfo", "CFO", "cfo@company.com", 3, "Finance"));
-            case "executive_approvers" -> results.add(new KeycloakUserInfo("ceo", "CEO", "ceo@company.com", 4, "Executive"));
-        }
-        return results;
-    }
-
-    public KeycloakUserInfo findUserByUsername(String username) {
-        log.debug("findUserByUsername: {}", username);
-        return switch (username) {
-            case "manager1" -> new KeycloakUserInfo("manager1", "John Manager", "manager@company.com", 1, "HR");
-            case "cfo" -> new KeycloakUserInfo("cfo", "CFO", "cfo@company.com", 3, "Finance");
-            default -> null;
-        };
-    }
-
-    public KeycloakUserInfo getManagerForUser(String username) {
-        KeycloakUserInfo user = findUserByUsername(username);
-        if (user == null) return null;
-        return new KeycloakUserInfo("hr_head", "HR Head", "hrhead@company.com", 2, "HR");
-    }
-
-    public List<KeycloakUserInfo> findUsersByRole(String roleName) {
-        log.debug("findUsersByRole: {}", roleName);
-        if ("asset_approver".equals(roleName)) {
-            return List.of(new KeycloakUserInfo("inv_manager", "Inventory Manager", "invmgr@company.com", 2, "Inventory"));
-        }
-        return List.of();
-    }
-
-    public boolean updateUserAttributes(String username, Map<String, String> attributes) {
-        log.debug("updateUserAttributes: user={}, keys={}", username, attributes.keySet());
-        return true;
-    }
-
-    public static class KeycloakUserInfo {
-        private final String username;
-        private final String displayName;
-        private final String email;
-        private final Integer doaLevel;
-        private final String department;
-
-        public KeycloakUserInfo(String username, String displayName, String email, Integer doaLevel, String department) {
-            this.username = username;
-            this.displayName = displayName;
-            this.email = email;
-            this.doaLevel = doaLevel;
-            this.department = department;
-        }
-
-        public String getUsername() { return username; }
-        public String getDisplayName() { return displayName; }
-        public String getEmail() { return email; }
-        public Integer getDoaLevel() { return doaLevel; }
-        public String getDepartment() { return department; }
-    }
 }

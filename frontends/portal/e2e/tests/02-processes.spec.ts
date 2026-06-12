@@ -4,7 +4,7 @@ import { STORAGE_STATES } from '../fixtures/auth'
 test.describe('02 — Process definitions — admin', () => {
   test.use({ storageState: STORAGE_STATES.admin })
 
-  test.afterAll(async ({ request }) => {
+  async function deleteE2ETestProcess(request: any) {
     const resp = await request.get('/api/process-definitions')
     if (!resp.ok()) return
     const defs = await resp.json()
@@ -12,6 +12,15 @@ test.describe('02 — Process definitions — admin', () => {
     if (match?.deploymentId) {
       await request.delete(`/api/process-definitions/deployment/${match.deploymentId}`)
     }
+  }
+
+  test.beforeAll(async ({ request }) => {
+    // Clean up any E2E Test Process left over from a previous interrupted run.
+    await deleteE2ETestProcess(request)
+  })
+
+  test.afterAll(async ({ request }) => {
+    await deleteE2ETestProcess(request)
   })
 
   test('03.1 — deployed process list shows CapEx and other flows', async ({ page }) => {

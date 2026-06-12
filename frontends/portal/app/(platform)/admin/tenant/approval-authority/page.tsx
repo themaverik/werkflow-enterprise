@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { PageSurface } from '@/components/layout/page-surface'
 
 const MAX_LEVELS = 10
@@ -92,6 +93,8 @@ export default function ApprovalAuthorityPage() {
   const [pendingAmount, setPendingAmount] = useState('')
   // New role-level row
   const [newRoleMapping, setNewRoleMapping] = useState({ role: '', level: '' })
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
 
   const { data: doaVars = [], isLoading: loadingDoa } = useQuery({
     queryKey: ['configVars', 'DOA_THRESHOLD'],
@@ -232,9 +235,7 @@ export default function ApprovalAuthorityPage() {
                         aria-label={`Delete level ${v.varKey}`}
                         disabled={deleteMutation.isPending}
                         onClick={() => {
-                          if (v.id != null && window.confirm(`Delete level ${v.varKey}? This may affect role assignments.`)) {
-                            deleteMutation.mutate(v.id)
-                          }
+                          if (v.id != null) { setPendingDeleteId(v.id); setConfirmOpen(true) }
                         }}
                       >
                         <Trash2 size={14} strokeWidth={1.8} />
@@ -345,9 +346,7 @@ export default function ApprovalAuthorityPage() {
                       aria-label={`Remove level assignment for ${v.varKey}`}
                       disabled={deleteMutation.isPending}
                       onClick={() => {
-                        if (v.id != null && window.confirm(`Remove level assignment for role "${v.varKey}"?`)) {
-                          deleteMutation.mutate(v.id)
-                        }
+                        if (v.id != null) { setPendingDeleteId(v.id); setConfirmOpen(true) }
                       }}
                     >
                       <Trash2 size={14} strokeWidth={1.8} />
@@ -427,6 +426,13 @@ export default function ApprovalAuthorityPage() {
           </table>
         </div>
       </section>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Confirm Deletion"
+        description="This action cannot be undone."
+        onConfirm={() => { if (pendingDeleteId !== null) { deleteMutation.mutate(pendingDeleteId); setPendingDeleteId(null) } }}
+      />
     </div>
     </PageSurface>
   )

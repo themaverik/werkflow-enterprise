@@ -35,6 +35,48 @@ interface KeycloakJWTPayload extends JWTPayload {
  * - KEYCLOAK_ISSUER_PUBLIC: Token validation issuer (localhost:8090 - matches token claims)
  * - KEYCLOAK_ISSUER_BROWSER: Browser redirects (localhost:8090 - user-accessible)
  */
+/**
+ * Decodes Keycloak claims from a raw access token and merges them into the
+ * existing JWT token object. Extracted into a helper so that both the initial
+ * sign-in path and the token-refresh path apply identical claim extraction,
+ * ensuring roles are always sourced from the current access token.
+ *
+ * Returns `{ ...currentToken, error: 'TokenDecodeError' }` when the access
+ * token cannot be decoded, so the `authorized` callback can detect stale
+ * sessions and force re-authentication.
+ */
+function extractClaimsFromToken(accessToken: string, currentToken: JWT): JWT {
+  try {
+    const decodedToken = decodeJwt(accessToken) as KeycloakJWTPayload;
+
+    const roles: string[] = decodedToken.realm_access?.roles || [];
+    const doaLevelFromClaim = decodedToken.doa_level;
+    let doa_level: string | number | undefined;
+    if (doaLevelFromClaim !== undefined) {
+      doa_level = doaLevelFromClaim;
+    } else {
+      const doaRole = roles.find(r => /^doa_approver_level(\d+)$/.test(r));
+      const match = doaRole?.match(/^doa_approver_level(\d+)$/);
+      doa_level = match ? parseInt(match[1], 10) : undefined;
+    }
+
+    return {
+      ...currentToken,
+      roles,
+      groups: decodedToken.groups || [],
+      doa_level,
+      department: decodedToken.department,
+      preferred_username: decodedToken.preferred_username,
+      given_name: decodedToken.given_name,
+      family_name: decodedToken.family_name,
+      tenantId: decodedToken.tenant_id ?? 'default',
+    };
+  } catch (error) {
+    console.error("Error decoding access token with jose:", error);
+    return { ...currentToken, roles: [], error: 'TokenDecodeError' as const };
+  }
+}
+
 export const authConfig = {
   providers: [
     Keycloak({
@@ -68,48 +110,17 @@ export const authConfig = {
     })
   ],
   callbacks: {
-    async jwt({ token, account, profile }) {
+    async jwt({ token, account }) {
       // Initial sign in
       if (account) {
-        token.accessToken = account.access_token
-        token.refreshToken = account.refresh_token
-        token.idToken = account.id_token
-        token.expiresAt = account.expires_at
-
-        // Extract roles from Keycloak token
-        const realmAccess = (profile as any)?.realm_access
-        token.roles = realmAccess?.roles || []
-
-        // HIGH-08: JWT claims must not be logged in production
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Realm access: ', realmAccess)
-          console.log('Realm Roles: ', realmAccess?.roles)
-        }
-
-        try {
-          const decodedToken = decodeJwt(account.access_token || '') as KeycloakJWTPayload;
-
-          token.roles = decodedToken.realm_access?.roles || [];
-          token.groups = decodedToken.groups || [];
-          // Derive DOA level from doa_approver_levelN roles if not explicitly set as a claim
-          const doaLevelFromClaim = decodedToken.doa_level;
-          if (doaLevelFromClaim !== undefined) {
-            token.doa_level = doaLevelFromClaim;
-          } else {
-            const roles: string[] = decodedToken.realm_access?.roles || [];
-            const doaRole = roles.find(r => /^doa_approver_level(\d+)$/.test(r));
-            const match = doaRole?.match(/^doa_approver_level(\d+)$/);
-            token.doa_level = match ? parseInt(match[1], 10) : undefined;
-          }
-          token.department = decodedToken.department;
-          token.preferred_username = decodedToken.preferred_username;
-          token.given_name = decodedToken.given_name;
-          token.family_name = decodedToken.family_name;
-          token.tenantId = decodedToken.tenant_id ?? 'default';
-
-        } catch (error) {
-          console.error("Error decoding access token with jose:", error);
-        }
+        const baseToken: JWT = {
+          ...token,
+          accessToken: account.access_token,
+          refreshToken: account.refresh_token,
+          idToken: account.id_token,
+          expiresAt: account.expires_at,
+        };
+        return extractClaimsFromToken(account.access_token || '', baseToken);
       } else if (token.refreshToken && token.expiresAt) {
         // Token refresh: check if expired and refresh if needed
         const now = Math.floor(Date.now() / 1000)
@@ -133,10 +144,14 @@ export const authConfig = {
 
             if (response.ok) {
               const refreshedTokens = await response.json()
-              token.accessToken = refreshedTokens.access_token
-              token.refreshToken = refreshedTokens.refresh_token
-              token.idToken = refreshedTokens.id_token
-              token.expiresAt = Math.floor(Date.now() / 1000) + (refreshedTokens.expires_in || 300)
+              const refreshedBase: JWT = {
+                ...token,
+                accessToken: refreshedTokens.access_token,
+                refreshToken: refreshedTokens.refresh_token,
+                idToken: refreshedTokens.id_token,
+                expiresAt: Math.floor(Date.now() / 1000) + (refreshedTokens.expires_in || 300),
+              };
+              return extractClaimsFromToken(refreshedTokens.access_token || '', refreshedBase);
             } else {
               console.error('Token refresh failed:', response.status)
               return { ...token, error: 'RefreshAccessTokenError' as const }
@@ -170,8 +185,8 @@ export const authConfig = {
       return session
     },
     authorized({ auth, request: { nextUrl } }) {
-      // MED-11: force re-auth when refresh token has expired
-      if (auth?.error === 'RefreshAccessTokenError') {
+      // Force re-auth when token refresh fails or access token cannot be decoded
+      if (auth?.error === 'RefreshAccessTokenError' || auth?.error === 'TokenDecodeError') {
         return false
       }
 

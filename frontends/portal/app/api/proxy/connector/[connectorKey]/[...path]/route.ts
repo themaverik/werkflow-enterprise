@@ -23,8 +23,12 @@ async function proxy(req: NextRequest, ctx: RouteContext) {
   url.searchParams.set('path', connectorPath)
   url.searchParams.set('method', req.method)
 
-  // Forward any extra query params from the browser (e.g. filter, page)
-  req.nextUrl.searchParams.forEach((v, k) => url.searchParams.set(k, v))
+  // Forward extra query params from the browser (e.g. filter, page).
+  // Skip reserved keys that were already set server-side to prevent override.
+  const RESERVED = new Set(['path', 'method'])
+  req.nextUrl.searchParams.forEach((v, k) => {
+    if (!RESERVED.has(k)) url.searchParams.set(k, v)
+  })
 
   const upstream = await fetch(url.toString(), {
     method: 'POST',

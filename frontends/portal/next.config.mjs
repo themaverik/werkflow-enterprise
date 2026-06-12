@@ -41,8 +41,11 @@ const nextConfig = {
           {
             key: 'Content-Security-Policy',
             // unsafe-eval required by bpmn-js/dmn-js rendering pipeline (accepted trade-off).
-            // unsafe-inline required by bpmn-js Preact renderer and shadcn CSS tokens.
-            value: `default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; worker-src 'self' blob:; connect-src 'self' ${engineBaseUrl} ${adminBaseUrl} ${keycloakPublicUrl} ${apiBaseOrigin}; frame-ancestors 'none'; object-src 'none'; base-uri 'self'`,
+            // unsafe-inline on script-src required by Next.js 14 App Router internal hydration
+            // scripts (RSC payload, router bootstrap). Post-MVP: replace with nonce-based CSP
+            // in middleware once bpmn-js is sandboxed and unsafe-eval can be removed.
+            // unsafe-inline on style-src required by bpmn-js Preact renderer and shadcn CSS tokens.
+            value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; worker-src 'self' blob:; connect-src 'self' ${engineBaseUrl} ${adminBaseUrl} ${keycloakPublicUrl} ${apiBaseOrigin}; frame-ancestors 'none'; object-src 'none'; base-uri 'self'`,
           },
         ],
       },

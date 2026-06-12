@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/auth/auth-context'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import { PageSurface } from '@/components/layout/page-surface'
-import { Card, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Plus, RefreshCw, User } from 'lucide-react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface UserRow {
   id: number
@@ -109,7 +110,6 @@ async function inviteUser(payload: InvitePayload): Promise<UserRow> {
 export default function TenantUsersPage() {
   const { user } = useAuth()
   const tenantCode = user?.tenantId ?? ''
-  const { toast } = useToast()
   const queryClient = useQueryClient()
 
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -132,10 +132,7 @@ export default function TenantUsersPage() {
     mutationFn: inviteUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users', org?.id] })
-      toast({
-        title: 'Invite sent',
-        description: `${form.email} will receive an email to set their password.`,
-      })
+      toast.success('Invite sent', { description: `${form.email} will receive an email to set their password.` })
       setInviteOpen(false)
       setForm(EMPTY_FORM)
       setFormError(null)
@@ -189,59 +186,55 @@ export default function TenantUsersPage() {
         </div>
 
         {!isFetching && users.length === 0 && (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <User className="h-10 w-10 text-muted-foreground mb-3" strokeWidth={1.5} />
-              <p className="text-sm font-medium text-foreground mb-1">No users yet</p>
-              <p className="text-xs text-muted-foreground mb-4">
-                Use Invite User to add members to this tenant.
-              </p>
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={User}
+            title="No users yet"
+            description="Use Invite User to add members to this tenant."
+          />
         )}
 
         {users.length > 0 && (
           <div className="rounded-xl border border-border overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Name</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Email</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Roles</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">DOA</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Dept</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Roles</TableHead>
+                  <TableHead>DOA</TableHead>
+                  <TableHead>Dept</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {users.map((u) => (
-                  <tr key={u.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3 font-medium text-foreground">
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium text-foreground">
                       {u.firstName} {u.lastName}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                    <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {u.roles.map((r) => (
                           <Badge key={r.name} variant="secondary">{r.name}</Badge>
                         ))}
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
                       {u.doaLevel != null ? `L${u.doaLevel}` : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
                       {u.departmentCode ?? '—'}
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       <Badge variant={u.active ? 'default' : 'destructive'}>
                         {u.active ? 'Active' : 'Inactive'}
                       </Badge>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
       </div>

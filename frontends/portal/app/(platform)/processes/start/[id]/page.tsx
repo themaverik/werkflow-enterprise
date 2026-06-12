@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from 'sonner'
 import { getProcessStartForm } from "@/lib/api/flowable"
 import { startProcess } from "@/lib/api/workflows"
 import FormJsViewer from "@/components/forms/FormJsViewer"
@@ -18,9 +18,9 @@ export default function StartProcessPage() {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { toast } = useToast()
   const { status, data: session } = useSession()
   const prevFormValues = useRef<Record<string, any>>({})
+  const initialised = useRef(false)
   const processDefinitionId = decodeURIComponent(params.id as string)
   const [formData, setFormData] = useState<Record<string, any>>({})
 
@@ -56,18 +56,16 @@ export default function StartProcessPage() {
       resolveFormData(
         startForm!.schema,
         proxyFetch,
-        (url) =>
-          toast({
-            title: 'Failed to load options',
-            description: url,
-            variant: 'destructive',
-          })
+        (url) => toast.error('Failed to load options', { description: url })
       ),
     enabled: !!startForm,
   })
 
   useEffect(() => {
-    if (initialFormData) setFormData(initialFormData)
+    if (initialFormData && !initialised.current) {
+      initialised.current = true
+      setFormData(initialFormData)
+    }
   }, [initialFormData])
 
   const startProcessMutation = useMutation({
@@ -80,18 +78,11 @@ export default function StartProcessPage() {
       })
     },
     onSuccess: (data) => {
-      toast({
-        title: 'Process Started',
-        description: `Process instance ${data.processInstanceId} created successfully.`,
-      })
+      toast.success('Process Started', { description: `Process instance ${data.processInstanceId} created successfully.` })
       router.push('/requests')
     },
     onError: (error: Error) => {
-      toast({
-        title: 'Failed to Start Process',
-        description: error.message || 'An error occurred while starting the process.',
-        variant: 'destructive',
-      })
+      toast.error('Failed to Start Process', { description: error.message || 'An error occurred while starting the process.' })
     },
   })
 
@@ -117,12 +108,7 @@ export default function StartProcessPage() {
       changedKey,
       changedValue,
       proxyFetch,
-      (url) =>
-        toast({
-          title: 'Failed to load options',
-          description: url,
-          variant: 'destructive',
-        })
+      (url) => toast.error('Failed to load options', { description: url })
     )
 
     // Always remove changedKey from formData: its value is owned by form-js.

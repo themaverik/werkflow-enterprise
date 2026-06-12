@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
+import { useAuth } from '@/lib/auth/auth-context'
 import { useAuthorization } from '@/lib/auth/use-authorization'
 import { useCandidateGroups } from '@/lib/platform/usePlatformCapabilities'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Plus, Pencil, Trash2, X, Check, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import type { CandidateGroupEntry } from '@/lib/platform/types'
@@ -198,34 +200,36 @@ function CustodyOwnerWarning({ value, codes }: { value: string; codes: Set<strin
 }
 
 export default function CustodyMappingsPage() {
-  const { status, data: session } = useSession()
+  const { status } = useSession()
   const { hasAnyRole } = useAuthorization()
-  const token = (session?.accessToken as string) ?? ''
+  const { token } = useAuth()
   const qc = useQueryClient()
 
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editState, setEditState] = useState<EditState>(blankEditState())
   const [addingNew, setAddingNew] = useState(false)
   const [newState, setNewState] = useState<EditState>(blankEditState())
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
 
   const { data: availableGroups = [], isLoading: isLoadingGroups } = useCandidateGroups()
 
   const { data: departmentCodes = EMPTY_DEPT_CODES } = useQuery({
     queryKey: ['erp-department-codes'],
-    queryFn: () => fetchDepartmentCodes(token),
+    queryFn: () => fetchDepartmentCodes(token ?? ''),
     enabled: status === 'authenticated',
     staleTime: 5 * 60 * 1000,
   })
 
   const { data: mappings = [], isLoading } = useQuery({
     queryKey: ['custodyMappings'],
-    queryFn: () => fetchCustodyMappings(token),
+    queryFn: () => fetchCustodyMappings(token ?? ''),
     enabled: status === 'authenticated',
     staleTime: 60_000,
   })
 
   const createMutation = useMutation({
-    mutationFn: (body: { custodyOwner: string; candidateGroups: string[] }) => createMapping(body, token),
+    mutationFn: (body: { custodyOwner: string; candidateGroups: string[] }) => createMapping(body, token ?? ''),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['custodyMappings'] })
       setAddingNew(false)
@@ -237,7 +241,7 @@ export default function CustodyMappingsPage() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, body }: { id: number; body: { custodyOwner: string; candidateGroups: string[] } }) =>
-      updateMapping(id, body, token),
+      updateMapping(id, body, token ?? ''),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['custodyMappings'] })
       setEditingId(null)
@@ -248,7 +252,7 @@ export default function CustodyMappingsPage() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => deleteMapping(id, token),
+    mutationFn: (id: number) => deleteMapping(id, token ?? ''),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['custodyMappings'] })
       toast.success('Custody mapping deleted')
@@ -403,11 +407,7 @@ export default function CustodyMappingsPage() {
                         className="h-8 px-2 text-destructive hover:text-destructive"
                         aria-label={`Delete mapping for ${m.custodyOwner}`}
                         disabled={deleteMutation.isPending}
-                        onClick={() => {
-                          if (window.confirm(`Delete custody mapping "${m.custodyOwner}"?`)) {
-                            deleteMutation.mutate(m.id)
-                          }
-                        }}
+                        onClick={() => { setPendingDeleteId(m.id); setConfirmOpen(true) }}
                       >
                         <Trash2 size={13} strokeWidth={1.8} />
                       </Button>
@@ -482,6 +482,14 @@ export default function CustodyMappingsPage() {
           Add Custody Mapping
         </Button>
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Confirm Deletion"
+        description="This action cannot be undone."
+        onConfirm={() => { if (pendingDeleteId !== null) { deleteMutation.mutate(pendingDeleteId); setPendingDeleteId(null) } }}
+      />
 
       <details className="text-sm text-muted-foreground mt-8 border rounded-md p-3">
         <summary className="cursor-pointer font-medium text-foreground select-none">Terminology</summary>
