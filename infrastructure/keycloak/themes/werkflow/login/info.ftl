@@ -83,10 +83,10 @@ html, body { height: 100%; }
                     </svg>
                 </div>
 
-                <h2>Account activation required</h2>
-                <p>To access Werkflow, please complete the following steps:</p>
-
                 <#if requiredActions?has_content>
+                    <#-- Pending state: list of actions to complete -->
+                    <h2>Account activation required</h2>
+                    <p>To access Werkflow, please complete the following steps:</p>
                     <div class="wf-actions-list">
                         <#list requiredActions as action>
                             <div class="wf-action-chip">
@@ -98,18 +98,19 @@ html, body { height: 100%; }
                             </div>
                         </#list>
                     </div>
+                    <#if skipLink??>
+                    <#elseif actionUri?has_content>
+                        <a href="${actionUri}" class="wf-btn-primary">Continue to activation</a>
+                    </#if>
                 <#else>
-                    <div style="margin: 20px 0 28px;">
-                        <p>${message.summary}</p>
-                    </div>
-                </#if>
-
-                <#if skipLink??>
-                    <#-- no action link needed -->
-                <#elseif actionUri?has_content>
-                    <a href="${actionUri}" class="wf-btn-primary">Continue to activation</a>
-                <#elseif pageRedirectUri?has_content>
-                    <a href="${pageRedirectUri}" class="wf-btn-primary">Back to application</a>
+                    <#-- Success state: all actions complete -->
+                    <h2>You're all set</h2>
+                    <p style="margin-bottom:24px;">${message.summary} You can now sign in to Werkflow with your new credentials.</p>
+                    <#if pageRedirectUri?has_content>
+                        <a href="${pageRedirectUri}" class="wf-btn-primary">Go to application</a>
+                    <#else>
+                        <a href="${url.loginUrl}" class="wf-btn-primary">Go to login</a>
+                    </#if>
                 </#if>
 
             </div>

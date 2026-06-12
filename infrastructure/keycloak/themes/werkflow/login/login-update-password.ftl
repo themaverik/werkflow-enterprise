@@ -37,8 +37,8 @@ html, body { height: 100%; }
 .wf-alert-info { background: #eff6ff; border: 1px solid #bfdbfe; border-left: 3px solid #2563eb; color: #1e40af; }
 .wf-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
 .wf-field label { font-size: 13px; font-weight: 500; color: #374151; }
-.wf-field input[type="password"] { width: 100%; padding: 10px 14px; border-radius: 9px; border: 1.5px solid #d1d5db; font-size: 14px; font-family: inherit; color: #111827; background: #fff; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
-.wf-field input[type="password"]:focus { border-color: #149ba5; box-shadow: 0 0 0 3px rgba(20,155,165,0.13); }
+.wf-field input[type="password"], .wf-field input[type="text"] { width: 100%; padding: 10px 14px; border-radius: 9px; border: 1.5px solid #d1d5db; font-size: 14px; font-family: inherit; color: #111827; background: #fff; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+.wf-field input[type="password"]:focus, .wf-field input[type="text"]:focus { border-color: #149ba5; box-shadow: 0 0 0 3px rgba(20,155,165,0.13); }
 .wf-pw-wrapper { position: relative; display: flex; align-items: center; }
 .wf-pw-wrapper input { padding-right: 42px !important; }
 .wf-pw-toggle { position: absolute; right: 12px; background: none; border: none; cursor: pointer; color: #9ca3af; padding: 0; display: flex; align-items: center; justify-content: center; }
