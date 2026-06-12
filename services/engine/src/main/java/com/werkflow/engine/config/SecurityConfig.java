@@ -71,6 +71,11 @@ public class SecurityConfig {
                         .requestMatchers(new AntPathRequestMatcher("/swagger-ui.html")).permitAll();
                 } else {
                     auth
+                        // /actuator/health/** is a public liveness/readiness probe — no token required.
+                        // Covers /actuator/health, /actuator/health/liveness, /actuator/health/readiness.
+                        // show-details=when-authorized ensures sensitive internals are withheld for
+                        // unauthenticated callers; the portal health route relies on this returning 200.
+                        .requestMatchers(new AntPathRequestMatcher("/actuator/health/**")).permitAll()
                         .requestMatchers(new AntPathRequestMatcher("/actuator/**")).authenticated()
                         .requestMatchers(new AntPathRequestMatcher("/v3/api-docs/**")).authenticated()
                         .requestMatchers(new AntPathRequestMatcher("/swagger-ui/**")).authenticated()
