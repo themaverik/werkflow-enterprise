@@ -64,7 +64,8 @@ public class AnalyticsController {
     }
 
     private String extractTenant(Jwt jwt) {
-        String tc = jwt.getClaimAsString("tenant_code");
+        // JWT uses "tenant_id" claim per Keycloak mapper config (not "tenant_code")
+        String tc = jwt.getClaimAsString("tenant_id");
         return (tc != null && !tc.isBlank()) ? tc : "default";
     }
 }
