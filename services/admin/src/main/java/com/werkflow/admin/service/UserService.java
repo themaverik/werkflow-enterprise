@@ -5,6 +5,8 @@ import com.werkflow.admin.dto.UserInviteRequest;
 import com.werkflow.admin.dto.UserProfileResponse;
 import com.werkflow.admin.dto.UserRequest;
 import com.werkflow.admin.dto.UserResponse;
+import com.werkflow.admin.dto.UserStatusRequest;
+import com.werkflow.admin.dto.UserUpdateRequest;
 import com.werkflow.admin.entity.Organization;
 import com.werkflow.admin.entity.Role;
 import com.werkflow.admin.entity.User;
@@ -257,6 +259,145 @@ public class UserService {
             .collect(Collectors.toList());
     }
 
+    /**
+     * Loads a user by ID with optional tenant scope.
+     * SUPER_ADMIN passes {@code null} tenantCode to bypass tenant isolation.
+     */
+    private User loadUser(Long id, String tenantCode) {
+        if (tenantCode == null) {
+            return userRepository.findById(id)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "User not found with ID: " + id));
+        }
+        return userRepository.findByIdAndTenantCode(id, tenantCode)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "User not found with ID: " + id));
+    }
+
+    /**
+     * Updates a user's editable fields (name, doaLevel, departmentCode) and syncs name to KC.
+     * KC name sync failure is non-fatal — the DB update is always committed.
+     *
+     * @param id              user ID
+     * @param request         fields to update
+     * @param callerTenantCode tenant scope; null for SUPER_ADMIN
+     */
+    @Transactional
+    public UserResponse updateUser(Long id, UserUpdateRequest request, String callerTenantCode) {
+        log.info("Updating user with ID: {}", id);
+
+        User user = loadUser(id, callerTenantCode);
+
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        if (request.getDoaLevel() != null) user.setDoaLevel(request.getDoaLevel());
+        if (request.getDepartmentCode() != null) user.setDepartmentCode(request.getDepartmentCode());
+
+        User saved = userRepository.save(user);
+        log.info("User updated successfully: {}", id);
+
+        try {
+            keycloakUserService.updateKcUserName(user.getKeycloakId(), request.getFirstName(), request.getLastName());
+        } catch (Exception e) {
+            log.warn("KC name sync failed for user {}: {}", id, e.getMessage());
+        }
+
+        return mapToResponse(saved);
+    }
+
+    /**
+     * Deactivates a user: disables their KC account and sets active=false in the DB.
+     * Blocked if the user has not yet accepted their invitation (UPDATE_PASSWORD still pending).
+     *
+     * @param id               user ID
+     * @param callerTenantCode tenant scope; null for SUPER_ADMIN
+     * @param callerKeycloakId the caller's Keycloak subject (sub claim) — used for self-guard
+     */
+    @Transactional
+    public UserResponse deactivateUser(Long id, String callerTenantCode, String callerKeycloakId) {
+        User user = loadUser(id, callerTenantCode);
+
+        if (user.getKeycloakId().equals(callerKeycloakId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Cannot deactivate your own account.");
+        }
+
+        if (!Boolean.TRUE.equals(user.getActive())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "User is already inactive.");
+        }
+
+        List<String> requiredActions;
+        try {
+            requiredActions = keycloakUserService.getKcRequiredActions(user.getKeycloakId());
+        } catch (Exception e) {
+            log.error("KC unreachable when checking requiredActions for user {}: {}", user.getKeycloakId(), e.getMessage());
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Unable to verify user state in identity provider — please retry.");
+        }
+        if (requiredActions.contains("UPDATE_PASSWORD")) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "User has not yet accepted their invitation and cannot be deactivated.");
+        }
+
+        keycloakUserService.setKcUserEnabled(user.getKeycloakId(), false);
+
+        // IMPORTANT: KC is now disabled. If the DB save below throws, the @Transactional
+        // rollback cannot undo the KC call — the user will be disabled in KC but still
+        // active=true in DB (split-brain). The error is logged here so ops can reconcile
+        // via KC Admin Console. A compensating re-enable is NOT attempted to keep this path
+        // simple; the recommended fix if this fires is to re-enable in KC and retry.
+        try {
+            user.setActive(false);
+            User saved = userRepository.save(user);
+            log.info("User {} deactivated", id);
+            return mapToResponse(saved);
+        } catch (Exception e) {
+            log.error("SPLIT-BRAIN: KC user '{}' was disabled but DB save failed for user id={}. " +
+                    "Manual reconciliation required — re-enable in KC or retry deactivation. Error: {}",
+                    user.getKeycloakId(), id, e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Reactivates a user: enables their KC account and sets active=true in the DB.
+     *
+     * @param id               user ID
+     * @param callerTenantCode tenant scope; null for SUPER_ADMIN
+     * @param callerKeycloakId the caller's Keycloak subject (sub claim) — used for self-guard
+     */
+    @Transactional
+    public UserResponse reactivateUser(Long id, String callerTenantCode, String callerKeycloakId) {
+        User user = loadUser(id, callerTenantCode);
+
+        if (user.getKeycloakId().equals(callerKeycloakId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Cannot modify your own account status.");
+        }
+
+        if (Boolean.TRUE.equals(user.getActive())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "User is already active.");
+        }
+
+        keycloakUserService.setKcUserEnabled(user.getKeycloakId(), true);
+
+        // IMPORTANT: KC is now enabled. Same split-brain risk as deactivateUser — if the DB
+        // save throws, KC is enabled but DB still shows active=false.
+        try {
+            user.setActive(true);
+            User saved = userRepository.save(user);
+            log.info("User {} reactivated", id);
+            return mapToResponse(saved);
+        } catch (Exception e) {
+            log.error("SPLIT-BRAIN: KC user '{}' was re-enabled but DB save failed for user id={}. " +
+                    "Manual reconciliation required — disable in KC or retry reactivation. Error: {}",
+                    user.getKeycloakId(), id, e.getMessage());
+            throw e;
+        }
+    }
+
     @Transactional
     public UserResponse updateUser(Long id, UserRequest request) {
         log.info("Updating user with ID: {}", id);
@@ -318,16 +459,34 @@ public class UserService {
         return mapToResponse(user);
     }
 
+    /**
+     * Deletes a user from the local DB only. No KC API call is made.
+     * SUPER_ADMIN only (no tenant scope check).
+     *
+     * <p>NOTE: active-task check via engine is not implemented here — no internal engine endpoint
+     * exists for task-count-by-user. TODO: add check when engine exposes
+     * GET /api/internal/users/{username}/active-task-count.
+     *
+     * @param id               user ID
+     * @param callerKeycloakId the caller's KC subject — self-delete is blocked
+     */
     @Transactional
-    public void deleteUser(Long id) {
+    public void deleteUser(Long id, String callerKeycloakId) {
         log.info("Deleting user with ID: {}", id);
 
-        if (!userRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with ID: " + id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "User not found with ID: " + id));
+
+        if (user.getKeycloakId().equals(callerKeycloakId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Cannot delete your own account.");
         }
 
         userRepository.deleteById(id);
-        log.info("User deleted successfully: {}", id);
+        log.warn("User {} ({}) deleted from local DB. KC account '{}' must be manually removed " +
+                        "from KC Admin Console to revoke system access.",
+                user.getId(), user.getEmail(), user.getKeycloakId());
     }
 
     @Transactional(readOnly = true)
@@ -376,6 +535,7 @@ public class UserService {
             .updatedAt(user.getUpdatedAt())
             .tenantCode(user.getTenantCode())
             .doaLevel(user.getDoaLevel())
+            .departmentCode(user.getDepartmentCode())
             .build();
     }
 

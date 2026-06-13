@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/auth/auth-context'
+import { useAuthorization } from '@/lib/auth/use-authorization'
 import { toast } from 'sonner'
 import { PageSurface } from '@/components/layout/page-surface'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -13,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -24,7 +26,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, RefreshCw, User } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { MoreHorizontal, Plus, RefreshCw, User } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
@@ -39,6 +49,7 @@ interface UserRow {
   doaLevel: number | null
   departmentCode: string | null
   active: boolean
+  emailVerified: boolean
   roles: { name: string }[]
 }
 
@@ -64,6 +75,20 @@ interface InvitePayload {
   roleName: string
   doaLevel?: number
   departmentCode?: string
+}
+
+interface EditModalProps {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  target: UserRow | null
+  onSave: (vars: {
+    id: number
+    firstName: string
+    lastName: string
+    doaLevel: string
+    departmentCode: string
+  }) => void
+  saving: boolean
 }
 
 const ROLES = ['ADMIN', 'EMPLOYEE', 'WORKFLOW_ADMIN']
@@ -108,14 +133,106 @@ async function inviteUser(payload: InvitePayload): Promise<UserRow> {
   return res.json()
 }
 
+function EditUserModal({ open, onOpenChange, target, onSave, saving }: EditModalProps) {
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [doaLevel, setDoaLevel] = useState('')
+  const [departmentCode, setDepartmentCode] = useState('')
+
+  useEffect(() => {
+    if (target) {
+      setFirstName(target.firstName ?? '')
+      setLastName(target.lastName ?? '')
+      setDoaLevel(target.doaLevel != null ? String(target.doaLevel) : '')
+      setDepartmentCode(target.departmentCode ?? '')
+    }
+  }, [target])
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Edit User</DialogTitle>
+          <DialogDescription>{target?.email}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-fn">First Name</Label>
+              <Input
+                id="edit-fn"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-ln">Last Name</Label>
+              <Input
+                id="edit-ln"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-doa">DOA Level</Label>
+              <Input
+                id="edit-doa"
+                type="number"
+                min={1}
+                value={doaLevel}
+                onChange={(e) => setDoaLevel(e.target.value)}
+                placeholder="Optional"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-dept">Department</Label>
+              <Input
+                id="edit-dept"
+                value={departmentCode}
+                onChange={(e) => setDepartmentCode(e.target.value)}
+                placeholder="Optional"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground border-t border-border pt-3">
+            Role and email changes are managed in Keycloak Admin Console.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            disabled={saving || !firstName.trim() || !lastName.trim()}
+            onClick={() =>
+              target &&
+              onSave({ id: target.id, firstName, lastName, doaLevel, departmentCode })
+            }
+          >
+            {saving && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function TenantUsersPage() {
   const { user } = useAuth()
+  const { hasRole } = useAuthorization()
+  const isSuperAdmin = hasRole('SUPER_ADMIN')
   const tenantCode = user?.tenantId ?? ''
   const queryClient = useQueryClient()
 
   const [inviteOpen, setInviteOpen] = useState(false)
   const [form, setForm] = useState<InviteFormState>(EMPTY_FORM)
   const [formError, setFormError] = useState<string | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<UserRow | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null)
 
   const { data: org } = useQuery<OrgInfo>({
     queryKey: ['org', tenantCode],
@@ -133,12 +250,91 @@ export default function TenantUsersPage() {
     mutationFn: inviteUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users', org?.id] })
-      toast.success('Invite sent', { description: `${form.email} will receive an email to set their password.` })
+      toast.success('Invite sent', {
+        description: `${form.email} will receive an email to set their password.`,
+      })
       setInviteOpen(false)
       setForm(EMPTY_FORM)
       setFormError(null)
     },
     onError: (e: unknown) => setFormError(e instanceof Error ? e.message : 'Unexpected error'),
+  })
+
+  const statusMutation = useMutation({
+    mutationFn: (vars: { id: number; active: boolean }) =>
+      fetch(`/api/proxy/admin/users/${vars.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: vars.active }),
+      }).then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error((data as { message?: string }).message ?? `Failed (${res.status})`)
+        }
+        return res.json()
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users', org?.id] })
+      toast.success('User status updated')
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : 'Failed to update status'),
+  })
+
+  const editMutation = useMutation({
+    mutationFn: (vars: {
+      id: number
+      firstName: string
+      lastName: string
+      doaLevel: string
+      departmentCode: string
+    }) =>
+      fetch(`/api/proxy/admin/users/${vars.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: vars.firstName,
+          lastName: vars.lastName,
+          doaLevel: vars.doaLevel ? parseInt(vars.doaLevel, 10) : null,
+          departmentCode: vars.departmentCode || null,
+        }),
+      }).then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error((data as { message?: string }).message ?? `Failed (${res.status})`)
+        }
+        return res.json()
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users', org?.id] })
+      toast.success('User updated')
+      setEditOpen(false)
+      setEditTarget(null)
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : 'Failed to update user'),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) =>
+      fetch(`/api/proxy/admin/users/${id}`, { method: 'DELETE' }).then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error((data as { message?: string }).message ?? `Failed (${res.status})`)
+        }
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users', org?.id] })
+      toast.warning(
+        'User deleted from system. Remove them from Keycloak Admin Console to revoke access.',
+        { duration: 8000 },
+      )
+      setDeleteTarget(null)
+    },
+    onError: (e: unknown) => {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete user')
+      setDeleteTarget(null)
+    },
   })
 
   function handleInvite() {
@@ -214,6 +410,7 @@ export default function TenantUsersPage() {
                   <TableHead>DOA</TableHead>
                   <TableHead>Dept</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -226,7 +423,9 @@ export default function TenantUsersPage() {
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {u.roles.map((r) => (
-                          <Badge key={r.name} variant="secondary">{r.name}</Badge>
+                          <Badge key={r.name} variant="secondary">
+                            {r.name}
+                          </Badge>
                         ))}
                       </div>
                     </TableCell>
@@ -237,9 +436,62 @@ export default function TenantUsersPage() {
                       {u.departmentCode ?? '—'}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={u.active ? 'default' : 'destructive'}>
-                        {u.active ? 'Active' : 'Inactive'}
-                      </Badge>
+                      {!u.emailVerified && u.active ? (
+                        <Badge
+                          variant="outline"
+                          style={{
+                            color: 'var(--badge-warning)',
+                            borderColor: 'var(--badge-warning-border)',
+                            backgroundColor: 'var(--badge-warning-bg)',
+                          }}
+                        >
+                          Pending Invite
+                        </Badge>
+                      ) : u.active ? (
+                        <Badge>Active</Badge>
+                      ) : (
+                        <Badge variant="secondary">Inactive</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Actions</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setEditTarget(u)
+                              setEditOpen(true)
+                            }}
+                            disabled={editMutation.isPending}
+                          >
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              statusMutation.mutate({ id: u.id, active: !u.active })
+                            }
+                            disabled={statusMutation.isPending}
+                          >
+                            {u.active ? 'Deactivate' : 'Activate'}
+                          </DropdownMenuItem>
+                          {isSuperAdmin && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setDeleteTarget(u)}
+                              >
+                                Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -249,13 +501,24 @@ export default function TenantUsersPage() {
         )}
       </div>
 
-      <Dialog open={inviteOpen} onOpenChange={(open) => {
-        setInviteOpen(open)
-        if (!open) {
-          setForm({ email: '', firstName: '', lastName: '', roleName: 'EMPLOYEE', doaLevel: '', departmentCode: '' })
-          setFormError(null)
-        }
-      }}>
+      {/* Invite dialog */}
+      <Dialog
+        open={inviteOpen}
+        onOpenChange={(open) => {
+          setInviteOpen(open)
+          if (!open) {
+            setForm({
+              email: '',
+              firstName: '',
+              lastName: '',
+              roleName: 'EMPLOYEE',
+              doaLevel: '',
+              departmentCode: '',
+            })
+            setFormError(null)
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Invite User</DialogTitle>
@@ -300,7 +563,9 @@ export default function TenantUsersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {ROLES.map((r) => (
-                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                    <SelectItem key={r} value={r}>
+                      {r}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -328,7 +593,11 @@ export default function TenantUsersPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setInviteOpen(false)} disabled={invite.isPending}>
+            <Button
+              variant="outline"
+              onClick={() => setInviteOpen(false)}
+              disabled={invite.isPending}
+            >
               Cancel
             </Button>
             <Button onClick={handleInvite} disabled={invite.isPending}>
@@ -337,6 +606,33 @@ export default function TenantUsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit dialog */}
+      <EditUserModal
+        open={editOpen}
+        onOpenChange={(v) => {
+          setEditOpen(v)
+          if (!v) setEditTarget(null)
+        }}
+        target={editTarget}
+        onSave={(vars) => editMutation.mutate(vars)}
+        saving={editMutation.isPending}
+      />
+
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(v) => {
+          if (!v) setDeleteTarget(null)
+        }}
+        title={`Delete ${deleteTarget?.firstName ?? ''} ${deleteTarget?.lastName ?? ''}?`}
+        description={`This removes the user from the system. To revoke their login access, you must also delete their account in Keycloak Admin Console. This action cannot be undone.`}
+        confirmLabel={deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+        variant="destructive"
+        onConfirm={() => {
+          if (deleteTarget) deleteMutation.mutate(deleteTarget.id)
+        }}
+      />
     </PageSurface>
   )
 }

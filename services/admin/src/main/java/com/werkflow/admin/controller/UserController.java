@@ -3,6 +3,8 @@ package com.werkflow.admin.controller;
 import com.werkflow.admin.dto.UserInviteRequest;
 import com.werkflow.admin.dto.UserRequest;
 import com.werkflow.admin.dto.UserResponse;
+import com.werkflow.admin.dto.UserStatusRequest;
+import com.werkflow.admin.dto.UserUpdateRequest;
 import com.werkflow.admin.security.JwtClaimsExtractor;
 import com.werkflow.admin.service.UserService;
 import io.github.resilience4j.ratelimiter.RequestNotPermitted;
@@ -95,20 +97,39 @@ public class UserController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
-    @Operation(summary = "Update user", description = "Update an existing user (ADMIN, SUPER_ADMIN)")
+    @Operation(summary = "Update user", description = "Update name/doaLevel/departmentCode (ADMIN, SUPER_ADMIN)")
     public ResponseEntity<UserResponse> updateUser(
-        @PathVariable Long id,
-        @Valid @RequestBody UserRequest request
-    ) {
-        UserResponse response = userService.updateUser(id, request);
+            @PathVariable Long id,
+            @Valid @RequestBody UserUpdateRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        boolean isSuperAdmin = jwtClaimsExtractor.hasRole(jwt, "SUPER_ADMIN");
+        String tenantCode = isSuperAdmin ? null : jwtClaimsExtractor.getTenantId(jwt);
+        UserResponse response = userService.updateUser(id, request, tenantCode);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @Operation(summary = "Activate or deactivate user", description = "Toggle user active status (ADMIN, SUPER_ADMIN)")
+    public ResponseEntity<UserResponse> updateUserStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody UserStatusRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        boolean isSuperAdmin = jwtClaimsExtractor.hasRole(jwt, "SUPER_ADMIN");
+        String tenantCode = isSuperAdmin ? null : jwtClaimsExtractor.getTenantId(jwt);
+        String callerKcId = jwt.getClaimAsString("preferred_username"); // DB keycloakId = email = preferred_username
+        UserResponse response = Boolean.TRUE.equals(request.getActive())
+                ? userService.reactivateUser(id, tenantCode, callerKcId)
+                : userService.deactivateUser(id, tenantCode, callerKcId);
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    @Operation(summary = "Delete user", description = "Delete a user (SUPER_ADMIN only)")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        userService.deleteUser(id);
+    @Operation(summary = "Delete user", description = "Delete a user from local DB only (SUPER_ADMIN only)")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+        String callerKcId = jwt.getClaimAsString("preferred_username"); // DB keycloakId = email = preferred_username
+        userService.deleteUser(id, callerKcId);
         return ResponseEntity.noContent().build();
     }
 

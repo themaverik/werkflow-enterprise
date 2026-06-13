@@ -43,4 +43,5 @@ public class UserResponse {
     private LocalDateTime updatedAt;
     private String tenantCode;
     private Integer doaLevel;
+    private String departmentCode;
 }

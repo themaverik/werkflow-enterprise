@@ -15,6 +15,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Service for Keycloak Admin API operations.
+ *
+ * <p>IMPORTANT: The werkflow-portal service account requires the 'manage-users' role
+ * in the realm-management client for the setKcUserEnabled/updateKcUserName calls.
+ * Grant via: KC Admin → werkflow realm → Clients → werkflow-portal → Service Account Roles
+ * → realm-management → manage-users
+ */
 @Service
 @Slf4j
 public class KeycloakUserService {
@@ -179,6 +187,84 @@ public class KeycloakUserService {
             throw new IllegalStateException("Keycloak user not found after creation: email=" + email);
         }
         return (String) users.get(0).get("id");
+    }
+
+    /**
+     * Fetches the requiredActions list for a Keycloak user. Throws on KC error (fail-closed).
+     */
+    public List<String> getKcRequiredActions(String keycloakId) {
+        String token = fetchServiceAccountToken();
+        String url = keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users/" + keycloakId;
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers),
+                new ParameterizedTypeReference<>() {});
+        Map<String, Object> body = response.getBody();
+        if (body == null) return List.of();
+        Object actions = body.get("requiredActions");
+        if (!(actions instanceof List)) return List.of();
+        return ((List<?>) actions).stream()
+                .filter(a -> a instanceof String)
+                .map(a -> (String) a)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Enables or disables a Keycloak user account.
+     *
+     * <p>KC Admin API PUT /users/{id} is a full replace — sending only {"enabled":false} would
+     * null-out username, email, firstName, lastName and attributes on the KC record. We must
+     * GET the current UserRepresentation first, mutate the enabled flag, then PUT the full body.
+     */
+    public void setKcUserEnabled(String keycloakId, boolean enabled) {
+        String token = fetchServiceAccountToken();
+        String url = keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users/" + keycloakId;
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+
+        // Fetch the existing UserRepresentation so we can PUT a complete body.
+        ResponseEntity<Map<String, Object>> getResponse = restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers),
+                new ParameterizedTypeReference<>() {});
+        Map<String, Object> existing = getResponse.getBody();
+        if (existing == null) {
+            throw new IllegalStateException("KC user not found: keycloakId=" + keycloakId);
+        }
+
+        Map<String, Object> body = new java.util.HashMap<>(existing);
+        body.put("enabled", enabled);
+        restTemplate.exchange(url, HttpMethod.PUT, new HttpEntity<>(body, headers), Void.class);
+    }
+
+    /**
+     * Updates first and last name for a Keycloak user.
+     *
+     * <p>KC Admin API PUT /users/{id} is a full replace — sending only {firstName, lastName}
+     * would null-out username, email, enabled and attributes. We GET the current
+     * UserRepresentation first, mutate only the name fields, then PUT the full body.
+     */
+    public void updateKcUserName(String keycloakId, String firstName, String lastName) {
+        String token = fetchServiceAccountToken();
+        String url = keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users/" + keycloakId;
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+
+        // Fetch the existing UserRepresentation so we can PUT a complete body.
+        ResponseEntity<Map<String, Object>> getResponse = restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers),
+                new ParameterizedTypeReference<>() {});
+        Map<String, Object> existing = getResponse.getBody();
+        if (existing == null) {
+            throw new IllegalStateException("KC user not found: keycloakId=" + keycloakId);
+        }
+
+        Map<String, Object> body = new java.util.HashMap<>(existing);
+        body.put("firstName", firstName != null ? firstName : "");
+        body.put("lastName", lastName != null ? lastName : "");
+        restTemplate.exchange(url, HttpMethod.PUT, new HttpEntity<>(body, headers), Void.class);
     }
 
     @SuppressWarnings("unchecked")

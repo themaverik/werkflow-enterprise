@@ -81,6 +81,7 @@ public class SecurityConfig {
                 // User management - ADMIN only
                     .requestMatchers(HttpMethod.POST, "/api/v1/users/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
                     .requestMatchers(HttpMethod.PUT, "/api/v1/users/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.PATCH, "/api/v1/users/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
                     .requestMatchers(HttpMethod.DELETE, "/api/v1/users/**").hasRole("SUPER_ADMIN")
 
                 // Organization management - SUPER_ADMIN only
@@ -95,7 +96,7 @@ public class SecurityConfig {
 
                 // Read operations - authenticated users
                     .requestMatchers(HttpMethod.GET, "/api/v1/users/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
-                    .requestMatchers(HttpMethod.GET, "/api/**").authenticated()
+                    .requestMatchers(HttpMethod.GET, "/api/**").authenticated() // WARN: catch-all — new GET endpoints must be listed above this line with explicit role guards
 
                 // All other requests require authentication
                     .anyRequest().authenticated();
