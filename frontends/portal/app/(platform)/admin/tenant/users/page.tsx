@@ -414,7 +414,9 @@ export default function TenantUsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((u) => (
+                {users.map((u) => {
+                  const isSelf = user?.email === u.email
+                  return (
                   <TableRow key={u.id}>
                     <TableCell className="font-medium text-foreground">
                       {u.firstName} {u.lastName}
@@ -475,11 +477,11 @@ export default function TenantUsersPage() {
                             onClick={() =>
                               statusMutation.mutate({ id: u.id, active: !u.active })
                             }
-                            disabled={statusMutation.isPending}
+                            disabled={statusMutation.isPending || isSelf}
                           >
                             {u.active ? 'Deactivate' : 'Activate'}
                           </DropdownMenuItem>
-                          {isSuperAdmin && (
+                          {isSuperAdmin && !isSelf && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
@@ -494,7 +496,8 @@ export default function TenantUsersPage() {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))}
+                  )
+                })}
               </TableBody>
             </Table>
           </div>
