@@ -14,6 +14,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useAuthorization } from '@/lib/auth/use-authorization'
 import { listDecisions, deleteDeployment, type DmnDecisionDto } from '@/lib/api/dmn'
 import { FilterPills } from '@/components/ui/filter-pills'
+import { Skeleton } from '@/components/ui/skeleton'
 
 // ---------------------------------------------------------------------------
 // Design tokens
@@ -710,17 +711,7 @@ export default function DecisionsPage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {isLoading && (
           Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              style={{
-                height: 64,
-                borderRadius: 12,
-                background: T.card,
-                border: '1px solid ' + T.border,
-                animation: 'pulse 1.5s ease-in-out infinite',
-                opacity: 0.6,
-              }}
-            />
+            <Skeleton key={i} className="h-16 rounded-xl" />
           ))
         )}
 

@@ -91,6 +91,7 @@ public class SecurityConfig {
                     .requestMatchers(new AntPathRequestMatcher("/api/process-instances/**")).authenticated()
                     .requestMatchers(new AntPathRequestMatcher("/api/tasks/**")).authenticated()
                     .requestMatchers(new AntPathRequestMatcher("/api/v1/tasks/**")).authenticated()
+                    .requestMatchers(new AntPathRequestMatcher("/workflows/instances/**")).authenticated()
                     .requestMatchers(new AntPathRequestMatcher("/workflows/tasks/**")).authenticated()
                     .requestMatchers(new AntPathRequestMatcher("/workflows/activity/**")).authenticated()
                     .requestMatchers(new AntPathRequestMatcher("/workflows/processes/**")).authenticated()

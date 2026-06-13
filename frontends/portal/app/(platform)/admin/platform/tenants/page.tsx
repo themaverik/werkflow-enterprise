@@ -31,6 +31,7 @@ import {
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Plus, RefreshCw, Building2, CheckCircle2, Layers, Info } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -115,6 +116,13 @@ function EditModal({ tenant, open, onOpenChange, onSaved }: EditModalProps) {
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="space-y-1.5">
+            <Label className="text-muted-foreground text-xs">Tenant Code</Label>
+            <div className="flex items-center h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground select-none">
+              <code>{tenant?.tenantCode}</code>
+            </div>
+            <p className="text-xs text-muted-foreground">Permanent — cannot be changed after creation.</p>
+          </div>
+          <div className="space-y-1.5">
             <Label htmlFor="edit-name">Name</Label>
             <Input
               id="edit-name"
@@ -137,6 +145,9 @@ function EditModal({ tenant, open, onOpenChange, onSaved }: EditModalProps) {
               </SelectContent>
             </Select>
           </div>
+          <p className="text-xs text-muted-foreground border-t border-border pt-3">
+            To update admin user details, use the Users section in Tenant Setup.
+          </p>
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
         <DialogFooter>
@@ -244,8 +255,8 @@ export default function TenantsPage() {
 
         {isLoading && (
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 rounded-xl border border-border bg-card animate-pulse" />
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 rounded-xl" />
             ))}
           </div>
         )}

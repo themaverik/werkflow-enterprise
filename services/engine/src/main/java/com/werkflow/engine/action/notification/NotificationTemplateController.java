@@ -168,8 +168,6 @@ public class NotificationTemplateController {
 
     private String extractTenantId(Authentication authentication) {
         if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
-            String tc = jwt.getClaimAsString("tenant_code");
-            if (tc != null && !tc.isBlank()) return tc;
             String ti = jwt.getClaimAsString("tenant_id");
             return (ti != null && !ti.isBlank()) ? ti : "default";
         }

@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Plus, RefreshCw, User } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface UserRow {
@@ -184,6 +185,14 @@ export default function TenantUsersPage() {
             </Button>
           </div>
         </div>
+
+        {isFetching && users.length === 0 && (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 rounded-lg" />
+            ))}
+          </div>
+        )}
 
         {!isFetching && users.length === 0 && (
           <EmptyState

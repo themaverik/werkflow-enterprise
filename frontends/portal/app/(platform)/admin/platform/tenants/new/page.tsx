@@ -123,6 +123,16 @@ export default function NewTenantPage() {
                 <p className="text-xs text-muted-foreground">
                   URL-safe slug, unique across the platform.
                 </p>
+                <div
+                  className="rounded-md border px-3 py-2 text-xs"
+                  style={{
+                    background: 'var(--badge-warning-bg)',
+                    borderColor: 'var(--badge-warning-border)',
+                    color: 'var(--badge-warning)',
+                  }}
+                >
+                  Tenant code is permanent and cannot be changed after creation. Choose carefully — it is used in internal operations and API references.
+                </div>
               </div>
 
               <div className="space-y-1.5">

@@ -51,7 +51,7 @@ public class JwtUserContext {
 
         this.managerId = jwt.getClaimAsString("manager_id");
 
-        String tc = jwt.getClaimAsString("tenant_code");
+        String tc = jwt.getClaimAsString("tenant_id");
         this.tenantCode = (tc != null && !tc.isBlank()) ? tc : "default";
 
         // Parse doaLevel as Integer — JWT numerics arrive as Long from Spring Security

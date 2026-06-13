@@ -94,6 +94,7 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.DELETE, "/api/roles/**").hasRole("SUPER_ADMIN")
 
                 // Read operations - authenticated users
+                    .requestMatchers(HttpMethod.GET, "/api/v1/users/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
                     .requestMatchers(HttpMethod.GET, "/api/**").authenticated()
 
                 // All other requests require authentication

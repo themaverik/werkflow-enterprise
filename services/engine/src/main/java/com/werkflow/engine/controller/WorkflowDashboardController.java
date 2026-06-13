@@ -11,6 +11,7 @@ import org.flowable.engine.history.HistoricActivityInstance;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -42,14 +43,24 @@ public class WorkflowDashboardController {
             @AuthenticationPrincipal Jwt jwt,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String startedBy,
-            @RequestParam(defaultValue = "100") int limit) {
+            @RequestParam(defaultValue = "100") int limit,
+            @RequestParam(required = false) String tenantId) {
 
-        log.info("GET /workflows/instances - status={}, startedBy={}, limit={}", status, startedBy, limit);
+        String jwtTenantId = jwt.getClaimAsString("tenant_id");
+        if (jwtTenantId == null || jwtTenantId.isBlank()) {
+            log.warn("tenant_id claim missing for user {}", jwt.getClaimAsString("preferred_username"));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        String effectiveTenantId = (hasSuperAdminRole(jwt) && tenantId != null && !tenantId.isBlank())
+                ? tenantId : jwtTenantId;
+        limit = Math.min(limit, 500);
+        log.info("GET /workflows/instances - status={}, startedBy={}, limit={}, tenant={}", status, startedBy, limit, effectiveTenantId);
 
         List<Map<String, Object>> results = new ArrayList<>();
 
         if (status == null || "active".equals(status)) {
             var query = runtimeService.createProcessInstanceQuery()
+                    .processInstanceTenantId(effectiveTenantId)
                     .orderByProcessInstanceId().desc();
             if (startedBy != null && !startedBy.isEmpty()) {
                 query.startedBy(startedBy);
@@ -84,6 +95,7 @@ public class WorkflowDashboardController {
 
         if (status == null || "completed".equals(status) || "failed".equals(status)) {
             var hQuery = historyService.createHistoricProcessInstanceQuery()
+                    .processInstanceTenantId(effectiveTenantId)
                     .finished()
                     .orderByProcessInstanceEndTime().desc();
             if (startedBy != null && !startedBy.isEmpty()) {
@@ -115,12 +127,22 @@ public class WorkflowDashboardController {
     @GetMapping("/workflows/activity")
     public ResponseEntity<List<Map<String, Object>>> getActivityLog(
             @AuthenticationPrincipal Jwt jwt,
-            @RequestParam(defaultValue = "50") int limit) {
+            @RequestParam(defaultValue = "50") int limit,
+            @RequestParam(required = false) String tenantId) {
 
-        log.info("GET /workflows/activity - limit={}", limit);
+        String jwtTenantId = jwt.getClaimAsString("tenant_id");
+        if (jwtTenantId == null || jwtTenantId.isBlank()) {
+            log.warn("tenant_id claim missing for user {}", jwt.getClaimAsString("preferred_username"));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        String effectiveTenantId = (hasSuperAdminRole(jwt) && tenantId != null && !tenantId.isBlank())
+                ? tenantId : jwtTenantId;
+        limit = Math.min(limit, 200);
+        log.info("GET /workflows/activity - limit={}, tenant={}", limit, effectiveTenantId);
 
         // Fetch more than limit so we have enough after filtering noise
         List<HistoricActivityInstance> activities = historyService.createHistoricActivityInstanceQuery()
+                .activityTenantId(effectiveTenantId)
                 .orderByHistoricActivityInstanceEndTime().desc()
                 .finished()
                 .listPage(0, limit * 10);
@@ -147,14 +169,19 @@ public class WorkflowDashboardController {
     @GetMapping("/api/v1/tasks/summary")
     public ResponseEntity<Map<String, Object>> getTaskSummary(@AuthenticationPrincipal Jwt jwt) {
         String userId = jwt.getClaimAsString("preferred_username");
-        log.info("GET /api/v1/tasks/summary - user={}", userId);
+        String tenantId = jwt.getClaimAsString("tenant_id");
+        if (tenantId == null || tenantId.isBlank()) {
+            log.warn("tenant_id claim missing for user {}", userId);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        log.info("GET /api/v1/tasks/summary - user={}, tenant={}", userId, tenantId);
 
-        long myTasks = taskService.createTaskQuery().taskAssignee(userId).count();
-        long teamTasks = taskService.createTaskQuery().taskCandidateUser(userId).count();
-        long unassigned = taskService.createTaskQuery().taskUnassigned().count();
-        long overdue = taskService.createTaskQuery().taskAssignee(userId)
+        long myTasks = taskService.createTaskQuery().taskTenantId(tenantId).taskAssignee(userId).count();
+        long teamTasks = taskService.createTaskQuery().taskTenantId(tenantId).taskCandidateUser(userId).count();
+        long unassigned = taskService.createTaskQuery().taskTenantId(tenantId).taskCandidateUser(userId).count();
+        long overdue = taskService.createTaskQuery().taskTenantId(tenantId).taskAssignee(userId)
                 .taskDueBefore(new Date()).count();
-        long highPriority = taskService.createTaskQuery().taskAssignee(userId)
+        long highPriority = taskService.createTaskQuery().taskTenantId(tenantId).taskAssignee(userId)
                 .taskMinPriority(75).count();
 
         // dueToday: tasks due between now and end of day
@@ -162,7 +189,7 @@ public class WorkflowDashboardController {
         endOfDay.set(Calendar.HOUR_OF_DAY, 23);
         endOfDay.set(Calendar.MINUTE, 59);
         endOfDay.set(Calendar.SECOND, 59);
-        long dueToday = taskService.createTaskQuery().taskAssignee(userId)
+        long dueToday = taskService.createTaskQuery().taskTenantId(tenantId).taskAssignee(userId)
                 .taskDueBefore(endOfDay.getTime()).taskDueAfter(new Date()).count();
 
         Map<String, Object> summary = new LinkedHashMap<>();
@@ -219,5 +246,16 @@ public class WorkflowDashboardController {
             case "serviceTask" -> "Service task '" + name + "' executed";
             default -> "Activity '" + name + "' (" + a.getActivityType() + ")";
         };
+    }
+
+    private boolean hasSuperAdminRole(Jwt jwt) {
+        java.util.Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+        if (realmAccess != null) {
+            Object roles = realmAccess.get("roles");
+            if (roles instanceof java.util.Collection<?> r) {
+                return r.contains("SUPER_ADMIN") || r.contains("super_admin");
+            }
+        }
+        return false;
     }
 }

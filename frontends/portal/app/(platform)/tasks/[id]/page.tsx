@@ -2,12 +2,13 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useMemo } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowLeft, CheckCircle2, XCircle, UserPlus, Clock, User as UserIcon, Calendar } from "lucide-react"
 import Link from "next/link"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useTask, useTaskFormData, useTaskHistory, useCompleteTask, useClaimTask, useUnclaimTask, useDelegateTask, useSubmitTaskForm } from '@/lib/hooks/useTasks'
 import { useAuth } from '@/lib/auth/auth-context'
 import { toast } from 'sonner'
@@ -193,11 +194,9 @@ export default function TaskDetailPage() {
 
   if (isLoadingTask) {
     return (
-      <div className="container py-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-muted rounded w-1/3" />
-          <div className="h-64 bg-muted rounded" />
-        </div>
+      <div className="container py-6 space-y-4">
+        <Skeleton className="h-8 w-1/3 rounded" />
+        <Skeleton className="h-64 w-full rounded-xl" />
       </div>
     )
   }

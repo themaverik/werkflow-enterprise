@@ -40,7 +40,7 @@ public class ProcessInstanceController {
         @AuthenticationPrincipal Jwt jwt
     ) {
         String userId = jwt.getSubject();
-        String tenantId = jwt.getClaimAsString("tenant_code");
+        String tenantId = jwt.getClaimAsString("tenant_id");
         ProcessInstanceResponse response = processInstanceService.startProcessInstance(request, userId, tenantId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -51,7 +51,7 @@ public class ProcessInstanceController {
     public ResponseEntity<List<ProcessInstanceResponse>> getAllProcessInstances(
         @AuthenticationPrincipal Jwt jwt
     ) {
-        String tenantId = jwt.getClaimAsString("tenant_code");
+        String tenantId = jwt.getClaimAsString("tenant_id");
         List<ProcessInstanceResponse> responses = processInstanceService.getAllProcessInstances(tenantId);
         return ResponseEntity.ok(responses);
     }
@@ -62,7 +62,7 @@ public class ProcessInstanceController {
         @Parameter(description = "Process instance ID") @PathVariable String id,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        String tenantId = jwt.getClaimAsString("tenant_code");
+        String tenantId = jwt.getClaimAsString("tenant_id");
         ProcessInstanceResponse response = processInstanceService.getProcessInstanceById(id, tenantId);
         return ResponseEntity.ok(response);
     }
@@ -74,7 +74,7 @@ public class ProcessInstanceController {
         @Parameter(description = "Process definition key") @PathVariable String key,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        String tenantId = jwt.getClaimAsString("tenant_code");
+        String tenantId = jwt.getClaimAsString("tenant_id");
         List<ProcessInstanceResponse> responses = processInstanceService.getProcessInstancesByDefinitionKey(key, tenantId);
         return ResponseEntity.ok(responses);
     }
@@ -87,7 +87,7 @@ public class ProcessInstanceController {
         @Parameter(description = "Deletion reason") @RequestParam(required = false) String reason,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        processInstanceService.deleteProcessInstance(id, reason, jwt.getClaimAsString("tenant_code"));
+        processInstanceService.deleteProcessInstance(id, reason, jwt.getClaimAsString("tenant_id"));
         return ResponseEntity.noContent().build();
     }
 
@@ -98,7 +98,7 @@ public class ProcessInstanceController {
         @Parameter(description = "Process instance ID") @PathVariable String id,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        processInstanceService.suspendProcessInstance(id, jwt.getClaimAsString("tenant_code"));
+        processInstanceService.suspendProcessInstance(id, jwt.getClaimAsString("tenant_id"));
         return ResponseEntity.noContent().build();
     }
 
@@ -109,7 +109,7 @@ public class ProcessInstanceController {
         @Parameter(description = "Process instance ID") @PathVariable String id,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        processInstanceService.activateProcessInstance(id, jwt.getClaimAsString("tenant_code"));
+        processInstanceService.activateProcessInstance(id, jwt.getClaimAsString("tenant_id"));
         return ResponseEntity.noContent().build();
     }
 
@@ -119,7 +119,7 @@ public class ProcessInstanceController {
         @Parameter(description = "Process instance ID") @PathVariable String id,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        String tenantId = jwt.getClaimAsString("tenant_code");
+        String tenantId = jwt.getClaimAsString("tenant_id");
         Map<String, Object> variables = processInstanceService.getProcessVariables(id, tenantId);
         return ResponseEntity.ok(variables);
     }
@@ -132,7 +132,7 @@ public class ProcessInstanceController {
         @RequestBody Map<String, Object> variables,
         @AuthenticationPrincipal Jwt jwt
     ) {
-        processInstanceService.setProcessVariables(id, variables, jwt.getClaimAsString("tenant_code"));
+        processInstanceService.setProcessVariables(id, variables, jwt.getClaimAsString("tenant_id"));
         return ResponseEntity.noContent().build();
     }
 }
