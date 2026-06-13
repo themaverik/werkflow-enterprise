@@ -483,7 +483,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
             refreshPropertiesPanel()
           }
         })
-        .catch((err: unknown) => {
+        .catch((_err: unknown) => {
           if (!cancelled) {
             // Fall back to legacy getGroups on PSS failure — map to minimal CandidateGroupEntry shape
             getGroups()
@@ -546,7 +546,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
     }
 
     const fetchDoaLevels_ = (attempt = 0) => {
-      fetchDoaLevels()
+      fetchDoaLevels(user?.tenantId)
         .then((levels) => {
           if (!cancelled) {
             setDoaLevels(levels)
@@ -625,7 +625,7 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
     fetchDelegates()
     fetchCustodyVarGroups()
     return () => { cancelled = true }
-  }, [])
+  }, [user?.tenantId])
 
   // Sync current user roles into the properties provider for role-filtered dropdowns
   useEffect(() => {

@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createForm, updateForm } from '@/lib/api/flowable'
 import { getDepartments } from '@/lib/api/adminTenantApi'
+import { useAuth } from '@/lib/auth/auth-context'
 import { Save, Download, Upload, CheckCircle } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 
@@ -43,6 +43,7 @@ export default function FormJsBuilder({
   initialOwningDepartment,
 }: FormJsBuilderProps) {
   const t = useTranslations('formBuilder')
+  const { user } = useAuth()
   const [formSchema, setFormSchema] = useState<any>({
     type: 'default',
     components: [],
@@ -54,17 +55,16 @@ export default function FormJsBuilder({
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const queryClient = useQueryClient()
-  const router = useRouter()
   const isEditMode = !!initialFormKey
 
   // Fetch tenant departments for the owning-department dropdown.
   // Replaces the previous hardcoded DEPARTMENTS array; the source of
   // truth is /api/v1/departments (managed in /admin/tenant/departments).
   const { data: departments = [], isLoading: departmentsLoading } = useQuery({
-    queryKey: ['departments'],
-    queryFn: () => getDepartments(),
+    queryKey: ['departments', user?.tenantId],
+    queryFn: () => getDepartments(user?.tenantId),
     staleTime: 5 * 60 * 1000,
-    enabled: !isEditMode, // dropdown only shows when creating a new form
+    enabled: !isEditMode && !!user?.tenantId, // dropdown only shows when creating a new form
   })
 
   useEffect(() => {

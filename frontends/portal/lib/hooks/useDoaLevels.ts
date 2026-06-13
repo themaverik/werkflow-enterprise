@@ -1,4 +1,4 @@
-import { useQuery, UseQueryOptions } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { fetchDoaLevels, type DoaLevel } from '@/lib/api/doa'
 
 export const DOA_QUERY_KEYS = {
@@ -10,17 +10,14 @@ export const DOA_QUERY_KEYS = {
  * Fetches the configured DOA (Delegation of Authority) levels for a tenant.
  *
  * @param tenantId - Tenant identifier. Defaults to 'default' when not provided.
- * @param options  - Optional React Query overrides.
+ * @param options  - Optional React Query overrides (queryKey and queryFn are managed internally).
  */
-export function useDoaLevels(
-  tenantId: string = 'default',
-  options?: UseQueryOptions<DoaLevel[], Error>
-) {
+export function useDoaLevels(tenantId: string | undefined) {
   return useQuery<DoaLevel[], Error>({
-    queryKey: DOA_QUERY_KEYS.byTenant(tenantId),
+    queryKey: DOA_QUERY_KEYS.byTenant(tenantId ?? ''),
     queryFn: () => fetchDoaLevels(tenantId),
-    staleTime: 300_000, // 5 minutes — DOA config changes infrequently
-    ...options,
+    enabled: tenantId != null && tenantId !== '',
+    staleTime: 300_000,
   })
 }
 

@@ -41,7 +41,7 @@ export function ApprovalPanel({
   const [comment, setComment] = useState('')
   const [validationError, setValidationError] = useState('')
 
-  const tenantId = task.tenantId ?? 'default'
+  const tenantId = task.tenantId ?? undefined
   const { data: doaLevels, isLoading: isLoadingDoa, isError: isDoaError } = useDoaLevels(tenantId)
 
   const rawRequestAmount = task.processVariables?.requestAmount ?? task.processVariables?.amount
@@ -89,7 +89,8 @@ export function ApprovalPanel({
 
   // Dead-end (authority insufficient): user cannot approve AND either the BPMN has no escalate route OR no
   // higher authority exists. Only shown when config loaded successfully — config errors get their own message.
-  const isDeadEnd = !isDoaError && !canApprove && !canEscalate && !isLoadingDoa
+  // Also suppressed when tenantId is absent (DOA lookup was skipped entirely).
+  const isDeadEnd = !!tenantId && !isDoaError && !canApprove && !canEscalate && !isLoadingDoa
 
   // Show dead-end toast once when the user lands on a dead-end approval task.
   // !isLoadingDoa guard prevents a spurious re-fire during the loading bounce.
