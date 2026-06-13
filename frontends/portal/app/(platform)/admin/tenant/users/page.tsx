@@ -151,9 +151,10 @@ export default function TenantUsersPage() {
       setFormError('A valid email address is required.')
       return
     }
-    const doa = form.doaLevel ? parseInt(form.doaLevel, 10) : NaN
-    if (isNaN(doa) || doa < 1 || doa > 4) {
-      setFormError('DOA Level must be between 1 and 4.')
+    const doaRaw = form.doaLevel.trim()
+    const doa = doaRaw ? parseInt(doaRaw, 10) : null
+    if (doa !== null && (isNaN(doa) || doa < 1)) {
+      setFormError('DOA Level must be a positive number.')
       return
     }
     invite.mutate({
@@ -161,7 +162,7 @@ export default function TenantUsersPage() {
       firstName: form.firstName,
       lastName: form.lastName,
       roleName: form.roleName,
-      doaLevel: doa,
+      doaLevel: doa ?? undefined,
       departmentCode: form.departmentCode || undefined,
     })
   }
