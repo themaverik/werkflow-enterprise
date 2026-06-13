@@ -335,7 +335,7 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "Unable to verify user state in identity provider — please retry.");
         }
-        if (requiredActions.contains("UPDATE_PASSWORD")) {
+        if (requiredActions.contains(KeycloakUserService.KC_ACTION_UPDATE_PASSWORD)) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                     "User has not yet accepted their invitation and cannot be deactivated.");
         }

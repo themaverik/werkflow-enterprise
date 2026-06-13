@@ -27,6 +27,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class KeycloakUserService {
 
+    public static final String KC_ACTION_UPDATE_PASSWORD = "UPDATE_PASSWORD";
+    public static final String KC_ACTION_VERIFY_EMAIL    = "VERIFY_EMAIL";
+
     private static final Set<String> INTERNAL_ROLES = Set.of("offline_access", "uma_authorization");
 
     @Value("${app.keycloak.auth-server-url:http://localhost:8090}")
@@ -125,7 +128,7 @@ public class KeycloakUserService {
                 "enabled", true,
                 "emailVerified", false,
                 "attributes", Map.of("tenant_id", List.of(tenantId)),
-                "requiredActions", List.of("UPDATE_PASSWORD", "VERIFY_EMAIL")
+                "requiredActions", List.of(KC_ACTION_UPDATE_PASSWORD, KC_ACTION_VERIFY_EMAIL)
         );
 
         HttpHeaders headers = new HttpHeaders();
@@ -148,7 +151,7 @@ public class KeycloakUserService {
                 + "/users/" + userId + "/execute-actions-email";
         try {
             restTemplate.exchange(actionsEmailUrl, HttpMethod.PUT,
-                    new HttpEntity<>(List.of("UPDATE_PASSWORD", "VERIFY_EMAIL"), headers), Void.class);
+                    new HttpEntity<>(List.of(KC_ACTION_UPDATE_PASSWORD, KC_ACTION_VERIFY_EMAIL), headers), Void.class);
         } catch (Exception e) {
             log.warn("Failed to send invite email to {} (SMTP may not be configured): {}", email, e.getMessage());
         }
