@@ -79,9 +79,9 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.DELETE, "/api/services/**").hasRole("SUPER_ADMIN")
 
                 // User management - ADMIN only
-                    .requestMatchers(HttpMethod.POST, "/api/users/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
-                    .requestMatchers(HttpMethod.PUT, "/api/users/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
-                    .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/api/v1/users/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/api/v1/users/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/api/v1/users/**").hasRole("SUPER_ADMIN")
 
                 // Organization management - SUPER_ADMIN only
                     .requestMatchers(HttpMethod.POST, "/api/v1/organizations/**").hasRole("SUPER_ADMIN")

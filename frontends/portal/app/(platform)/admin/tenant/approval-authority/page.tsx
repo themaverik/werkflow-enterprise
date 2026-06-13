@@ -23,7 +23,7 @@ interface ConfigVar {
 }
 
 async function fetchLocale(token: string): Promise<{ currencyCode: string; locale: string } | null> {
-  const res = await fetch('/api/proxy/admin/platform/locale', {
+  const res = await fetch('/api/proxy/admin/design/platform/locale', {
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) return null

@@ -37,7 +37,7 @@ async function fetchTier2(token: string): Promise<Tier2Mapping[]> {
 async function fetchCandidateGroups(
   token: string
 ): Promise<Array<{ key: string; label: string; tier: number; isManagerTier?: boolean }>> {
-  const res = await fetch('/api/proxy/admin/platform/candidate-groups', {
+  const res = await fetch('/api/proxy/admin/design/platform/candidate-groups', {
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) throw new Error('Failed to load candidate groups')
