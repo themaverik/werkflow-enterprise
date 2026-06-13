@@ -120,7 +120,7 @@ export default function TenantUsersPage() {
   const { data: org } = useQuery<OrgInfo>({
     queryKey: ['org', tenantCode],
     queryFn: () => fetchOrg(tenantCode),
-    enabled: !!user && !!tenantCode && tenantCode !== 'default',
+    enabled: !!user && !!tenantCode,
   })
 
   const { data: users = [], isFetching, refetch } = useQuery<UserRow[]>({
