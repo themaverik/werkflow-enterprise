@@ -415,7 +415,7 @@ export default function TenantUsersPage() {
               </TableHeader>
               <TableBody>
                 {users.map((u) => {
-                  const isSelf = user?.email === u.email
+                  const isSelf = user?.username === u.keycloakId
                   return (
                   <TableRow key={u.id}>
                     <TableCell className="font-medium text-foreground">

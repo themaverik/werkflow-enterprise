@@ -207,13 +207,12 @@ public class UserService {
         return mapToResponse(user);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<UserResponse> getUsersByOrganization(Long organizationId) {
         log.debug("Fetching users for organization ID: {}", organizationId);
-
-        return userRepository.findByOrganizationId(organizationId).stream()
-            .map(this::mapToResponse)
-            .collect(Collectors.toList());
+        List<User> users = userRepository.findByOrganizationId(organizationId);
+        syncEmailVerified(users);
+        return users.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -249,14 +248,33 @@ public class UserService {
         return mapToResponse(user);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<UserResponse> getUsersByOrganization(Long organizationId, String tenantCode) {
         log.debug("Fetching users for organization ID: {} for tenant: {}", organizationId, tenantCode);
+        List<User> users = userRepository.findByOrganizationIdAndTenantCode(organizationId, tenantCode);
+        syncEmailVerified(users);
+        return users.stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
 
-        return userRepository.findByOrganizationIdAndTenantCode(organizationId, tenantCode)
-            .stream()
-            .map(this::mapToResponse)
-            .collect(Collectors.toList());
+    /**
+     * Best-effort sync: for any user with emailVerified=false locally, check KC.
+     * If UPDATE_PASSWORD is no longer in their requiredActions, they've completed
+     * registration — mark emailVerified=true in the DB.
+     */
+    private void syncEmailVerified(List<User> users) {
+        users.stream()
+            .filter(u -> !Boolean.TRUE.equals(u.getEmailVerified()))
+            .forEach(u -> {
+                try {
+                    List<String> actions = keycloakUserService.getKcRequiredActions(u.getKeycloakId());
+                    if (!actions.contains(KeycloakUserService.KC_ACTION_UPDATE_PASSWORD)) {
+                        u.setEmailVerified(true);
+                        userRepository.save(u);
+                    }
+                } catch (Exception e) {
+                    log.debug("KC check skipped for user {}: {}", u.getKeycloakId(), e.getMessage());
+                }
+            });
     }
 
     /**
