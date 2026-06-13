@@ -54,6 +54,33 @@ async function fetchTenants(): Promise<TenantRow[]> {
 // EditModal
 // ---------------------------------------------------------------------------
 
+interface UserResponse {
+  id: number
+  keycloakId: string
+  username: string
+  email: string
+  firstName: string
+  lastName: string
+  phone?: string
+  mobile?: string
+  organizationId: number
+  organizationName?: string
+  jobTitle?: string
+  employeeId?: string
+  managerId?: number
+  hireDate?: string
+  address?: string
+  city?: string
+  state?: string
+  country?: string
+  postalCode?: string
+  roles?: Array<{ id: number; name: string; description?: string }>
+  active?: boolean
+  emailVerified?: boolean
+  tenantCode?: string
+  doaLevel?: number
+}
+
 interface EditModalProps {
   tenant: TenantRow | null
   open: boolean
@@ -67,6 +94,12 @@ function EditModal({ tenant, open, onOpenChange, onSaved }: EditModalProps) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [adminUser, setAdminUser] = useState<UserResponse | null>(null)
+  const [adminFirstName, setAdminFirstName] = useState('')
+  const [adminLastName, setAdminLastName] = useState('')
+  const [adminLoading, setAdminLoading] = useState(false)
+  const [adminFetchError, setAdminFetchError] = useState<string | null>(null)
+
   useEffect(() => {
     if (tenant) {
       setName(tenant.name)
@@ -74,6 +107,65 @@ function EditModal({ tenant, open, onOpenChange, onSaved }: EditModalProps) {
       setError(null)
     }
   }, [tenant])
+
+  useEffect(() => {
+    if (!open || !tenant) return
+
+    setAdminUser(null)
+    setAdminFirstName('')
+    setAdminLastName('')
+    setAdminFetchError(null)
+    setAdminLoading(true)
+
+    async function fetchAdminUser() {
+      try {
+        const orgRes = await fetch(`/api/proxy/admin/organizations/by-tenant/${tenant!.tenantCode}`)
+        if (orgRes.status === 404) {
+          // No org provisioned yet for this tenant — treat as no admin user, not an error
+          return
+        }
+        if (!orgRes.ok) {
+          setAdminFetchError(`Could not load organization (${orgRes.status})`)
+          return
+        }
+        const org: { id: number } = await orgRes.json()
+
+        const usersRes = await fetch(`/api/proxy/admin/users/organization/${org.id}`)
+        if (!usersRes.ok) {
+          setAdminFetchError(`Could not load users (${usersRes.status})`)
+          return
+        }
+        const users: UserResponse[] = await usersRes.json()
+
+        const admin = users.find((u) =>
+          u.roles?.some((r) => r.name.toUpperCase() === 'ADMIN')
+        ) ?? null
+
+        setAdminUser(admin)
+        if (admin) {
+          setAdminFirstName(admin.firstName)
+          setAdminLastName(admin.lastName)
+        }
+      } catch (err) {
+        setAdminFetchError(err instanceof Error ? err.message : 'Unexpected error loading admin user')
+      } finally {
+        setAdminLoading(false)
+      }
+    }
+
+    fetchAdminUser()
+  }, [open, tenant])
+
+  function handleDialogOpenChange(nextOpen: boolean) {
+    if (!nextOpen) {
+      setAdminUser(null)
+      setAdminFirstName('')
+      setAdminLastName('')
+      setAdminLoading(false)
+      setAdminFetchError(null)
+    }
+    onOpenChange(nextOpen)
+  }
 
   async function handleSave() {
     if (!tenant) return
@@ -96,8 +188,34 @@ function EditModal({ tenant, open, onOpenChange, onSaved }: EditModalProps) {
         setError(msg)
         return
       }
+
+      const firstNameChanged = adminUser && adminFirstName !== adminUser.firstName
+      const lastNameChanged = adminUser && adminLastName !== adminUser.lastName
+      if (adminUser && (firstNameChanged || lastNameChanged)) {
+        try {
+          const userRes = await fetch(`/api/proxy/admin/users/${adminUser.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...adminUser,
+              firstName: adminFirstName,
+              lastName: adminLastName,
+            }),
+          })
+          if (!userRes.ok) {
+            toast.warning('Tenant saved, but admin user name could not be updated.', {
+              description: `User update failed (${userRes.status}). Edit the user directly in Tenant Setup.`,
+            })
+          }
+        } catch (userErr) {
+          toast.warning('Tenant saved, but admin user name could not be updated.', {
+            description: userErr instanceof Error ? userErr.message : 'Unexpected error',
+          })
+        }
+      }
+
       onSaved()
-      onOpenChange(false)
+      handleDialogOpenChange(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unexpected error')
     } finally {
@@ -106,7 +224,7 @@ function EditModal({ tenant, open, onOpenChange, onSaved }: EditModalProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Edit Tenant</DialogTitle>
@@ -145,13 +263,54 @@ function EditModal({ tenant, open, onOpenChange, onSaved }: EditModalProps) {
               </SelectContent>
             </Select>
           </div>
-          <p className="text-xs text-muted-foreground border-t border-border pt-3">
-            To update admin user details, use the Users section in Tenant Setup.
-          </p>
+
+          <div className="border-t border-border pt-4 space-y-3">
+            <p className="text-sm font-semibold">Admin User</p>
+            {adminLoading && (
+              <div className="space-y-2">
+                <Skeleton className="h-9 w-full rounded-md" />
+                <Skeleton className="h-9 w-full rounded-md" />
+                <Skeleton className="h-9 w-full rounded-md" />
+              </div>
+            )}
+            {!adminLoading && adminFetchError && (
+              <p className="text-xs text-destructive">{adminFetchError}</p>
+            )}
+            {!adminLoading && !adminFetchError && !adminUser && (
+              <p className="text-xs text-muted-foreground">No admin user found for this tenant.</p>
+            )}
+            {!adminLoading && !adminFetchError && adminUser && (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-muted-foreground text-xs">Email</Label>
+                  <div className="flex items-center h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm text-muted-foreground select-none">
+                    {adminUser.email}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-admin-first-name">First Name</Label>
+                  <Input
+                    id="edit-admin-first-name"
+                    value={adminFirstName}
+                    onChange={(e) => setAdminFirstName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-admin-last-name">Last Name</Label>
+                  <Input
+                    id="edit-admin-last-name"
+                    value={adminLastName}
+                    onChange={(e) => setAdminLastName(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => handleDialogOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={saving}>
