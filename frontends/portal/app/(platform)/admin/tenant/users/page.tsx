@@ -325,16 +325,26 @@ export default function TenantUsersPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users', org?.id] })
-      toast.warning(
-        'User deleted from system. Remove them from Keycloak Admin Console to revoke access.',
-        { duration: 8000 },
-      )
+      toast.success('User deleted.')
       setDeleteTarget(null)
     },
     onError: (e: unknown) => {
       toast.error(e instanceof Error ? e.message : 'Failed to delete user')
       setDeleteTarget(null)
     },
+  })
+
+  const resendInviteMutation = useMutation({
+    mutationFn: (id: number) =>
+      fetch(`/api/proxy/admin/users/${id}/resend-invite`, { method: 'POST' }).then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error((data as { message?: string }).message ?? `Failed (${res.status})`)
+        }
+      }),
+    onSuccess: () => toast.success('Invite resent'),
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : 'Failed to resend invite'),
   })
 
   function handleInvite() {
@@ -481,6 +491,14 @@ export default function TenantUsersPage() {
                           >
                             {u.active ? 'Deactivate' : 'Activate'}
                           </DropdownMenuItem>
+                          {!u.emailVerified && u.active && (
+                            <DropdownMenuItem
+                              onClick={() => resendInviteMutation.mutate(u.id)}
+                              disabled={resendInviteMutation.isPending}
+                            >
+                              Resend Invite
+                            </DropdownMenuItem>
+                          )}
                           {isSuperAdmin && !isSelf && (
                             <>
                               <DropdownMenuSeparator />
@@ -629,7 +647,7 @@ export default function TenantUsersPage() {
           if (!v) setDeleteTarget(null)
         }}
         title={`Delete ${deleteTarget?.firstName ?? ''} ${deleteTarget?.lastName ?? ''}?`}
-        description={`This removes the user from the system. To revoke their login access, you must also delete their account in Keycloak Admin Console. This action cannot be undone.`}
+        description={`This removes the user from the system. Login access will also be revoked if the identity provider is reachable. This action cannot be undone.`}
         confirmLabel={deleteMutation.isPending ? 'Deleting...' : 'Delete'}
         variant="destructive"
         onConfirm={() => {

@@ -126,10 +126,21 @@ public class UserController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    @Operation(summary = "Delete user", description = "Delete a user from local DB only (SUPER_ADMIN only)")
+    @Operation(summary = "Delete user", description = "Delete a user from DB and Keycloak (SUPER_ADMIN only)")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
         String callerKcId = jwt.getClaimAsString("preferred_username"); // DB keycloakId = email = preferred_username
         userService.deleteUser(id, callerKcId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/resend-invite")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @RateLimiter(name = "user-resend-invite", fallbackMethod = "resendInviteRateLimited")
+    @Operation(summary = "Resend invite email", description = "Re-sends the invite email for a pending user (ADMIN, SUPER_ADMIN)")
+    public ResponseEntity<Void> resendInvite(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+        boolean isSuperAdmin = jwtClaimsExtractor.hasRole(jwt, "SUPER_ADMIN");
+        String tenantCode = isSuperAdmin ? null : jwtClaimsExtractor.getTenantId(jwt);
+        userService.resendInvite(id, tenantCode);
         return ResponseEntity.noContent().build();
     }
 
@@ -138,6 +149,10 @@ public class UserController {
     }
 
     private ResponseEntity<UserResponse> inviteUserRateLimited(UserInviteRequest request, Jwt jwt, RequestNotPermitted ex) {
+        return ResponseEntity.status(429).build();
+    }
+
+    private ResponseEntity<Void> resendInviteRateLimited(Long id, Jwt jwt, RequestNotPermitted ex) {
         return ResponseEntity.status(429).build();
     }
 }

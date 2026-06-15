@@ -478,7 +478,9 @@ public class UserService {
     }
 
     /**
-     * Deletes a user from the local DB only. No KC API call is made.
+     * Deletes a user from the local DB and removes their Keycloak account.
+     * KC deletion is non-fatal: if KC is unreachable or the user was already removed,
+     * a warning is logged but the DB deletion is committed regardless.
      * SUPER_ADMIN only (no tenant scope check).
      *
      * <p>NOTE: active-task check via engine is not implemented here — no internal engine endpoint
@@ -502,9 +504,34 @@ public class UserService {
         }
 
         userRepository.deleteById(id);
-        log.warn("User {} ({}) deleted from local DB. KC account '{}' must be manually removed " +
-                        "from KC Admin Console to revoke system access.",
-                user.getId(), user.getEmail(), user.getKeycloakId());
+        log.info("User {} ({}) deleted from local DB", user.getId(), user.getEmail());
+
+        try {
+            keycloakUserService.deleteKcUser(user.getKeycloakId());
+        } catch (Exception e) {
+            log.warn("KC delete failed for user {} ({}): {}", user.getId(), user.getEmail(), e.getMessage());
+        }
+    }
+
+    /**
+     * Re-sends the invite email for a user who has not yet accepted their invitation.
+     *
+     * @param id               user ID
+     * @param callerTenantCode tenant scope; null for SUPER_ADMIN
+     * @throws ResponseStatusException 409 if the user has already accepted (emailVerified=true)
+     * @throws ResponseStatusException 503 if KC is unreachable
+     */
+    @Transactional(readOnly = true)
+    public void resendInvite(Long id, String callerTenantCode) {
+        User user = loadUser(id, callerTenantCode);
+
+        if (Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "User has already accepted their invite.");
+        }
+
+        keycloakUserService.resendInviteEmail(user.getKeycloakId());
+        log.info("Invite resent for user {} ({})", id, user.getEmail());
     }
 
     @Transactional(readOnly = true)

@@ -193,6 +193,113 @@ public class KeycloakUserService {
     }
 
     /**
+     * Deletes a Keycloak user by email (keycloakId = email = preferred_username).
+     *
+     * <p>IMPORTANT: {@code keycloakId} must be the user's email address. This is the
+     * preferred_username contract — invite-flow users have keycloakId = email (set
+     * explicitly in {@link #createKeycloakUser}). Users created via the legacy
+     * {@code createUser} endpoint may have a real KC UUID as keycloakId; those users
+     * are not KC-managed by this service and will be skipped.
+     *
+     * <p>Non-fatal: if the KC user is not found (already removed manually), or if KC is
+     * unreachable, a warning is logged and the method returns normally. The DB deletion
+     * has already succeeded at the call site.
+     *
+     * @param email the user's email, which is also their KC username / keycloak_id in the DB
+     */
+    public void deleteKcUser(String email) {
+        // Guard: if the caller passed a KC UUID (legacy createUser path) instead of an
+        // email, we cannot safely look up by UUID here — skip rather than silently fail.
+        if (email != null && !email.contains("@")
+                && email.toLowerCase().matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
+            log.warn("KC delete skipped — keycloakId '{}' is a UUID, not an email (legacy createUser path). " +
+                    "Manual removal required in KC Admin Console to revoke access.", email);
+            return;
+        }
+
+        String token;
+        try {
+            token = fetchServiceAccountToken();
+        } catch (Exception e) {
+            log.warn("KC delete skipped — could not obtain service account token for email={}: {}", email, e.getMessage());
+            return;
+        }
+
+        String kcUuid;
+        try {
+            kcUuid = findKeycloakUserIdByEmail(email, token);
+        } catch (IllegalStateException e) {
+            log.warn("KC delete skipped — user not found in KC (may have been removed manually): email={}", email);
+            return;
+        } catch (Exception e) {
+            log.warn("KC delete skipped — error resolving KC UUID for email={}: {}", email, e.getMessage());
+            return;
+        }
+
+        try {
+            String deleteUrl = keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users/" + kcUuid;
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(token);
+            restTemplate.exchange(deleteUrl, HttpMethod.DELETE, new HttpEntity<>(headers), Void.class);
+            log.info("KC user deleted: email={}, kcUuid={}", email, kcUuid);
+        } catch (Exception e) {
+            log.warn("KC delete failed for email={} (kcUuid={}): {}", email, kcUuid, e.getMessage());
+        }
+    }
+
+    /**
+     * Re-sends the invite email (UPDATE_PASSWORD + VERIFY_EMAIL required actions) to a user.
+     *
+     * @param email the user's email, which is also their KC username / keycloak_id in the DB
+     * @throws org.springframework.web.server.ResponseStatusException 503 SERVICE_UNAVAILABLE
+     *         if KC is unreachable at any step
+     * @throws org.springframework.web.server.ResponseStatusException 404 NOT_FOUND if the
+     *         user does not exist in KC
+     */
+    public void resendInviteEmail(String email) {
+        String token;
+        try {
+            token = fetchServiceAccountToken();
+        } catch (Exception e) {
+            log.warn("KC resend-invite failed — could not obtain service account token for email={}: {}", email, e.getMessage());
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                    "Unable to contact identity provider");
+        }
+
+        String kcUuid;
+        try {
+            kcUuid = findKeycloakUserIdByEmail(email, token);
+        } catch (IllegalStateException e) {
+            log.warn("KC resend-invite failed — user not found in KC: email={}", email);
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND,
+                    "User not found in identity provider");
+        } catch (Exception e) {
+            log.warn("KC resend-invite failed — error resolving KC UUID for email={}: {}", email, e.getMessage());
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                    "Unable to contact identity provider");
+        }
+
+        String actionsEmailUrl = keycloakAdminUrl + "/admin/realms/" + keycloakRealm
+                + "/users/" + kcUuid + "/execute-actions-email";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+        try {
+            restTemplate.exchange(actionsEmailUrl, HttpMethod.PUT,
+                    new HttpEntity<>(List.of(KC_ACTION_UPDATE_PASSWORD, KC_ACTION_VERIFY_EMAIL), headers), Void.class);
+            log.info("Invite email resent: email={}", email);
+        } catch (Exception e) {
+            log.warn("KC execute-actions-email failed for email={}: {}", email, e.getMessage());
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                    "Unable to contact identity provider");
+        }
+    }
+
+    /**
      * Fetches the requiredActions list for a Keycloak user. Throws on KC error (fail-closed).
      */
     public List<String> getKcRequiredActions(String keycloakId) {

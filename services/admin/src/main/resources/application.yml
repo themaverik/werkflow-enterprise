@@ -106,6 +106,10 @@ resilience4j:
         limitForPeriod: 5
         limitRefreshPeriod: 60s
         timeoutDuration: 0s
+      user-resend-invite:
+        limitForPeriod: 5
+        limitRefreshPeriod: 60s
+        timeoutDuration: 0s
       credential-create:
         limitForPeriod: 10
         limitRefreshPeriod: 60s
