@@ -478,7 +478,9 @@ public class UserService {
     }
 
     /**
-     * Deletes a user from the local DB only. No KC API call is made.
+     * Deletes a user from the local DB and removes their Keycloak account.
+     * KC deletion is non-fatal: if KC is unreachable or the user was already removed,
+     * a warning is logged but the DB deletion is committed regardless.
      * SUPER_ADMIN only (no tenant scope check).
      *
      * <p>NOTE: active-task check via engine is not implemented here — no internal engine endpoint
@@ -502,9 +504,13 @@ public class UserService {
         }
 
         userRepository.deleteById(id);
-        log.warn("User {} ({}) deleted from local DB. KC account '{}' must be manually removed " +
-                        "from KC Admin Console to revoke system access.",
-                user.getId(), user.getEmail(), user.getKeycloakId());
+        log.info("User {} ({}) deleted from local DB", user.getId(), user.getEmail());
+
+        try {
+            keycloakUserService.deleteKcUser(user.getKeycloakId());
+        } catch (Exception e) {
+            log.warn("KC delete failed for user {} ({}): {}", user.getId(), user.getEmail(), e.getMessage());
+        }
     }
 
     @Transactional(readOnly = true)

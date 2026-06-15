@@ -126,7 +126,7 @@ public class UserController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    @Operation(summary = "Delete user", description = "Delete a user from local DB only (SUPER_ADMIN only)")
+    @Operation(summary = "Delete user", description = "Delete a user from DB and Keycloak (SUPER_ADMIN only)")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
         String callerKcId = jwt.getClaimAsString("preferred_username"); // DB keycloakId = email = preferred_username
         userService.deleteUser(id, callerKcId);

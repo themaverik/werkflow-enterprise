@@ -193,6 +193,46 @@ public class KeycloakUserService {
     }
 
     /**
+     * Deletes a Keycloak user by email (keycloakId = email = preferred_username).
+     *
+     * <p>Non-fatal: if the KC user is not found (already removed manually), or if KC is
+     * unreachable, a warning is logged and the method returns normally. The DB deletion
+     * has already succeeded at the call site.
+     *
+     * @param email the user's email, which is also their KC username / keycloak_id in the DB
+     */
+    public void deleteKcUser(String email) {
+        String token;
+        try {
+            token = fetchServiceAccountToken();
+        } catch (Exception e) {
+            log.warn("KC delete skipped — could not obtain service account token for email={}: {}", email, e.getMessage());
+            return;
+        }
+
+        String kcUuid;
+        try {
+            kcUuid = findKeycloakUserIdByEmail(email, token);
+        } catch (IllegalStateException e) {
+            log.warn("KC delete skipped — user not found in KC (may have been removed manually): email={}", email);
+            return;
+        } catch (Exception e) {
+            log.warn("KC delete skipped — error resolving KC UUID for email={}: {}", email, e.getMessage());
+            return;
+        }
+
+        try {
+            String deleteUrl = keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users/" + kcUuid;
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(token);
+            restTemplate.exchange(deleteUrl, HttpMethod.DELETE, new HttpEntity<>(headers), Void.class);
+            log.info("KC user deleted: email={}, kcUuid={}", email, kcUuid);
+        } catch (Exception e) {
+            log.warn("KC delete failed for email={} (kcUuid={}): {}", email, kcUuid, e.getMessage());
+        }
+    }
+
+    /**
      * Fetches the requiredActions list for a Keycloak user. Throws on KC error (fail-closed).
      */
     public List<String> getKcRequiredActions(String keycloakId) {

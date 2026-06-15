@@ -325,10 +325,7 @@ export default function TenantUsersPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users', org?.id] })
-      toast.warning(
-        'User deleted from system. Remove them from Keycloak Admin Console to revoke access.',
-        { duration: 8000 },
-      )
+      toast.success('User deleted.')
       setDeleteTarget(null)
     },
     onError: (e: unknown) => {
@@ -629,7 +626,7 @@ export default function TenantUsersPage() {
           if (!v) setDeleteTarget(null)
         }}
         title={`Delete ${deleteTarget?.firstName ?? ''} ${deleteTarget?.lastName ?? ''}?`}
-        description={`This removes the user from the system. To revoke their login access, you must also delete their account in Keycloak Admin Console. This action cannot be undone.`}
+        description={`This removes the user from the system and revokes their login access. This action cannot be undone.`}
         confirmLabel={deleteMutation.isPending ? 'Deleting...' : 'Delete'}
         variant="destructive"
         onConfirm={() => {
