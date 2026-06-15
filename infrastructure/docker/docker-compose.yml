@@ -283,7 +283,7 @@ services:
       ADMIN_CLIENT_SECRET: REDACTED_KC_SECRET
       # Public-facing portal URL — embedded in KC execute-actions-email redirect_uri so
       # users land on the portal login page after completing account setup, not the KC account console.
-      WERKFLOW_PORTAL_BASE_URL: http://localhost:3000
+      WERKFLOW_PORTAL_BASE_URL: http://localhost:4000
     ports:
       - "8083:8083"
     volumes:
