@@ -47,6 +47,9 @@ public class KeycloakUserService {
     @Value("${app.keycloak.client-secret:}")
     private String clientSecret;
 
+    @Value("${app.portal.base-url:http://localhost:3000}")
+    private String portalBaseUrl;
+
     private final RestTemplate restTemplate;
 
     public KeycloakUserService(RestTemplate restTemplate) {
@@ -147,8 +150,11 @@ public class KeycloakUserService {
         String userId = findKeycloakUserIdByEmail(email, token);
         assignRealmRole(userId, roleName, token);
 
-        String actionsEmailUrl = keycloakAdminUrl + "/admin/realms/" + keycloakRealm
-                + "/users/" + userId + "/execute-actions-email";
+        String actionsEmailUrl = UriComponentsBuilder
+                .fromHttpUrl(keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users/" + userId + "/execute-actions-email")
+                .queryParam("redirect_uri", portalBaseUrl)
+                .queryParam("client_id", clientId)
+                .build().toUriString();
         try {
             restTemplate.exchange(actionsEmailUrl, HttpMethod.PUT,
                     new HttpEntity<>(List.of(KC_ACTION_UPDATE_PASSWORD, KC_ACTION_VERIFY_EMAIL), headers), Void.class);
@@ -282,8 +288,11 @@ public class KeycloakUserService {
                     "Unable to contact identity provider");
         }
 
-        String actionsEmailUrl = keycloakAdminUrl + "/admin/realms/" + keycloakRealm
-                + "/users/" + kcUuid + "/execute-actions-email";
+        String actionsEmailUrl = UriComponentsBuilder
+                .fromHttpUrl(keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users/" + kcUuid + "/execute-actions-email")
+                .queryParam("redirect_uri", portalBaseUrl)
+                .queryParam("client_id", clientId)
+                .build().toUriString();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(token);

@@ -12,7 +12,7 @@ export interface User {
   groups: string[]
   doaLevel?: number
   department?: string
-  tenantId: string
+  tenantId: string | undefined
 }
 
 export interface AuthContextType {
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         groups: session.groups || [],
         doaLevel: typeof session.doa_level === 'number' ? session.doa_level : Number(session.doa_level) || undefined,
         department: session.department,
-        tenantId: session.tenantId ?? 'default',
+        tenantId: session.tenantId ?? undefined,
       }
       setUser(sessionUser)
     } else if (status === 'unauthenticated') {

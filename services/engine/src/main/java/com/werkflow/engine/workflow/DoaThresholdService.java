@@ -26,8 +26,6 @@ import java.util.Optional;
 @Slf4j
 public class DoaThresholdService {
 
-    private static final String DEFAULT_TENANT = "default";
-
     private final DoaThresholdRepository repository;
 
     /**
@@ -94,10 +92,5 @@ public class DoaThresholdService {
         return repository.save(existing);
     }
 
-    /**
-     * Resolves required DOA level using the default tenant configuration.
-     */
-    public String resolveRequiredLevel(BigDecimal amount) {
-        return resolveRequiredLevel(DEFAULT_TENANT, amount);
-    }
+
 }
