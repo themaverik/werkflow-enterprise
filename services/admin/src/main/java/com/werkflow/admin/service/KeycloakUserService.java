@@ -195,6 +195,12 @@ public class KeycloakUserService {
     /**
      * Deletes a Keycloak user by email (keycloakId = email = preferred_username).
      *
+     * <p>IMPORTANT: {@code keycloakId} must be the user's email address. This is the
+     * preferred_username contract — invite-flow users have keycloakId = email (set
+     * explicitly in {@link #createKeycloakUser}). Users created via the legacy
+     * {@code createUser} endpoint may have a real KC UUID as keycloakId; those users
+     * are not KC-managed by this service and will be skipped.
+     *
      * <p>Non-fatal: if the KC user is not found (already removed manually), or if KC is
      * unreachable, a warning is logged and the method returns normally. The DB deletion
      * has already succeeded at the call site.
@@ -202,6 +208,14 @@ public class KeycloakUserService {
      * @param email the user's email, which is also their KC username / keycloak_id in the DB
      */
     public void deleteKcUser(String email) {
+        // Guard: if the caller passed a KC UUID (legacy createUser path) instead of an
+        // email, we cannot safely look up by UUID here — skip rather than silently fail.
+        if (email != null && !email.contains("@")
+                && email.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
+            log.warn("KC delete skipped — keycloakId looks like a UUID, not an email (legacy createUser path): keycloakId={}", email);
+            return;
+        }
+
         String token;
         try {
             token = fetchServiceAccountToken();
@@ -236,12 +250,36 @@ public class KeycloakUserService {
      * Re-sends the invite email (UPDATE_PASSWORD + VERIFY_EMAIL required actions) to a user.
      *
      * @param email the user's email, which is also their KC username / keycloak_id in the DB
-     * @throws org.springframework.web.server.ResponseStatusException 503 if KC is unreachable
+     * @throws org.springframework.web.server.ResponseStatusException 503 SERVICE_UNAVAILABLE
+     *         if KC is unreachable at any step
+     * @throws org.springframework.web.server.ResponseStatusException 404 NOT_FOUND if the
+     *         user does not exist in KC
      */
     public void resendInviteEmail(String email) {
-        String token = fetchServiceAccountToken();
+        String token;
+        try {
+            token = fetchServiceAccountToken();
+        } catch (Exception e) {
+            log.warn("KC resend-invite failed — could not obtain service account token for email={}: {}", email, e.getMessage());
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                    "Unable to contact identity provider");
+        }
 
-        String kcUuid = findKeycloakUserIdByEmail(email, token);
+        String kcUuid;
+        try {
+            kcUuid = findKeycloakUserIdByEmail(email, token);
+        } catch (IllegalStateException e) {
+            log.warn("KC resend-invite failed — user not found in KC: email={}", email);
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND,
+                    "User not found in identity provider");
+        } catch (Exception e) {
+            log.warn("KC resend-invite failed — error resolving KC UUID for email={}: {}", email, e.getMessage());
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                    "Unable to contact identity provider");
+        }
 
         String actionsEmailUrl = keycloakAdminUrl + "/admin/realms/" + keycloakRealm
                 + "/users/" + kcUuid + "/execute-actions-email";

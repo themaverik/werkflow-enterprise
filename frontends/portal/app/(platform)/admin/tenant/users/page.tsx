@@ -647,7 +647,7 @@ export default function TenantUsersPage() {
           if (!v) setDeleteTarget(null)
         }}
         title={`Delete ${deleteTarget?.firstName ?? ''} ${deleteTarget?.lastName ?? ''}?`}
-        description={`This removes the user from the system and revokes their login access. This action cannot be undone.`}
+        description={`This removes the user from the system. Login access will also be revoked if the identity provider is reachable. This action cannot be undone.`}
         confirmLabel={deleteMutation.isPending ? 'Deleting...' : 'Delete'}
         variant="destructive"
         onConfirm={() => {
