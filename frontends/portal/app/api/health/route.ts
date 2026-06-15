@@ -33,7 +33,9 @@ export async function GET() {
   )
 
   const engineUrl = process.env.ENGINE_BASE_URL  ?? 'http://localhost:8081'
-  const adminUrl  = process.env.ADMIN_SERVICE_URL ?? 'http://localhost:8083'
+  // ADMIN_BASE_URL is the canonical portal env var (used by the proxy route).
+  // ADMIN_SERVICE_URL is kept as a fallback for deployments that set only one of the two.
+  const adminUrl  = process.env.ADMIN_BASE_URL ?? process.env.ADMIN_SERVICE_URL ?? 'http://localhost:8083'
 
   const [engine, admin] = await Promise.all([
     checkService('engine', engineUrl),
