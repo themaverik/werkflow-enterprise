@@ -521,6 +521,7 @@ public class UserService {
      * @throws ResponseStatusException 409 if the user has already accepted (emailVerified=true)
      * @throws ResponseStatusException 503 if KC is unreachable
      */
+    @Transactional(readOnly = true)
     public void resendInvite(Long id, String callerTenantCode) {
         User user = loadUser(id, callerTenantCode);
 

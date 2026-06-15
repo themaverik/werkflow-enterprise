@@ -135,7 +135,7 @@ public class UserController {
 
     @PostMapping("/{id}/resend-invite")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
-    @RateLimiter(name = "user-invite", fallbackMethod = "resendInviteRateLimited")
+    @RateLimiter(name = "user-resend-invite", fallbackMethod = "resendInviteRateLimited")
     @Operation(summary = "Resend invite email", description = "Re-sends the invite email for a pending user (ADMIN, SUPER_ADMIN)")
     public ResponseEntity<Void> resendInvite(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
         boolean isSuperAdmin = jwtClaimsExtractor.hasRole(jwt, "SUPER_ADMIN");

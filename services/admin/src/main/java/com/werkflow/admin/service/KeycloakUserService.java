@@ -211,8 +211,9 @@ public class KeycloakUserService {
         // Guard: if the caller passed a KC UUID (legacy createUser path) instead of an
         // email, we cannot safely look up by UUID here — skip rather than silently fail.
         if (email != null && !email.contains("@")
-                && email.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
-            log.warn("KC delete skipped — keycloakId looks like a UUID, not an email (legacy createUser path): keycloakId={}", email);
+                && email.toLowerCase().matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
+            log.warn("KC delete skipped — keycloakId '{}' is a UUID, not an email (legacy createUser path). " +
+                    "Manual removal required in KC Admin Console to revoke access.", email);
             return;
         }
 
