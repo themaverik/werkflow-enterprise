@@ -334,6 +334,19 @@ export default function TenantUsersPage() {
     },
   })
 
+  const resendInviteMutation = useMutation({
+    mutationFn: (id: number) =>
+      fetch(`/api/proxy/admin/users/${id}/resend-invite`, { method: 'POST' }).then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error((data as { message?: string }).message ?? `Failed (${res.status})`)
+        }
+      }),
+    onSuccess: () => toast.success('Invite resent'),
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : 'Failed to resend invite'),
+  })
+
   function handleInvite() {
     setFormError(null)
     if (!form.firstName.trim() || !form.lastName.trim()) {
@@ -478,6 +491,14 @@ export default function TenantUsersPage() {
                           >
                             {u.active ? 'Deactivate' : 'Activate'}
                           </DropdownMenuItem>
+                          {!u.emailVerified && u.active && (
+                            <DropdownMenuItem
+                              onClick={() => resendInviteMutation.mutate(u.id)}
+                              disabled={resendInviteMutation.isPending}
+                            >
+                              Resend Invite
+                            </DropdownMenuItem>
+                          )}
                           {isSuperAdmin && !isSelf && (
                             <>
                               <DropdownMenuSeparator />

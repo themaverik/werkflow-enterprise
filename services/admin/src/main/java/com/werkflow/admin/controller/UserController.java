@@ -133,6 +133,16 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{id}/resend-invite")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @Operation(summary = "Resend invite email", description = "Re-sends the invite email for a pending user (ADMIN, SUPER_ADMIN)")
+    public ResponseEntity<Void> resendInvite(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+        boolean isSuperAdmin = jwtClaimsExtractor.hasRole(jwt, "SUPER_ADMIN");
+        String tenantCode = isSuperAdmin ? null : jwtClaimsExtractor.getTenantId(jwt);
+        userService.resendInvite(id, tenantCode);
+        return ResponseEntity.noContent().build();
+    }
+
     private ResponseEntity<UserResponse> createUserRateLimited(UserRequest request, RequestNotPermitted ex) {
         return ResponseEntity.status(429).build();
     }

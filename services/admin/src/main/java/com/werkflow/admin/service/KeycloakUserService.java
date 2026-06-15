@@ -233,6 +233,34 @@ public class KeycloakUserService {
     }
 
     /**
+     * Re-sends the invite email (UPDATE_PASSWORD + VERIFY_EMAIL required actions) to a user.
+     *
+     * @param email the user's email, which is also their KC username / keycloak_id in the DB
+     * @throws org.springframework.web.server.ResponseStatusException 503 if KC is unreachable
+     */
+    public void resendInviteEmail(String email) {
+        String token = fetchServiceAccountToken();
+
+        String kcUuid = findKeycloakUserIdByEmail(email, token);
+
+        String actionsEmailUrl = keycloakAdminUrl + "/admin/realms/" + keycloakRealm
+                + "/users/" + kcUuid + "/execute-actions-email";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+        try {
+            restTemplate.exchange(actionsEmailUrl, HttpMethod.PUT,
+                    new HttpEntity<>(List.of(KC_ACTION_UPDATE_PASSWORD, KC_ACTION_VERIFY_EMAIL), headers), Void.class);
+            log.info("Invite email resent: email={}", email);
+        } catch (Exception e) {
+            log.warn("KC execute-actions-email failed for email={}: {}", email, e.getMessage());
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                    "Unable to contact identity provider");
+        }
+    }
+
+    /**
      * Fetches the requiredActions list for a Keycloak user. Throws on KC error (fail-closed).
      */
     public List<String> getKcRequiredActions(String keycloakId) {

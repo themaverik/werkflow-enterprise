@@ -513,6 +513,26 @@ public class UserService {
         }
     }
 
+    /**
+     * Re-sends the invite email for a user who has not yet accepted their invitation.
+     *
+     * @param id               user ID
+     * @param callerTenantCode tenant scope; null for SUPER_ADMIN
+     * @throws ResponseStatusException 409 if the user has already accepted (emailVerified=true)
+     * @throws ResponseStatusException 503 if KC is unreachable
+     */
+    public void resendInvite(Long id, String callerTenantCode) {
+        User user = loadUser(id, callerTenantCode);
+
+        if (Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "User has already accepted their invite.");
+        }
+
+        keycloakUserService.resendInviteEmail(user.getKeycloakId());
+        log.info("Invite resent for user {} ({})", id, user.getEmail());
+    }
+
     @Transactional(readOnly = true)
     public UserProfileResponse getUserProfile(String keycloakId, String tenantCode) {
         User user = userRepository.findByKeycloakId(keycloakId)
