@@ -91,7 +91,8 @@ interface EditModalProps {
   saving: boolean
 }
 
-const ROLES = ['ADMIN', 'EMPLOYEE', 'WORKFLOW_ADMIN']
+const INTERNAL_ROLES = new Set(['ENGINE_SERVICE'])
+const ASSIGNABLE_ROLES_NON_SUPER = new Set(['SUPER_ADMIN'])
 
 const EMPTY_FORM: InviteFormState = {
   email: '',
@@ -112,6 +113,13 @@ async function fetchUsers(orgId: number): Promise<UserRow[]> {
   const res = await fetch(`/api/proxy/admin/users/organization/${orgId}`)
   if (!res.ok) throw new Error(`Failed to load users: ${res.status}`)
   return res.json()
+}
+
+async function fetchRealmRoles(): Promise<string[]> {
+  const res = await fetch('/api/proxy/admin/keycloak/realm-roles')
+  if (!res.ok) throw new Error(`Failed to load roles: ${res.status}`)
+  const data = await res.json() as { roles: string[] }
+  return data.roles.map((r) => r.toUpperCase())
 }
 
 async function inviteUser(payload: InvitePayload): Promise<UserRow> {
@@ -244,6 +252,18 @@ export default function TenantUsersPage() {
     queryKey: ['users', org?.id],
     queryFn: () => fetchUsers(org!.id),
     enabled: !!org?.id,
+  })
+
+  const { data: allRoles = ['ADMIN', 'EMPLOYEE', 'WORKFLOW_ADMIN'] } = useQuery<string[]>({
+    queryKey: ['realmRoles'],
+    queryFn: fetchRealmRoles,
+    staleTime: 5 * 60_000,
+  })
+
+  const inviteRoles = allRoles.filter((r) => {
+    if (INTERNAL_ROLES.has(r)) return false
+    if (!isSuperAdmin && ASSIGNABLE_ROLES_NON_SUPER.has(r)) return false
+    return true
   })
 
   const invite = useMutation({
@@ -583,7 +603,7 @@ export default function TenantUsersPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ROLES.map((r) => (
+                  {inviteRoles.map((r) => (
                     <SelectItem key={r} value={r}>
                       {r}
                     </SelectItem>

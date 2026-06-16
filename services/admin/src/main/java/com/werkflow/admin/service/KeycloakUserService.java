@@ -310,10 +310,14 @@ public class KeycloakUserService {
 
     /**
      * Fetches the requiredActions list for a Keycloak user. Throws on KC error (fail-closed).
+     *
+     * <p>For invite-created users, {@code keycloakId} is the user's email (not a KC UUID).
+     * The KC /users/{id} path requires the internal UUID, so we resolve email → UUID first.
      */
     public List<String> getKcRequiredActions(String keycloakId) {
         String token = fetchServiceAccountToken();
-        String url = keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users/" + keycloakId;
+        String kcUuid = keycloakId.contains("@") ? findKeycloakUserIdByEmail(keycloakId, token) : keycloakId;
+        String url = keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users/" + kcUuid;
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);
         ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
