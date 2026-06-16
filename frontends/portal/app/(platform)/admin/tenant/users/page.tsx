@@ -118,8 +118,9 @@ async function fetchUsers(orgId: number): Promise<UserRow[]> {
 async function fetchRealmRoles(): Promise<string[]> {
   const res = await fetch('/api/proxy/admin/keycloak/realm-roles')
   if (!res.ok) throw new Error(`Failed to load roles: ${res.status}`)
-  const data = await res.json() as { roles: string[] }
-  return data.roles.map((r) => r.toUpperCase())
+  const data = await res.json() as { roles: unknown }
+  if (!Array.isArray(data.roles)) throw new Error('Unexpected roles response shape')
+  return (data.roles as string[]).map((r) => r.toUpperCase())
 }
 
 async function inviteUser(payload: InvitePayload): Promise<UserRow> {
@@ -254,12 +255,21 @@ export default function TenantUsersPage() {
     enabled: !!org?.id,
   })
 
-  const { data: allRoles = ['ADMIN', 'EMPLOYEE', 'WORKFLOW_ADMIN'] } = useQuery<string[]>({
+  const {
+    data: allRoles = ['ADMIN', 'EMPLOYEE', 'WORKFLOW_ADMIN'],
+    isPending: rolesLoading,
+    isError: rolesError,
+  } = useQuery<string[]>({
     queryKey: ['realmRoles'],
     queryFn: fetchRealmRoles,
+    enabled: !!user,
     staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+    retry: 1,
   })
 
+  // Values in INTERNAL_ROLES and ASSIGNABLE_ROLES_NON_SUPER must be uppercase;
+  // fetchRealmRoles normalises all KC role names to uppercase before returning.
   const inviteRoles = allRoles.filter((r) => {
     if (INTERNAL_ROLES.has(r)) return false
     if (!isSuperAdmin && ASSIGNABLE_ROLES_NON_SUPER.has(r)) return false
@@ -375,6 +385,10 @@ export default function TenantUsersPage() {
     }
     if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       setFormError('A valid email address is required.')
+      return
+    }
+    if (inviteRoles.length > 0 && !inviteRoles.includes(form.roleName)) {
+      setFormError('Selected role is not available. Please choose a valid role.')
       return
     }
     const doaRaw = form.doaLevel.trim()
@@ -548,14 +562,7 @@ export default function TenantUsersPage() {
         onOpenChange={(open) => {
           setInviteOpen(open)
           if (!open) {
-            setForm({
-              email: '',
-              firstName: '',
-              lastName: '',
-              roleName: 'EMPLOYEE',
-              doaLevel: '',
-              departmentCode: '',
-            })
+            setForm(EMPTY_FORM)
             setFormError(null)
           }
         }}
@@ -566,6 +573,11 @@ export default function TenantUsersPage() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             {formError && <p className="text-sm text-destructive">{formError}</p>}
+            {rolesError && (
+              <p className="text-xs text-muted-foreground">
+                Role list unavailable — showing defaults.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="invite-first-name">First Name</Label>
@@ -598,9 +610,10 @@ export default function TenantUsersPage() {
               <Select
                 value={form.roleName}
                 onValueChange={(v) => setForm((f) => ({ ...f, roleName: v }))}
+                disabled={rolesLoading}
               >
                 <SelectTrigger id="invite-role">
-                  <SelectValue />
+                  <SelectValue placeholder={rolesLoading ? 'Loading roles…' : undefined} />
                 </SelectTrigger>
                 <SelectContent>
                   {inviteRoles.map((r) => (

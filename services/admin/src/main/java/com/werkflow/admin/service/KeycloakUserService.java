@@ -342,7 +342,8 @@ public class KeycloakUserService {
      */
     public void setKcUserEnabled(String keycloakId, boolean enabled) {
         String token = fetchServiceAccountToken();
-        String url = keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users/" + keycloakId;
+        String kcUuid = keycloakId.contains("@") ? findKeycloakUserIdByEmail(keycloakId, token) : keycloakId;
+        String url = keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users/" + kcUuid;
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(token);
@@ -370,7 +371,8 @@ public class KeycloakUserService {
      */
     public void updateKcUserName(String keycloakId, String firstName, String lastName) {
         String token = fetchServiceAccountToken();
-        String url = keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users/" + keycloakId;
+        String kcUuid = keycloakId.contains("@") ? findKeycloakUserIdByEmail(keycloakId, token) : keycloakId;
+        String url = keycloakAdminUrl + "/admin/realms/" + keycloakRealm + "/users/" + kcUuid;
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(token);
