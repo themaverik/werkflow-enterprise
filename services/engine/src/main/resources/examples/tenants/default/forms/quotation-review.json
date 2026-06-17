@@ -1,0 +1,32 @@
+{
+  "id": "quotation-review",
+  "name": "Quotation Review",
+  "versionTag": "1",
+  "type": "default",
+  "components": [
+    {
+      "type": "text",
+      "text": "<h3>Review Quotations</h3><p>Compare vendor quotations and select the best offer. Enter the winning quotation ID to proceed.</p>"
+    },
+    {
+      "type": "textfield",
+      "key": "selectedQuotationId",
+      "label": "Selected Quotation ID",
+      "placeholder": "Enter the ID of the accepted quotation",
+      "validate": { "required": true }
+    },
+    {
+      "type": "number",
+      "key": "agreedUnitPrice",
+      "label": "Agreed Unit Price",
+      "validate": { "required": true, "min": 0 }
+    },
+    {
+      "type": "textarea",
+      "key": "quotationReviewNotes",
+      "label": "Review Notes",
+      "placeholder": "Summarise your quotation comparison and selection rationale",
+      "validate": { "required": true, "minLength": 5, "maxLength": 2000 }
+    }
+  ]
+}

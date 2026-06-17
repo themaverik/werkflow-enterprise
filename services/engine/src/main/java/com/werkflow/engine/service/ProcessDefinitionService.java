@@ -411,18 +411,26 @@ public class ProcessDefinitionService {
     /**
      * Get start form schema for a process definition.
      * Accepts either a full Flowable process definition ID (key:version:hash)
-     * or a plain process key — in which case the latest deployed version is used.
+     * or a plain process key — in which case the latest deployed version for the
+     * given tenant is used.
+     *
+     * @param processDefinitionId process key or full Flowable definition ID
+     * @param tenantId            tenant scope for the key-based lookup; ignored
+     *                            when a full definition ID (containing ':') is supplied
      */
-    public TaskFormResponse getStartForm(String processDefinitionId) {
-        log.info("Getting start form for process definition: {}", processDefinitionId);
+    public TaskFormResponse getStartForm(String processDefinitionId, String tenantId) {
+        log.info("Getting start form for process definition: {} (tenant={})", processDefinitionId, tenantId);
 
         // If the caller passed a plain key (no colons), resolve it to the latest version ID
         ProcessDefinition processDefinition;
         if (!processDefinitionId.contains(":")) {
-            processDefinition = repositoryService.createProcessDefinitionQuery()
+            var query = repositoryService.createProcessDefinitionQuery()
                 .processDefinitionKey(processDefinitionId)
-                .latestVersion()
-                .singleResult();
+                .latestVersion();
+            if (tenantId != null && !tenantId.isBlank()) {
+                query = query.processDefinitionTenantId(tenantId);
+            }
+            processDefinition = query.singleResult();
         } else {
             processDefinition = repositoryService.createProcessDefinitionQuery()
                 .processDefinitionId(processDefinitionId)

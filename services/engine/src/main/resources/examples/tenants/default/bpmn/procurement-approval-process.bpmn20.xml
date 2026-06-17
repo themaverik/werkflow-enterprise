@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://werkflow.com/bpmn/procurement">
+
+  <signal id="procurementApprovedSignal" name="procurementApproved" flowable:scope="global"/>
+
+  <process id="procurement-approval-process" name="Procurement Approval Process" isExecutable="true"
+           flowable:versionTag="1">
+    <extensionElements>
+      <flowable:properties>
+        <flowable:property name="category" value="examples"/>
+      </flowable:properties>
+    </extensionElements>
+    <documentation>Purchase request approval with vendor selection, quotation review, and DMN-backed approval routing via procurement-matrix.dmn.</documentation>
+
+    <startEvent id="startEvent" name="Purchase Request Submitted" flowable:formKey="procurement-request-form"/>
+
+    <userTask id="selectVendor" name="Select Vendor"
+              flowable:candidateGroups="DOA_L1,SUPER_ADMIN"
+              flowable:formKey="vendor-selection"/>
+
+    <userTask id="reviewQuotations" name="Review Quotations"
+              flowable:candidateGroups="DOA_L1,SUPER_ADMIN"
+              flowable:formKey="quotation-review"/>
+
+    <userTask id="managerApproval" name="Manager Approval"
+              flowable:candidateGroups="DOA_L2,SUPER_ADMIN"
+              flowable:formKey="procurement-approval"/>
+
+    <endEvent id="endEventApproved" name="PO Created"/>
+    <endEvent id="endEventRejected" name="Request Rejected"/>
+
+    <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="selectVendor"/>
+    <sequenceFlow id="flow3" sourceRef="selectVendor" targetRef="reviewQuotations"/>
+    <sequenceFlow id="flow5" sourceRef="reviewQuotations" targetRef="managerApproval"/>
+    <sequenceFlow id="flow12" sourceRef="managerApproval" targetRef="endEventApproved"/>
+  </process>
+
+</definitions>

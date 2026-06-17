@@ -12,11 +12,21 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Deploys example BPMN processes from classpath:processes/examples/ on startup.
@@ -36,10 +46,13 @@ import java.util.List;
 public class ProcessExampleDeployer {
 
     private static final String BPMN_SUFFIX = ".bpmn20.xml";
+    private static final String FLOWABLE_NS = "http://flowable.org/bpmn";
+    private static final String FORMS_PREFIX = "examples/tenants/default/forms/";
 
     private final ProcessDefinitionService processDefinitionService;
     private final RepositoryService repositoryService;
     private final JdbcTemplate jdbcTemplate;
+    private final NamedParameterJdbcTemplate namedJdbc;
     private final ResourcePatternResolver resourcePatternResolver;
     private final boolean deployOnStartup;
     private final boolean resetOnStartup;
@@ -48,6 +61,7 @@ public class ProcessExampleDeployer {
     public ProcessExampleDeployer(ProcessDefinitionService processDefinitionService,
                                    RepositoryService repositoryService,
                                    JdbcTemplate jdbcTemplate,
+                                   NamedParameterJdbcTemplate namedJdbc,
                                    ResourcePatternResolver resourcePatternResolver,
                                    @Value("${werkflow.examples.deploy-on-startup:false}") boolean deployOnStartup,
                                    @Value("${werkflow.examples.reset-on-startup:false}") boolean resetOnStartup,
@@ -55,6 +69,7 @@ public class ProcessExampleDeployer {
         this.processDefinitionService = processDefinitionService;
         this.repositoryService = repositoryService;
         this.jdbcTemplate = jdbcTemplate;
+        this.namedJdbc = namedJdbc;
         this.resourcePatternResolver = resourcePatternResolver;
         this.deployOnStartup = deployOnStartup;
         this.resetOnStartup = resetOnStartup;
@@ -74,21 +89,145 @@ public class ProcessExampleDeployer {
             return;
         }
 
+        Set<String> currentKeys = new HashSet<>();
+
         for (Resource resource : resources) {
             String filename = resource.getFilename();
+            String processKey = stripBpmnSuffix(filename);
             try {
                 if (resetOnStartup) {
-                    String processKey = stripBpmnSuffix(filename);
                     resetExampleDraftAndBundle(processKey);
                     resetExampleDeployments(filename);
                 }
                 String bpmnXml = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
                 ProcessDefinitionResponse def = processDefinitionService.deployExampleProcessDefinition(bpmnXml, filename, exampleTenantId);
                 upsertCatalogEntry(def.getKey(), def.getName(), bpmnXml, exampleTenantId);
+                seedFormSchemas(bpmnXml, def.getKey());
+                currentKeys.add(def.getKey());
                 log.info("Deployed example process: {}", filename);
             } catch (Exception e) {
                 log.error("Failed to deploy example process '{}': {}", filename, e.getMessage());
             }
+        }
+
+        pruneOrphanSystemDrafts(currentKeys);
+    }
+
+    /**
+     * Parses the deployed BPMN XML and upserts each referenced form schema into
+     * {@code form_schemas}. Uses ON CONFLICT DO UPDATE so that classpath updates
+     * propagate on the next engine restart (same contract as V8 migration seeding).
+     *
+     * <p>Only seeds forms whose JSON file exists on classpath at
+     * {@code examples/tenants/default/forms/{formKey}.json}. Missing files are
+     * logged at WARN and skipped — they do not fail the deployment.
+     *
+     * <p>FormType is derived from element context: startEvent → TASK_FORM;
+     * userTask with actionType HUMAN_APPROVAL → APPROVAL; other userTask → TASK_FORM.
+     * Duplicate formKey values in the same BPMN are deduplicated; the first
+     * occurrence wins (matching ExampleSeedService.extractFormRefs behaviour).
+     */
+    private void seedFormSchemas(String bpmnXml, String processKey) {
+        Map<String, String> formRefs;
+        try {
+            formRefs = extractFormRefs(bpmnXml);
+        } catch (Exception e) {
+            log.warn("Could not parse BPMN XML for form refs in '{}': {}", processKey, e.getMessage());
+            return;
+        }
+
+        for (Map.Entry<String, String> entry : formRefs.entrySet()) {
+            String formKey = entry.getKey();
+            String formType = entry.getValue();
+            String resourcePath = FORMS_PREFIX + formKey + ".json";
+            try {
+                Resource formResource = resourcePatternResolver.getResource("classpath:" + resourcePath);
+                if (!formResource.exists()) {
+                    log.warn("No form file at '{}' for key '{}' — skipping", resourcePath, formKey);
+                    continue;
+                }
+                String jsonStr = new String(formResource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                jdbcTemplate.update(
+                    """
+                    INSERT INTO form_schemas (form_key, version, schema_json, description, form_type,
+                                             is_active, created_by, updated_by)
+                    VALUES (?, 1, ?::jsonb, ?, ?, true, 'system', 'system')
+                    ON CONFLICT (form_key, version) DO UPDATE
+                        SET schema_json = EXCLUDED.schema_json,
+                            form_type   = EXCLUDED.form_type,
+                            is_active   = true,
+                            updated_by  = 'system'
+                    """,
+                    formKey, jsonStr, "Example form: " + formKey, formType);
+                log.info("Seeded form schema '{}' (type={}) for process '{}'", formKey, formType, processKey);
+            } catch (Exception e) {
+                log.warn("Failed to seed form '{}' for process '{}': {}", formKey, processKey, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Extracts formKey → formType pairs from BPMN XML.
+     * Returns a LinkedHashMap to preserve insertion order; first occurrence of a key wins.
+     */
+    private Map<String, String> extractFormRefs(String bpmnXml) throws Exception {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        factory.setXIncludeAware(false);
+        factory.setExpandEntityReferences(false);
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document doc = builder.parse(new ByteArrayInputStream(bpmnXml.getBytes(StandardCharsets.UTF_8)));
+
+        Map<String, String> refs = new java.util.LinkedHashMap<>();
+
+        NodeList startEvents = doc.getElementsByTagNameNS("*", "startEvent");
+        for (int i = 0; i < startEvents.getLength(); i++) {
+            String key = ((Element) startEvents.item(i)).getAttributeNS(FLOWABLE_NS, "formKey");
+            if (key != null && !key.isBlank()) {
+                refs.putIfAbsent(key, "TASK_FORM");
+            }
+        }
+
+        NodeList userTasks = doc.getElementsByTagNameNS("*", "userTask");
+        for (int i = 0; i < userTasks.getLength(); i++) {
+            Element task = (Element) userTasks.item(i);
+            String key = task.getAttributeNS(FLOWABLE_NS, "formKey");
+            if (key == null || key.isBlank()) continue;
+            String actionType = task.getAttributeNS(FLOWABLE_NS, "actionType");
+            String type = "HUMAN_APPROVAL".equals(actionType) ? "APPROVAL" : "TASK_FORM";
+            refs.putIfAbsent(key, type);
+        }
+
+        return refs;
+    }
+
+    /**
+     * Removes system-seeded process_draft rows whose BPMN is no longer on classpath.
+     * Only touches rows with {@code created_by = 'system'} to protect admin-created drafts.
+     * Skips silently if {@code currentKeys} is empty (nothing to prune against).
+     * Catches DataAccessException so a missing/migrating table never breaks startup.
+     */
+    private void pruneOrphanSystemDrafts(Set<String> currentKeys) {
+        if (currentKeys.isEmpty()) {
+            return;
+        }
+        try {
+            int deleted = namedJdbc.update(
+                """
+                DELETE FROM process_draft
+                WHERE created_by = 'system'
+                  AND tenant_id = :tenantId
+                  AND process_key NOT IN (:currentKeys)
+                """,
+                Map.of("tenantId", exampleTenantId, "currentKeys", currentKeys));
+            if (deleted > 0) {
+                log.info("Pruned {} orphan system-seeded draft(s) no longer on classpath", deleted);
+            }
+        } catch (DataAccessException e) {
+            log.debug("Orphan draft pruning skipped: {}", e.getMessage());
         }
     }
 

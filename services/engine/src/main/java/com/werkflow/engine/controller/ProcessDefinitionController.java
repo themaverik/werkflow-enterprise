@@ -191,9 +191,11 @@ public class ProcessDefinitionController {
     @GetMapping("/{id}/start-form")
     @Operation(summary = "Get start form for process definition", description = "Returns the form schema linked to the start event")
     public ResponseEntity<TaskFormResponse> getStartForm(
-        @Parameter(description = "Process definition ID") @PathVariable String id
+        @Parameter(description = "Process definition ID") @PathVariable String id,
+        Authentication authentication
     ) {
-        TaskFormResponse response = processDefinitionService.getStartForm(id);
+        JwtUserContext user = extractUserContext(authentication);
+        TaskFormResponse response = processDefinitionService.getStartForm(id, user.getTenantCode());
         return ResponseEntity.ok(response);
     }
 
