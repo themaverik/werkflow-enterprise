@@ -484,7 +484,7 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
-      "secret": "REDACTED_KC_PORTAL_SECRET"
+      "secret": "${KEYCLOAK_CLIENT_SECRET}"
     },
     {
       "clientId": "werkflow-hr-portal",
@@ -506,7 +506,7 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
-      "secret": "REDACTED_KC_SECRET"
+      "secret": "${KEYCLOAK_HR_PORTAL_CLIENT_SECRET}"
     },
     {
       "clientId": "workflow-engine",
@@ -517,7 +517,7 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": true,
-      "secret": "REDACTED_KC_SECRET"
+      "secret": "${KEYCLOAK_ENGINE_CLIENT_SECRET}"
     }
   ]
 }

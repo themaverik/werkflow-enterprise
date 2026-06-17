@@ -86,9 +86,13 @@ services:
       KC_METRICS_ENABLED: true
       KC_HEALTH_ENABLED: true
 
-      # Admin Credentials
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: REDACTED_PASSWORD
+      # Admin Credentials — sourced from env_file (.env.shared) not hardcoded here
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      # Realm import substitution vars — passed through from .env.shared
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ENGINE_CLIENT_SECRET: ${KEYCLOAK_ENGINE_CLIENT_SECRET}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
 
     env_file:
       - ../../config/env/.env.shared
@@ -119,8 +123,8 @@ services:
     image: dpage/pgadmin4:latest
     container_name: werkflow-pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@werkflow.com
-      PGADMIN_DEFAULT_PASSWORD: REDACTED_PASSWORD
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@werkflow.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
       - "5050:80"
