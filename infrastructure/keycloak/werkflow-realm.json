@@ -723,7 +723,7 @@
       "description": "Backend workflow engine",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "${KEYCLOAK_ENGINE_CLIENT_SECRET}",
+      "secret": "${ENGINE_CLIENT_SECRET}",
       "publicClient": false,
       "serviceAccountsEnabled": true,
       "authorizationServicesEnabled": true,

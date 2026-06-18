@@ -517,7 +517,7 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": true,
-      "secret": "${KEYCLOAK_ENGINE_CLIENT_SECRET}"
+      "secret": "${ENGINE_CLIENT_SECRET}"
     }
   ]
 }
