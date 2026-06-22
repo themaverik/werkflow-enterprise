@@ -63,9 +63,9 @@ public class BpmnFormKeyValidator {
             String filename = resourceName.contains("/")
                 ? resourceName.substring(resourceName.lastIndexOf('/') + 1)
                 : resourceName;
-            if (!new ClassPathResource("processes/" + filename).exists()) {
-                log.warn("BpmnFormKeyValidator: skipping '{}' (key: {}) — resource '{}' not on classpath; " +
-                    "this is a stale definition with active instances from a previous deployment",
+            if (!new ClassPathResource("examples/tenants/default/bpmn/" + filename).exists()) {
+                log.warn("BpmnFormKeyValidator: skipping '{}' (key: {}) — resource '{}' not in curated " +
+                    "example set on classpath; user-authored BPMNs are validated at deploy time, not startup",
                     definition.getName(), definition.getKey(), resourceName);
                 continue;
             }
