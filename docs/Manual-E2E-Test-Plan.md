@@ -77,6 +77,7 @@ docker compose restart engine
 **Prerequisites:** Login as employee (`E2E_EMPLOYEE_USERNAME`)
 **Symbols used:** <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3 L33 18 L18 33 L3 18 Z"/><line x1="12" y1="12" x2="24" y2="24" stroke-width="3"/><line x1="24" y1="12" x2="12" y2="24" stroke-width="3"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> None start event, user task (`financeReview`), exclusive gateway (`approvalGateway`), none end event (`endApproved`)
 **Process:** `finance-approval-process` (seeded example)
+**Lifecycle:** Reuses seeded `finance-approval-process` BPMN (read-only). No test-authored artifacts.
 
 **Steps:**
 1. Navigate to `/processes`
@@ -103,6 +104,7 @@ docker compose restart engine
 **Prerequisites:** Login as admin (`E2E_ADMIN_USERNAME`); BPMN designer at `/processes/new`; seeded `leave_approval` DMN deployed on engine startup (verified: `services/engine/src/main/resources/examples/tenants/default/dmn/leave-approval.dmn`, decision id `leave_approval`)
 **Symbols used:** <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="13" cy="13" r="4"/><circle cx="19" cy="13" r="4"/><circle cx="16" cy="19" r="2"/><text x="28" y="23" font-size="8" fill="currentColor" stroke="none" font-family="monospace">DMN</text></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3 L33 18 L18 33 L3 18 Z"/><line x1="12" y1="12" x2="24" y2="24" stroke-width="3"/><line x1="24" y1="12" x2="12" y2="24" stroke-width="3"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> None start event, service task with `flowable:type="dmn"`, exclusive gateway, two none end events
 **Process:** Authored fresh; references seeded DMN `leave_approval` by `decisionTableReferenceKey`
+**Lifecycle:** **Reuses** seeded `leave_approval` DMN (read-only, by key). **Authors** `e2e-dmn-reuse-test` BPMN — delete after run per Rule 4.
 **Maps to:** No current automated equivalent
 
 **Steps:**
@@ -113,7 +115,7 @@ docker compose restart engine
 5. Wire the exclusive gateway with two outgoing flows:
    - Condition `${approvalRequired == false}` → end event `Auto Approved`
    - Default flow → end event `Requires Approval`
-6. Set process name `DMN Reuse Test`; process key `dmn-reuse-test`
+6. Set process name `DMN Reuse Test`; process key `e2e-dmn-reuse-test`
 7. Click "Save Draft"; confirm success indicator
 8. Click "Deploy"; confirm no validation errors
 9. Navigate to `/processes`; confirm `DMN Reuse Test` appears in the list
@@ -141,15 +143,16 @@ docker compose restart engine
 **Bucket:** B — Events + diverse task types (capability round-trip)
 **Prerequisites:** Login as admin (`E2E_ADMIN_USERNAME`); requires `WORKFLOW_ADMIN` or `SUPER_ADMIN` to reach `/forms/new` (per `isManagerOrAbove` guard in `FormsPage`); BPMN designer at `/processes/new`
 **Symbols used:** <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> None start event, user task (with newly authored form on `flowable:formKey`), none end
-**Process:** Authored fresh; user task references newly authored form `round-trip-form`
+**Process:** Authored fresh; user task references newly authored form `e2e-round-trip-form`
+**Lifecycle:** No seeded artifact reuse. **Authors** `e2e-round-trip-form` form + `e2e-round-trip-process` BPMN — delete both after run per Rule 4.
 **Maps to:** `27-bpmn-designer-m411-smoke.spec.ts` covers the BPMN authoring leg only; no automated coverage of the form-authoring step
 
-**Note on logical unit:** The form is created in step 1 BEFORE the BPMN that uses it (step 9). This creates a transient orphan window (form exists, not yet referenced). The platform's enforcement of "form + BPMN + DMN as one logical unit" for user-authored artifacts is on the post-MVP backlog — until then, this test illustrates the intended workflow even if the system does not yet block orphan-saves.
+**Note on logical unit (pre-MVP enforcement):** The form is created in step 1 BEFORE the BPMN that uses it (step 9). This creates a transient orphan window (form exists, not yet referenced). Logical unit enforcement (R1) lands pre-MVP — the BPMN deploy at step 14 will fail loudly if the form key referenced in step 11 was never saved. Confirm the form save at step 7 succeeded before proceeding to BPMN deploy.
 
 **Steps:**
 1. Navigate to `/forms`; confirm forms list loads without error
 2. Click "Create New Form" (routes to `/forms/new`)
-3. Set Form Key `round-trip-form`; form name `Round Trip Form`
+3. Set Form Key `e2e-round-trip-form`; form name `Round Trip Form`
 4. In the form-js canvas, add a text field: key `applicantName`, label `Applicant Name`
 5. Add a number field: key `requestAmount`, label `Request Amount`
 6. Add a select field: key `priority`, label `Priority`; options `low`, `medium`, `high`
@@ -157,8 +160,8 @@ docker compose restart engine
 8. Navigate to `/forms`; confirm `Round Trip Form` appears in the list
 9. Navigate to `/processes/new` (BPMN designer)
 10. Author a minimal process: start event (none, no start form) → user task → none end event
-11. On the user task: set `flowable:formKey` to `round-trip-form` (the key from step 3); set candidate group to `SUPER_ADMIN`
-12. Set process name `Round Trip Process`; process key `round-trip-process`
+11. On the user task: set `flowable:formKey` to `e2e-round-trip-form` (the key from step 3); set candidate group to `SUPER_ADMIN`
+12. Set process name `Round Trip Process`; process key `e2e-round-trip-process`
 13. Click "Save Draft"; confirm success
 14. Click "Deploy"; confirm validation passes; deploy-success toast appears
 15. Navigate to `/processes`; confirm `Round Trip Process` appears
@@ -184,6 +187,7 @@ docker compose restart engine
 **Prerequisites:** Login as admin; Mailpit running at `http://localhost:8025` (or equivalent mail catcher)
 **Symbols used:** <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><rect x="7" y="8" width="10" height="8" rx="1" fill="currentColor" stroke="none"/></svg> None start, user task, email notification (via `GlobalTaskNotificationListener`)
 **Process:** `finance-approval-process`
+**Lifecycle:** Reuses seeded `finance-approval-process` BPMN (read-only). Side-effect tests `GlobalTaskNotificationListener` (engine-wired, no artifact).
 
 **Steps:**
 1. Navigate to `/processes`; start `Finance Approval Process`
@@ -204,6 +208,7 @@ docker compose restart engine
 **Prerequisites:** Login as employee
 **Symbols used:** <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="13" cy="13" r="4"/><circle cx="19" cy="13" r="4"/><circle cx="16" cy="19" r="2"/><text x="28" y="23" font-size="8" fill="currentColor" stroke="none" font-family="monospace">DMN</text></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3 L33 18 L18 33 L3 18 Z"/><line x1="12" y1="12" x2="24" y2="24" stroke-width="3"/><line x1="24" y1="12" x2="12" y2="24" stroke-width="3"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> User-initiated start (form-linked), service task (`flowable:type="dmn"`), exclusive gateway (auto branch), none end
 **Process:** `leave-request`
+**Lifecycle:** Reuses seeded `leave-request` BPMN + `leave-approval.dmn` + `leave-request-form` (all read-only).
 
 **Steps:**
 1. Navigate to `/processes`; click "Start Process" for `Leave Request`
@@ -228,6 +233,7 @@ docker compose restart engine
 
 **Bucket:** B — Designer
 **Prerequisites:** Login as admin; BPMN designer accessible at `/designer` or equivalent route
+**Lifecycle:** No seeded artifact reuse. **Authors** `e2e-simple-review` BPMN — delete after run per Rule 4.
 **Symbols used:** <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> Authoring any minimal BPMN diagram in the designer
 
 **Steps:**
@@ -237,11 +243,11 @@ docker compose restart engine
    - User task named "Review Item" with `flowable:candidateGroups` set to `SUPER_ADMIN`
    - None end event
    - Connect with sequence flows
-3. Set the process name and key (e.g., "Simple Review" / `simple-review`)
+3. Set the process name and key (e.g., "[E2E] Simple Review" / `e2e-simple-review`)
 4. Click "Save Draft"; confirm success toast/message
 5. Click "Deploy"; confirm the process deploys without validation errors
 6. Navigate to `/processes`
-7. Confirm "Simple Review" appears in the process list
+7. Confirm "[E2E] Simple Review" appears in the process list
 8. Click "Start Process"; confirm the process starts
 9. Navigate to `/tasks` as the same user (admin)
 10. Confirm "Review Item" task is listed; claim and complete it
@@ -257,6 +263,7 @@ docker compose restart engine
 **Prerequisites:** Login as employee for start; login as manager for approval
 **Symbols used:** <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="13" cy="13" r="4"/><circle cx="19" cy="13" r="4"/><circle cx="16" cy="19" r="2"/><text x="28" y="23" font-size="8" fill="currentColor" stroke="none" font-family="monospace">DMN</text></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3 L33 18 L18 33 L3 18 Z"/><line x1="12" y1="12" x2="24" y2="24" stroke-width="3"/><line x1="24" y1="12" x2="12" y2="24" stroke-width="3"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> User-initiated start (form-linked, form-js), service task (DMN), exclusive gateway (manager branch), user task (form), none end
 **Process:** `leave-request`
+**Lifecycle:** Reuses seeded `leave-request` BPMN + `leave-approval.dmn` + `leave-request-form` + `leave-approval-form` (all read-only).
 **Maps to:** `e2e/tests/business/26-workflow-leave-request.spec.ts` tests 26.1–26.3
 
 **Steps:**
@@ -291,6 +298,7 @@ docker compose restart engine
 - Process initiator → **`jane.employee`** (or any `employee` role user)
 **Symbols used:** <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> User-initiated start (form-linked), user task x3 (`selectVendor`, `reviewQuotations`, `managerApproval`), none end x2
 **Process:** `procurement-approval-process`
+**Lifecycle:** Reuses seeded `procurement-approval-process` BPMN + 4 procurement forms (all read-only).
 
 **Steps:**
 1. As `jane.employee`: navigate to `/processes`; click "Start Process" for `Procurement Approval Process`
@@ -314,6 +322,7 @@ docker compose restart engine
 **Symbols used:** <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="13" cy="13" r="4"/><circle cx="19" cy="13" r="4"/><circle cx="16" cy="19" r="2"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="13" cy="13" r="4"/><circle cx="19" cy="13" r="4"/><circle cx="16" cy="19" r="2"/><text x="28" y="23" font-size="8" fill="currentColor" stroke="none" font-family="monospace">DMN</text></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3 L33 18 L18 33 L3 18 Z"/><line x1="12" y1="12" x2="24" y2="24" stroke-width="3"/><line x1="24" y1="12" x2="12" y2="24" stroke-width="3"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><rect x="7" y="8" width="10" height="8" rx="1" fill="currentColor" stroke="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> User-initiated start (form-linked), service task (SET_VARIABLES), service task (DMN, three instances), user task x3 (manager / VP / CFO), exclusive gateways, service task (notification send), none end
 **Process:** `capex-approval-process`
 **DMN:** `capex-approver-resolution.dmn` (resolves approver group per tier)
+**Lifecycle:** Reuses seeded `capex-approval-process` BPMN + `capex-approver-resolution.dmn` + `capex-request-form` + `capex-approval-form` (all read-only).
 
 **Scenario:** Amount $75,000 — requires manager approval (threshold met), then VP approval (above $50K), CFO not triggered (below $250K).
 
@@ -355,6 +364,7 @@ Login as `jane.employee` for the process start; `john.manager` for organiser rev
 **Symbols used:** <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="13" cy="13" r="4"/><circle cx="19" cy="13" r="4"/><circle cx="16" cy="19" r="2"/><text x="28" y="23" font-size="8" fill="currentColor" stroke="none" font-family="monospace">DMN</text></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3 L33 18 L18 33 L3 18 Z"/><line x1="12" y1="12" x2="24" y2="24" stroke-width="3"/><line x1="24" y1="12" x2="12" y2="24" stroke-width="3"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><rect x="7" y="8" width="10" height="8" rx="1" fill="currentColor" stroke="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> User-initiated start (form-linked), service task (DMN — `ticket-routing`), exclusive gateway, service task (notification), user task, none end
 **Connectors:** `${notificationDelegate}` (email)
 **DMN:** `ticket-routing` (inline in spec 25 or pre-deployed)
+**Lifecycle:** **Manually deploys** `event-ticket-request` BPMN + `ticket-routing` DMN + ticket form (NOT seeded; see prerequisites). Treat these like `e2e-` artifacts — delete after run per Rule 4. (Will be replaced by IT Helpdesk seed once the reshuffle lands; see Seed Library Reshuffle section.)
 **Maps to:** `e2e/tests/business/25-workflow-event-ticket.spec.ts` tests 25.1–25.4
 
 **Scenario A (paid ticket, manager approval required):**
@@ -423,6 +433,94 @@ Per seed library curation policy (see `BPMN-Symbol-Reference.md` start-event row
 ### DROPPED — Simple PO Approval (no new coverage)
 
 The previously proposed "Simple PO Approval" BPMN has been **dropped**. Per the seed curation policy, its exclusive-gateway-only pattern adds no element-family coverage beyond what capex/leave already demonstrate. Bucket A test slots are now filled by Test 1 (Finance happy path — still using `finance-approval-process` until the reshuffle lands) and Test 2 (DMN Reuse — authored fresh from designer).
+
+---
+
+## Test Artifact Lifecycle
+
+This plan distinguishes between **seeded artifacts** (deployed by `ProcessExampleDeployer` at engine startup) and **test-authored artifacts** (created in the portal during the manual E2E run). The four rules below prevent test artifacts from polluting the seeded example set or conflicting with the logical unit deployment contract (R1 — see `BPMN-Symbol-Reference.md` start-event terminology note).
+
+### Rule 1 — Naming convention: `e2e-` prefix on every test-authored key
+
+Every artifact key authored during this run carries the `e2e-` prefix. Verified: no seeded artifact uses this prefix, so `LIKE 'e2e-%'` cleanly identifies test artifacts via grep or SQL.
+
+| Artifact type | Key pattern | Example |
+|---|---|---|
+| Form key | `e2e-<purpose>` | `e2e-round-trip-form` |
+| Process key | `e2e-<purpose>` | `e2e-dmn-reuse-test`, `e2e-round-trip-process`, `e2e-simple-review` |
+| DMN key (if authored) | `e2e-<purpose>` | `e2e-routing-test` |
+| Display name | `[E2E] <Purpose>` | `[E2E] Simple Review`, `[E2E] DMN Reuse Test` |
+
+### Rule 2 — Never modify seeded artifacts
+
+Seeded BPMNs (`capex-approval-process`, `leave-request`, `procurement-approval-process`, `finance-approval-process`), seeded DMNs (`leave_approval`, `capex-approver-resolution`), and seeded forms are **read-only** during the E2E run. If a different shape is needed for a test, author a fresh variant under the `e2e-` prefix — do NOT fork a seeded artifact.
+
+### Rule 3 — Reuse seeded DMNs and forms where the test is about composition
+
+When a test is about **composition** (referencing a seeded artifact from a new BPMN) rather than authoring from scratch, reuse the seeded artifact by key. This avoids re-authoring DMN logic and demonstrates seed-as-reference-library semantics.
+
+**Seeded artifact reference table:**
+
+| Seeded artifact | Type | Useful for testing |
+|---|---|---|
+| `leave_approval` | DMN | Auto-approve decision logic; binary boolean output; multi-input rule routing (Test 2 reuses this) |
+| `capex-approver-resolution` | DMN | Multi-tier approval routing; group-name string output |
+| `capex-request-form` | Form | Multi-field request form with number + select fields |
+| `capex-approval-form` | Form | Multi-field approval form with approve/reject/comments |
+| `leave-request-form` | Form | Form with date fields + select + textarea |
+| `leave-approval-form` | Form | Minimal approval form |
+| `procurement-*` forms (×4) | Form | Sequential form chain across 4 approval steps |
+| `budget-request-form` | Form | Single-field minimal form |
+| Any seeded BPMN | Process | Read-only inspection in the designer for pattern reference (do NOT save edits) |
+
+**Per-test reuse summary:**
+
+| Test | Reuses (read-only) | Authors (`e2e-` prefix) |
+|---|---|---|
+| 1 | `finance-approval-process` | — |
+| 2 | `leave_approval` DMN | `e2e-dmn-reuse-test` BPMN |
+| 3 | — | `e2e-round-trip-form` + `e2e-round-trip-process` |
+| 4 | `finance-approval-process` (+ `GlobalTaskNotificationListener`) | — |
+| 5 | `leave-request` BPMN + `leave-approval.dmn` + `leave-request-form` | — |
+| 6 | — | `e2e-simple-review` BPMN |
+| 7 | `leave-request` BPMN + `leave-approval.dmn` + `leave-request-form` + `leave-approval-form` | — |
+| 8 | `procurement-approval-process` BPMN + 4 procurement forms | — |
+| 9 | `capex-approval-process` BPMN + `capex-approver-resolution.dmn` + `capex-request-form` + `capex-approval-form` | — |
+| 10 | — (not seeded — see Test 10 prerequisites for manual deploy steps) | `event-ticket-request` BPMN + `ticket-routing` DMN + form (manual deploy via spec 25 inline XML) |
+
+### Rule 4 — Cleanup after confirmation, not per-test
+
+Cleanup runs **after all 10 tests are complete** and Pass/Fail + Result Summary columns are filled in. Three cleanup methods, pick by situation:
+
+**Method A (default) — Portal UI delete:**
+- `/forms` — delete each row whose key starts with `e2e-`
+- `/processes` — delete each process whose key starts with `e2e-`
+- `/dmn` — delete each DMN whose key starts with `e2e-`
+
+**Method B — SQL targeted (faster batch):**
+```sql
+-- Preview before deleting
+SELECT form_key FROM form_schemas WHERE form_key LIKE 'e2e-%';
+SELECT key_, name_ FROM act_re_procdef WHERE key_ LIKE 'e2e-%';
+-- Then delete via portal API or Flowable repositoryService.deleteDeployment(cascade=true)
+```
+
+**Method C — Engine restart with fresh volumes (nuclear):** only if Methods A/B leave residue. Confirm with the team before running — this wipes ALL tenant data including any uncleaned dev artifacts.
+```
+docker compose down -v && docker compose up
+```
+
+### Cleanup Checklist (run after all 10 tests complete)
+
+```
+□ /forms — no e2e- prefixed forms remain
+□ /processes — no e2e- prefixed processes remain
+□ /dmn — no e2e- prefixed DMNs remain
+□ SQL: SELECT key_, name_ FROM act_re_procdef WHERE key_ LIKE 'e2e-%' returns zero rows
+□ SQL: SELECT form_key FROM form_schemas WHERE form_key LIKE 'e2e-%' returns zero rows
+□ Manually deployed event-ticket-request (Test 10) — delete via Portal /processes
+□ Any user-authored process_draft rows abandoned mid-test — delete via /drafts UI (system-created drafts auto-prune on engine restart)
+```
 
 ---
 
