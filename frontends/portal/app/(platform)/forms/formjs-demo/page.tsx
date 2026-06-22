@@ -197,6 +197,7 @@ export default function FormJsDemoPage() {
               }}
               onSubmit={handleSubmit}
               onChange={handleChange}
+              onError={(err) => console.error('Form import failed', err)}
             />
           )}
 
@@ -212,6 +213,7 @@ export default function FormJsDemoPage() {
               }}
               onSubmit={handleSubmit}
               onChange={handleChange}
+              onError={(err) => console.error('Form import failed', err)}
             />
           )}
 
@@ -225,6 +227,7 @@ export default function FormJsDemoPage() {
               }}
               onSubmit={handleSubmit}
               onChange={handleChange}
+              onError={(err) => console.error('Form import failed', err)}
             />
           )}
 

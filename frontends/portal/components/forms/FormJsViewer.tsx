@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Form } from '@bpmn-io/form-js';
 import '@bpmn-io/form-js/dist/assets/form-js.css';
@@ -33,6 +33,7 @@ export default function FormJsViewer({
   const onChangeRef = useRef(onChange);
   const onErrorRef = useRef(onError);
   const isSettingDataRef = useRef(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   // Keep refs in sync without triggering re-renders
   onSubmitRef.current = onSubmit;
@@ -42,6 +43,8 @@ export default function FormJsViewer({
   useEffect(() => {
     if (!containerRef.current) return;
 
+    setImportError(null);
+
     const form = new Form({
       container: containerRef.current
     });
@@ -49,7 +52,13 @@ export default function FormJsViewer({
     formRef.current = form;
 
     form.importSchema(schema, data).catch((err) => {
-      onErrorRef.current?.(err);
+      const message = err instanceof Error ? err.message : String(err)
+      console.error('FormJsViewer: schema import failed', err)
+      if (onErrorRef.current) {
+        onErrorRef.current(err)
+      } else {
+        setImportError(message)
+      }
     });
 
     if (readonly && containerRef.current) {
@@ -107,13 +116,19 @@ export default function FormJsViewer({
 
   return (
     <div className={`form-js-viewer-wrapper ${className}`}>
+      {importError && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4 mb-4">
+          <p className="text-sm font-medium text-destructive">This form could not be loaded.</p>
+          <p className="text-xs text-muted-foreground mt-1">Please contact your administrator.</p>
+        </div>
+      )}
       <div
         ref={containerRef}
         className="form-js-container"
         style={{ minHeight: '200px' }}
       />
 
-      {onSubmit && !readonly && (
+      {onSubmit && !readonly && !importError && (
         <div className="mt-4 flex justify-end">
           <button
             type="button"

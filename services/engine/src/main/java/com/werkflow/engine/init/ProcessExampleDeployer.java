@@ -152,6 +152,7 @@ public class ProcessExampleDeployer {
                     continue;
                 }
                 String jsonStr = new String(formResource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                validateIdMatchesKey(jsonStr, formKey);
                 String formName = extractNameFromJson(jsonStr, formKey);
                 jdbcTemplate.update(
                     """
@@ -191,6 +192,34 @@ public class ProcessExampleDeployer {
         return Arrays.stream(formKey.split("[-_]"))
             .map(word -> word.isEmpty() ? word : Character.toUpperCase(word.charAt(0)) + word.substring(1))
             .collect(Collectors.joining(" "));
+    }
+
+    /**
+     * Asserts that the form-js JSON schema has a top-level {@code "id"} field
+     * equal to {@code formKey}. form-js uses this field to identify the schema at
+     * import time; a mismatch or missing {@code id} causes a silent import failure
+     * (empty form rendered, no visible error to the user).
+     *
+     * @throws IllegalStateException if {@code id} is absent, non-textual, or does not equal {@code formKey}
+     */
+    private static void validateIdMatchesKey(String jsonStr, String formKey) {
+        try {
+            JsonNode root = JSON_MAPPER.readTree(jsonStr);
+            JsonNode idNode = root.get("id");
+            if (idNode == null || !idNode.isTextual() || !idNode.asText().equals(formKey)) {
+                String actual = (idNode == null) ? "<missing>" : idNode.asText();
+                throw new IllegalStateException(
+                    "Form JSON '" + formKey + ".json' missing top-level \"id\" field matching key '" + formKey
+                    + "' — form-js will silently fail to import (found: " + actual + ")"
+                );
+            }
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                "Form JSON '" + formKey + ".json' could not be parsed for id validation: " + e.getMessage(), e
+            );
+        }
     }
 
     /**

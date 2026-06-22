@@ -208,6 +208,11 @@ export default function StartProcessPage() {
               }}
               onSubmit={handleFormSubmit}
               onChange={handleFormChange}
+              onError={() => {
+                toast.error('Form could not be loaded', {
+                  description: 'Please contact your administrator.',
+                })
+              }}
             />
           ) : (
             <div className="animate-pulse space-y-4">

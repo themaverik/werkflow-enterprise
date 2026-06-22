@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
 import dynamic from 'next/dynamic'
+import { toast } from 'sonner'
 import type { TaskFormData } from '@/lib/types/task'
 
 // Browser-only globals (KeyboardEvent etc.) referenced at form-js module
@@ -78,6 +80,7 @@ export function FormSection({
   isSubmitting,
   readonly,
 }: FormSectionProps) {
+  const [formErrored, setFormErrored] = useState(false)
   const hasValidSchema = formData && isValidFormJsSchema(formData.formData)
   const hasProcessVariables =
     formData && !hasValidSchema && formData.processVariables && Object.keys(formData.processVariables).length > 0
@@ -111,6 +114,10 @@ export function FormSection({
               data={formData!.processVariables}
               onSubmit={onSubmit}
               readonly={readonly}
+              onError={() => {
+                setFormErrored(true)
+                toast.error('Form could not be loaded', { description: 'Please contact your administrator.' })
+              }}
             />
           </div>
         )}
@@ -123,7 +130,7 @@ export function FormSection({
                 variables={formData.processVariables || {}}
               />
             </div>
-            {hasProcessVariables && !readonly && (
+            {hasProcessVariables && !readonly && !formErrored && (
               <Button
                 onClick={() => onSubmit(formData!.processVariables)}
                 disabled={isSubmitting || readonly}

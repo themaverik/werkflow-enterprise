@@ -1,6 +1,6 @@
 'use client'
 
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useQuery } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
@@ -18,7 +18,6 @@ const FormJsViewer = dynamic(() => import('@/components/forms/FormJsViewer'), { 
 export default function PreviewFormPage() {
   const { status } = useSession()
   const params = useParams()
-  const router = useRouter()
   const formKey = params.key as string
 
   const { data: formDef, isLoading, error } = useQuery({
@@ -75,6 +74,9 @@ export default function PreviewFormPage() {
             schema={schema}
             onSubmit={() => {
               toast.success('Form submitted (preview only — no data sent).')
+            }}
+            onError={() => {
+              toast.error('Preview failed to load', { description: 'Check the form schema.' })
             }}
           />
         </CardContent>
