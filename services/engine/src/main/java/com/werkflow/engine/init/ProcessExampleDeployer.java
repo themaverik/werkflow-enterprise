@@ -1,5 +1,7 @@
 package com.werkflow.engine.init;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.werkflow.engine.dto.ProcessDefinitionResponse;
 import com.werkflow.engine.service.ProcessDefinitionService;
 import jakarta.annotation.PostConstruct;
@@ -23,10 +25,12 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Deploys example BPMN processes from classpath:processes/examples/ on startup.
@@ -48,6 +52,7 @@ public class ProcessExampleDeployer {
     private static final String BPMN_SUFFIX = ".bpmn20.xml";
     private static final String FLOWABLE_NS = "http://flowable.org/bpmn";
     private static final String FORMS_PREFIX = "examples/tenants/default/forms/";
+    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
     private final ProcessDefinitionService processDefinitionService;
     private final RepositoryService repositoryService;
@@ -147,23 +152,45 @@ public class ProcessExampleDeployer {
                     continue;
                 }
                 String jsonStr = new String(formResource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                String formName = extractNameFromJson(jsonStr, formKey);
                 jdbcTemplate.update(
                     """
-                    INSERT INTO form_schemas (form_key, version, schema_json, description, form_type,
+                    INSERT INTO form_schemas (form_key, version, name, schema_json, description, form_type,
                                              is_active, created_by, updated_by)
-                    VALUES (?, 1, ?::jsonb, ?, ?, true, 'system', 'system')
+                    VALUES (?, 1, ?, ?::jsonb, ?, ?, true, 'system', 'system')
                     ON CONFLICT (form_key, version) DO UPDATE
                         SET schema_json = EXCLUDED.schema_json,
+                            name        = EXCLUDED.name,
                             form_type   = EXCLUDED.form_type,
                             is_active   = true,
                             updated_by  = 'system'
                     """,
-                    formKey, jsonStr, "Example form: " + formKey, formType);
+                    formKey, formName, jsonStr, "Example form: " + formKey, formType);
                 log.info("Seeded form schema '{}' (type={}) for process '{}'", formKey, formType, processKey);
             } catch (Exception e) {
                 log.warn("Failed to seed form '{}' for process '{}': {}", formKey, processKey, e.getMessage());
             }
         }
+    }
+
+    /**
+     * Reads the top-level {@code "name"} field from the form-js JSON schema.
+     * Falls back to a title-cased derivation from the form key if the field is absent or blank
+     * (e.g. {@code "leave-request-form"} → {@code "Leave Request Form"}).
+     */
+    private static String extractNameFromJson(String jsonStr, String formKey) {
+        try {
+            JsonNode root = JSON_MAPPER.readTree(jsonStr);
+            JsonNode nameNode = root.get("name");
+            if (nameNode != null && nameNode.isTextual() && !nameNode.asText().isBlank()) {
+                return nameNode.asText();
+            }
+        } catch (Exception e) {
+            // fall through to key-based fallback
+        }
+        return Arrays.stream(formKey.split("[-_]"))
+            .map(word -> word.isEmpty() ? word : Character.toUpperCase(word.charAt(0)) + word.substring(1))
+            .collect(Collectors.joining(" "));
     }
 
     /**
