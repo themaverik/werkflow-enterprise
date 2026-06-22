@@ -90,7 +90,8 @@ export default function FormJsEditor({
         'textfield', 'textarea', 'number',
         'checkbox', 'radio', 'select', 'checklist', 'taglist',
         // "date"/"time" are subtypes of "datetime", not standalone form-js types
-        'datetime', 'email',
+        // "email" is NOT a form-js field type; use textfield + validate.validationType="email"
+        'datetime',
         'group', 'columns',
         // DISPLAY_TYPES — presentational, no key required
         'html', 'text', 'button', 'image', 'spacer', 'separator',

@@ -101,12 +101,13 @@
       }
     },
     {
-      "type": "email",
+      "type": "textfield",
       "key": "emergencyEmail",
       "label": "Emergency Email",
       "placeholder": "Enter emergency contact email",
       "validate": {
-        "required": true
+        "required": true,
+        "validationType": "email"
       }
     },
     {
@@ -116,10 +117,13 @@
       "placeholder": "Name of person covering your responsibilities"
     },
     {
-      "type": "email",
+      "type": "textfield",
       "key": "coveringPersonEmail",
       "label": "Covering Person Email",
-      "placeholder": "Email of covering person"
+      "placeholder": "Email of covering person",
+      "validate": {
+        "validationType": "email"
+      }
     },
     {
       "type": "checkbox",

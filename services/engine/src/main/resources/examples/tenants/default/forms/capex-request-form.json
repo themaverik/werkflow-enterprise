@@ -213,12 +213,13 @@
       }
     },
     {
-      "type": "email",
+      "type": "textfield",
       "key": "requestorEmail",
       "label": "Requestor Email",
       "placeholder": "Enter your email",
       "validate": {
-        "required": true
+        "required": true,
+        "validationType": "email"
       }
     },
     {
