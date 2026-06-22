@@ -49,12 +49,14 @@ Engine Swagger UI: http://localhost:8081/swagger-ui.html
 
 ## Local Credentials
 
-| Service        | URL                     | Username           | Password             |
-|----------------|-------------------------|--------------------|----------------------|
-| Portal (admin) | http://localhost:4000   | admin              | Werkflow@2026!       |
-| Keycloak admin | http://localhost:8090   | admin              | REDACTED_PASSWORD             |
-| pgAdmin        | http://localhost:5050   | admin@werkflow.com | admin                |
-| PostgreSQL     | localhost:5433          | werkflow_admin     | werkflow_secure_pass |
+All admin credentials are sourced from `config/env/.env.shared` (gitignored). Copy `.env.shared.example`, set values, then start the stack. Seed users in `werkflow-realm.json` use `temporary: true` — Keycloak forces a password reset on first login.
+
+| Service        | URL                     | Username           | Source                       |
+|----------------|-------------------------|--------------------|------------------------------|
+| Portal (admin) | http://localhost:4000   | admin              | KC seed (`Werkflow@2026!`)   |
+| Keycloak admin | http://localhost:8090   | `${KEYCLOAK_ADMIN}` | `.env.shared`               |
+| pgAdmin        | http://localhost:5050   | `${PGADMIN_EMAIL}` | `.env.shared`                |
+| PostgreSQL     | localhost:5433          | werkflow_admin     | docker-compose dev defaults  |
 
 ## Project Structure
 
@@ -81,8 +83,14 @@ werkflow-enterprise/
 
 ## Example Processes
 
-Eight example processes auto-deploy on startup (set `WERKFLOW_DEPLOY_EXAMPLES=true`):
-Procurement Approval, CapEx Approval, Finance Approval, Leave Request, Event Ticket Request, General Approval, Onboarding Checklist, Asset Request.
+Four example processes auto-deploy on startup (set `WERKFLOW_DEPLOY_EXAMPLES=true`). Each is a complete logical unit (BPMN + start form + optional DMN), seeded by `ProcessExampleDeployer`:
+
+| Process | Forms | DMN |
+|---------|-------|-----|
+| CapEx Approval | capex-request-form, capex-approval-form | capex-approver-resolution |
+| Leave Request | leave-request-form, leave-approval-form | leave-approval |
+| Procurement Approval | procurement-request-form, vendor-selection, quotation-review, procurement-approval | procurement-matrix |
+| Finance Approval | budget-request-form | — |
 
 ## Documentation
 
