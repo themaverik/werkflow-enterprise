@@ -177,6 +177,28 @@ Spacing follows Tailwind's default 4px grid. These are the standard usages:
 | `--wf-shadow` | `0 2px 8px rgba(15,30,42,0.06)` | `shadow` | Cards, dropdowns |
 | `--wf-shadow-lg` | `0 12px 40px rgba(15,30,42,0.12)` | `shadow-lg` | Modals, popovers |
 
+### Interactive Cards
+
+Cards that respond to user attention (clickable rows, grid tiles, marketplace items) use the canonical hover treatment via the `.wf-card-interactive` utility class.
+
+**Tokens** (declared in `globals.css`):
+- `--wf-card-hover-shadow` — drop shadow on hover
+- `--wf-card-hover-border` — accent-tinted border on hover
+- `--wf-card-hover-lift` — vertical translate on hover (negative px value)
+- `--wf-card-transition-duration` — 150ms
+
+**Usage:**
+
+```tsx
+<Card className="wf-card-interactive">...</Card>
+// or for non-shadcn cards:
+<article className="rounded-lg border bg-card wf-card-interactive">...</article>
+```
+
+**When to apply:** cards that represent an actionable entity — i.e. cards containing one or more action buttons (Install, Edit, Test, View, Toggle) that operate on the entity the card represents. The hover lift signals "this row has actions you can take." Pure-display cards with no actions inside them (info banners, status-only panels, loading skeletons) MUST NOT use this — hover would be confusing.
+
+**Canonical reference:** Marketplace connector cards (`app/(platform)/admin/marketplace/page.tsx`).
+
 ---
 
 ## 7. Components

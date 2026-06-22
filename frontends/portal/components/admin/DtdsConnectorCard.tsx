@@ -31,7 +31,7 @@ export function DtdsConnectorCard({ connector }: DtdsConnectorCardProps) {
   const { operations, isLoading, error } = useDtdsOperations(expanded ? connector.key : null)
 
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col wf-card-interactive">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">

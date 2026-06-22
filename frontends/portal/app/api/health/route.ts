@@ -11,14 +11,17 @@ interface ServiceHealth {
 async function checkService(name: string, url: string): Promise<ServiceHealth> {
   try {
     const res = await fetch(`${url}/actuator/health`, {
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(8000),
       next: { revalidate: 0 },
     })
-    if (!res.ok) return { name, status: 'DOWN', url }
+    if (!res.ok) {
+      return { name, status: 'DOWN', url, details: { error: `HTTP ${res.status}` } }
+    }
     const data = await res.json()
     return { name, status: data.status === 'UP' ? 'UP' : 'DOWN', url, details: data }
-  } catch {
-    return { name, status: 'DOWN', url }
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : 'unknown error'
+    return { name, status: 'DOWN', url, details: { error: reason } }
   }
 }
 

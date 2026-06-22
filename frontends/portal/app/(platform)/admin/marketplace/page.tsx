@@ -246,7 +246,7 @@ function ConnectorCard({ connector, installed, onInstall }: ConnectorCardProps) 
   const isDatabaseTransport = connector.transport === 'database'
 
   return (
-    <article className="group relative flex flex-col rounded-[14px] border border-slate-200 bg-white p-[22px_22px_18px] transition-all duration-150 hover:-translate-y-0.5 hover:border-cyan-300/60 hover:shadow-[0_10px_30px_-12px_rgba(15,50,60,0.18)]">
+    <article className="group relative flex flex-col rounded-[14px] border border-slate-200 bg-white p-[22px_22px_18px] wf-card-interactive">
       {/* Official accent bar */}
       {isOfficial && (
         <span className="absolute left-0 top-[18px] bottom-[18px] w-[3px] rounded-r-[3px] bg-gradient-to-b from-[#2EC4A0] to-[#149ba5]" />

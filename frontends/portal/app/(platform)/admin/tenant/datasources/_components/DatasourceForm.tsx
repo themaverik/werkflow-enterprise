@@ -45,6 +45,10 @@ const DIALECT_OPTIONS = [
 interface Props {
   /** When provided, switches to edit mode. */
   existing?: TenantDatasourceResponse
+  /** Called after a successful save. Replaces router.push when rendered inside a Dialog. */
+  onSaved?: () => void
+  /** Called when the user cancels without saving. Takes precedence over onSaved on cancel. */
+  onCancel?: () => void
 }
 
 type FormState = {
@@ -73,7 +77,7 @@ function defaultForm(existing?: TenantDatasourceResponse): FormState {
   }
 }
 
-export function DatasourceForm({ existing }: Props) {
+export function DatasourceForm({ existing, onSaved, onCancel }: Props) {
   const { data: session } = useSession()
   const token = (session?.accessToken as string) ?? ''
   const router = useRouter()
@@ -137,7 +141,11 @@ export function DatasourceForm({ existing }: Props) {
         await createDatasource(buildRequest(), token)
         toast.success('Datasource registered')
       }
-      router.push('/admin/tenant/datasources')
+      if (onSaved) {
+        onSaved()
+      } else {
+        router.push('/admin/tenant/datasources')
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error'
       toast.error(`Failed to ${isEdit ? 'update' : 'create'} datasource: ${msg}`)
@@ -354,7 +362,11 @@ export function DatasourceForm({ existing }: Props) {
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push('/admin/tenant/datasources')}
+            onClick={() => {
+              if (onCancel) onCancel()
+              else if (onSaved) onSaved()
+              else router.push('/admin/tenant/datasources')
+            }}
           >
             Cancel
           </Button>

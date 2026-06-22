@@ -34,7 +34,7 @@ export function DeployedCard({
   const hasNotification = Boolean(latest.hasNotification)
 
   return (
-    <div className="bg-card border border-border rounded-xl p-5 flex flex-col gap-3">
+    <div className="bg-card border border-border rounded-xl p-5 flex flex-col gap-3 wf-card-interactive">
       {/* Top row: icon + name + version badge + tags */}
       <div className="flex gap-3 items-start">
         <div

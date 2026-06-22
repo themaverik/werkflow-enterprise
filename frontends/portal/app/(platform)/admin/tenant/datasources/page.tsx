@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useRouter } from 'next/navigation'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -13,7 +12,11 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Plus, RefreshCw, Pencil, Trash2, Database, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -23,14 +26,17 @@ import {
   type TenantDatasourceResponse,
 } from '@/lib/api/datasources'
 import { PageSurface } from '@/components/layout/page-surface'
+import { DatasourceForm } from './_components/DatasourceForm'
 
 type HealthResult = { ok: boolean; message: string } | 'testing'
 
 export default function DatasourcesPage() {
   const { data: session, status } = useSession()
   const token = (session?.accessToken as string) ?? ''
-  const router = useRouter()
   const qc = useQueryClient()
+
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<TenantDatasourceResponse | null>(null)
   const [deletingRef, setDeletingRef] = useState<string | null>(null)
   const [healthResults, setHealthResults] = useState<Record<string, HealthResult>>({})
 
@@ -51,15 +57,23 @@ export default function DatasourcesPage() {
     retry: 2,
   })
 
-  const deleteMutation = useMutation({
-    mutationFn: (ref: string) => deleteDatasource(ref, token),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['tenant-datasources'] })
-      setDeletingRef(null)
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['tenant-datasources'] })
+
+  const handleCreated = () => { setCreateOpen(false); invalidate() }
+  const handleUpdated = () => { setEditTarget(null); invalidate() }
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingRef) return
+    try {
+      await deleteDatasource(deletingRef, token)
+      invalidate()
       toast.success('Datasource removed')
-    },
-    onError: () => toast.error('Failed to delete datasource'),
-  })
+    } catch {
+      toast.error('Failed to delete datasource')
+    } finally {
+      setDeletingRef(null)
+    }
+  }
 
   return (
     <PageSurface>
@@ -67,7 +81,7 @@ export default function DatasourcesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Tenant Datasources</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p className="text-sm text-muted-foreground mt-1">
             Register and manage JDBC datasource connections for database connector workflows.
           </p>
         </div>
@@ -76,17 +90,41 @@ export default function DatasourcesPage() {
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button onClick={() => router.push('/admin/tenant/datasources/new')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Datasource
-          </Button>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Datasource
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Register Datasource</DialogTitle>
+                <DialogDescription>
+                  Add a new JDBC datasource for use with database connector workflows.
+                </DialogDescription>
+              </DialogHeader>
+              <DatasourceForm onSaved={handleCreated} onCancel={() => setCreateOpen(false)} />
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
       {isLoading && (
-        <div className="text-center py-12">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-          <p className="text-muted-foreground mt-2 text-sm">Loading datasources…</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-7 w-16 rounded-md" />
+              </div>
+              <Skeleton className="h-3 w-56" />
+              <div className="flex gap-2">
+                <Skeleton className="h-5 w-20 rounded-full" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -112,19 +150,17 @@ export default function DatasourcesPage() {
       )}
 
       {!isLoading && !error && datasources.length === 0 && (
-        <Card>
-          <CardContent className="pt-6 text-center py-12">
-            <Database className="h-10 w-10 mx-auto text-muted-foreground mb-3" strokeWidth={1.5} />
-            <p className="text-muted-foreground text-sm">No datasources registered yet.</p>
-            <Button
-              variant="link"
-              className="mt-2"
-              onClick={() => router.push('/admin/tenant/datasources/new')}
-            >
-              Register the first datasource
+        <EmptyState
+          icon={Database}
+          title="No datasources registered yet"
+          description="Register a JDBC datasource to use with database connector workflows."
+          action={
+            <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Datasource
             </Button>
-          </CardContent>
-        </Card>
+          }
+        />
       )}
 
       {!isLoading && !error && datasources.length > 0 && (
@@ -133,7 +169,7 @@ export default function DatasourcesPage() {
             <DatasourceCard
               key={ds.ref}
               datasource={ds}
-              onEdit={() => router.push(`/admin/tenant/datasources/${ds.ref}/edit`)}
+              onEdit={() => setEditTarget(ds)}
               onDelete={() => setDeletingRef(ds.ref)}
               health={healthResults[ds.ref]}
               onTest={() => handleTest(ds.ref)}
@@ -142,34 +178,30 @@ export default function DatasourcesPage() {
         </div>
       )}
 
-      {/* Delete confirmation */}
-      <Dialog open={!!deletingRef} onOpenChange={(open) => !open && setDeletingRef(null)}>
-        <DialogContent className="max-w-md">
+      {/* Edit dialog */}
+      <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Delete datasource?</DialogTitle>
+            <DialogTitle>Edit Datasource</DialogTitle>
             <DialogDescription>
-              This removes the registration for{' '}
-              <code className="font-mono text-xs bg-muted px-1 rounded">{deletingRef}</code>.
-              Any deployed connectors using this datasource will fail at runtime.
+              Update the configuration for{' '}
+              <code className="font-mono text-xs bg-muted px-1 rounded">{editTarget?.ref}</code>.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDeletingRef(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={deleteMutation.isPending}
-              onClick={() => deletingRef && deleteMutation.mutate(deletingRef)}
-            >
-              {deleteMutation.isPending && (
-                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-              )}
-              Delete
-            </Button>
-          </div>
+          {editTarget && (
+            <DatasourceForm existing={editTarget} onSaved={handleUpdated} onCancel={() => setEditTarget(null)} />
+          )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={!!deletingRef}
+        onOpenChange={(open) => !open && setDeletingRef(null)}
+        title="Delete datasource?"
+        description={`This removes the registration for ${deletingRef ?? ''}. Any deployed connectors using this datasource will fail at runtime.`}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
     </PageSurface>
   )
@@ -193,7 +225,7 @@ function DatasourceCard({
   onTest: () => void
 }) {
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col wf-card-interactive">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
@@ -264,7 +296,7 @@ function DatasourceCard({
             <span className="text-xs text-muted-foreground">Testing…</span>
           )}
           {health && health !== 'testing' && health.ok && (
-            <span className="flex items-center gap-1 text-xs" style={{ color: '#149ba5' }}>
+            <span className="flex items-center gap-1 text-xs text-primary">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-current" />
               Connected
             </span>
