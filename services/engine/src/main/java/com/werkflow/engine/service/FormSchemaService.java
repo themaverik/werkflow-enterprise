@@ -388,6 +388,20 @@ public class FormSchemaService {
     }
 
     /**
+     * Returns true if any version of the form exists, regardless of active status.
+     * Used by seeding logic to prevent duplicate version creation when a form has been archived.
+     *
+     * @param formKey The form key identifier
+     * @return true if at least one row exists in form_schemas for this key
+     */
+    public boolean formExistsAnyVersion(String formKey) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM form_schemas WHERE form_key = ?",
+                Integer.class, formKey);
+        return count != null && count > 0;
+    }
+
+    /**
      * Get next version number for a form
      */
     private Integer getNextVersion(String formKey) {

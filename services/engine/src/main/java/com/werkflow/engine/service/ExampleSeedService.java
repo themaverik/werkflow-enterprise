@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.werkflow.engine.dto.FormSchema;
 import com.werkflow.engine.dto.SeedResult;
 import com.werkflow.engine.dto.WorkflowSeedResult;
-import com.werkflow.engine.exception.FormNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.dmn.api.DmnRepositoryService;
@@ -170,12 +169,7 @@ public class ExampleSeedService {
     }
 
     private boolean formExists(String formKey) {
-        try {
-            formSchemaService.loadFormSchema(formKey);
-            return true;
-        } catch (FormNotFoundException e) {
-            return false;
-        }
+        return formSchemaService.formExistsAnyVersion(formKey);
     }
 
     // -------------------------------------------------------------------------
