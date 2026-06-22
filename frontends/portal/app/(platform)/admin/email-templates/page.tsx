@@ -1,18 +1,27 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { Plus, Edit, Trash2, RefreshCw, Mail, Eye } from 'lucide-react'
+import { PageSurface } from '@/components/layout/page-surface'
+import { Plus, Pencil, Trash2, RefreshCw, Mail, Search, LayoutTemplate } from 'lucide-react'
 import { toast } from 'sonner'
 import { listEmailTemplatesFull, deleteEmailTemplate, type EmailTemplateResponse } from '@/lib/api/email-templates'
 
+// ─── Design tokens (mirrors /forms/page.tsx) ──────────────────────────────────
 const ACCENT = '#149ba5'
+const T = {
+  text: '#0f1e2a', muted: '#6b7e8c', light: '#94a3b8',
+  bg: 'hsl(var(--muted))', card: 'hsl(var(--card))', border: 'hsl(var(--border))',
+  danger: '#dc2626',
+}
 
+// ─── Tag badge (preserved from original) ─────────────────────────────────────
 const TAG_COLORS: Record<string, { bg: string; color: string; border: string }> = {
   Approval:     { bg: '#e6f7f8', color: ACCENT,    border: '#a8dde0' },
   Notification: { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' },
@@ -32,11 +41,55 @@ function TagBadge({ tag }: { tag: string }) {
   )
 }
 
+// ─── Icon button (mirrors /forms/page.tsx IconBtn) ────────────────────────────
+function IconBtn({ children, onClick, title, danger = false }: {
+  children: React.ReactNode
+  onClick?: () => void
+  title?: string
+  danger?: boolean
+}) {
+  return (
+    <button
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+      style={{
+        width: 28, height: 28, borderRadius: 6, border: '1px solid ' + T.border,
+        background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer', color: danger ? T.danger : T.muted,
+        transition: 'border-color 0.15s, color 0.15s',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = danger ? T.danger : ACCENT
+        e.currentTarget.style.color = danger ? T.danger : ACCENT
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = T.border
+        e.currentTarget.style.color = danger ? T.danger : T.muted
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function channelLabel(channel: string): string {
+  if (channel === 'email') return 'Notification'
+  return channel.charAt(0).toUpperCase() + channel.slice(1)
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function EmailTemplatesPage() {
   const { status } = useSession()
   const queryClient = useQueryClient()
   const router = useRouter()
   const [deleteTarget, setDeleteTarget] = useState<EmailTemplateResponse | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const { data: templates, isLoading, error, refetch } = useQuery({
     queryKey: ['emailTemplates'],
@@ -55,14 +108,40 @@ export default function EmailTemplatesPage() {
     onError: () => toast.error('Failed to delete template'),
   })
 
+  const allTemplates: EmailTemplateResponse[] = templates ?? []
+
+  const visibleTemplates = useMemo(() => {
+    if (!searchQuery.trim()) return allTemplates
+    const q = searchQuery.trim().toLowerCase()
+    return allTemplates.filter(
+      (t) => t.name.toLowerCase().includes(q) || t.key.toLowerCase().includes(q)
+    )
+  }, [allTemplates, searchQuery])
+
+  // ─── Styles ───────────────────────────────────────────────────────────────
+  const headerCell: React.CSSProperties = {
+    padding: '10px 20px',
+    background: T.bg,
+    borderBottom: '1px solid ' + T.border,
+    fontSize: 11, fontWeight: 600,
+    color: T.muted,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    textAlign: 'left',
+  }
+
+  const GRID = '2fr 1.4fr 120px 110px 100px'
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <PageSurface>
+
+      {/* ── Page header ───────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Email Templates</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Manage transactional email templates used in workflow notifications.</p>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: T.text, margin: 0 }}>Email Templates</h1>
+          <p style={{ fontSize: 13, color: T.muted, marginTop: 4 }}>Manage transactional email templates used in workflow notifications.</p>
         </div>
-        <div className="flex gap-2">
+        <div style={{ display: 'flex', gap: 8 }}>
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
             <RefreshCw size={14} className={`mr-1.5 ${isLoading ? 'animate-spin' : ''}`} strokeWidth={1.8} />
             Refresh
@@ -76,87 +155,172 @@ export default function EmailTemplatesPage() {
         </div>
       </div>
 
+      {/* ── Stat cards ────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: 14, marginBottom: 24 }}>
+        <div style={{
+          maxWidth: 320,
+          background: T.card, border: '1px solid ' + T.border, borderRadius: 12,
+          padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14,
+        }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 10, background: ACCENT + '18',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <LayoutTemplate size={20} strokeWidth={1.8} style={{ color: ACCENT }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: T.text, lineHeight: 1 }}>{allTemplates.length}</div>
+            <div style={{ fontSize: 12, color: T.muted, marginTop: 3 }}>Total Templates</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Search bar ────────────────────────────────────────────────────── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16,
+        background: T.card, border: '1px solid ' + T.border, borderRadius: 10, padding: '8px 14px',
+      }}>
+        <Search size={16} style={{ color: T.light, flexShrink: 0 }} />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search templates…"
+          style={{
+            flex: '0 0 220px', border: 'none', outline: 'none', fontSize: 13,
+            color: T.text, background: 'transparent', fontFamily: 'inherit',
+          }}
+        />
+      </div>
+
+      {/* ── Error ─────────────────────────────────────────────────────────── */}
       {error && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive" style={{ marginBottom: 16 }}>
           Failed to load templates. Please try again.
         </div>
       )}
 
+      {/* ── Loading skeleton ───────────────────────────────────────────────── */}
       {isLoading && (
-        <div className="space-y-0 bg-card border border-border rounded-xl overflow-hidden">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0 animate-pulse">
-              <div className="w-9 h-9 rounded-lg bg-muted shrink-0" />
-              <div className="flex-1 space-y-2">
-                <div className="h-3 bg-muted rounded w-1/3" />
-                <div className="h-2.5 bg-muted rounded w-2/3" />
+        <div className="space-y-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-7 w-16 rounded-md" />
               </div>
+              <Skeleton className="h-3 w-56" />
             </div>
           ))}
         </div>
       )}
 
-      {!isLoading && templates && templates.length === 0 && (
-        <div className="bg-card border border-border rounded-xl p-12 text-center">
-          <Mail size={32} strokeWidth={1.5} className="mx-auto mb-3 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">No email templates yet.</p>
-          <Link href="/admin/email-templates/new" className="text-sm font-medium mt-1 inline-block" style={{ color: ACCENT }}>
+      {/* ── Empty state ────────────────────────────────────────────────────── */}
+      {!isLoading && allTemplates.length === 0 && (
+        <div style={{
+          background: T.card, border: '1px solid ' + T.border, borderRadius: 12,
+          padding: '64px 20px', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+        }}>
+          <Mail size={40} strokeWidth={1.5} style={{ color: T.light, marginBottom: 12 }} />
+          <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>No email templates yet</div>
+          <Link href="/admin/email-templates/new" style={{ fontSize: 13, fontWeight: 500, color: ACCENT, textDecoration: 'none' }}>
             Create the first one →
           </Link>
         </div>
       )}
 
-      {!isLoading && templates && templates.length > 0 && (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          {templates.map((template, i) => (
-            <div
-              key={template.key}
-              className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
-            >
-              {/* Mail icon */}
-              <div style={{ width: 38, height: 38, borderRadius: 9, background: ACCENT + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Mail size={16} strokeWidth={1.8} style={{ color: ACCENT }} />
-              </div>
+      {/* ── Table ──────────────────────────────────────────────────────────── */}
+      {!isLoading && allTemplates.length > 0 && (
+        <div style={{
+          background: T.card, border: '1px solid ' + T.border, borderRadius: 12, overflow: 'hidden',
+          marginBottom: 32,
+        }}>
+          {/* Header */}
+          <div style={{ display: 'grid', gridTemplateColumns: GRID }}>
+            {['Template Name', 'Template Key', 'Channel', 'Updated', 'Actions'].map((col) => (
+              <div key={col} style={headerCell}>{col}</div>
+            ))}
+          </div>
 
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span className="text-sm font-semibold text-foreground">{template.name}</span>
-                  {template.channel && <TagBadge tag={template.channel === 'email' ? 'Notification' : template.channel} />}
-                  {template.linkedFormKey && <TagBadge tag="Action" />}
-                </div>
-                {template.subject && (
-                  <p className="text-xs text-muted-foreground truncate">Subject: {template.subject}</p>
-                )}
-              </div>
-
-              {/* Right side */}
-              <div className="text-right shrink-0">
-                <p className="text-xs text-muted-foreground mb-2">
-                  Edited {new Date(template.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 px-2.5 text-xs"
-                    onClick={() => router.push(`/admin/email-templates/${encodeURIComponent(template.key)}`)}
-                  >
-                    <Edit size={12} strokeWidth={1.8} className="mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 px-2 text-destructive hover:text-destructive"
-                    onClick={() => setDeleteTarget(template)}
-                  >
-                    <Trash2 size={12} strokeWidth={1.8} />
-                  </Button>
-                </div>
-              </div>
+          {/* Rows */}
+          {visibleTemplates.length === 0 ? (
+            <div style={{
+              padding: '40px 20px', textAlign: 'center',
+              fontSize: 13, color: T.muted,
+            }}>
+              No templates match the search.
             </div>
-          ))}
+          ) : (
+            visibleTemplates.map((template, idx) => {
+              const isLast = idx === visibleTemplates.length - 1
+              return (
+                <div
+                  key={template.key}
+                  style={{
+                    display: 'grid', gridTemplateColumns: GRID,
+                    alignItems: 'center',
+                    borderBottom: isLast ? 'none' : '1px solid ' + T.border,
+                    transition: 'background 0.1s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = T.bg }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  {/* Template name + mail icon */}
+                  <div style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                      background: ACCENT + '18',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <Mail size={16} strokeWidth={1.8} style={{ color: ACCENT }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{template.name}</div>
+                      {template.subject && (
+                        <div style={{ fontSize: 11, color: T.muted, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 240 }}>
+                          {template.subject}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Template key */}
+                  <div style={{ padding: '12px 20px', fontSize: 12, color: T.muted, fontFamily: 'monospace' }}>
+                    {template.key}
+                  </div>
+
+                  {/* Channel */}
+                  <div style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                    {template.channel && <TagBadge tag={channelLabel(template.channel)} />}
+                    {template.linkedFormKey && <TagBadge tag="Action" />}
+                  </div>
+
+                  {/* Updated */}
+                  <div style={{ padding: '12px 20px', fontSize: 12, color: T.muted }}>
+                    {formatDate(template.updatedAt)}
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ padding: '12px 20px', display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <IconBtn
+                      title="Edit template"
+                      onClick={() => router.push(`/admin/email-templates/${encodeURIComponent(template.key)}`)}
+                    >
+                      <Pencil size={14} />
+                    </IconBtn>
+                    <IconBtn
+                      title="Delete template"
+                      danger
+                      onClick={() => setDeleteTarget(template)}
+                    >
+                      <Trash2 size={14} />
+                    </IconBtn>
+                  </div>
+                </div>
+              )
+            })
+          )}
         </div>
       )}
 
@@ -168,6 +332,6 @@ export default function EmailTemplatesPage() {
         confirmLabel="Delete"
         onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.key)}
       />
-    </div>
+    </PageSurface>
   )
 }

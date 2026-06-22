@@ -187,7 +187,7 @@ export default function ConnectorsPage() {
       {!isLoading && !error && groups.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {groups.map((group) => (
-            <Card key={group.connectorKey} className="flex flex-col">
+            <Card key={group.connectorKey} className="flex flex-col wf-card-interactive">
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-base leading-tight">{group.displayName}</CardTitle>
@@ -197,6 +197,7 @@ export default function ConnectorsPage() {
                       size="icon"
                       className="h-7 w-7"
                       title="Edit connector"
+                      aria-label="Edit connector"
                       onClick={() => { setEditDefaultTab('general'); setEditingGroup(group) }}
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -206,6 +207,7 @@ export default function ConnectorsPage() {
                       size="icon"
                       className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
                       title="Delete connector"
+                      aria-label="Delete connector"
                       onClick={() => setDeletingGroup(group)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -326,12 +328,12 @@ export default function ConnectorsPage() {
               {[1, 2, 3].map(i => (
                 <Card key={i}>
                   <CardHeader className="pb-2">
-                    <div className="h-5 w-40 bg-muted animate-pulse rounded" />
-                    <div className="h-3 w-24 bg-muted animate-pulse rounded mt-1" />
+                    <Skeleton className="h-5 w-40" />
+                    <Skeleton className="h-3 w-24 mt-1" />
                   </CardHeader>
                   <CardContent>
-                    <div className="h-3 w-full bg-muted animate-pulse rounded mb-2" />
-                    <div className="h-3 w-3/4 bg-muted animate-pulse rounded" />
+                    <Skeleton className="h-3 w-full mb-2" />
+                    <Skeleton className="h-3 w-3/4" />
                   </CardContent>
                 </Card>
               ))}

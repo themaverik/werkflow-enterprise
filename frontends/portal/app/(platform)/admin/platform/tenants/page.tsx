@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Plus, RefreshCw, Building2, CheckCircle2, Layers, Info } from 'lucide-react'
+import { Plus, RefreshCw, Building2, CheckCircle2, Layers, Info, Pencil, Trash2 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -509,39 +509,41 @@ export default function TenantsPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
+                      <div className="flex items-center gap-1 justify-end">
                         <Button
-                          size="sm"
+                          size="icon"
                           variant="ghost"
-                          className="h-7 text-xs"
+                          className="h-8 w-8"
                           aria-label={`Seed examples for ${tenant.name}`}
                           title={`Seed examples for ${tenant.name}`}
                           disabled={seedingId === tenant.id}
                           onClick={() => handleSeedExamples(tenant)}
                         >
                           {seedingId === tenant.id ? (
-                            <RefreshCw className="h-3 w-3 animate-spin" />
+                            <RefreshCw className="h-4 w-4 animate-spin" />
                           ) : (
-                            <Layers className="h-3 w-3" />
+                            <Layers className="h-4 w-4" />
                           )}
                         </Button>
                         <Button
-                          size="sm"
+                          size="icon"
                           variant="ghost"
-                          className="h-7 text-xs"
+                          className="h-8 w-8"
                           aria-label={`Edit ${tenant.name}`}
+                          title={`Edit ${tenant.name}`}
                           onClick={() => setEditing(tenant)}
                         >
-                          Edit
+                          <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
-                          size="sm"
+                          size="icon"
                           variant="ghost"
-                          className="h-7 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                           aria-label={`Delete ${tenant.name}`}
+                          title={`Delete ${tenant.name}`}
                           onClick={() => setDeleting(tenant)}
                         >
-                          Delete
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>

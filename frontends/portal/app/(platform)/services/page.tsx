@@ -332,6 +332,7 @@ export default function ServiceCatalogPage() {
                     return (
                       <div
                         key={process.id}
+                        className={hasStartForm ? 'wf-card-interactive' : undefined}
                         style={{
                           background: T.card,
                           border: '1px solid ' + T.border,
