@@ -10,12 +10,12 @@
 
   <process id="procurement-approval-process" name="Procurement Approval Process" isExecutable="true"
            flowable:versionTag="1">
+    <documentation>Purchase request approval with vendor selection, quotation review, and DMN-backed approval routing via procurement-matrix.dmn.</documentation>
     <extensionElements>
       <flowable:properties>
         <flowable:property name="category" value="examples"/>
       </flowable:properties>
     </extensionElements>
-    <documentation>Purchase request approval with vendor selection, quotation review, and DMN-backed approval routing via procurement-matrix.dmn.</documentation>
 
     <startEvent id="startEvent" name="Purchase Request Submitted" flowable:formKey="procurement-request-form"/>
 

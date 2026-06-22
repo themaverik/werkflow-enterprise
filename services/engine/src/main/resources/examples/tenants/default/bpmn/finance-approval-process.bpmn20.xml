@@ -8,12 +8,12 @@
 
   <process id="finance-approval-process" name="Budget Request Process" isExecutable="true"
            flowable:versionTag="1">
+    <documentation>Final finance sign-off after procurement creates a purchase order. Finance team reviews and approves or rejects expenditure.</documentation>
     <extensionElements>
       <flowable:properties>
         <flowable:property name="category" value="examples"/>
       </flowable:properties>
     </extensionElements>
-    <documentation>Final finance sign-off after procurement creates a purchase order. Finance team reviews and approves or rejects expenditure.</documentation>
 
     <startEvent id="startEvent" name="Finance Review Requested"
                 flowable:formKey="budget-request-form"
