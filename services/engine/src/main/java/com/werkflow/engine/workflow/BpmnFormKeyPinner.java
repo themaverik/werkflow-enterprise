@@ -46,12 +46,13 @@ public class BpmnFormKeyPinner {
     private final FormSchemaService formSchemaService;
 
     /**
-     * @param bpmnXml raw BPMN 2.0 XML
+     * @param bpmnXml  raw BPMN 2.0 XML
+     * @param tenantId the tenant owning this bundle (null/blank → "default")
      * @return the XML with static formKeys pinned to their current version; the original
      *         string (unchanged) if there was nothing to pin
      * @throws IllegalArgumentException if the XML is malformed
      */
-    public String pinFormKeys(String bpmnXml) {
+    public String pinFormKeys(String bpmnXml, String tenantId) {
         Document doc = parse(bpmnXml);
 
         boolean changed = false;
@@ -67,12 +68,13 @@ public class BpmnFormKeyPinner {
                 continue; // expression, blank, or already pinned
             }
             try {
-                int version = formSchemaService.loadFormSchema(value).getVersion();
+                int version = formSchemaService.loadFormSchema(value, tenantId).getVersion();
                 formKeyAttr.setValue(value + "@" + version);
                 changed = true;
             } catch (FormNotFoundException notProvisioned) {
                 // No active form for this key — leave it bare; it resolves to latest at runtime.
-                log.warn("BpmnFormKeyPinner: formKey '{}' has no active form; left unpinned", value);
+                log.warn("BpmnFormKeyPinner: formKey '{}' has no active form for tenant '{}'; left unpinned",
+                        value, tenantId);
             }
         }
 

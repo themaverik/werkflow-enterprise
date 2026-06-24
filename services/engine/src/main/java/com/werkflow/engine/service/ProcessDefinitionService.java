@@ -449,7 +449,10 @@ public class ProcessDefinitionService {
             throw new FormNotFoundException("start-form for process: " + processDefinitionId);
         }
 
-        var formSchema = formSchemaService.loadFormSchemaByRef(formKey);
+        // Resolve the form under the tenant the definition was actually deployed under,
+        // not the caller's JWT tenant — the form was seeded alongside the BPMN.
+        String resolvedTenant = FormSchemaService.normaliseTenant(processDefinition.getTenantId());
+        var formSchema = formSchemaService.loadFormSchemaByRef(formKey, resolvedTenant);
 
         return TaskFormResponse.builder()
             .formKey(formSchema.getFormKey())

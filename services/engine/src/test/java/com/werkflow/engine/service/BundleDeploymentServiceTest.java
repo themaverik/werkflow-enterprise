@@ -48,7 +48,7 @@ class BundleDeploymentServiceTest {
     @BeforeEach
     void setUp() {
         // Form pinning is exercised in BpmnFormKeyPinnerTest; here it passes the XML through.
-        lenient().when(formKeyPinner.pinFormKeys(any())).thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(formKeyPinner.pinFormKeys(any(), any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
     @Test
@@ -145,7 +145,7 @@ class BundleDeploymentServiceTest {
 
         // Redeploys the re-read BPMN as-is (already pinned) under the new parent, never re-pins,
         // and preserves the source bundle's original resource name (symmetric with deployBundle).
-        verify(formKeyPinner, never()).pinFormKeys(any());
+        verify(formKeyPinner, never()).pinFormKeys(any(), any());
         verify(processDefinitionService)
                 .deployProcessDefinition(eq(BPMN), eq(originalResourceName), eq(newParent), eq(TENANT));
         verify(dmnDecisionService).deployDecision("<dmn/>", "doa_routing", TENANT, newParent);

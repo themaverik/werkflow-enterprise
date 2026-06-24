@@ -157,16 +157,16 @@ public class ProcessExampleDeployer {
                 jdbcTemplate.update(
                     """
                     INSERT INTO form_schemas (form_key, version, name, schema_json, description, form_type,
-                                             is_active, created_by, updated_by)
-                    VALUES (?, 1, ?, ?::jsonb, ?, ?, true, 'system', 'system')
-                    ON CONFLICT (form_key, version) DO UPDATE
+                                             is_active, created_by, updated_by, tenant_id)
+                    VALUES (?, 1, ?, ?::jsonb, ?, ?, true, 'system', 'system', ?)
+                    ON CONFLICT (form_key, version, tenant_id) DO UPDATE
                         SET schema_json = EXCLUDED.schema_json,
                             name        = EXCLUDED.name,
                             form_type   = EXCLUDED.form_type,
                             is_active   = true,
                             updated_by  = 'system'
                     """,
-                    formKey, formName, jsonStr, "Example form: " + formKey, formType);
+                    formKey, formName, jsonStr, "Example form: " + formKey, formType, exampleTenantId);
                 log.info("Seeded form schema '{}' (type={}) for process '{}'", formKey, formType, processKey);
             } catch (Exception e) {
                 log.warn("Failed to seed form '{}' for process '{}': {}", formKey, processKey, e.getMessage());

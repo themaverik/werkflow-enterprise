@@ -21,6 +21,9 @@ import java.util.Map;
 /**
  * REST controller for managing form schemas.
  * Provides endpoints for CRUD operations on form-js schemas.
+ *
+ * <p>All endpoints (including reads) are tenant-scoped (D2): the tenant is resolved
+ * from the JWT via {@link #extractTenant(Authentication)}.
  */
 @RestController
 @RequestMapping({"/forms", "/api/forms", "/api/v1/form-schemas"})
@@ -32,37 +35,32 @@ public class FormSchemaController {
     private final FormSchemaService formSchemaService;
 
     /**
-     * Get list of all forms
-     * @return List of form schemas
+     * Get list of all forms for the caller's tenant.
      */
     @GetMapping
     @Operation(summary = "Get all forms", description = "Retrieve list of all active form schemas")
-    public ResponseEntity<List<FormSchema>> getAllForms() {
+    public ResponseEntity<List<FormSchema>> getAllForms(Authentication authentication) {
         log.info("Getting all forms");
-        List<FormSchema> forms = formSchemaService.getFormsList();
+        List<FormSchema> forms = formSchemaService.getFormsList(extractTenant(authentication));
         return ResponseEntity.ok(forms);
     }
 
     /**
-     * Get form schema by key (latest version)
-     * @param formKey The form key
-     * @return Form schema
+     * Get form schema by key (latest version) within the caller's tenant.
      */
     @GetMapping("/{formKey}")
     @Operation(summary = "Get form by key", description = "Retrieve latest active version of form schema")
     public ResponseEntity<FormSchema> getFormByKey(
             @Parameter(description = "Form key identifier")
-            @PathVariable String formKey) {
+            @PathVariable String formKey,
+            Authentication authentication) {
         log.info("Getting form by key: {}", formKey);
-        FormSchema form = formSchemaService.loadFormSchema(formKey);
+        FormSchema form = formSchemaService.loadFormSchema(formKey, extractTenant(authentication));
         return ResponseEntity.ok(form);
     }
 
     /**
-     * Get specific version of form schema
-     * @param formKey The form key
-     * @param version The version number
-     * @return Form schema
+     * Get specific version of form schema within the caller's tenant.
      */
     @GetMapping("/{formKey}/versions/{version}")
     @Operation(summary = "Get specific form version", description = "Retrieve specific version of form schema")
@@ -70,32 +68,29 @@ public class FormSchemaController {
             @Parameter(description = "Form key identifier")
             @PathVariable String formKey,
             @Parameter(description = "Version number")
-            @PathVariable Integer version) {
+            @PathVariable Integer version,
+            Authentication authentication) {
         log.info("Getting form by key: {} version: {}", formKey, version);
-        FormSchema form = formSchemaService.loadFormSchema(formKey, version);
+        FormSchema form = formSchemaService.loadFormSchema(formKey, version, extractTenant(authentication));
         return ResponseEntity.ok(form);
     }
 
     /**
-     * Get form version history
-     * @param formKey The form key
-     * @return List of all versions
+     * Get form version history within the caller's tenant.
      */
     @GetMapping("/{formKey}/versions")
     @Operation(summary = "Get form version history", description = "Retrieve all versions of a form schema")
     public ResponseEntity<List<FormSchema>> getFormVersions(
             @Parameter(description = "Form key identifier")
-            @PathVariable String formKey) {
+            @PathVariable String formKey,
+            Authentication authentication) {
         log.info("Getting version history for form: {}", formKey);
-        List<FormSchema> versions = formSchemaService.getFormHistory(formKey);
+        List<FormSchema> versions = formSchemaService.getFormHistory(formKey, extractTenant(authentication));
         return ResponseEntity.ok(versions);
     }
 
     /**
      * Create new form schema
-     * @param request Form creation request
-     * @param authentication User authentication
-     * @return Created form schema
      */
     @PostMapping
     @Operation(summary = "Create form", description = "Create a new form schema")
@@ -113,7 +108,8 @@ public class FormSchemaController {
                 request.getFormType(),
                 user.getUserId(),
                 request.getOwningDepartment(),
-                user.getDepartment()
+                user.getDepartment(),
+                user.getTenantCode()
         );
 
         return ResponseEntity.status(HttpStatus.CREATED).body(form);
@@ -121,10 +117,6 @@ public class FormSchemaController {
 
     /**
      * Update form schema (creates new version)
-     * @param formKey The form key
-     * @param request Form update request
-     * @param authentication User authentication
-     * @return Updated form schema
      */
     @PutMapping("/{formKey}")
     @Operation(summary = "Update form", description = "Update form schema (creates new version). Requires custody.")
@@ -159,7 +151,7 @@ public class FormSchemaController {
         JwtUserContext user = extractUserContext(authentication);
         log.info("Deleting form: {} by user: {}", formKey, user.getUserId());
         // Load current schema to perform custody check
-        formSchemaService.loadFormSchema(formKey); // throws if not found
+        formSchemaService.loadFormSchema(formKey, user.getTenantCode()); // throws if not found
         // Custody check delegated to service
         formSchemaService.deleteFormWithCustody(formKey, user);
         return ResponseEntity.ok(Map.of("message", "Form archived successfully", "formKey", formKey));
@@ -181,9 +173,7 @@ public class FormSchemaController {
     }
 
     /**
-     * Validate form schema
-     * @param schemaJson The schema to validate
-     * @return Validation result
+     * Validate form schema — no tenant scope required.
      */
     @PostMapping("/validate")
     @Operation(summary = "Validate form schema", description = "Validate form-js schema structure")
@@ -199,6 +189,13 @@ public class FormSchemaController {
             return new JwtUserContext(jwt);
         }
         return JwtUserContext.builder().userId("system").build();
+    }
+
+    /**
+     * Returns the tenant code for the authenticated caller (defaults to "default").
+     */
+    private String extractTenant(Authentication authentication) {
+        return extractUserContext(authentication).getTenantCode();
     }
 
     /**

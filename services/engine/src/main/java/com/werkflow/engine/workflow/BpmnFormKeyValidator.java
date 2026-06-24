@@ -22,7 +22,7 @@ import java.util.List;
  * resolves to an active row in form_schemas at startup.
  *
  * Scans all deployed process definitions after the application is ready.
- * Static formKey values are looked up via FormSchemaService.loadFormSchema().
+ * Static formKey values are looked up via FormSchemaService.loadFormSchemaByRef().
  * Dynamic EL expressions (${...}) are skipped — they are resolved at runtime.
  * UserTasks with no formKey are skipped — formKey is optional in BPMN.
  *
@@ -70,15 +70,16 @@ public class BpmnFormKeyValidator {
                 continue;
             }
 
+            String tenantId = tenantOf(definition);
             BpmnModel model = repositoryService.getBpmnModel(definition.getId());
             model.getProcesses().forEach(process -> {
                 process.findFlowElementsOfType(UserTask.class).forEach(userTask ->
                     checkFormKey(definition.getKey(), "task", userTask.getId(),
-                        userTask.getName(), userTask.getFormKey(), violations));
+                        userTask.getName(), userTask.getFormKey(), tenantId, violations));
                 // Start-event forms are pinned at bundle deploy too (ADR-026 F1), so validate them.
                 process.findFlowElementsOfType(StartEvent.class).forEach(startEvent ->
                     checkFormKey(definition.getKey(), "start event", startEvent.getId(),
-                        startEvent.getName(), startEvent.getFormKey(), violations));
+                        startEvent.getName(), startEvent.getFormKey(), tenantId, violations));
             });
         }
 
@@ -96,12 +97,13 @@ public class BpmnFormKeyValidator {
     }
 
     /**
-     * Records a violation if a static formKey does not resolve. Skips blank keys (optional)
-     * and EL expressions ({@code ${...}}, resolved at runtime). Honours an ADR-026
-     * {@code formKey@version} pin via {@link FormSchemaService#loadFormSchemaByRef(String)}.
+     * Records a violation if a static formKey does not resolve for the given tenant. Skips blank
+     * keys (optional) and EL expressions ({@code ${...}}, resolved at runtime). Honours an ADR-026
+     * {@code formKey@version} pin via {@link FormSchemaService#loadFormSchemaByRef(String, String)}.
      */
     private void checkFormKey(String processKey, String elementKind, String elementId,
-                             String elementName, String formKey, List<String> violations) {
+                             String elementName, String formKey, String tenantId,
+                             List<String> violations) {
         if (formKey == null || formKey.isBlank()) {
             return;
         }
@@ -110,11 +112,19 @@ public class BpmnFormKeyValidator {
             return;
         }
         try {
-            formSchemaService.loadFormSchemaByRef(trimmed);
+            formSchemaService.loadFormSchemaByRef(trimmed, tenantId);
         } catch (FormNotFoundException ex) {
             violations.add(String.format(
-                "  [%s] %s '%s' (%s): formKey '%s' has no active row in form_schemas",
-                processKey, elementKind, elementName, elementId, trimmed));
+                "  [%s] %s '%s' (%s): formKey '%s' has no active row in form_schemas (tenant='%s')",
+                processKey, elementKind, elementName, elementId, trimmed, tenantId));
         }
+    }
+
+    /**
+     * Returns the tenant for a ProcessDefinition, normalised to "default" when null or blank.
+     */
+    private static String tenantOf(ProcessDefinition definition) {
+        String tid = definition.getTenantId();
+        return (tid == null || tid.isBlank()) ? "default" : tid;
     }
 }

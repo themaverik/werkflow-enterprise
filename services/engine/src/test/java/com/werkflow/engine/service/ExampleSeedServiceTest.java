@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.werkflow.engine.dto.FormSchema;
 import com.werkflow.engine.dto.SeedResult;
 import com.werkflow.engine.dto.WorkflowSeedResult;
-import com.werkflow.engine.exception.FormNotFoundException;
 import org.flowable.dmn.api.DmnDeploymentQuery;
 import org.flowable.dmn.api.DmnRepositoryService;
 import org.flowable.engine.RepositoryService;
@@ -227,7 +226,7 @@ class ExampleSeedServiceTest {
         assertThat(result.workflows()).hasSize(1);
         assertThat(result.workflows().get(0).status()).isEqualTo("SKIPPED");
 
-        verify(formSchemaService, never()).saveFormSchema(anyString(), any(), anyString(), any(), anyString());
+        verify(formSchemaService, never()).saveFormSchema(anyString(), any(), anyString(), any(), anyString(), anyString());
         verify(processDefinitionService, never()).deployExampleProcessDefinition(anyString(), anyString(), anyString());
     }
 
@@ -242,11 +241,9 @@ class ExampleSeedServiceTest {
         ProcessDefinitionQuery pdq = mockProcessDefinitionQuery(0L);
         when(repositoryService.createProcessDefinitionQuery()).thenReturn(pdq);
 
-        // Forms don't exist yet
-        when(formSchemaService.loadFormSchema("capex-request-form"))
-                .thenThrow(new FormNotFoundException("capex-request-form"));
-        when(formSchemaService.loadFormSchema("capex-approval-form"))
-                .thenThrow(new FormNotFoundException("capex-approval-form"));
+        // Forms don't exist yet for this tenant
+        when(formSchemaService.formExistsAnyVersion("capex-request-form", "acme")).thenReturn(false);
+        when(formSchemaService.formExistsAnyVersion("capex-approval-form", "acme")).thenReturn(false);
 
         // No prior DMN deployments
         DmnDeploymentQuery ddq = mockDmnDeploymentQuery(0L);
@@ -304,11 +301,9 @@ class ExampleSeedServiceTest {
         ProcessDefinitionQuery pdq = mockProcessDefinitionQuery(0L);
         when(repositoryService.createProcessDefinitionQuery()).thenReturn(pdq);
 
-        // capex-request-form already exists; capex-approval-form does not
-        when(formSchemaService.loadFormSchema("capex-request-form"))
-                .thenReturn(mock(FormSchema.class));
-        when(formSchemaService.loadFormSchema("capex-approval-form"))
-                .thenThrow(new FormNotFoundException("capex-approval-form"));
+        // capex-request-form already exists for this tenant; capex-approval-form does not
+        when(formSchemaService.formExistsAnyVersion("capex-request-form", "acme")).thenReturn(true);
+        when(formSchemaService.formExistsAnyVersion("capex-approval-form", "acme")).thenReturn(false);
 
         DmnDeploymentQuery ddq = mockDmnDeploymentQuery(0L);
         when(dmnRepositoryService.createDeploymentQuery()).thenReturn(ddq);
@@ -340,9 +335,9 @@ class ExampleSeedServiceTest {
 
         // Only capex-approval-form should have been saved (request-form already existed)
         verify(formSchemaService).saveFormSchema(
-                eq("capex-approval-form"), any(), anyString(), any(), anyString());
+                eq("capex-approval-form"), any(), anyString(), any(), anyString(), anyString());
         verify(formSchemaService, never()).saveFormSchema(
-                eq("capex-request-form"), any(), anyString(), any(), anyString());
+                eq("capex-request-form"), any(), anyString(), any(), anyString(), anyString());
     }
 
     // -------------------------------------------------------------------------

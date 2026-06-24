@@ -23,6 +23,8 @@ import static org.mockito.Mockito.when;
  */
 class BpmnFormKeyPinnerTest {
 
+    private static final String TENANT = "default";
+
     private FormSchemaService formSchemaService;
     private BpmnFormKeyPinner pinner;
 
@@ -43,8 +45,8 @@ class BpmnFormKeyPinnerTest {
     void pinsStaticFormKeys() {
         FormSchema capex = schemaAtVersion(3);
         FormSchema onboarding = schemaAtVersion(5);
-        when(formSchemaService.loadFormSchema("capex-request-form")).thenReturn(capex);
-        when(formSchemaService.loadFormSchema("onboarding-checklist-form")).thenReturn(onboarding);
+        when(formSchemaService.loadFormSchema("capex-request-form", TENANT)).thenReturn(capex);
+        when(formSchemaService.loadFormSchema("onboarding-checklist-form", TENANT)).thenReturn(onboarding);
 
         String xml = """
                 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
@@ -56,7 +58,7 @@ class BpmnFormKeyPinnerTest {
                 </definitions>
                 """;
 
-        String result = pinner.pinFormKeys(xml);
+        String result = pinner.pinFormKeys(xml, TENANT);
 
         assertThat(result).contains("capex-request-form@3");
         assertThat(result).contains("onboarding-checklist-form@5");
@@ -65,7 +67,7 @@ class BpmnFormKeyPinnerTest {
     @Test
     @DisplayName("leaves EL expressions, already-pinned keys, and unprovisioned keys unchanged")
     void leavesNonPinnableKeysUnchanged() {
-        when(formSchemaService.loadFormSchema("missing-form"))
+        when(formSchemaService.loadFormSchema("missing-form", TENANT))
                 .thenThrow(new FormNotFoundException("missing-form"));
 
         String xml = """
@@ -79,7 +81,7 @@ class BpmnFormKeyPinnerTest {
                 </definitions>
                 """;
 
-        String result = pinner.pinFormKeys(xml);
+        String result = pinner.pinFormKeys(xml, TENANT);
 
         assertThat(result).contains("${dynamicForm}");
         assertThat(result).contains("already-pinned@2");
@@ -99,7 +101,7 @@ class BpmnFormKeyPinnerTest {
                 </definitions>
                 """;
 
-        String result = pinner.pinFormKeys(xml);
+        String result = pinner.pinFormKeys(xml, TENANT);
 
         assertThat(result).isEqualTo(xml);
     }
@@ -108,7 +110,7 @@ class BpmnFormKeyPinnerTest {
     @DisplayName("pinned output of a real multi-namespace BPMN still parses via Flowable's converter")
     void realFixtureRoundtripsThroughFlowableConverter() throws Exception {
         FormSchema v1 = schemaAtVersion(1);
-        when(formSchemaService.loadFormSchema(anyString())).thenReturn(v1);
+        when(formSchemaService.loadFormSchema(anyString(), anyString())).thenReturn(v1);
 
         byte[] bytes;
         try (var in = getClass().getClassLoader()
@@ -118,7 +120,7 @@ class BpmnFormKeyPinnerTest {
         }
         String original = new String(bytes, StandardCharsets.UTF_8);
 
-        String pinned = pinner.pinFormKeys(original);
+        String pinned = pinner.pinFormKeys(original, TENANT);
 
         assertThat(pinned).as("at least one formKey was pinned").contains("@1");
         // The re-serialised XML must still be valid BPMN that Flowable can deploy.

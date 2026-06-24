@@ -76,9 +76,9 @@ public class FormSchemaDataLoader implements CommandLineRunner {
         try {
             log.info("Loading form schema: {}", formKey);
 
-            // Check if form already exists
+            // Check if form already exists for the default tenant
             try {
-                formSchemaService.loadFormSchema(formKey);
+                formSchemaService.loadFormSchema(formKey, "default");
                 log.info("Form schema '{}' already exists, skipping", formKey);
                 return;
             } catch (Exception e) {
@@ -90,13 +90,14 @@ public class FormSchemaDataLoader implements CommandLineRunner {
             InputStream inputStream = resource.getInputStream();
             JsonNode schemaJson = objectMapper.readTree(inputStream);
 
-            // Save form schema
+            // Save form schema — init-data profile seeds to the default tenant
             formSchemaService.saveFormSchema(
                     formKey,
                     schemaJson,
                     description,
                     formType,
-                    "system"
+                    "system",
+                    "default"
             );
 
             log.info("Successfully loaded form schema: {}", formKey);

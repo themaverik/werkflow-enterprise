@@ -27,7 +27,9 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class BpmnFormKeyValidatorTest {
 
-    private static final String FIXTURE_RESOURCE = "test-formkey-fixture.bpmn20.xml";
+    // Must exist at examples/tenants/default/bpmn/ on the classpath so the validator's
+    // ClassPathResource guard does NOT skip the definition.
+    private static final String FIXTURE_RESOURCE = "capex-approval-process.bpmn20.xml";
 
     @Mock RepositoryService repositoryService;
     @Mock FormSchemaService formSchemaService;
@@ -46,7 +48,7 @@ class BpmnFormKeyValidatorTest {
     void passes_when_all_formKeys_resolve() {
         UserTask task = userTask("managerApproval", "Manager Review", "manager-approval-form");
         when(repositoryService.getBpmnModel("def-1")).thenReturn(modelWith(task));
-        when(formSchemaService.loadFormSchemaByRef("manager-approval-form"))
+        when(formSchemaService.loadFormSchemaByRef("manager-approval-form", "default"))
             .thenReturn(FormSchema.builder().formKey("manager-approval-form").build());
 
         validator.validateDeployedBpmns();
@@ -72,7 +74,7 @@ class BpmnFormKeyValidatorTest {
     void fails_when_formKey_is_missing_from_formSchemas() {
         UserTask task = userTask("confirm", "Confirm Step", "missing_form_key");
         when(repositoryService.getBpmnModel("def-1")).thenReturn(modelWith(task));
-        when(formSchemaService.loadFormSchemaByRef("missing_form_key"))
+        when(formSchemaService.loadFormSchemaByRef("missing_form_key", "default"))
             .thenThrow(new FormNotFoundException("missing_form_key"));
 
         assertThatThrownBy(() -> validator.validateDeployedBpmns())
@@ -88,11 +90,11 @@ class BpmnFormKeyValidatorTest {
         UserTask t2 = userTask("b", "Task B", "missing-form-b");
         UserTask t3 = userTask("c", "Task C", "good-form");
         when(repositoryService.getBpmnModel("def-1")).thenReturn(modelWith(t1, t2, t3));
-        when(formSchemaService.loadFormSchemaByRef("missing-form-a"))
+        when(formSchemaService.loadFormSchemaByRef("missing-form-a", "default"))
             .thenThrow(new FormNotFoundException("missing-form-a"));
-        when(formSchemaService.loadFormSchemaByRef("missing-form-b"))
+        when(formSchemaService.loadFormSchemaByRef("missing-form-b", "default"))
             .thenThrow(new FormNotFoundException("missing-form-b"));
-        when(formSchemaService.loadFormSchemaByRef("good-form"))
+        when(formSchemaService.loadFormSchemaByRef("good-form", "default"))
             .thenReturn(FormSchema.builder().formKey("good-form").build());
 
         assertThatThrownBy(() -> validator.validateDeployedBpmns())
@@ -114,7 +116,7 @@ class BpmnFormKeyValidatorTest {
         process.addFlowElement(start);
         model.addProcess(process);
         when(repositoryService.getBpmnModel("def-1")).thenReturn(model);
-        when(formSchemaService.loadFormSchemaByRef("missing-start-form"))
+        when(formSchemaService.loadFormSchemaByRef("missing-start-form", "default"))
             .thenThrow(new FormNotFoundException("missing-start-form"));
 
         assertThatThrownBy(() -> validator.validateDeployedBpmns())
@@ -139,6 +141,7 @@ class BpmnFormKeyValidatorTest {
         lenient().when(def.getKey()).thenReturn("test-process");
         lenient().when(def.getName()).thenReturn("Test Process");
         lenient().when(def.getResourceName()).thenReturn(FIXTURE_RESOURCE);
+        // getTenantId() returns null by default from mock → tenantOf() normalises to "default"
         return def;
     }
 
@@ -164,12 +167,14 @@ class BpmnFormKeyValidatorTest {
     }
 
     static {
-        // The validator's ClassPathResource("processes/<filename>") check requires the
-        // fixture file to exist on the test classpath; otherwise every definition is
-        // skipped as "stale" and assertions silently pass without exercising the code.
-        if (BpmnFormKeyValidatorTest.class.getResource("/processes/" + FIXTURE_RESOURCE) == null) {
+        // Verify the fixture file exists at examples/tenants/default/bpmn/ on the classpath.
+        // The validator's ClassPathResource guard checks this path — if absent, every definition
+        // is skipped and violation tests pass vacuously without exercising the code.
+        if (BpmnFormKeyValidatorTest.class.getResource(
+                "/examples/tenants/default/bpmn/" + FIXTURE_RESOURCE) == null) {
             throw new IllegalStateException(
-                "Test fixture missing: src/test/resources/processes/" + FIXTURE_RESOURCE);
+                "Test fixture missing at examples/tenants/default/bpmn/" + FIXTURE_RESOURCE
+                + " on classpath");
         }
     }
 }

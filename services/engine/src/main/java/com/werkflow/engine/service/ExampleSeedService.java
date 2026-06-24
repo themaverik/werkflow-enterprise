@@ -107,7 +107,7 @@ public class ExampleSeedService {
             Map<String, FormSchema.FormType> formRefs = extractFormRefs(doc);
             Set<String> decisionKeys = extractDecisionKeys(doc);
 
-            List<String> newForms = seedForms(folder, formRefs);
+            List<String> newForms = seedForms(folder, tenantId, formRefs);
             List<String> newDmns  = seedDmns(folder, tenantId, decisionKeys);
 
             processDefinitionService.deployExampleProcessDefinition(bpmnXml, bpmnFilename, tenantId);
@@ -141,14 +141,15 @@ public class ExampleSeedService {
     // Form seeding
     // -------------------------------------------------------------------------
 
-    private List<String> seedForms(String folder, Map<String, FormSchema.FormType> formRefs) {
+    private List<String> seedForms(String folder, String tenantId,
+                                    Map<String, FormSchema.FormType> formRefs) {
         List<String> newForms = new ArrayList<>();
         for (Map.Entry<String, FormSchema.FormType> entry : formRefs.entrySet()) {
             String formKey = entry.getKey();
             FormSchema.FormType formType = entry.getValue();
 
-            if (formExists(formKey)) {
-                log.debug("Form '{}' already exists — skipping", formKey);
+            if (formSchemaService.formExistsAnyVersion(formKey, tenantId)) {
+                log.debug("Form '{}' already exists for tenant '{}' — skipping", formKey, tenantId);
                 continue;
             }
 
@@ -157,19 +158,15 @@ public class ExampleSeedService {
                 String json = readClasspathFile(resourcePath);
                 JsonNode schema = objectMapper.readTree(json);
                 formSchemaService.saveFormSchema(
-                        formKey, schema, "Example form: " + formKey, formType, "system");
+                        formKey, schema, "Example form: " + formKey, formType, "system", tenantId);
                 newForms.add(formKey);
-                log.info("Seeded form '{}' (type={})", formKey, formType);
+                log.info("Seeded form '{}' (type={}) for tenant '{}'", formKey, formType, tenantId);
             } catch (IOException e) {
                 log.warn("No form file at '{}' for key '{}' — skipping ({})",
                         resourcePath, formKey, e.getMessage());
             }
         }
         return List.copyOf(newForms);
-    }
-
-    private boolean formExists(String formKey) {
-        return formSchemaService.formExistsAnyVersion(formKey);
     }
 
     // -------------------------------------------------------------------------

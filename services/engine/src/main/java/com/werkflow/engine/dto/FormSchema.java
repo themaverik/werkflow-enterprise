@@ -108,6 +108,11 @@ public class FormSchema {
     private String createdByDepartment;
 
     /**
+     * Tenant that owns this form schema row (strict scoping — no fallback to 'default').
+     */
+    private String tenantId;
+
+    /**
      * Enumeration for form types
      */
     public enum FormType {

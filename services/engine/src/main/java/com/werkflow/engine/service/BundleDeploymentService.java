@@ -64,7 +64,7 @@ public class BundleDeploymentService {
         // Pin each static formKey to its current active version so the bundle's forms are
         // reproducible for in-flight instances (ADR-026 P2 / F1). The standalone /deploy path
         // intentionally leaves keys bare (resolve-latest).
-        String pinnedBpmn = formKeyPinner.pinFormKeys(bpmnXml);
+        String pinnedBpmn = formKeyPinner.pinFormKeys(bpmnXml, tenantId);
 
         String resourceName = name.toLowerCase().replaceAll("\\s+", "-") + ".bpmn20.xml";
         ProcessDefinitionResponse process =

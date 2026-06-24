@@ -28,6 +28,11 @@ import java.util.UUID;
 /**
  * Service for managing form schemas in the database.
  * Handles CRUD operations for form-js schemas stored in PostgreSQL.
+ *
+ * <p>All read and write paths are strictly tenant-scoped (D2). Every method takes an explicit
+ * {@code tenantId} and filters {@code WHERE tenant_id = ?}. There is no fallback-to-default.
+ * Callers must normalise null/blank tenant values to "default" before calling (see
+ * {@link #normaliseTenant(String)}).
  */
 @Service
 @Slf4j
@@ -39,26 +44,36 @@ public class FormSchemaService {
     private final ObjectMapper objectMapper;
 
     /**
-     * Load form schema by form key (latest active version)
-     * @param formKey The form key identifier
-     * @return FormSchema
-     * @throws FormNotFoundException if form is not found
+     * Normalises a tenant value: null or blank becomes "default".
      */
-    @Cacheable(value = "formSchemas", key = "#formKey")
-    public FormSchema loadFormSchema(String formKey) {
-        log.info("Loading latest form schema for key: {}", formKey);
+    public static String normaliseTenant(String tenantId) {
+        return (tenantId == null || tenantId.isBlank()) ? "default" : tenantId;
+    }
+
+    /**
+     * Load form schema by form key (latest active version) within a tenant.
+     *
+     * @param formKey  The form key identifier
+     * @param tenantId Tenant scope (null/blank → "default")
+     * @return FormSchema
+     * @throws FormNotFoundException if form is not found for this tenant
+     */
+    @Cacheable(value = "formSchemas", key = "T(com.werkflow.engine.service.FormSchemaService).normaliseTenant(#tenantId) + ':' + #formKey")
+    public FormSchema loadFormSchema(String formKey, String tenantId) {
+        String tid = normaliseTenant(tenantId);
+        log.info("Loading latest form schema for key: {} tenant: {}", formKey, tid);
 
         String sql = """
                 SELECT id, form_key, name, version, schema_json, description, form_type,
                        is_active, created_at, updated_at, created_by, updated_by,
-                       owning_department, created_by_department
+                       owning_department, created_by_department, tenant_id
                 FROM form_schemas
-                WHERE form_key = ? AND is_active = true
+                WHERE form_key = ? AND is_active = true AND tenant_id = ?
                 ORDER BY version DESC
                 LIMIT 1
                 """;
 
-        List<FormSchema> schemas = jdbcTemplate.query(sql, new FormSchemaRowMapper(), formKey);
+        List<FormSchema> schemas = jdbcTemplate.query(sql, new FormSchemaRowMapper(), formKey, tid);
 
         if (schemas.isEmpty()) {
             throw new FormNotFoundException(formKey);
@@ -68,31 +83,34 @@ public class FormSchemaService {
     }
 
     /**
-     * Load specific version of form schema
-     * @param formKey The form key identifier
-     * @param version The version number
+     * Load specific version of form schema within a tenant.
+     *
+     * @param formKey  The form key identifier
+     * @param version  The version number
+     * @param tenantId Tenant scope (null/blank → "default")
      * @return FormSchema
-     * @throws FormNotFoundException if form is not found
+     * @throws FormNotFoundException if form is not found for this tenant
      */
     // Separator '@' (not '_v') matches the canonical "formKey@version" pin format and cannot
     // collide with the unversioned-key entry above: '@' is reserved and rejected in formKeys
     // (see saveFormSchema), so no formKey ending in "@<n>" can ever equal another key's
     // versioned cache entry.
-    @Cacheable(value = "formSchemas", key = "#formKey + '@' + #version")
-    public FormSchema loadFormSchema(String formKey, Integer version) {
-        log.info("Loading form schema for key: {} version: {}", formKey, version);
+    @Cacheable(value = "formSchemas", key = "T(com.werkflow.engine.service.FormSchemaService).normaliseTenant(#tenantId) + ':' + #formKey + '@' + #version")
+    public FormSchema loadFormSchema(String formKey, Integer version, String tenantId) {
+        String tid = normaliseTenant(tenantId);
+        log.info("Loading form schema for key: {} version: {} tenant: {}", formKey, version, tid);
 
         // Deliberately no is_active filter: a bundle-pinned (ADR-026) or rolled-back version
         // must still resolve for in-flight instances even after it was later deactivated.
         String sql = """
                 SELECT id, form_key, name, version, schema_json, description, form_type,
                        is_active, created_at, updated_at, created_by, updated_by,
-                       owning_department, created_by_department
+                       owning_department, created_by_department, tenant_id
                 FROM form_schemas
-                WHERE form_key = ? AND version = ?
+                WHERE form_key = ? AND version = ? AND tenant_id = ?
                 """;
 
-        List<FormSchema> schemas = jdbcTemplate.query(sql, new FormSchemaRowMapper(), formKey, version);
+        List<FormSchema> schemas = jdbcTemplate.query(sql, new FormSchemaRowMapper(), formKey, version, tid);
 
         if (schemas.isEmpty()) {
             throw new FormNotFoundException(formKey, version);
@@ -110,39 +128,47 @@ public class FormSchemaService {
      * the same form definition it was deployed with.
      *
      * @param formKeyRef a BPMN-authored formKey, optionally pinned with {@code @version}
+     * @param tenantId   Tenant scope (null/blank → "default")
      * @return the resolved FormSchema
      * @throws FormNotFoundException if neither the pinned version nor the latest active form exists
      */
-    public FormSchema loadFormSchemaByRef(String formKeyRef) {
+    public FormSchema loadFormSchemaByRef(String formKeyRef, String tenantId) {
         if (formKeyRef != null) {
             int at = formKeyRef.lastIndexOf('@');
             if (at > 0 && at < formKeyRef.length() - 1) {
                 try {
                     return loadFormSchema(formKeyRef.substring(0, at),
-                            Integer.valueOf(formKeyRef.substring(at + 1)));
+                            Integer.valueOf(formKeyRef.substring(at + 1)),
+                            tenantId);
                 } catch (NumberFormatException notAVersionPin) {
                     // '@' is part of the key, not a version suffix — fall through to latest.
                 }
             }
         }
-        return loadFormSchema(formKeyRef);
+        return loadFormSchema(formKeyRef, tenantId);
     }
 
     /**
-     * Save new form schema
-     * @param formKey The form key identifier
-     * @param schemaJson The form schema JSON
-     * @param description Description of the form
-     * @param formType Type of form
-     * @param createdBy User creating the form
+     * Save new form schema for a tenant.
+     *
+     * @param formKey             The form key identifier
+     * @param schemaJson          The form schema JSON
+     * @param description         Description of the form
+     * @param formType            Type of form
+     * @param createdBy           User creating the form
+     * @param owningDepartment    Department that owns the form
+     * @param createdByDepartment Department of the creator
+     * @param tenantId            Tenant scope (null/blank → "default")
      * @return Created FormSchema
      */
     @Transactional
     @CacheEvict(value = "formSchemas", allEntries = true)
     public FormSchema saveFormSchema(String formKey, JsonNode schemaJson, String description,
                                       FormSchema.FormType formType, String createdBy,
-                                      String owningDepartment, String createdByDepartment) {
-        log.info("Saving form schema for key: {}", formKey);
+                                      String owningDepartment, String createdByDepartment,
+                                      String tenantId) {
+        String tid = normaliseTenant(tenantId);
+        log.info("Saving form schema for key: {} tenant: {}", formKey, tid);
 
         if (formKey != null && formKey.indexOf('@') >= 0) {
             // '@' is reserved for the ADR-026 "formKey@version" pin; a key containing it would
@@ -152,13 +178,13 @@ public class FormSchemaService {
 
         formSchemaValidator.validateFormSchema(schemaJson);
 
-        Integer nextVersion = getNextVersion(formKey);
+        Integer nextVersion = getNextVersion(formKey, tid);
 
         String sql = """
                 INSERT INTO form_schemas (id, form_key, name, version, schema_json, description, form_type,
                                           is_active, created_at, updated_at, created_by, updated_by,
-                                          owning_department, created_by_department)
-                VALUES (?, ?, ?, ?, ?::jsonb, ?, ?, true, ?, ?, ?, ?, ?, ?)
+                                          owning_department, created_by_department, tenant_id)
+                VALUES (?, ?, ?, ?, ?::jsonb, ?, ?, true, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         UUID id = UUID.randomUUID();
@@ -176,11 +202,12 @@ public class FormSchemaService {
                     description, (formType != null ? formType : FormSchema.FormType.CUSTOM).name(),
                     Timestamp.from(now), Timestamp.from(now),
                     createdBy, createdBy,
-                    owningDepartment, createdByDepartment
+                    owningDepartment, createdByDepartment,
+                    tid
             );
 
-            log.info("Saved form schema: {} version: {}", formKey, nextVersion);
-            return loadFormSchema(formKey, nextVersion);
+            log.info("Saved form schema: {} version: {} tenant: {}", formKey, nextVersion, tid);
+            return loadFormSchema(formKey, nextVersion, tid);
 
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize schema JSON", e);
@@ -192,67 +219,72 @@ public class FormSchemaService {
     @Transactional
     @CacheEvict(value = "formSchemas", allEntries = true)
     public FormSchema saveFormSchema(String formKey, JsonNode schemaJson, String description,
-                                      FormSchema.FormType formType, String createdBy) {
-        return saveFormSchema(formKey, schemaJson, description, formType, createdBy, null, null);
+                                      FormSchema.FormType formType, String createdBy,
+                                      String tenantId) {
+        return saveFormSchema(formKey, schemaJson, description, formType, createdBy, null, null, tenantId);
     }
 
     /**
-     * Update existing form schema (creates new version).
+     * Update existing form schema (creates new version) within a tenant.
      * Enforces department custody: only a manager-or-above in the owning department may update.
      */
     @Transactional
     @CacheEvict(value = "formSchemas", allEntries = true)
     public FormSchema updateFormSchema(String formKey, JsonNode schemaJson, String description,
                                         JwtUserContext updater) {
-        log.info("Updating form schema for key: {} by user: {}", formKey, updater.getUserId());
+        String tid = normaliseTenant(updater.getTenantCode());
+        log.info("Updating form schema for key: {} by user: {} tenant: {}", formKey, updater.getUserId(), tid);
 
         formSchemaValidator.validateFormSchema(schemaJson);
 
-        FormSchema currentSchema = loadFormSchema(formKey);
+        FormSchema currentSchema = loadFormSchema(formKey, tid);
         assertCustody(currentSchema, updater);
 
         String deactivateSql = """
                 UPDATE form_schemas
                 SET is_active = false, updated_at = ?, updated_by = ?
-                WHERE form_key = ? AND is_active = true
+                WHERE form_key = ? AND is_active = true AND tenant_id = ?
                 """;
-        jdbcTemplate.update(deactivateSql, Timestamp.from(Instant.now()), updater.getUserId(), formKey);
+        jdbcTemplate.update(deactivateSql, Timestamp.from(Instant.now()), updater.getUserId(), formKey, tid);
 
         // Carry forward custody from the existing schema
         return saveFormSchema(formKey, schemaJson, description, currentSchema.getFormType(),
                 updater.getUserId(),
                 currentSchema.getOwningDepartment(),
-                currentSchema.getCreatedByDepartment());
+                currentSchema.getCreatedByDepartment(),
+                tid);
     }
 
     /**
-     * Rollback a form to a specific previous version (re-activates that version).
+     * Rollback a form to a specific previous version (re-activates that version) within a tenant.
      * Enforces department custody.
      */
     @Transactional
     @CacheEvict(value = "formSchemas", allEntries = true)
     public FormSchema rollbackFormSchema(String formKey, Integer targetVersion, JwtUserContext updater) {
-        log.info("Rolling back form: {} to version: {} by user: {}", formKey, targetVersion, updater.getUserId());
+        String tid = normaliseTenant(updater.getTenantCode());
+        log.info("Rolling back form: {} to version: {} by user: {} tenant: {}", formKey, targetVersion, updater.getUserId(), tid);
 
-        FormSchema current = loadFormSchema(formKey);
+        FormSchema current = loadFormSchema(formKey, tid);
         assertCustody(current, updater);
 
-        FormSchema target = loadFormSchema(formKey, targetVersion);
+        // Existence guard: throws FormNotFoundException if the target version does not exist for this tenant.
+        loadFormSchema(formKey, targetVersion, tid);
 
-        // Deactivate all versions
+        // Deactivate all versions for this tenant
         jdbcTemplate.update("""
                 UPDATE form_schemas SET is_active = false, updated_at = ?, updated_by = ?
-                WHERE form_key = ?
-                """, Timestamp.from(Instant.now()), updater.getUserId(), formKey);
+                WHERE form_key = ? AND tenant_id = ?
+                """, Timestamp.from(Instant.now()), updater.getUserId(), formKey, tid);
 
-        // Re-activate target version
+        // Re-activate target version for this tenant
         jdbcTemplate.update("""
                 UPDATE form_schemas SET is_active = true, updated_at = ?, updated_by = ?
-                WHERE form_key = ? AND version = ?
-                """, Timestamp.from(Instant.now()), updater.getUserId(), formKey, targetVersion);
+                WHERE form_key = ? AND version = ? AND tenant_id = ?
+                """, Timestamp.from(Instant.now()), updater.getUserId(), formKey, targetVersion, tid);
 
-        log.info("Rolled back form: {} to version: {}", formKey, targetVersion);
-        return loadFormSchema(formKey, targetVersion);
+        log.info("Rolled back form: {} to version: {} tenant: {}", formKey, targetVersion, tid);
+        return loadFormSchema(formKey, targetVersion, tid);
     }
 
     /**
@@ -286,98 +318,111 @@ public class FormSchemaService {
     }
 
     /**
-     * Get list of all active forms
+     * Get list of all active forms for a tenant.
+     *
+     * @param tenantId Tenant scope (null/blank → "default")
      * @return List of FormSchema
      */
-    public List<FormSchema> getFormsList() {
-        log.info("Getting list of all forms");
+    public List<FormSchema> getFormsList(String tenantId) {
+        String tid = normaliseTenant(tenantId);
+        log.info("Getting list of all forms for tenant: {}", tid);
 
         String sql = """
                 SELECT id, form_key, name, version, schema_json, description, form_type,
                        is_active, created_at, updated_at, created_by, updated_by,
-                       owning_department, created_by_department
+                       owning_department, created_by_department, tenant_id
                 FROM (
                     SELECT id, form_key, name, version, schema_json, description, form_type,
                            is_active, created_at, updated_at, created_by, updated_by,
-                           owning_department, created_by_department,
+                           owning_department, created_by_department, tenant_id,
                            ROW_NUMBER() OVER (PARTITION BY form_key ORDER BY version DESC) as rn
                     FROM form_schemas
-                    WHERE is_active = true
+                    WHERE is_active = true AND tenant_id = ?
                 ) t
                 WHERE rn = 1
                 ORDER BY form_key
                 """;
 
-        return jdbcTemplate.query(sql, new FormSchemaRowMapper());
+        return jdbcTemplate.query(sql, new FormSchemaRowMapper(), tid);
     }
 
     /**
-     * Get form version history
-     * @param formKey The form key identifier
+     * Get form version history for a tenant.
+     *
+     * @param formKey  The form key identifier
+     * @param tenantId Tenant scope (null/blank → "default")
      * @return List of all versions
      */
-    public List<FormSchema> getFormHistory(String formKey) {
-        log.info("Getting version history for form: {}", formKey);
+    public List<FormSchema> getFormHistory(String formKey, String tenantId) {
+        String tid = normaliseTenant(tenantId);
+        log.info("Getting version history for form: {} tenant: {}", formKey, tid);
 
         String sql = """
                 SELECT id, form_key, name, version, schema_json, description, form_type,
                        is_active, created_at, updated_at, created_by, updated_by,
-                       owning_department, created_by_department
+                       owning_department, created_by_department, tenant_id
                 FROM form_schemas
-                WHERE form_key = ?
+                WHERE form_key = ? AND tenant_id = ?
                 ORDER BY version DESC
                 """;
 
-        return jdbcTemplate.query(sql, new FormSchemaRowMapper(), formKey);
+        return jdbcTemplate.query(sql, new FormSchemaRowMapper(), formKey, tid);
     }
 
     /**
-     * Archive form (deactivate all versions)
-     * @param formKey The form key to archive
+     * Archive form (deactivate all versions) within a tenant.
+     *
+     * @param formKey  The form key to archive
+     * @param tenantId Tenant scope (null/blank → "default")
      */
     @Transactional
     @CacheEvict(value = "formSchemas", allEntries = true)
-    public void archiveForm(String formKey) {
-        log.info("Archiving form: {}", formKey);
+    public void archiveForm(String formKey, String tenantId) {
+        String tid = normaliseTenant(tenantId);
+        log.info("Archiving form: {} tenant: {}", formKey, tid);
 
         String sql = """
                 UPDATE form_schemas
                 SET is_active = false, updated_at = ?
-                WHERE form_key = ?
+                WHERE form_key = ? AND tenant_id = ?
                 """;
 
-        int updated = jdbcTemplate.update(sql, Timestamp.from(Instant.now()), formKey);
+        int updated = jdbcTemplate.update(sql, Timestamp.from(Instant.now()), formKey, tid);
 
         if (updated == 0) {
             throw new FormNotFoundException(formKey);
         }
 
-        log.info("Archived {} versions of form: {}", updated, formKey);
+        log.info("Archived {} versions of form: {} tenant: {}", updated, formKey, tid);
     }
 
     /**
-     * Delete form schema (soft delete by deactivating)
-     * @param formKey The form key to delete
+     * Delete form schema (soft delete by deactivating) within a tenant.
+     *
+     * @param formKey  The form key to delete
+     * @param tenantId Tenant scope (null/blank → "default")
      */
     @Transactional
     @CacheEvict(value = "formSchemas", allEntries = true)
-    public void deleteForm(String formKey) {
-        archiveForm(formKey);
+    public void deleteForm(String formKey, String tenantId) {
+        archiveForm(formKey, tenantId);
     }
 
     /**
-     * Delete form schema with custody enforcement.
+     * Delete form schema with custody enforcement within a tenant.
      */
     @Transactional
     @CacheEvict(value = "formSchemas", allEntries = true)
     public void deleteFormWithCustody(String formKey, JwtUserContext user) {
-        FormSchema current = loadFormSchema(formKey);
+        String tid = normaliseTenant(user.getTenantCode());
+        FormSchema current = loadFormSchema(formKey, tid);
         assertCustody(current, user);
-        archiveForm(formKey);
+        archiveForm(formKey, tid);
     }
 
     /**
-     * Validate form schema
+     * Validate form schema.
+     *
      * @param schemaJson The schema to validate
      * @return true if valid
      * @throws FormValidationException if invalid
@@ -388,30 +433,34 @@ public class FormSchemaService {
     }
 
     /**
-     * Returns true if any version of the form exists, regardless of active status.
+     * Returns true if any version of the form exists for the given tenant, regardless of active status.
      * Used by seeding logic to prevent duplicate version creation when a form has been archived.
      *
-     * @param formKey The form key identifier
-     * @return true if at least one row exists in form_schemas for this key
+     * @param formKey  The form key identifier
+     * @param tenantId Tenant scope (null/blank → "default")
+     * @return true if at least one row exists in form_schemas for this key and tenant
      */
-    public boolean formExistsAnyVersion(String formKey) {
+    public boolean formExistsAnyVersion(String formKey, String tenantId) {
+        String tid = normaliseTenant(tenantId);
         Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM form_schemas WHERE form_key = ?",
-                Integer.class, formKey);
+                "SELECT COUNT(*) FROM form_schemas WHERE form_key = ? AND tenant_id = ?",
+                Integer.class, formKey, tid);
         return count != null && count > 0;
     }
 
     /**
-     * Get next version number for a form
+     * Get next version number for a form within a tenant.
+     * Each tenant has an independent version sequence per form key.
      */
-    private Integer getNextVersion(String formKey) {
+    private Integer getNextVersion(String formKey, String tenantId) {
+        tenantId = normaliseTenant(tenantId);
         String sql = """
                 SELECT COALESCE(MAX(version), 0) + 1
                 FROM form_schemas
-                WHERE form_key = ?
+                WHERE form_key = ? AND tenant_id = ?
                 """;
 
-        Integer nextVersion = jdbcTemplate.queryForObject(sql, Integer.class, formKey);
+        Integer nextVersion = jdbcTemplate.queryForObject(sql, Integer.class, formKey, tenantId);
         return nextVersion != null ? nextVersion : 1;
     }
 
@@ -440,6 +489,7 @@ public class FormSchemaService {
                         .updatedBy(rs.getString("updated_by"))
                         .owningDepartment(rs.getString("owning_department"))
                         .createdByDepartment(rs.getString("created_by_department"))
+                        .tenantId(rs.getString("tenant_id"))
                         .build();
             } catch (JsonProcessingException e) {
                 log.error("Failed to parse schema JSON", e);
