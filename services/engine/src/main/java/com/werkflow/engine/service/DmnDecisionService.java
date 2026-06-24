@@ -248,6 +248,28 @@ public class DmnDecisionService {
         return new PageImpl<>(dtos, pageable, total);
     }
 
+    /**
+     * Returns {@code true} if at least one version of the decision identified by
+     * {@code decisionKey} has been deployed for the given tenant.
+     *
+     * <p>Tenant-strict: uses {@code decisionTenantId(tenantId)} so a decision deployed
+     * for a different tenant is never visible. Null/blank tenant normalises to "default"
+     * to match the deploy tenant convention in {@link com.werkflow.engine.service.FormSchemaService#normaliseTenant}.
+     *
+     * @param decisionKey the DMN decision key to check
+     * @param tenantId    the tenant scope (null/blank → "default")
+     * @return true if the decision exists for this tenant; false otherwise
+     */
+    public boolean decisionExists(String decisionKey, String tenantId) {
+        String tid = (tenantId == null || tenantId.isBlank()) ? "default" : tenantId;
+        DmnDecision decision = dmnRepositoryService.createDecisionQuery()
+                .decisionKey(decisionKey)
+                .decisionTenantId(tid)
+                .latestVersion()
+                .singleResult();
+        return decision != null;
+    }
+
     // --- private helpers ---
 
     private DmnDecision resolveDecision(String key, String tenantId) {

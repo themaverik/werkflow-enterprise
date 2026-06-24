@@ -751,18 +751,9 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
         bpmnXml: xml
       })
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       setHasChanges(false)
       queryClient.invalidateQueries({ queryKey: ['processDefinitions'] })
-      // Surface any referenced decisions that could not be pinned into the bundle —
-      // they will resolve to their latest deployed version at runtime (ADR-026).
-      if (data.unbundledDecisions.length > 0) {
-        toast('Deployed — some decisions not version-pinned', {
-          description:
-            `These decision tables will resolve to their latest version: ${data.unbundledDecisions.join(', ')}. ` +
-            'Deploy them, then redeploy this process to pin them.',
-        })
-      }
       // Clean up draft so it doesn't resurface as "unsaved draft" after deploy
       if (processId) {
         deleteDraft(processId.split(':')[0]).catch(() => {})
@@ -770,13 +761,31 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
       router.push('/processes')
     },
     onError: (error: any) => {
-      // Extract the Flowable engine error message from the response body when available
+      // Extract the error message from the response body when available.
+      // For HTTP 422 dangling-reference errors the body carries missingForms and
+      // missingDecisions arrays — surface them so the user knows exactly what to fix.
       const responseData = error?.response?.data
-      const engineMsg =
-        typeof responseData === 'string'
-          ? responseData
-          : responseData?.message ?? responseData?.error ?? null
-      toast.error('Deploy Failed', { description: engineMsg || error.message })
+      let description: string | undefined
+      if (responseData?.missingForms != null || responseData?.missingDecisions != null) {
+        const parts: string[] = []
+        if (Array.isArray(responseData.missingForms) && responseData.missingForms.length > 0) {
+          parts.push(`Missing forms: ${responseData.missingForms.join(', ')}`)
+        }
+        if (Array.isArray(responseData.missingDecisions) && responseData.missingDecisions.length > 0) {
+          parts.push(`Missing decisions: ${responseData.missingDecisions.join(', ')}`)
+        }
+        description = parts.length > 0
+          ? parts.join('. ')
+          : (responseData?.message ?? 'Deploy rejected.')
+        toast.error('Deploy Failed — missing references', { description })
+      } else {
+        const engineMsg =
+          typeof responseData === 'string'
+            ? responseData
+            : responseData?.message ?? responseData?.error ?? null
+        description = engineMsg || error.message
+        toast.error('Deploy Failed', { description })
+      }
     }
   })
 

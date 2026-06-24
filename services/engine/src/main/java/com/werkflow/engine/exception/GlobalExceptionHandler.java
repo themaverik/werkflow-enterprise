@@ -1,5 +1,6 @@
 package com.werkflow.engine.exception;
 
+import com.werkflow.engine.dto.DanglingReferenceResponse;
 import com.werkflow.engine.dto.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.FlowableException;
@@ -145,6 +146,24 @@ public class GlobalExceptionHandler {
                 .build();
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    /**
+     * Handle deploy-time dangling reference exceptions: one or more forms or decisions
+     * referenced in the BPMN do not exist for the caller's tenant. Returns HTTP 422 with
+     * the full list of missing keys so the caller can fix all gaps in one round-trip.
+     */
+    @ExceptionHandler(DanglingReferenceException.class)
+    public ResponseEntity<DanglingReferenceResponse> handleDanglingReferenceException(
+            DanglingReferenceException ex, WebRequest request) {
+
+        log.warn("Deploy rejected — dangling refs: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new DanglingReferenceResponse(
+                        ex.getMessage(),
+                        ex.getMissingForms(),
+                        ex.getMissingDecisions()));
     }
 
     /**

@@ -156,4 +156,44 @@ class BpmnBundleRefExtractorTest {
         assertThatThrownBy(() -> extractor.extract(xml))
             .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    @DisplayName("extracts static flowable:formKey values from start events and user tasks")
+    void extracts_formRefs() {
+        String xml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                         xmlns:flowable="http://flowable.org/bpmn">
+              <process id="p1">
+                <startEvent id="s" flowable:formKey="start-form"/>
+                <userTask id="u1" flowable:formKey="review-form"/>
+              </process>
+            </definitions>
+            """;
+
+        BpmnBundleRefExtractor.BundleRefs refs = extractor.extract(xml);
+
+        assertThat(refs.formRefs()).containsExactlyInAnyOrder("start-form", "review-form");
+    }
+
+    @Test
+    @DisplayName("skips EL expression form keys and already-pinned form keys")
+    void skips_expression_and_pinned_formRefs() {
+        String xml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                         xmlns:flowable="http://flowable.org/bpmn">
+              <process id="p1">
+                <userTask id="u1" flowable:formKey="${dynamic}"/>
+                <userTask id="u2" flowable:formKey="static-form@3"/>
+                <userTask id="u3" flowable:formKey="plain-form"/>
+              </process>
+            </definitions>
+            """;
+
+        BpmnBundleRefExtractor.BundleRefs refs = extractor.extract(xml);
+
+        // EL expression is excluded; already-pinned key "static-form@3" strips the suffix → "static-form".
+        assertThat(refs.formRefs()).containsExactlyInAnyOrder("static-form", "plain-form");
+    }
 }

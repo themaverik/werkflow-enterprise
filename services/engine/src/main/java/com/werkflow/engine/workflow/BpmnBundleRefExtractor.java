@@ -1,6 +1,7 @@
 package com.werkflow.engine.workflow;
 
 import org.springframework.stereotype.Component;
+import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -15,13 +16,18 @@ import java.util.Set;
 
 /**
  * Extracts the bundle-relevant references from a BPMN 2.0 XML string: the process
- * key and the set of DMN decision keys the process invokes.
+ * key, the set of DMN decision keys the process invokes, and the set of static form keys.
  *
  * <p>In Flowable 7.2 a DMN decision is invoked by a {@code serviceTask} with
  * {@code flowable:type="dmn"} and a {@code decisionTableReferenceKey} field extension —
  * NOT by {@code businessRuleTask}, which routes to the legacy Drools engine and never
  * reaches the DMN engine (see the ADR-026 re-audit). This extractor therefore reads the
  * {@code decisionTableReferenceKey} string value from every DMN service task.
+ *
+ * <p>Form keys are read from the {@code flowable:formKey} attribute on any element.
+ * EL expressions ({@code ${...}}), blank values, and already-pinned keys (containing
+ * {@code @}) are skipped — only the base key before any {@code @version} suffix is
+ * returned, so the validator and pinner share a consistent key space.
  *
  * <p>Read directly from the raw XML (DOM) rather than via Flowable's {@code BpmnModel},
  * because the model does not reliably round-trip custom {@code flowable:} extensions (cf.
@@ -35,11 +41,12 @@ public class BpmnBundleRefExtractor {
     private static final String FLOWABLE_NS = "http://flowable.org/bpmn";
 
     /** Bundle references parsed from a single BPMN definition. */
-    public record BundleRefs(String processKey, Set<String> decisionRefs) {}
+    public record BundleRefs(String processKey, Set<String> decisionRefs, Set<String> formRefs) {}
 
     /**
      * @param bpmnXml raw BPMN 2.0 XML
-     * @return the process key and distinct, non-blank DMN decision keys (insertion order preserved)
+     * @return the process key, distinct non-blank DMN decision keys, and distinct static form keys
+     *         (all in insertion order)
      * @throws IllegalArgumentException if the XML is malformed or declares no process
      */
     public BundleRefs extract(String bpmnXml) {
@@ -62,7 +69,28 @@ public class BpmnBundleRefExtractor {
                 decisionRefs.add(key.trim());
             }
         }
-        return new BundleRefs(processKey, Set.copyOf(decisionRefs));
+
+        Set<String> formRefs = new LinkedHashSet<>();
+        NodeList allElements = doc.getElementsByTagName("*");
+        for (int i = 0; i < allElements.getLength(); i++) {
+            Element el = (Element) allElements.item(i);
+            Attr formKeyAttr = el.getAttributeNodeNS(FLOWABLE_NS, "formKey");
+            if (formKeyAttr == null) {
+                continue;
+            }
+            String value = formKeyAttr.getValue().trim();
+            if (value.isEmpty() || value.startsWith("${")) {
+                continue; // expression or blank — not statically resolvable
+            }
+            // Strip a trailing @version pin to recover the base key.
+            int at = value.indexOf('@');
+            String baseKey = (at > 0) ? value.substring(0, at) : value;
+            if (!baseKey.isBlank()) {
+                formRefs.add(baseKey);
+            }
+        }
+
+        return new BundleRefs(processKey, Set.copyOf(decisionRefs), Set.copyOf(formRefs));
     }
 
     /**

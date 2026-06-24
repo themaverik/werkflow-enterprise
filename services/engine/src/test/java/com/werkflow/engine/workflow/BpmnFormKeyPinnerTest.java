@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -65,10 +66,11 @@ class BpmnFormKeyPinnerTest {
     }
 
     @Test
-    @DisplayName("leaves EL expressions, already-pinned keys, and unprovisioned keys unchanged")
-    void leavesNonPinnableKeysUnchanged() {
-        when(formSchemaService.loadFormSchema("missing-form", TENANT))
-                .thenThrow(new FormNotFoundException("missing-form"));
+    @DisplayName("leaves EL expressions and already-pinned keys unchanged")
+    void leavesExpressionAndPinnedKeysUnchanged() {
+        // Build the stub return value before calling when() to avoid nested mock confusion.
+        FormSchema staticFormV2 = schemaAtVersion(2);
+        when(formSchemaService.loadFormSchema("static-form", TENANT)).thenReturn(staticFormV2);
 
         String xml = """
                 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
@@ -76,7 +78,7 @@ class BpmnFormKeyPinnerTest {
                   <process id="p1">
                     <userTask id="u1" flowable:formKey="${dynamicForm}"/>
                     <userTask id="u2" flowable:formKey="already-pinned@2"/>
-                    <userTask id="u3" flowable:formKey="missing-form"/>
+                    <userTask id="u3" flowable:formKey="static-form"/>
                   </process>
                 </definitions>
                 """;
@@ -85,8 +87,26 @@ class BpmnFormKeyPinnerTest {
 
         assertThat(result).contains("${dynamicForm}");
         assertThat(result).contains("already-pinned@2");
-        assertThat(result).contains("missing-form");
-        assertThat(result).doesNotContain("missing-form@");
+        assertThat(result).contains("static-form@2");
+    }
+
+    @Test
+    @DisplayName("throws FormNotFoundException when a referenced form does not exist (defence-in-depth backstop)")
+    void missingForm_throwsFormNotFoundException() {
+        when(formSchemaService.loadFormSchema("missing-form", TENANT))
+                .thenThrow(new FormNotFoundException("missing-form"));
+
+        String xml = """
+                <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                             xmlns:flowable="http://flowable.org/bpmn">
+                  <process id="p1">
+                    <userTask id="u1" flowable:formKey="missing-form"/>
+                  </process>
+                </definitions>
+                """;
+
+        assertThatThrownBy(() -> pinner.pinFormKeys(xml, TENANT))
+                .isInstanceOf(FormNotFoundException.class);
     }
 
     @Test

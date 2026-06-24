@@ -7,6 +7,7 @@ import com.werkflow.engine.dto.TaskFormResponse;
 import com.werkflow.engine.service.BundleDeploymentService;
 import com.werkflow.engine.service.ProcessCustodyService;
 import com.werkflow.engine.service.ProcessDefinitionService;
+import com.werkflow.engine.workflow.DeployReferenceValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -36,6 +37,7 @@ public class ProcessDefinitionController {
     private final ProcessDefinitionService processDefinitionService;
     private final ProcessCustodyService processCustodyService;
     private final BundleDeploymentService bundleDeploymentService;
+    private final DeployReferenceValidator deployReferenceValidator;
 
     public record DeployRequest(String name, String bpmnXml, String owningDepartment, String parentDeploymentId) {}
 
@@ -50,14 +52,17 @@ public class ProcessDefinitionController {
         @RequestBody DeployRequest deployRequest,
         Authentication authentication
     ) {
+        JwtUserContext deployUser = extractUserContext(authentication);
+        deployReferenceValidator.validate(deployRequest.bpmnXml(), deployUser.getTenantCode());
+
         String resourceName = deployRequest.name().toLowerCase().replaceAll("\\s+", "-") + ".bpmn20.xml";
         ProcessDefinitionResponse response = processDefinitionService.deployProcessDefinition(
-                deployRequest.bpmnXml(), resourceName, deployRequest.parentDeploymentId());
+                deployRequest.bpmnXml(), resourceName, deployRequest.parentDeploymentId(),
+                deployUser.getTenantCode());
 
         if (deployRequest.owningDepartment() != null && !deployRequest.owningDepartment().isBlank()) {
-            JwtUserContext user = extractUserContext(authentication);
             processCustodyService.recordCustody(response.getKey(), deployRequest.owningDepartment(),
-                    user.getUserId(), user.getDepartment());
+                    deployUser.getUserId(), deployUser.getDepartment());
             response.setOwningDepartment(deployRequest.owningDepartment());
         }
 

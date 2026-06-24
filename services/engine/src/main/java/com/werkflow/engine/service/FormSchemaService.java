@@ -449,6 +449,23 @@ public class FormSchemaService {
     }
 
     /**
+     * Returns true if an active version of the form exists for the given tenant.
+     * Used by deploy-time validation: a form whose all versions are archived does not satisfy
+     * the runtime resolution path (which requires {@code is_active = true}).
+     *
+     * @param formKey  The form key identifier
+     * @param tenantId Tenant scope (null/blank → "default")
+     * @return true if at least one row with {@code is_active = true} exists for this key and tenant
+     */
+    public boolean formExistsActiveVersion(String formKey, String tenantId) {
+        String tid = normaliseTenant(tenantId);
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM form_schemas WHERE form_key = ? AND tenant_id = ? AND is_active = true",
+                Integer.class, formKey, tid);
+        return count != null && count > 0;
+    }
+
+    /**
      * Get next version number for a form within a tenant.
      * Each tenant has an independent version sequence per form key.
      */

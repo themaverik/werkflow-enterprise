@@ -29,7 +29,6 @@ export interface BundleDeploymentResponse {
   bundleVersion: number
   parentDeploymentId: string
   bundledDecisions: string[]
-  unbundledDecisions: string[]
 }
 
 export interface ProcessDefinitionResponse {

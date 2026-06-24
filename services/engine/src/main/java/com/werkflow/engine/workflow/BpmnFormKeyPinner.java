@@ -1,9 +1,7 @@
 package com.werkflow.engine.workflow;
 
-import com.werkflow.engine.exception.FormNotFoundException;
 import com.werkflow.engine.service.FormSchemaService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
@@ -31,14 +29,15 @@ import java.nio.charset.StandardCharsets;
  * {@link FormSchemaService#loadFormSchemaByRef(String)} at runtime — Flowable's deployment
  * binding cannot touch them.
  *
- * <p>Left unchanged: EL expressions ({@code ${...}}), already-pinned keys (containing
- * {@code @}), and keys with no resolvable active form (those resolve to latest at runtime,
- * mirroring how an unbundled DMN is handled). Reads/writes via DOM rather than Flowable's
+ * <p>Left unchanged: EL expressions ({@code ${...}}) and already-pinned keys (containing
+ * {@code @}). A missing form now fails the deploy (see {@link DeployReferenceValidator}) —
+ * if the validator fires first this method will not be reached; if it is somehow bypassed,
+ * the {@code FormNotFoundException} is re-thrown here as a defence-in-depth backstop.
+ * Reads/writes via DOM rather than Flowable's
  * {@code BpmnModel} for the same round-trip reason as {@link BpmnBundleRefExtractor}.
  */
 @Component
 @RequiredArgsConstructor
-@Slf4j
 public class BpmnFormKeyPinner {
 
     private static final String FLOWABLE_NS = "http://flowable.org/bpmn";
@@ -67,15 +66,11 @@ public class BpmnFormKeyPinner {
             if (value.isEmpty() || value.startsWith("${") || value.contains("@")) {
                 continue; // expression, blank, or already pinned
             }
-            try {
-                int version = formSchemaService.loadFormSchema(value, tenantId).getVersion();
-                formKeyAttr.setValue(value + "@" + version);
-                changed = true;
-            } catch (FormNotFoundException notProvisioned) {
-                // No active form for this key — leave it bare; it resolves to latest at runtime.
-                log.warn("BpmnFormKeyPinner: formKey '{}' has no active form for tenant '{}'; left unpinned",
-                        value, tenantId);
-            }
+            // FormNotFoundException here means the validator was bypassed — rethrow as a
+            // defence-in-depth backstop so the deploy never silently proceeds with a bare key.
+            int version = formSchemaService.loadFormSchema(value, tenantId).getVersion();
+            formKeyAttr.setValue(value + "@" + version);
+            changed = true;
         }
 
         return changed ? serialize(doc) : bpmnXml;

@@ -4,6 +4,7 @@ import com.werkflow.engine.dto.dmn.DmnDecisionDto;
 import com.werkflow.engine.service.BundleDeploymentService;
 import com.werkflow.engine.service.DmnDecisionService;
 import com.werkflow.engine.service.ProcessDefinitionService;
+import com.werkflow.engine.workflow.DeployReferenceValidator;
 import com.werkflow.engine.testsupport.WerkflowTestProcessEngine;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
@@ -152,6 +153,7 @@ class BundleRollbackExecutionTest {
         });
 
         BundleDeploymentService svc = new BundleDeploymentService(
+                mock(DeployReferenceValidator.class),
                 mock(BpmnBundleRefExtractor.class),
                 mock(BpmnFormKeyPinner.class),
                 pds, dmnSvc, bundleRepo);
@@ -232,6 +234,7 @@ class BundleRollbackExecutionTest {
                 .when(dmnSpy).deployDecision(any(), any(), any(), any());
 
         BundleDeploymentService svc = new BundleDeploymentService(
+                mock(DeployReferenceValidator.class),
                 mock(BpmnBundleRefExtractor.class),
                 mock(BpmnFormKeyPinner.class),
                 pds, dmnSpy, bundleRepo);

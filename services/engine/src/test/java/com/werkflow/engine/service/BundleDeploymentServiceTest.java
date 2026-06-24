@@ -3,9 +3,11 @@ package com.werkflow.engine.service;
 import com.werkflow.engine.dto.BundleDeploymentResponse;
 import com.werkflow.engine.dto.ProcessDefinitionResponse;
 import com.werkflow.engine.dto.dmn.DmnDecisionDto;
+import com.werkflow.engine.exception.DanglingReferenceException;
 import com.werkflow.engine.exception.ProcessNotFoundException;
 import com.werkflow.engine.workflow.BpmnBundleRefExtractor;
 import com.werkflow.engine.workflow.BpmnFormKeyPinner;
+import com.werkflow.engine.workflow.DeployReferenceValidator;
 import com.werkflow.engine.workflow.ProcessBundle;
 import com.werkflow.engine.workflow.ProcessBundleRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -34,6 +38,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class BundleDeploymentServiceTest {
 
+    @Mock private DeployReferenceValidator deployReferenceValidator;
     @Mock private BpmnBundleRefExtractor refExtractor;
     @Mock private BpmnFormKeyPinner formKeyPinner;
     @Mock private ProcessDefinitionService processDefinitionService;
@@ -49,13 +54,15 @@ class BundleDeploymentServiceTest {
     void setUp() {
         // Form pinning is exercised in BpmnFormKeyPinnerTest; here it passes the XML through.
         lenient().when(formKeyPinner.pinFormKeys(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+        // Validator is a no-op for happy-path tests; individual tests override when needed.
+        lenient().doNothing().when(deployReferenceValidator).validate(any(), any());
     }
 
     @Test
     @DisplayName("deploys process and each referenced DMN under one shared parentDeploymentId")
     void bundles_process_and_dmns_under_shared_parent() {
         when(refExtractor.extract(BPMN))
-                .thenReturn(new BpmnBundleRefExtractor.BundleRefs("capex-approval", Set.of("doa_routing")));
+                .thenReturn(new BpmnBundleRefExtractor.BundleRefs("capex-approval", Set.of("doa_routing"), Set.of()));
         when(bundleRepository.findMaxBundleVersion(TENANT, "capex-approval")).thenReturn(2);
         when(processDefinitionService.deployProcessDefinition(eq(BPMN), any(), any(), eq(TENANT)))
                 .thenReturn(new ProcessDefinitionResponse());
@@ -67,7 +74,6 @@ class BundleDeploymentServiceTest {
         assertThat(result.bundleVersion()).isEqualTo(3);
         assertThat(result.parentDeploymentId()).isEqualTo(expectedParent);
         assertThat(result.bundledDecisions()).containsExactly("doa_routing");
-        assertThat(result.unbundledDecisions()).isEmpty();
 
         verify(processDefinitionService)
                 .deployProcessDefinition(eq(BPMN), eq("capex-approval.bpmn20.xml"), eq(expectedParent), eq(TENANT));
@@ -84,7 +90,7 @@ class BundleDeploymentServiceTest {
     @DisplayName("first bundle for a process starts at version 1")
     void first_bundle_is_version_one() {
         when(refExtractor.extract(BPMN))
-                .thenReturn(new BpmnBundleRefExtractor.BundleRefs("simple", Set.of()));
+                .thenReturn(new BpmnBundleRefExtractor.BundleRefs("simple", Set.of(), Set.of()));
         when(bundleRepository.findMaxBundleVersion(TENANT, "simple")).thenReturn(0);
         when(processDefinitionService.deployProcessDefinition(any(), any(), any(), any()))
                 .thenReturn(new ProcessDefinitionResponse());
@@ -96,22 +102,22 @@ class BundleDeploymentServiceTest {
     }
 
     @Test
-    @DisplayName("a referenced decision that cannot be resolved is skipped, not fatal")
-    void unresolved_decision_is_skipped() {
-        when(refExtractor.extract(BPMN))
-                .thenReturn(new BpmnBundleRefExtractor.BundleRefs("p1", Set.of("missing_decision")));
-        when(bundleRepository.findMaxBundleVersion(TENANT, "p1")).thenReturn(0);
-        when(processDefinitionService.deployProcessDefinition(any(), any(), any(), any()))
-                .thenReturn(new ProcessDefinitionResponse());
-        when(dmnDecisionService.getDecisionXml("missing_decision", TENANT))
-                .thenThrow(new IllegalStateException("not found"));
+    @DisplayName("deploy aborts immediately when validator throws DanglingReferenceException")
+    void validator_throws_deploy_aborts() {
+        doThrow(new DanglingReferenceException(List.of("missing-form"), List.of("missing-decision")))
+                .when(deployReferenceValidator).validate(BPMN, TENANT);
 
-        BundleDeploymentResponse result = service.deployBundle(BPMN, "P1", TENANT, "carol");
+        assertThatThrownBy(() -> service.deployBundle(BPMN, "P1", TENANT, "carol"))
+                .isInstanceOf(DanglingReferenceException.class)
+                .satisfies(e -> {
+                    DanglingReferenceException ex = (DanglingReferenceException) e;
+                    assertThat(ex.getMissingForms()).containsExactly("missing-form");
+                    assertThat(ex.getMissingDecisions()).containsExactly("missing-decision");
+                });
 
-        assertThat(result.bundledDecisions()).isEmpty();
-        assertThat(result.unbundledDecisions()).containsExactly("missing_decision");
-        verify(dmnDecisionService, never()).deployDecision(any(), any(), any(), any());
-        verify(bundleRepository).save(any(ProcessBundle.class));
+        // Nothing should have been deployed or saved.
+        verify(processDefinitionService, never()).deployProcessDefinition(any(), any(), any(), any());
+        verify(bundleRepository, never()).save(any(ProcessBundle.class));
     }
 
     @Test

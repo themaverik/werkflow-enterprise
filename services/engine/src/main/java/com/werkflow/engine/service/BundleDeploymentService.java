@@ -6,6 +6,7 @@ import com.werkflow.engine.dto.dmn.DmnDecisionDto;
 import com.werkflow.engine.exception.ProcessNotFoundException;
 import com.werkflow.engine.workflow.BpmnBundleRefExtractor;
 import com.werkflow.engine.workflow.BpmnFormKeyPinner;
+import com.werkflow.engine.workflow.DeployReferenceValidator;
 import com.werkflow.engine.workflow.ProcessBundle;
 import com.werkflow.engine.workflow.ProcessBundleRepository;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class BundleDeploymentService {
 
+    private final DeployReferenceValidator deployReferenceValidator;
     private final BpmnBundleRefExtractor refExtractor;
     private final BpmnFormKeyPinner formKeyPinner;
     private final ProcessDefinitionService processDefinitionService;
@@ -54,6 +56,11 @@ public class BundleDeploymentService {
         if (bpmnXml == null || bpmnXml.isBlank()) {
             throw new IllegalArgumentException("BPMN XML is required");
         }
+
+        // Fail loud: all referenced forms and decisions must exist for this tenant before
+        // any Flowable artifact is written. Throws DanglingReferenceException (→ HTTP 422)
+        // with the full list of missing keys on the first validation failure.
+        deployReferenceValidator.validate(bpmnXml, tenantId);
 
         BpmnBundleRefExtractor.BundleRefs refs = refExtractor.extract(bpmnXml);
         String processKey = refs.processKey();
@@ -71,18 +78,10 @@ public class BundleDeploymentService {
                 processDefinitionService.deployProcessDefinition(pinnedBpmn, resourceName, parentDeploymentId, tenantId);
 
         List<String> bundled = new ArrayList<>();
-        List<String> unbundled = new ArrayList<>();
         for (String decisionKey : refs.decisionRefs()) {
-            try {
-                String dmnXml = dmnDecisionService.getDecisionXml(decisionKey, tenantId);
-                dmnDecisionService.deployDecision(dmnXml, decisionKey, tenantId, parentDeploymentId);
-                bundled.add(decisionKey);
-            } catch (ProcessNotFoundException | IllegalStateException e) {
-                // Decision not yet deployed for this tenant — pin it on a later redeploy.
-                log.warn("Bundle {}: referenced decision '{}' not bundled ({}); it will resolve to latest at runtime",
-                        parentDeploymentId, decisionKey, e.getMessage());
-                unbundled.add(decisionKey);
-            }
+            String dmnXml = dmnDecisionService.getDecisionXml(decisionKey, tenantId);
+            dmnDecisionService.deployDecision(dmnXml, decisionKey, tenantId, parentDeploymentId);
+            bundled.add(decisionKey);
         }
 
         try {
@@ -99,10 +98,10 @@ public class BundleDeploymentService {
                     "Concurrent bundle deploy for (%s, %s); retry the request".formatted(tenantId, processKey), e);
         }
 
-        log.info("Deployed bundle {} (process={}, bundled={}, unbundled={})",
-                parentDeploymentId, processKey, bundled, unbundled);
+        log.info("Deployed bundle {} (process={}, bundled={})",
+                parentDeploymentId, processKey, bundled);
 
-        return new BundleDeploymentResponse(process, processKey, bundleVersion, parentDeploymentId, bundled, unbundled);
+        return new BundleDeploymentResponse(process, processKey, bundleVersion, parentDeploymentId, bundled);
     }
 
     /**
@@ -178,7 +177,7 @@ public class BundleDeploymentService {
             log.info("Rolled back process {} to bundle v{} as new bundle v{} ({})",
                     processKey, targetBundleVersion, newBundleVersion, newParentDeploymentId);
 
-            return new BundleDeploymentResponse(process, processKey, newBundleVersion, newParentDeploymentId, bundled, List.of());
+            return new BundleDeploymentResponse(process, processKey, newBundleVersion, newParentDeploymentId, bundled);
 
         } catch (RuntimeException failure) {
             // Saga compensation: delete any Flowable deployments created during this attempt so we
