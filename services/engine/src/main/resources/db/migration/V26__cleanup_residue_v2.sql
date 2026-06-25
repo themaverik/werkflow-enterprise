@@ -20,9 +20,9 @@
 --
 -- Idempotency: every DELETE is a no-op if rows are already absent.
 --
--- Atomicity: wrapped in single BEGIN/COMMIT.
-
-BEGIN;
+-- act_* DELETEs are wrapped in DO/EXCEPTION blocks — Flowable tables may not exist on a
+-- fresh database (Flyway runs before Flowable initialises ACT_* tables); the blocks then
+-- no-op. Flyway wraps the whole migration in a single transaction (clean rollback on error).
 
 -- ============================================================================
 -- SECTION 1 — Tenantless DMN cleanup (missed by V25)
@@ -36,19 +36,28 @@ BEGIN;
 -- ============================================================================
 
 -- 1a. Delete tenantless DMN decisions
-DELETE FROM public.act_dmn_decision
-WHERE tenant_id_ IS NULL OR tenant_id_ = '';
+DO $$ BEGIN
+    DELETE FROM public.act_dmn_decision
+    WHERE tenant_id_ IS NULL OR tenant_id_ = '';
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
 
 -- 1b. Delete tenantless DMN deployment resources
-DELETE FROM public.act_dmn_deployment_resource
-WHERE deployment_id_ IN (
-    SELECT id_ FROM public.act_dmn_deployment
-    WHERE tenant_id_ IS NULL OR tenant_id_ = ''
-);
+DO $$ BEGIN
+    DELETE FROM public.act_dmn_deployment_resource
+    WHERE deployment_id_ IN (
+        SELECT id_ FROM public.act_dmn_deployment
+        WHERE tenant_id_ IS NULL OR tenant_id_ = ''
+    );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
 
 -- 1c. Delete tenantless DMN deployments
-DELETE FROM public.act_dmn_deployment
-WHERE tenant_id_ IS NULL OR tenant_id_ = '';
+DO $$ BEGIN
+    DELETE FROM public.act_dmn_deployment
+    WHERE tenant_id_ IS NULL OR tenant_id_ = '';
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
 
 -- ============================================================================
 -- SECTION 2 — Wipe leave-request-form leftover v8
@@ -61,9 +70,9 @@ WHERE tenant_id_ IS NULL OR tenant_id_ = '';
 -- No BPMN references leave-request-form@8 (all reference by bare key, which
 -- resolves to active v1). Verified no act_ru_variable rows reference
 -- a versioned form key.
+--
+-- flowable.form_schemas is a Flyway-managed table — always present, no guard needed.
 -- ============================================================================
 
 DELETE FROM flowable.form_schemas
 WHERE form_key = 'leave-request-form' AND version > 1;
-
-COMMIT;

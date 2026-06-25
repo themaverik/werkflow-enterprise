@@ -30,16 +30,16 @@
 --                                   leave_approval)                     : test-deploy residue
 --
 -- All DELETEs are no-ops when the target rows are already absent (idempotent).
--- Wrapped in a single transaction so a partial failure rolls back cleanly.
+-- act_* DELETEs are wrapped in DO/EXCEPTION blocks — Flowable tables may not exist on a
+-- fresh database (Flyway runs before Flowable initialises ACT_* tables); the blocks then
+-- no-op. Flyway wraps the whole migration in a single transaction (clean rollback on error).
 -- process_draft rows are NOT touched — they are auto-pruned by ProcessExampleDeployer.
 -- act_hi_* history tables are NOT touched — verified empty for all targets above.
-
-BEGIN;
 
 -- ============================================================
 -- SECTION 1: Forms
 -- Delete leave-request-form versions 1-7; keep v8 (the active seed).
--- No FK references from form_submissions to any of these versions (verified).
+-- flowable.form_schemas is a Flyway-managed table — always present, no guard needed.
 -- ============================================================
 
 DELETE FROM flowable.form_schemas
@@ -58,30 +58,42 @@ WHERE form_key = 'leave-request-form'
 -- ============================================================
 
 -- 2a. procdef_info rows (FK → act_re_procdef; verified 0 rows but kept for idempotency)
-DELETE FROM public.act_procdef_info
-WHERE proc_def_id_ IN (
-    SELECT id_ FROM public.act_re_procdef
-    WHERE key_       IN ('capex-approval-process', 'leave-request')
-      AND tenant_id_ = 'test'
-);
+DO $$ BEGIN
+    DELETE FROM public.act_procdef_info
+    WHERE proc_def_id_ IN (
+        SELECT id_ FROM public.act_re_procdef
+        WHERE key_       IN ('capex-approval-process', 'leave-request')
+          AND tenant_id_ = 'test'
+    );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
 
 -- 2b. Process definitions
-DELETE FROM public.act_re_procdef
-WHERE key_       IN ('capex-approval-process', 'leave-request')
-  AND tenant_id_ = 'test';
+DO $$ BEGIN
+    DELETE FROM public.act_re_procdef
+    WHERE key_       IN ('capex-approval-process', 'leave-request')
+      AND tenant_id_ = 'test';
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
 
 -- 2c. Bytearrays keyed to the test-tenant deployments
-DELETE FROM public.act_ge_bytearray
-WHERE deployment_id_ IN (
-    SELECT id_ FROM public.act_re_deployment
-    WHERE name_      IN ('capex-approval-process.bpmn20.xml', 'leave-request.bpmn20.xml')
-      AND tenant_id_ = 'test'
-);
+DO $$ BEGIN
+    DELETE FROM public.act_ge_bytearray
+    WHERE deployment_id_ IN (
+        SELECT id_ FROM public.act_re_deployment
+        WHERE name_      IN ('capex-approval-process.bpmn20.xml', 'leave-request.bpmn20.xml')
+          AND tenant_id_ = 'test'
+    );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
 
 -- 2d. Deployment records
-DELETE FROM public.act_re_deployment
-WHERE name_      IN ('capex-approval-process.bpmn20.xml', 'leave-request.bpmn20.xml')
-  AND tenant_id_ = 'test';
+DO $$ BEGIN
+    DELETE FROM public.act_re_deployment
+    WHERE name_      IN ('capex-approval-process.bpmn20.xml', 'leave-request.bpmn20.xml')
+      AND tenant_id_ = 'test';
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
 
 -- ============================================================
 -- SECTION 3: DMNs — stale v1 decisions across default/erp/test tenants
@@ -96,48 +108,55 @@ WHERE name_      IN ('capex-approval-process.bpmn20.xml', 'leave-request.bpmn20.
 -- ============================================================
 
 -- 3a. Decision rows
-DELETE FROM public.act_dmn_decision
-WHERE version_ = 1
-  AND (
-      (tenant_id_ = 'default' AND key_ IN (
-          'capex_cfo_group', 'capex_manager_group', 'capex_vp_group',
-          'leave_approval', 'procurement_matrix'
-      ))
-      OR
-      (tenant_id_ IN ('erp', 'test') AND key_ IN (
-          'capex_cfo_group', 'capex_manager_group', 'capex_vp_group',
-          'leave_approval'
-      ))
-  );
+DO $$ BEGIN
+    DELETE FROM public.act_dmn_decision
+    WHERE version_ = 1
+      AND (
+          (tenant_id_ = 'default' AND key_ IN (
+              'capex_cfo_group', 'capex_manager_group', 'capex_vp_group',
+              'leave_approval', 'procurement_matrix'
+          ))
+          OR
+          (tenant_id_ IN ('erp', 'test') AND key_ IN (
+              'capex_cfo_group', 'capex_manager_group', 'capex_vp_group',
+              'leave_approval'
+          ))
+      );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
 
 -- 3b. Deployment resource rows (linked to the now-removed decision deployments)
 --     We identify the stale deployments by the known deployment IDs captured at
 --     pre-write verification time. Using explicit IDs makes the predicate safe
 --     against re-seeded deployments that may share the same name in future runs.
-DELETE FROM public.act_dmn_deployment_resource
-WHERE deployment_id_ IN (
-    -- default-tenant v1 DMN deployments (3 bundles: capex group, leave, procurement)
-    '819981e1-5f66-11f1-9d98-0242ac120008',
-    '81ac4696-5f66-11f1-9d98-0242ac120008',
-    '81aeb799-5f66-11f1-9d98-0242ac120008',
-    -- erp-tenant v1 DMN deployments (2 bundles)
-    'a195b20d-668d-11f1-8c09-0242ac12000a',
-    'a1ead6f5-668d-11f1-8c09-0242ac12000a',
-    -- test-tenant v1 DMN deployments (2 bundles)
-    '74f99adf-6683-11f1-8c09-0242ac12000a',
-    '75609a17-6683-11f1-8c09-0242ac12000a'
-);
+DO $$ BEGIN
+    DELETE FROM public.act_dmn_deployment_resource
+    WHERE deployment_id_ IN (
+        -- default-tenant v1 DMN deployments (3 bundles: capex group, leave, procurement)
+        '819981e1-5f66-11f1-9d98-0242ac120008',
+        '81ac4696-5f66-11f1-9d98-0242ac120008',
+        '81aeb799-5f66-11f1-9d98-0242ac120008',
+        -- erp-tenant v1 DMN deployments (2 bundles)
+        'a195b20d-668d-11f1-8c09-0242ac12000a',
+        'a1ead6f5-668d-11f1-8c09-0242ac12000a',
+        -- test-tenant v1 DMN deployments (2 bundles)
+        '74f99adf-6683-11f1-8c09-0242ac12000a',
+        '75609a17-6683-11f1-8c09-0242ac12000a'
+    );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
 
 -- 3c. Deployment records themselves
-DELETE FROM public.act_dmn_deployment
-WHERE id_ IN (
-    '819981e1-5f66-11f1-9d98-0242ac120008',
-    '81ac4696-5f66-11f1-9d98-0242ac120008',
-    '81aeb799-5f66-11f1-9d98-0242ac120008',
-    'a195b20d-668d-11f1-8c09-0242ac12000a',
-    'a1ead6f5-668d-11f1-8c09-0242ac12000a',
-    '74f99adf-6683-11f1-8c09-0242ac12000a',
-    '75609a17-6683-11f1-8c09-0242ac12000a'
-);
-
-COMMIT;
+DO $$ BEGIN
+    DELETE FROM public.act_dmn_deployment
+    WHERE id_ IN (
+        '819981e1-5f66-11f1-9d98-0242ac120008',
+        '81ac4696-5f66-11f1-9d98-0242ac120008',
+        '81aeb799-5f66-11f1-9d98-0242ac120008',
+        'a195b20d-668d-11f1-8c09-0242ac12000a',
+        'a1ead6f5-668d-11f1-8c09-0242ac12000a',
+        '74f99adf-6683-11f1-8c09-0242ac12000a',
+        '75609a17-6683-11f1-8c09-0242ac12000a'
+    );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;

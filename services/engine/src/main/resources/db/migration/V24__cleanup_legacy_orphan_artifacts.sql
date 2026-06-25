@@ -30,12 +30,14 @@
 --     - process / "New Process"      (tenant=default, v4-5): user-authored drafts already deployed
 --
 -- All DELETEs are no-ops when the artifact is already absent (idempotent).
--- Wrapped in a single transaction so a partial failure rolls back cleanly.
-
-BEGIN;
+-- act_* DELETEs are wrapped in DO/EXCEPTION blocks — Flowable tables may not exist on a
+-- fresh database (Flyway runs before Flowable initialises ACT_* tables). On a fresh DB the
+-- blocks silently no-op; there is nothing to clean up anyway. Flyway wraps the whole
+-- migration in a single transaction, so a partial failure rolls back cleanly.
 
 -- ============================================================
 -- SECTION 1: Forms
+-- flowable.form_schemas is a Flyway-managed table — always present, no guard needed.
 -- ============================================================
 
 DELETE FROM flowable.form_schemas
@@ -47,27 +49,39 @@ WHERE form_key IN ('equipment-request-form', 'e2e-delete-test-form');
 -- Order: decisions → resources → deployments (FK: resource → deployment)
 -- ============================================================
 
-DELETE FROM public.act_dmn_hi_decision_execution
-WHERE decision_definition_id_ IN (
-    SELECT id_ FROM public.act_dmn_decision
+DO $$ BEGIN
+    DELETE FROM public.act_dmn_hi_decision_execution
+    WHERE decision_definition_id_ IN (
+        SELECT id_ FROM public.act_dmn_decision
+        WHERE key_ IN ('leave-routing', 'budget-routing', 'ticket-routing')
+          AND (tenant_id_ = 'default' OR tenant_id_ IS NULL OR tenant_id_ = '')
+    );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    DELETE FROM public.act_dmn_decision
     WHERE key_ IN ('leave-routing', 'budget-routing', 'ticket-routing')
-      AND (tenant_id_ = 'default' OR tenant_id_ IS NULL OR tenant_id_ = '')
-);
+      AND (tenant_id_ = 'default' OR tenant_id_ IS NULL OR tenant_id_ = '');
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
 
-DELETE FROM public.act_dmn_decision
-WHERE key_ IN ('leave-routing', 'budget-routing', 'ticket-routing')
-  AND (tenant_id_ = 'default' OR tenant_id_ IS NULL OR tenant_id_ = '');
+DO $$ BEGIN
+    DELETE FROM public.act_dmn_deployment_resource
+    WHERE deployment_id_ IN (
+        SELECT id_ FROM public.act_dmn_deployment
+        WHERE name_ IN ('leave-routing.dmn', 'budget-routing.dmn', 'ticket-routing.dmn')
+          AND (tenant_id_ = 'default' OR tenant_id_ IS NULL OR tenant_id_ = '')
+    );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
 
-DELETE FROM public.act_dmn_deployment_resource
-WHERE deployment_id_ IN (
-    SELECT id_ FROM public.act_dmn_deployment
+DO $$ BEGIN
+    DELETE FROM public.act_dmn_deployment
     WHERE name_ IN ('leave-routing.dmn', 'budget-routing.dmn', 'ticket-routing.dmn')
-      AND (tenant_id_ = 'default' OR tenant_id_ IS NULL OR tenant_id_ = '')
-);
-
-DELETE FROM public.act_dmn_deployment
-WHERE name_ IN ('leave-routing.dmn', 'budget-routing.dmn', 'ticket-routing.dmn')
-  AND (tenant_id_ = 'default' OR tenant_id_ IS NULL OR tenant_id_ = '');
+      AND (tenant_id_ = 'default' OR tenant_id_ IS NULL OR tenant_id_ = '');
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
 
 -- ============================================================
 -- SECTION 3: BPMNs
@@ -75,19 +89,28 @@ WHERE name_ IN ('leave-routing.dmn', 'budget-routing.dmn', 'ticket-routing.dmn')
 -- act_re_procdef.deployment_id_ is NOT a FK; act_ge_bytearray.deployment_id_ IS a FK.
 -- ============================================================
 
--- Collect target deployment IDs into a reusable subquery.
--- Tenant-less orphans (NULL or empty tenant_id_):
---   asset-request-process, general-approval, onboarding-checklist, event-ticket-request,
---   capex-approval-process, leave-request, finance-approval-process, procurement-approval-process
--- ERP-tenant duplicates:
---   capex-approval-process (erp), leave-request (erp)
--- Default-tenant user drafts:
---   process (default, versions >= 4)
-
 -- 3a. Remove procdef_info rows (FK → act_re_procdef)
-DELETE FROM public.act_procdef_info
-WHERE proc_def_id_ IN (
-    SELECT id_ FROM public.act_re_procdef
+DO $$ BEGIN
+    DELETE FROM public.act_procdef_info
+    WHERE proc_def_id_ IN (
+        SELECT id_ FROM public.act_re_procdef
+        WHERE (
+            (key_ IN (
+                'asset-request-process', 'general-approval', 'onboarding-checklist',
+                'event-ticket-request', 'capex-approval-process', 'leave-request',
+                'finance-approval-process', 'procurement-approval-process'
+             ) AND (tenant_id_ IS NULL OR tenant_id_ = ''))
+            OR (key_ IN ('capex-approval-process', 'leave-request')
+                AND tenant_id_ = 'erp')
+            OR (key_ = 'process' AND tenant_id_ = 'default' AND version_ >= 4)
+        )
+    );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+-- 3b. Remove process definitions
+DO $$ BEGIN
+    DELETE FROM public.act_re_procdef
     WHERE (
         (key_ IN (
             'asset-request-process', 'general-approval', 'onboarding-checklist',
@@ -97,29 +120,36 @@ WHERE proc_def_id_ IN (
         OR (key_ IN ('capex-approval-process', 'leave-request')
             AND tenant_id_ = 'erp')
         OR (key_ = 'process' AND tenant_id_ = 'default' AND version_ >= 4)
-    )
-);
-
--- 3b. Remove process definitions
-DELETE FROM public.act_re_procdef
-WHERE (
-    (key_ IN (
-        'asset-request-process', 'general-approval', 'onboarding-checklist',
-        'event-ticket-request', 'capex-approval-process', 'leave-request',
-        'finance-approval-process', 'procurement-approval-process'
-     ) AND (tenant_id_ IS NULL OR tenant_id_ = ''))
-    OR (key_ IN ('capex-approval-process', 'leave-request')
-        AND tenant_id_ = 'erp')
-    OR (key_ = 'process' AND tenant_id_ = 'default' AND version_ >= 4)
-);
+    );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
 
 -- 3c. Remove bytearrays linked to orphan deployments
 -- We identify orphan deployments by the deployment_id_ values that were referenced by
 -- the now-deleted procdef rows. Since procdef rows are already gone, we identify deployments
 -- by name pattern — safe because these deployment names are unique to these orphan processes.
-DELETE FROM public.act_ge_bytearray
-WHERE deployment_id_ IN (
-    SELECT id_ FROM public.act_re_deployment
+DO $$ BEGIN
+    DELETE FROM public.act_ge_bytearray
+    WHERE deployment_id_ IN (
+        SELECT id_ FROM public.act_re_deployment
+        WHERE (
+            (name_ IN (
+                'asset-request-process.bpmn20.xml', 'general-approval.bpmn20.xml',
+                'onboarding-checklist.bpmn20.xml', 'event-ticket-request.bpmn20.xml',
+                'capex-approval-process.bpmn20.xml', 'leave-request.bpmn20.xml',
+                'finance-approval-process.bpmn20.xml', 'procurement-approval-process.bpmn20.xml'
+             ) AND (tenant_id_ IS NULL OR tenant_id_ = ''))
+            OR (name_ IN ('capex-approval-process.bpmn20.xml', 'leave-request.bpmn20.xml')
+                AND tenant_id_ = 'erp')
+            OR (name_ = 'process.bpmn20.xml' AND tenant_id_ = 'default')
+        )
+    );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+-- 3d. Remove the deployment records themselves
+DO $$ BEGIN
+    DELETE FROM public.act_re_deployment
     WHERE (
         (name_ IN (
             'asset-request-process.bpmn20.xml', 'general-approval.bpmn20.xml',
@@ -130,21 +160,6 @@ WHERE deployment_id_ IN (
         OR (name_ IN ('capex-approval-process.bpmn20.xml', 'leave-request.bpmn20.xml')
             AND tenant_id_ = 'erp')
         OR (name_ = 'process.bpmn20.xml' AND tenant_id_ = 'default')
-    )
-);
-
--- 3d. Remove the deployment records themselves
-DELETE FROM public.act_re_deployment
-WHERE (
-    (name_ IN (
-        'asset-request-process.bpmn20.xml', 'general-approval.bpmn20.xml',
-        'onboarding-checklist.bpmn20.xml', 'event-ticket-request.bpmn20.xml',
-        'capex-approval-process.bpmn20.xml', 'leave-request.bpmn20.xml',
-        'finance-approval-process.bpmn20.xml', 'procurement-approval-process.bpmn20.xml'
-     ) AND (tenant_id_ IS NULL OR tenant_id_ = ''))
-    OR (name_ IN ('capex-approval-process.bpmn20.xml', 'leave-request.bpmn20.xml')
-        AND tenant_id_ = 'erp')
-    OR (name_ = 'process.bpmn20.xml' AND tenant_id_ = 'default')
-);
-
-COMMIT;
+    );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
