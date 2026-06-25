@@ -28,8 +28,10 @@ class SecurityConfigTest {
     @Autowired private MockMvc mockMvc;
 
     @Test
-    void actuator_withoutAuth_returns401WhenExposureDisabled() throws Exception {
-        mockMvc.perform(get("/actuator/health"))
+    void actuatorNonHealth_withoutAuth_returns401WhenExposureDisabled() throws Exception {
+        // /actuator/health/** is intentionally permitAll (public liveness/readiness probe).
+        // Use a different actuator endpoint that maps to the authenticated() rule.
+        mockMvc.perform(get("/actuator/info"))
             .andExpect(status().isUnauthorized());
     }
 

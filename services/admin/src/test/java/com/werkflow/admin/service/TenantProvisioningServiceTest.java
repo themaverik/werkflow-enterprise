@@ -33,6 +33,7 @@ class TenantProvisioningServiceTest {
     @Mock UserRepository userRepository;
     @Mock RoleRepository roleRepository;
     @Mock KeycloakUserService keycloakUserService;
+    @Mock ExampleSeedClient exampleSeedClient;
 
     @InjectMocks
     TenantProvisioningService service;

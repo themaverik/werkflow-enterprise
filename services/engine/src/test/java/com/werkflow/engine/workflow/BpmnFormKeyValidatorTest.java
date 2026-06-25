@@ -13,7 +13,6 @@ import org.flowable.engine.repository.ProcessDefinitionQuery;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -33,10 +32,11 @@ class BpmnFormKeyValidatorTest {
 
     @Mock RepositoryService repositoryService;
     @Mock FormSchemaService formSchemaService;
-    @InjectMocks BpmnFormKeyValidator validator;
+    BpmnFormKeyValidator validator;
 
     @BeforeEach
     void stubQuery() {
+        validator = new BpmnFormKeyValidator(repositoryService, formSchemaService, true);
         ProcessDefinition def = stubDefinition();
         ProcessDefinitionQuery query = mock(ProcessDefinitionQuery.class);
         lenient().when(repositoryService.createProcessDefinitionQuery()).thenReturn(query);

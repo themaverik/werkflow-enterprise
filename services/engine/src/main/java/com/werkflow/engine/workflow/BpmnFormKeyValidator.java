@@ -2,13 +2,13 @@ package com.werkflow.engine.workflow;
 
 import com.werkflow.engine.exception.FormNotFoundException;
 import com.werkflow.engine.service.FormSchemaService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.UserTask;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.repository.ProcessDefinition;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.io.ClassPathResource;
@@ -37,15 +37,28 @@ import java.util.List;
  * Implements M4.11 P3 User-Task audit decision D5 (User-Task.md §7.2 F1).
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class BpmnFormKeyValidator {
 
     private final RepositoryService repositoryService;
     private final FormSchemaService formSchemaService;
+    private final boolean validateFormKeys;
+
+    public BpmnFormKeyValidator(RepositoryService repositoryService,
+                                FormSchemaService formSchemaService,
+                                @Value("${werkflow.startup.validate-form-keys:true}") boolean validateFormKeys) {
+        this.repositoryService = repositoryService;
+        this.formSchemaService = formSchemaService;
+        this.validateFormKeys = validateFormKeys;
+    }
 
     @EventListener(ApplicationReadyEvent.class)
     public void validateDeployedBpmns() {
+        if (!validateFormKeys) {
+            log.info("BpmnFormKeyValidator: startup form-key validation disabled " +
+                "(werkflow.startup.validate-form-keys=false)");
+            return;
+        }
         List<ProcessDefinition> definitions = repositoryService
             .createProcessDefinitionQuery()
             .latestVersion()

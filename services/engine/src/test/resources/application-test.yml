@@ -69,6 +69,17 @@ werkflow:
     task-list-ttl: 300
     process-details-ttl: 600
 
+  examples:
+    deploy-on-startup: false
+    reset-on-startup: false
+
+  startup:
+    # The form-key validator queries the Flyway-only `form_schemas` table at
+    # ApplicationReadyEvent. This profile runs Hibernate ddl-auto with Flyway off,
+    # so that table doesn't exist — skip the startup validator in tests. Its logic
+    # is covered by BpmnFormKeyValidatorTest.
+    validate-form-keys: false
+
 logging:
   level:
     root: INFO

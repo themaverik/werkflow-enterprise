@@ -2,6 +2,7 @@ package com.werkflow.admin.controller;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -18,22 +19,22 @@ class UserControllerAuthTest {
 
     @Test
     void getUserById_hasAdminGuard() throws Exception {
-        assertPreAuthorize(UserController.class.getMethod("getUserById", Long.class));
+        assertPreAuthorize(UserController.class.getMethod("getUserById", Long.class, Jwt.class));
     }
 
     @Test
     void getUserByKeycloakId_hasAdminGuard() throws Exception {
-        assertPreAuthorize(UserController.class.getMethod("getUserByKeycloakId", String.class));
+        assertPreAuthorize(UserController.class.getMethod("getUserByKeycloakId", String.class, Jwt.class));
     }
 
     @Test
     void getUserByUsername_hasAdminGuard() throws Exception {
-        assertPreAuthorize(UserController.class.getMethod("getUserByUsername", String.class));
+        assertPreAuthorize(UserController.class.getMethod("getUserByUsername", String.class, Jwt.class));
     }
 
     @Test
     void getUsersByOrganization_hasAdminGuard() throws Exception {
-        assertPreAuthorize(UserController.class.getMethod("getUsersByOrganization", Long.class));
+        assertPreAuthorize(UserController.class.getMethod("getUsersByOrganization", Long.class, Jwt.class));
     }
 
     private void assertPreAuthorize(Method method) {
