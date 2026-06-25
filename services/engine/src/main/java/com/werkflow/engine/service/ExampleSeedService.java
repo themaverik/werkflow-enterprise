@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.werkflow.engine.dto.FormSchema;
 import com.werkflow.engine.dto.SeedResult;
 import com.werkflow.engine.dto.WorkflowSeedResult;
+import com.werkflow.engine.workflow.BpmnFormRefExtractor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.dmn.api.DmnRepositoryService;
@@ -22,7 +23,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -104,7 +104,7 @@ public class ExampleSeedService {
 
         try {
             Document doc = parseXml(bpmnXml);
-            Map<String, FormSchema.FormType> formRefs = extractFormRefs(doc);
+            Map<String, FormSchema.FormType> formRefs = BpmnFormRefExtractor.extractFormRefs(doc);
             Set<String> decisionKeys = extractDecisionKeys(doc);
 
             List<String> newForms = seedForms(folder, tenantId, formRefs);
@@ -237,44 +237,6 @@ public class ExampleSeedService {
     // -------------------------------------------------------------------------
     // BPMN / DMN parsing (XXE-hardened DOM, same approach as BpmnIndicatorScanner)
     // -------------------------------------------------------------------------
-
-    /**
-     * Extracts form key → form type pairs from a BPMN document.
-     *
-     * <ul>
-     *   <li>Start events → {@code TASK_FORM}</li>
-     *   <li>User tasks with {@code flowable:actionType="HUMAN_APPROVAL"} → {@code APPROVAL}</li>
-     *   <li>Other user tasks → {@code TASK_FORM}</li>
-     * </ul>
-     *
-     * <p>Duplicate keys are deduplicated; the first occurrence wins (start event form type is
-     * preserved when the same key appears on both a start event and a user task).
-     */
-    Map<String, FormSchema.FormType> extractFormRefs(Document doc) {
-        Map<String, FormSchema.FormType> refs = new LinkedHashMap<>();
-
-        NodeList startEvents = doc.getElementsByTagNameNS("*", "startEvent");
-        for (int i = 0; i < startEvents.getLength(); i++) {
-            String key = ((Element) startEvents.item(i)).getAttributeNS(FLOWABLE_NS, "formKey");
-            if (key != null && !key.isBlank()) {
-                refs.putIfAbsent(key, FormSchema.FormType.TASK_FORM);
-            }
-        }
-
-        NodeList userTasks = doc.getElementsByTagNameNS("*", "userTask");
-        for (int i = 0; i < userTasks.getLength(); i++) {
-            Element task = (Element) userTasks.item(i);
-            String key = task.getAttributeNS(FLOWABLE_NS, "formKey");
-            if (key == null || key.isBlank()) continue;
-            String actionType = task.getAttributeNS(FLOWABLE_NS, "actionType");
-            FormSchema.FormType type = "HUMAN_APPROVAL".equals(actionType)
-                    ? FormSchema.FormType.APPROVAL
-                    : FormSchema.FormType.TASK_FORM;
-            refs.putIfAbsent(key, type);
-        }
-
-        return Map.copyOf(refs);
-    }
 
     /**
      * Extracts the {@code decisionTableReferenceKey} values from all

@@ -2,8 +2,10 @@ package com.werkflow.engine.init;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.werkflow.engine.dto.FormSchema;
 import com.werkflow.engine.dto.ProcessDefinitionResponse;
 import com.werkflow.engine.service.ProcessDefinitionService;
+import com.werkflow.engine.workflow.BpmnFormRefExtractor;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.RepositoryService;
@@ -17,8 +19,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -50,7 +50,6 @@ import java.util.stream.Collectors;
 public class ProcessExampleDeployer {
 
     private static final String BPMN_SUFFIX = ".bpmn20.xml";
-    private static final String FLOWABLE_NS = "http://flowable.org/bpmn";
     private static final String FORMS_PREFIX = "examples/tenants/default/forms/";
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
@@ -133,17 +132,26 @@ public class ProcessExampleDeployer {
      * occurrence wins (matching ExampleSeedService.extractFormRefs behaviour).
      */
     private void seedFormSchemas(String bpmnXml, String processKey) {
-        Map<String, String> formRefs;
+        Map<String, FormSchema.FormType> formRefs;
         try {
-            formRefs = extractFormRefs(bpmnXml);
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setNamespaceAware(true);
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            factory.setXIncludeAware(false);
+            factory.setExpandEntityReferences(false);
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(new ByteArrayInputStream(bpmnXml.getBytes(StandardCharsets.UTF_8)));
+            formRefs = BpmnFormRefExtractor.extractFormRefs(doc);
         } catch (Exception e) {
             log.warn("Could not parse BPMN XML for form refs in '{}': {}", processKey, e.getMessage());
             return;
         }
 
-        for (Map.Entry<String, String> entry : formRefs.entrySet()) {
+        for (Map.Entry<String, FormSchema.FormType> entry : formRefs.entrySet()) {
             String formKey = entry.getKey();
-            String formType = entry.getValue();
+            String formType = entry.getValue().name();
             String resourcePath = FORMS_PREFIX + formKey + ".json";
             try {
                 Resource formResource = resourcePatternResolver.getResource("classpath:" + resourcePath);
@@ -220,44 +228,6 @@ public class ProcessExampleDeployer {
                 "Form JSON '" + formKey + ".json' could not be parsed for id validation: " + e.getMessage(), e
             );
         }
-    }
-
-    /**
-     * Extracts formKey → formType pairs from BPMN XML.
-     * Returns a LinkedHashMap to preserve insertion order; first occurrence of a key wins.
-     */
-    private Map<String, String> extractFormRefs(String bpmnXml) throws Exception {
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        factory.setNamespaceAware(true);
-        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-        factory.setXIncludeAware(false);
-        factory.setExpandEntityReferences(false);
-        DocumentBuilder builder = factory.newDocumentBuilder();
-        Document doc = builder.parse(new ByteArrayInputStream(bpmnXml.getBytes(StandardCharsets.UTF_8)));
-
-        Map<String, String> refs = new java.util.LinkedHashMap<>();
-
-        NodeList startEvents = doc.getElementsByTagNameNS("*", "startEvent");
-        for (int i = 0; i < startEvents.getLength(); i++) {
-            String key = ((Element) startEvents.item(i)).getAttributeNS(FLOWABLE_NS, "formKey");
-            if (key != null && !key.isBlank()) {
-                refs.putIfAbsent(key, "TASK_FORM");
-            }
-        }
-
-        NodeList userTasks = doc.getElementsByTagNameNS("*", "userTask");
-        for (int i = 0; i < userTasks.getLength(); i++) {
-            Element task = (Element) userTasks.item(i);
-            String key = task.getAttributeNS(FLOWABLE_NS, "formKey");
-            if (key == null || key.isBlank()) continue;
-            String actionType = task.getAttributeNS(FLOWABLE_NS, "actionType");
-            String type = "HUMAN_APPROVAL".equals(actionType) ? "APPROVAL" : "TASK_FORM";
-            refs.putIfAbsent(key, type);
-        }
-
-        return refs;
     }
 
     /**

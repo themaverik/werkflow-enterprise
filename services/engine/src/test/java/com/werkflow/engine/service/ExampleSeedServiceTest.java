@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.werkflow.engine.dto.FormSchema;
 import com.werkflow.engine.dto.SeedResult;
 import com.werkflow.engine.dto.WorkflowSeedResult;
+import com.werkflow.engine.workflow.BpmnFormRefExtractor;
 import org.flowable.dmn.api.DmnDeploymentQuery;
 import org.flowable.dmn.api.DmnRepositoryService;
 import org.flowable.engine.RepositoryService;
@@ -115,7 +116,7 @@ class ExampleSeedServiceTest {
         @DisplayName("start event formKey → TASK_FORM")
         void startEvent_returnsTaskForm() {
             Document doc = parse(CAPEX_BPMN);
-            Map<String, FormSchema.FormType> refs = service.extractFormRefs(doc);
+            Map<String, FormSchema.FormType> refs = BpmnFormRefExtractor.extractFormRefs(doc);
             assertThat(refs).containsEntry("capex-request-form", FormSchema.FormType.TASK_FORM);
         }
 
@@ -123,7 +124,7 @@ class ExampleSeedServiceTest {
         @DisplayName("HUMAN_APPROVAL userTask formKey → APPROVAL")
         void humanApprovalTask_returnsApproval() {
             Document doc = parse(CAPEX_BPMN);
-            Map<String, FormSchema.FormType> refs = service.extractFormRefs(doc);
+            Map<String, FormSchema.FormType> refs = BpmnFormRefExtractor.extractFormRefs(doc);
             assertThat(refs).containsEntry("capex-approval-form", FormSchema.FormType.APPROVAL);
         }
 
@@ -138,7 +139,7 @@ class ExampleSeedServiceTest {
                     <startEvent id="s"/>
                   </process>
                 </definitions>""";
-            assertThat(service.extractFormRefs(parse(bpmn))).isEmpty();
+            assertThat(BpmnFormRefExtractor.extractFormRefs(parse(bpmn))).isEmpty();
         }
     }
 
