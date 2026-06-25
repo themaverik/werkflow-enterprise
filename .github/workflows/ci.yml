@@ -1,10 +1,21 @@
 name: CI / E2E Pipeline
 
+# Minutes-conscious triggers (private repo, limited Actions minutes):
+#  - run only on pushes to main (not every feature/* branch)
+#  - skip doc-only changes
+#  - the heavy E2E job runs on manual dispatch only (see the e2e job's `if:`)
 on:
   push:
-    branches: [main, "feature/*"]
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+  workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -197,6 +208,10 @@ jobs:
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
+    # Manual-only — the E2E job builds 3 services + runs Playwright (the most
+    # expensive job). Trigger it explicitly via the Actions "Run workflow" button
+    # (workflow_dispatch) rather than on every push.
+    if: github.event_name == 'workflow_dispatch'
     timeout-minutes: 30
     needs: [engine-build, admin-build, portal-build]
 
