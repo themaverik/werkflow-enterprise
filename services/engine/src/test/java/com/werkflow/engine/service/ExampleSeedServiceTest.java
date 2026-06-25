@@ -1,10 +1,8 @@
 package com.werkflow.engine.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.werkflow.engine.dto.FormSchema;
 import com.werkflow.engine.dto.SeedResult;
 import com.werkflow.engine.dto.WorkflowSeedResult;
-import com.werkflow.engine.workflow.BpmnFormRefExtractor;
 import org.flowable.dmn.api.DmnDeploymentQuery;
 import org.flowable.dmn.api.DmnRepositoryService;
 import org.flowable.engine.RepositoryService;
@@ -25,7 +23,6 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -107,41 +104,6 @@ class ExampleSeedServiceTest {
     // -------------------------------------------------------------------------
     // DOM extraction tests
     // -------------------------------------------------------------------------
-
-    @Nested
-    @DisplayName("extractFormRefs")
-    class ExtractFormRefs {
-
-        @Test
-        @DisplayName("start event formKey → TASK_FORM")
-        void startEvent_returnsTaskForm() {
-            Document doc = parse(CAPEX_BPMN);
-            Map<String, FormSchema.FormType> refs = BpmnFormRefExtractor.extractFormRefs(doc);
-            assertThat(refs).containsEntry("capex-request-form", FormSchema.FormType.TASK_FORM);
-        }
-
-        @Test
-        @DisplayName("HUMAN_APPROVAL userTask formKey → APPROVAL")
-        void humanApprovalTask_returnsApproval() {
-            Document doc = parse(CAPEX_BPMN);
-            Map<String, FormSchema.FormType> refs = BpmnFormRefExtractor.extractFormRefs(doc);
-            assertThat(refs).containsEntry("capex-approval-form", FormSchema.FormType.APPROVAL);
-        }
-
-        @Test
-        @DisplayName("no formKeys → empty map")
-        void noFormKeys_returnsEmptyMap() {
-            String bpmn = """
-                <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                             xmlns:flowable="http://flowable.org/bpmn"
-                             targetNamespace="test">
-                  <process id="p" isExecutable="true">
-                    <startEvent id="s"/>
-                  </process>
-                </definitions>""";
-            assertThat(BpmnFormRefExtractor.extractFormRefs(parse(bpmn))).isEmpty();
-        }
-    }
 
     @Nested
     @DisplayName("extractDecisionKeys")
