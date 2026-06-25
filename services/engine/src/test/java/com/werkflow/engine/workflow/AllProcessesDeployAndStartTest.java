@@ -74,6 +74,9 @@ class AllProcessesDeployAndStartTest {
         // leave-request: leaveType + leaveDays drive the leave-approval DMN
         vars.put("leaveDays", 2);
         vars.put("leaveType", "annual");
+        // it-helpdesk-ticket: requesterEmail is consumed by both acknowledgeTicket and notifyResolution
+        // sendTasks; notificationDelegate is stubbed but the EL expression is resolved at execution time.
+        vars.put("requesterEmail", "requester@example.com");
         START_VARS = Map.copyOf(vars);
     }
 
@@ -100,6 +103,7 @@ class AllProcessesDeployAndStartTest {
         repositoryService.createDeployment()
                 .addClasspathResource("examples/tenants/default/bpmn/capex-approval-process.bpmn20.xml")
                 .addClasspathResource("examples/tenants/default/bpmn/leave-request.bpmn20.xml")
+                .addClasspathResource("examples/tenants/default/bpmn/it-helpdesk-ticket.bpmn20.xml")
                 .name("quality-gate-bpmn-all")
                 .deploy();
     }
@@ -118,7 +122,8 @@ class AllProcessesDeployAndStartTest {
     static Stream<String> allProcessKeys() {
         return Stream.of(
                 "capex-approval-process",
-                "leave-request"
+                "leave-request",
+                "it-helpdesk-ticket"
         );
     }
 

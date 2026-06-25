@@ -1,5 +1,6 @@
 package com.werkflow.engine.config.flowable;
 
+import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.validation.ProcessValidatorFactory;
 import org.flowable.validation.ProcessValidatorImpl;
@@ -40,6 +41,15 @@ public final class WerkflowProcessEngineCustomizer {
      * Werkflow validator family (relaxed SendTask + ScriptTask/BusinessRuleTask/ManualTask rejecters).
      */
     public static void applyValidatorsAndParseHandlers(ProcessEngineConfigurationImpl configuration) {
+        // Replace the stock SendTaskXMLConverter with our custom one so that
+        // flowable:delegateExpression is preserved in BaseElement.attributes
+        // (the stock converter does not call addCustomAttributes, unlike UserTaskXMLConverter).
+        // NOTE: addConverter mutates a JVM-global static converter map keyed by element type
+        // ("sendTask"). Repeated calls on the same JVM (e.g. multiple in-memory test engines)
+        // are intentionally idempotent — the same key is overwritten with an equivalent instance.
+        // Do NOT guard this call or move it inside a condition.
+        BpmnXMLConverter.addConverter(new WerkflowSendTaskXMLConverter());
+
         configuration.setCustomDefaultBpmnParseHandlers(List.of(new WerkflowSendTaskParseHandler()));
 
         ProcessValidatorImpl processValidator =

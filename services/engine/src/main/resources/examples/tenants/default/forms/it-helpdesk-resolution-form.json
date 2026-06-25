@@ -1,0 +1,35 @@
+{
+  "id": "it-helpdesk-resolution-form",
+  "name": "IT Helpdesk Resolution",
+  "type": "default",
+  "schemaVersion": 12,
+  "components": [
+    {
+      "type": "text",
+      "text": "<h3>Ticket Resolution</h3><p>Record the resolution details for this ticket.</p>"
+    },
+    {
+      "type": "textarea",
+      "key": "resolutionNotes",
+      "label": "Resolution Notes",
+      "placeholder": "Describe the steps taken to resolve the issue",
+      "validate": {
+        "required": true,
+        "minLength": 10
+      }
+    },
+    {
+      "type": "select",
+      "key": "resolutionStatus",
+      "label": "Resolution Status",
+      "values": [
+        { "label": "Resolved", "value": "Resolved" },
+        { "label": "Won't Fix", "value": "Won't Fix" },
+        { "label": "Duplicate", "value": "Duplicate" }
+      ],
+      "validate": {
+        "required": true
+      }
+    }
+  ]
+}

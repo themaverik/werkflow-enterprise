@@ -1,0 +1,66 @@
+{
+  "id": "it-helpdesk-ticket-form",
+  "name": "IT Helpdesk Ticket",
+  "type": "default",
+  "schemaVersion": 12,
+  "components": [
+    {
+      "type": "text",
+      "text": "<h3>IT Helpdesk Ticket</h3><p>Submit a request to the IT support team.</p>"
+    },
+    {
+      "type": "textfield",
+      "key": "subject",
+      "label": "Subject",
+      "placeholder": "Brief description of the issue",
+      "validate": {
+        "required": true,
+        "minLength": 5,
+        "maxLength": 200
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "description",
+      "label": "Description",
+      "placeholder": "Provide a detailed description of the issue"
+    },
+    {
+      "type": "select",
+      "key": "category",
+      "label": "Category",
+      "values": [
+        { "label": "Hardware", "value": "Hardware" },
+        { "label": "Software", "value": "Software" },
+        { "label": "Access", "value": "Access" },
+        { "label": "Other", "value": "Other" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "select",
+      "key": "priority",
+      "label": "Priority",
+      "values": [
+        { "label": "Low", "value": "Low" },
+        { "label": "Medium", "value": "Medium" },
+        { "label": "High", "value": "High" }
+      ],
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "requesterEmail",
+      "label": "Your Email Address",
+      "placeholder": "Enter your email address",
+      "validate": {
+        "required": true,
+        "validationType": "email"
+      }
+    }
+  ]
+}

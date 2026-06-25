@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             typeLanguage="http://www.w3.org/2001/XMLSchema"
+             expressionLanguage="http://www.w3.org/1999/XPath"
+             targetNamespace="http://werkflow.com/bpmn/examples">
+
+  <process id="it-helpdesk-ticket" name="IT Helpdesk Ticket" isExecutable="true"
+           flowable:versionTag="1">
+
+    <documentation>IT helpdesk ticket workflow. Requester submits a ticket; an acknowledgement
+notification is sent via sendTask; IT Support resolves the ticket and a resolution notification
+is sent. Demonstrates bpmn:sendTask wired to notificationDelegate.</documentation>
+
+    <extensionElements>
+      <flowable:properties>
+        <flowable:property name="category" value="examples"/>
+      </flowable:properties>
+    </extensionElements>
+
+    <!-- Start Event -->
+    <startEvent id="submitTicket" name="Submit Ticket"
+                flowable:formKey="it-helpdesk-ticket-form">
+      <documentation>Requester submits an IT helpdesk ticket. Form fields: subject, description,
+category, priority, requesterEmail.</documentation>
+    </startEvent>
+
+    <!-- SendTask: Acknowledge receipt -->
+    <sendTask id="acknowledgeTicket" name="Acknowledge Ticket"
+              flowable:delegateExpression="${notificationDelegate}">
+      <documentation>Sends an acknowledgement email to the requester via notificationDelegate.</documentation>
+      <extensionElements>
+        <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
+        <flowable:field name="recipient"><flowable:string>${requesterEmail}</flowable:string></flowable:field>
+        <flowable:field name="templateKey"><flowable:string>ticket-acknowledged</flowable:string></flowable:field>
+      </extensionElements>
+    </sendTask>
+
+    <!-- UserTask: IT Support resolves the ticket -->
+    <userTask id="resolveTicket" name="Resolve Ticket"
+              flowable:candidateGroups="IT_SUPPORT,SUPER_ADMIN"
+              flowable:formKey="it-helpdesk-resolution-form">
+      <documentation>IT Support agent reviews and resolves the ticket.</documentation>
+    </userTask>
+
+    <!-- SendTask: Notify resolution -->
+    <sendTask id="notifyResolution" name="Notify Resolution"
+              flowable:delegateExpression="${notificationDelegate}">
+      <documentation>Sends a resolution email to the requester via notificationDelegate.</documentation>
+      <extensionElements>
+        <flowable:field name="channel"><flowable:string>email</flowable:string></flowable:field>
+        <flowable:field name="recipient"><flowable:string>${requesterEmail}</flowable:string></flowable:field>
+        <flowable:field name="templateKey"><flowable:string>ticket-resolved</flowable:string></flowable:field>
+      </extensionElements>
+    </sendTask>
+
+    <!-- End Event -->
+    <endEvent id="ticketClosed" name="Ticket Closed"/>
+
+    <!-- Sequence Flows -->
+    <sequenceFlow id="flow1" sourceRef="submitTicket" targetRef="acknowledgeTicket"/>
+    <sequenceFlow id="flow2" sourceRef="acknowledgeTicket" targetRef="resolveTicket"/>
+    <sequenceFlow id="flow3" sourceRef="resolveTicket" targetRef="notifyResolution"/>
+    <sequenceFlow id="flow4" sourceRef="notifyResolution" targetRef="ticketClosed"/>
+
+  </process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_it-helpdesk-ticket">
+    <bpmndi:BPMNPlane id="BPMNPlane_it-helpdesk-ticket" bpmnElement="it-helpdesk-ticket">
+
+      <bpmndi:BPMNShape id="submitTicket_di" bpmnElement="submitTicket">
+        <omgdc:Bounds x="152" y="262" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="138" y="305" width="64" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="acknowledgeTicket_di" bpmnElement="acknowledgeTicket">
+        <omgdc:Bounds x="250" y="240" width="120" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="resolveTicket_di" bpmnElement="resolveTicket">
+        <omgdc:Bounds x="430" y="240" width="120" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="notifyResolution_di" bpmnElement="notifyResolution">
+        <omgdc:Bounds x="610" y="240" width="120" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="ticketClosed_di" bpmnElement="ticketClosed">
+        <omgdc:Bounds x="792" y="262" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="769" y="305" width="82" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="flow1_di" bpmnElement="flow1">
+        <omgdi:waypoint x="188" y="280"/><omgdi:waypoint x="250" y="280"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow2_di" bpmnElement="flow2">
+        <omgdi:waypoint x="370" y="280"/><omgdi:waypoint x="430" y="280"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow3_di" bpmnElement="flow3">
+        <omgdi:waypoint x="550" y="280"/><omgdi:waypoint x="610" y="280"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow4_di" bpmnElement="flow4">
+        <omgdi:waypoint x="730" y="280"/><omgdi:waypoint x="792" y="280"/>
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</definitions>
