@@ -2,10 +2,11 @@ import createNextIntlPlugin from 'next-intl/plugin'
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
 
-// 'standalone' bundles the server for Docker; Netlify's Next.js plugin handles its own output.
+// 'standalone' bundles the server for Docker (DigitalOcean Droplet deploy).
+// Non-Docker builds (local dev) use Next.js' default output.
 const isDockerBuild = process.env.DOCKER_BUILD === 'true'
 
-// Backend base URLs — override in Netlify env vars to point at the deployed backend.
+// Backend base URLs — override via deployment env vars to point at the deployed backend.
 const engineBaseUrl = process.env.ENGINE_BASE_URL || 'http://localhost:8081'
 const adminBaseUrl = process.env.ADMIN_BASE_URL || 'http://localhost:8083'
 // KC public URL — browser makes direct cross-origin requests (not proxied through Next.js).

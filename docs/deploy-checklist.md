@@ -1,7 +1,7 @@
 # Production Deploy Checklist — Werkflow Enterprise
 
 **Scope:** First deploy + every subsequent release  
-**Environments:** Docker-based server deployment + Netlify portal  
+**Environments:** Docker Compose on a DigitalOcean Droplet (engine, admin, portal, Keycloak, Postgres, OpenBao)  
 
 ---
 
@@ -28,22 +28,16 @@
   - `werkflow-engine` — `/actuator/health`
   - `werkflow-admin` — `/actuator/health`
 
-### Portal (Netlify or Docker)
+### Portal (Docker — DigitalOcean Droplet)
 
-**Netlify:**
-- [ ] Build env vars set in Netlify UI (see `netlify.toml` env var list)
-- [ ] `ENGINE_BASE_URL` and `ADMIN_BASE_URL` point to publicly reachable backend URLs
-- [ ] `NEXTAUTH_URL` set to the Netlify deployment URL (no trailing slash)
-- [ ] Keycloak redirect URIs updated to include the Netlify domain:
-  - Valid redirect URI: `https://<netlify-domain>/api/auth/callback/keycloak`
-  - Valid post-logout URI: `https://<netlify-domain>`
-- [ ] `DOCKER_BUILD` env var NOT set on Netlify (or explicitly set to `false`)
-- [ ] `@netlify/plugin-nextjs` installed: `npm install --save-dev @netlify/plugin-nextjs`
-- [ ] Portal build succeeds: `npm run build` clean with no TypeScript errors
-
-**Docker:**
 - [ ] `DOCKER_BUILD=true` set in the container env (enables `output: 'standalone'`)
+- [ ] `ENGINE_BASE_URL` and `ADMIN_BASE_URL` point to the backend services reachable from the portal container
+- [ ] `NEXTAUTH_URL` set to the public portal URL (no trailing slash)
+- [ ] Keycloak redirect URIs updated to include the public portal domain:
+  - Valid redirect URI: `https://<portal-domain>/api/auth/callback/keycloak`
+  - Valid post-logout URI: `https://<portal-domain>`
 - [ ] Portal container builds successfully from `Dockerfile`
+- [ ] Portal build succeeds: `npm run build` clean with no TypeScript errors
 
 ### Security Baseline
 
