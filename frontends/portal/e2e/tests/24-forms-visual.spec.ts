@@ -2,18 +2,20 @@
  * 24 — Forms Visual Builder
  *
  * Tests form lifecycle via /forms.
- * Creates the four form definitions required by Layer 3 workflow tests:
+ * Creates the two non-seeded form definitions required by Layer 3 workflow tests:
  *   - event-ticket-form
  *   - leave-request-form     (must include a leaveDays field)
  *   - equipment-request-form
- *   - budget-request-form
+ * Seeded forms (deployed at engine startup via ProcessExampleDeployer) — verified via API only:
+ *   - it-helpdesk-ticket-form
+ *   - it-helpdesk-resolution-form
  *
  * Strategy:
  *   - Check via API whether each form already exists (idempotent re-runs).
  *   - If missing, navigate to /forms/new, fill the form key field, and click Save.
  *     The form-js editor starts with an empty schema — the Save action registers
  *     the form in the engine so it can be linked to BPMN tasks in Layer 3.
- *   - afterAll does NOT delete the four workflow forms — they are required by Layer 3.
+ *   - afterAll does NOT delete the workflow forms — they are required by Layer 3.
  *   - A dedicated "e2e-delete-test-form" is created and deleted to exercise the delete flow.
  *
  * API: engine at http://localhost:8081 (same pattern as specs 21 & 23)
@@ -28,12 +30,15 @@ const ENGINE_URL = process.env.E2E_ENGINE_URL ?? 'http://localhost:8081'
 const KEYCLOAK_URL = process.env.E2E_KEYCLOAK_URL ?? 'http://localhost:8090'
 const PORTAL_CLIENT_SECRET = process.env.E2E_PORTAL_CLIENT_SECRET ?? 'REDACTED_KC_PORTAL_SECRET'
 
-// Forms required by Layer 3 — must persist after this spec
+// Forms required by Layer 3 — must persist after this spec.
+// it-helpdesk-ticket-form and it-helpdesk-resolution-form are SEEDED (deployed at engine startup
+// by ProcessExampleDeployer); they are not created via UI here, only verified via API in 24.15.
 const WORKFLOW_FORMS = [
   'event-ticket-form',
   'leave-request-form',
   'equipment-request-form',
-  'budget-request-form',
+  'it-helpdesk-ticket-form',
+  'it-helpdesk-resolution-form',
 ]
 
 const DELETE_TEST_FORM_KEY = 'e2e-delete-test-form'
@@ -218,24 +223,20 @@ test.describe('24 — Forms Visual Builder — admin', () => {
     await expect(page.getByText(/equipment.?request.?form|equipment request form/i).first()).toBeVisible({ timeout: 10000 })
   })
 
-  // ── 24.10 — Create budget-request-form ──────────────────────────────────────
+  // ── 24.10 — it-helpdesk-ticket-form in list (seeded) ────────────────────────
 
-  test('24.10 — Create "budget-request-form" via UI', async ({ page }) => {
-    const exists = await formExistsApi(adminToken, WORKFLOW_FORMS[3])
-    if (exists) {
-      test.info().annotations.push({ type: 'note', description: `${WORKFLOW_FORMS[3]} already exists — skipping UI create` })
-      return
-    }
-    await createFormViaUI(page, WORKFLOW_FORMS[3])
-    test.info().annotations.push({ type: 'note', description: `${WORKFLOW_FORMS[3]} created via UI` })
-  })
-
-  // ── 24.11 — budget-request-form in list ─────────────────────────────────────
-
-  test('24.11 — budget-request-form appears in /forms list', async ({ page }) => {
+  test('24.10 — it-helpdesk-ticket-form appears in /forms list (seeded)', async ({ page }) => {
     await page.goto('/forms')
     await expect(page.getByText(/forms/i).first()).toBeVisible({ timeout: 10000 })
-    await expect(page.getByText(/budget.?request.?form|budget request form/i).first()).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/it.?helpdesk.?ticket.?form|it helpdesk ticket form/i).first()).toBeVisible({ timeout: 10000 })
+  })
+
+  // ── 24.11 — it-helpdesk-resolution-form in list (seeded) ────────────────────
+
+  test('24.11 — it-helpdesk-resolution-form appears in /forms list (seeded)', async ({ page }) => {
+    await page.goto('/forms')
+    await expect(page.getByText(/forms/i).first()).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/it.?helpdesk.?resolution.?form|it helpdesk resolution form/i).first()).toBeVisible({ timeout: 10000 })
   })
 
   // ── 24.12 — Edit navigates to /forms/edit/{key} ─────────────────────────────
@@ -308,9 +309,9 @@ test.describe('24 — Forms Visual Builder — admin', () => {
     }
   })
 
-  // ── 24.15 — All four workflow forms accessible via API ───────────────────────
+  // ── 24.15 — All five workflow forms accessible via API ───────────────────────
 
-  test('24.15 — All four workflow forms exist in the engine (API verification)', async () => {
+  test('24.15 — All five workflow forms exist in the engine (API verification)', async () => {
     const forms = await listFormsApi(adminToken)
     const keys = forms.map((f: any) => f.key)
 

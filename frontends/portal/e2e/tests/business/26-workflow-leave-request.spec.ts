@@ -31,8 +31,8 @@
  */
 
 import { test, expect, Page } from '@playwright/test'
-import { STORAGE_STATES, TEST_USERS } from '../fixtures/auth'
-import { getLatestEmail } from '../fixtures/mailpit'
+import { STORAGE_STATES, TEST_USERS } from '../../fixtures/auth'
+import { getLatestEmail } from '../../fixtures/mailpit'
 
 const ENGINE_URL           = process.env.E2E_ENGINE_URL           ?? 'http://localhost:8081'
 const KEYCLOAK_URL         = process.env.E2E_KEYCLOAK_URL         ?? 'http://localhost:8090'

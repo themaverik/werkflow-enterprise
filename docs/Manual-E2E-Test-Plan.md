@@ -56,7 +56,7 @@ docker compose restart engine
 
 | # | Test Name | Bucket | Symbols Used | Connectors? | DMN? | One-Line Description | Maps to Automated Spec | Pass/Fail | Result Summary |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | Simple Finance Approval — Happy Path | A | <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3 L33 18 L18 33 L3 18 Z"/><line x1="12" y1="12" x2="24" y2="24" stroke-width="3"/><line x1="24" y1="12" x2="12" y2="24" stroke-width="3"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> None start, user task, exclusive gateway (approve branch), none end | No | No | Employee submits a finance review request; manager approves via exclusive gateway; process completes. | `04-task-approval.spec.ts`, `21-core-user-flows.spec.ts` | Pending | _(to be filled at execution)_ |
+| 1 | IT Helpdesk Ticket — Acknowledge → Resolve → Notify | A | <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><rect x="7" y="8" width="10" height="8" rx="1" fill="currentColor" stroke="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><rect x="7" y="8" width="10" height="8" rx="1" fill="currentColor" stroke="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> None start (form-linked), send task (acknowledge), user task (IT_SUPPORT/SUPER_ADMIN), send task (notify resolution), none end | No (notificationDelegate, no external credentials required) | No | Employee submits an IT helpdesk ticket; engine fires acknowledge email immediately; IT support claims and resolves the ticket; engine fires resolution email; process completes. Demonstrates sendTask element family on a seeded process. | `business/28-workflow-it-helpdesk.spec.ts` | Pending | _(to be filled at execution)_ |
 | 2 | DMN Reuse — Author New BPMN Referencing Seeded `leave_approval` DMN | A | <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="13" cy="13" r="4"/><circle cx="19" cy="13" r="4"/><circle cx="16" cy="19" r="2"/><text x="28" y="23" font-size="8" fill="currentColor" stroke="none" font-family="monospace">DMN</text></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3 L33 18 L18 33 L3 18 Z"/><line x1="12" y1="12" x2="24" y2="24" stroke-width="3"/><line x1="24" y1="12" x2="12" y2="24" stroke-width="3"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> None start, service task (`flowable:type="dmn"`), exclusive gateway, none end x2 | No | Yes (`leave-approval.dmn` reused by key) | Admin authors a new BPMN in the designer that references the seeded `leave_approval` DMN by `decisionTableReferenceKey`; supplies `leaveDays=2, leaveType="annual"`; DMN auto-approves; process completes with no user task. Demonstrates seed-artifact reuse. | No current automated equivalent | Pending | _(to be filled at execution)_ |
 | 3 | Form Authoring Round-Trip — Author Form, Attach to BPMN, Run | B | <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> None start, user task (with newly authored form), none end | No | No | Admin authors a 3-field form (text + number + select) at `/forms/new`, then authors a new BPMN with a user task referencing the new form; deploys; starts; claims; fills; completes. End-to-end form designer round-trip. | `27-bpmn-designer-m411-smoke.spec.ts` covers BPMN authoring leg only; no automated coverage of the form-authoring step | Pending | _(to be filled at execution)_ |
 | 4 | Notification on Task Assignment | B | <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><rect x="7" y="8" width="10" height="8" rx="1" fill="currentColor" stroke="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> None start, service task (send notification), user task, none end | Notification (email) | No | Admin starts a procurement request; system sends an email notification when the first user task is assigned; manager sees the task in the task list. | `13-action-blocks.spec.ts`, `05-requests.spec.ts` | Pending | _(to be filled at execution)_ |
@@ -71,30 +71,40 @@ docker compose restart engine
 
 ## Test Detail Cards
 
-### Test 1 — Simple Finance Approval: Happy Path
+### Test 1 — IT Helpdesk Ticket: Acknowledge → Resolve → Notify
 
 **Bucket:** A — Basic
-**Prerequisites:** Login as employee (`E2E_EMPLOYEE_USERNAME`)
-**Symbols used:** <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3 L33 18 L18 33 L3 18 Z"/><line x1="12" y1="12" x2="24" y2="24" stroke-width="3"/><line x1="24" y1="12" x2="12" y2="24" stroke-width="3"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> None start event, user task (`financeReview`), exclusive gateway (`approvalGateway`), none end event (`endApproved`)
-**Process:** `finance-approval-process` (seeded example)
-**Lifecycle:** Reuses seeded `finance-approval-process` BPMN (read-only). No test-authored artifacts.
+**Prerequisites:** Login as employee (`E2E_EMPLOYEE_USERNAME`) to start; login as IT support or admin (`E2E_ADMIN_USERNAME`) to resolve. Mailpit running at `http://localhost:8025` for email assertions (soft — mark N/A if not configured).
+**Symbols used:** <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><rect x="7" y="8" width="10" height="8" rx="1" fill="currentColor" stroke="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><rect x="7" y="8" width="10" height="8" rx="1" fill="currentColor" stroke="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> None start event (form-linked), send task (`acknowledgeTicket`), user task (`resolveTicket`), send task (`notifyResolution`), none end event
+**Process:** `it-helpdesk-ticket` (seeded example — deployed at engine startup)
+**Lifecycle:** Reuses seeded `it-helpdesk-ticket` BPMN + `it-helpdesk-ticket-form` + `it-helpdesk-resolution-form` (all read-only). No test-authored artifacts.
+**Maps to:** `e2e/tests/business/28-workflow-it-helpdesk.spec.ts`
 
 **Steps:**
 1. Navigate to `/processes`
-2. Confirm `Finance Approval Process` is listed
+2. Confirm `IT Helpdesk Ticket` (or similar display name) is listed
 3. Click "Start Process"
-4. Confirm the start form renders (or process starts directly if no start form is attached)
-5. Submit the form / start the process
-6. Confirm redirect to `/requests`; note the new process instance appears as active
-7. Log out; log in as manager (`E2E_MANAGER_USERNAME`)
-8. Navigate to `/tasks`
-9. Confirm "Finance Review" task is listed
-10. Click the task; claim it
-11. Select "Approve" (or submit the approval decision)
-12. Confirm the task disappears from the active task list
-13. Navigate to the process instance in `/requests`; confirm status is "Completed"
+4. Confirm the start form renders with fields: Subject, Description, Category (Hardware/Software/Access/Other), Priority (Low/Medium/High), Requester Email
+5. Fill in:
+   - Subject: `Printer jams on every print job`
+   - Description: `The printer on floor 3 jams on every print job`
+   - Category: `Hardware`
+   - Priority: `High`
+   - Requester Email: your email address (e.g. from `.env.shared`)
+6. Submit the form; confirm redirect to `/requests`; note the new instance appears as active
+7. Open Mailpit (`http://localhost:8025`); confirm an email with subject "Your IT ticket has been received" arrived at the requester email (sendTask `acknowledgeTicket` fires synchronously on start)
+8. Log out; log in as admin or IT support user (`E2E_ADMIN_USERNAME`)
+9. Navigate to `/tasks`
+10. Confirm `resolveTicket` task is listed
+11. Click the task; claim it
+12. Fill in the resolution form:
+    - Resolution Notes: `Replaced toner cartridge. Printer is now operational.`
+    - Resolution Status: `Resolved`
+13. Submit / complete the task
+14. Check Mailpit; confirm a second email with subject "Your IT ticket has been resolved" arrived at the requester email (sendTask `notifyResolution` fires after the userTask completes)
+15. Navigate to `/requests` as employee; confirm the instance status is "Completed"
 
-**Expected outcome:** Process instance reaches `endApproved`; no remaining active tasks.
+**Expected outcome:** Process instance reaches the none end event; two emails in Mailpit (acknowledge + resolution); no remaining active tasks.
 
 ---
 
@@ -186,15 +196,16 @@ docker compose restart engine
 **Bucket:** B — Events + diverse task types
 **Prerequisites:** Login as admin; Mailpit running at `http://localhost:8025` (or equivalent mail catcher)
 **Symbols used:** <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><rect x="7" y="8" width="10" height="8" rx="1" fill="currentColor" stroke="none"/></svg> None start, user task, email notification (via `GlobalTaskNotificationListener`)
-**Process:** `finance-approval-process`
-**Lifecycle:** Reuses seeded `finance-approval-process` BPMN (read-only). Side-effect tests `GlobalTaskNotificationListener` (engine-wired, no artifact).
+**Process:** `leave-request` (seeded example; substitute `capex-approval-process` if leave-request is already in use)
+**Lifecycle:** Reuses seeded `leave-request` BPMN (read-only). Side-effect tests `GlobalTaskNotificationListener` (engine-wired, no artifact).
 
 **Steps:**
-1. Navigate to `/processes`; start `Finance Approval Process`
-2. Immediately navigate to Mailpit (`http://localhost:8025`)
-3. Confirm an email notification was sent for task assignment (subject should reference the process or task name)
-4. Log in as manager; navigate to `/tasks`
-5. Confirm "Finance Review" task is present; claim it
+1. Navigate to `/processes`; start `Leave Request`
+2. Fill in the leave request form (any valid values) and submit
+3. Immediately navigate to Mailpit (`http://localhost:8025`)
+4. Confirm an email notification was sent for task assignment (subject should reference the process or task name)
+5. Log in as manager; navigate to `/tasks`
+6. Confirm a leave approval task is present; claim it
 
 **Expected outcome:** Email notification received in Mailpit within 10 seconds of process start; task appears in manager's task list.
 
@@ -364,7 +375,7 @@ Login as `jane.employee` for the process start; `john.manager` for organiser rev
 **Symbols used:** <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="13" cy="13" r="4"/><circle cx="19" cy="13" r="4"/><circle cx="16" cy="19" r="2"/><text x="28" y="23" font-size="8" fill="currentColor" stroke="none" font-family="monospace">DMN</text></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3 L33 18 L18 33 L3 18 Z"/><line x1="12" y1="12" x2="24" y2="24" stroke-width="3"/><line x1="24" y1="12" x2="12" y2="24" stroke-width="3"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><rect x="7" y="8" width="10" height="8" rx="1" fill="currentColor" stroke="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> User-initiated start (form-linked), service task (DMN — `ticket-routing`), exclusive gateway, service task (notification), user task, none end
 **Connectors:** `${notificationDelegate}` (email)
 **DMN:** `ticket-routing` (inline in spec 25 or pre-deployed)
-**Lifecycle:** **Manually deploys** `event-ticket-request` BPMN + `ticket-routing` DMN + ticket form (NOT seeded; see prerequisites). Treat these like `e2e-` artifacts — delete after run per Rule 4. (Will be replaced by IT Helpdesk seed once the reshuffle lands; see Seed Library Reshuffle section.)
+**Lifecycle:** **Manually deploys** `event-ticket-request` BPMN + `ticket-routing` DMN + ticket form (NOT seeded; see prerequisites). Treat these like `e2e-` artifacts — delete after run per Rule 4. The seed library reshuffle has landed (session 42) — IT Helpdesk is now Test 1. Event Ticket Request is retained here as the connector + DMN demo in Bucket D.
 **Maps to:** `e2e/tests/business/25-workflow-event-ticket.spec.ts` tests 25.1–25.4
 
 **Scenario A (paid ticket, manager approval required):**
@@ -397,42 +408,48 @@ Login as `jane.employee` for the process start; `john.manager` for organiser rev
 
 ---
 
-## Seed Library Reshuffle (Approved, Pending Implementation)
+## Seed Library Reshuffle (Implemented — session 42, 2026-06-25)
 
-Per seed library curation policy (see `BPMN-Symbol-Reference.md` start-event row terminology note and the policy memo in commit history), the following changes are approved for a separate code session:
+Per seed library curation policy (see `BPMN-Symbol-Reference.md` start-event row terminology note and the policy memo in commit history), the following changes were implemented in session 42:
 
-### REMOVE — `finance-approval-process`
+### REMOVED — `finance-approval-process`
 
-**Reason:** Its userTask + exclusiveGateway pattern is already fully covered by `leave-request` (auto-approve gateway) and `capex-approval-process` (multi-tier gateway). It is in the path/subprocess of procurement/capex approval patterns. No element-family coverage is lost by removal; the seed list goes 4 → 3 momentarily before the IT Helpdesk addition.
+**Reason:** Its userTask + exclusiveGateway pattern is already fully covered by `leave-request` (auto-approve gateway) and `capex-approval-process` (multi-tier gateway). No element-family coverage was lost by removal.
 
-**Affected files (when the code session runs):**
-- `services/engine/src/main/resources/examples/tenants/default/bpmn/finance-approval-process.bpmn20.xml` (delete)
-- `services/engine/src/main/resources/examples/tenants/default/forms/budget-request-form.json` (delete)
-- `ProcessExampleDeployer` example registry (deregister)
-- New Flyway migration (cleanup deployment + form_schemas rows for fresh deploy; orphan-prune already auto-runs)
+**Affected files (removed):**
+- `services/engine/src/main/resources/examples/tenants/default/bpmn/finance-approval-process.bpmn20.xml`
+- `services/engine/src/main/resources/examples/tenants/default/forms/budget-request-form.json`
+- `ProcessExampleDeployer` example registry (deregistered)
+- Flyway migration V30 (cleanup of deployment + form_schemas rows for fresh deploy)
 
-### ADD — IT Helpdesk Ticket (replaces `finance-approval` slot)
+### ADDED — IT Helpdesk Ticket (replaces `finance-approval` slot)
 
-**Reason:** SendTask is the only element family with zero seed representation. Adding this example brings BPMN element coverage to: userTask, serviceTask (incl. DMN variant), sendTask, exclusiveGateway across the seed set.
+**Reason:** SendTask was the only element family with zero seed representation. Adding this example brings BPMN element coverage to: userTask, serviceTask (incl. DMN variant), sendTask across the seed set.
 
-**Self-containment requirement (gate before seeding):** Confirm that `NotificationDelegate` (which backs the `SendTask` `SEND_NOTIFICATION` action) does NOT require external SMTP / Slack credentials. The SendTask must either (a) no-op gracefully when Mailpit/SMTP is absent, or (b) write to an in-process log channel. If it requires OpenBao credentials, the example violates inclusion criterion 2 (self-contained on clean tenant) and must NOT be seeded — fall back to a demo-authored test only.
+**As-built BPMN structure (implemented — no gateway, two unconditional sendTasks):**
 
-**Proposed BPMN structure:**
+NOTE: The original urgency-gateway/conditional-notify proposal was NOT built. The team chose two unconditional sendTasks (acknowledge on start + notify on resolution), no exclusive gateway. This is simpler and demonstrates the sendTask element family cleanly.
 
-- <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> User-initiated start (form-linked: ticket type, urgency, description)
-- <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3 L33 18 L18 33 L3 18 Z"/><line x1="12" y1="12" x2="24" y2="24" stroke-width="3"/><line x1="24" y1="12" x2="12" y2="24" stroke-width="3"/></svg> Exclusive gateway "Urgent?" with condition `${urgency == 'high'}`
-  - True: <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><rect x="7" y="8" width="10" height="8" rx="1" fill="currentColor" stroke="none"/></svg> Send task "Notify On-Call Team" (`SEND_NOTIFICATION`, email channel)
-  - Both branches merge to:
-- <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> User task "Resolve Ticket" (`HUMAN_APPROVAL`, `SUPER_ADMIN`)
-- <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> None end "Ticket Resolved"
+- <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="15"/></svg> User-initiated start `submitTicket` (form: `it-helpdesk-ticket-form` — fields: subject, description, category [Hardware/Software/Access/Other], priority [Low/Medium/High], requesterEmail [email-validated])
+- <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><rect x="7" y="8" width="10" height="8" rx="1" fill="currentColor" stroke="none"/></svg> `bpmn:sendTask` `acknowledgeTicket` — notificationDelegate, templateKey `ticket-acknowledged`, recipient `${requesterEmail}` (fires synchronously ON START)
+- <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><circle cx="16" cy="13" r="4" fill="currentColor" stroke="none"/><path d="M8,27 Q16,19 24,27" fill="none"/></svg> UserTask `resolveTicket` — candidateGroups `IT_SUPPORT,SUPER_ADMIN`, form: `it-helpdesk-resolution-form` (fields: resolutionNotes, resolutionStatus [Resolved/Won't Fix/Duplicate])
+- <svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 60 36" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="54" height="30" rx="6"/><rect x="7" y="8" width="10" height="8" rx="1" fill="currentColor" stroke="none"/></svg> `bpmn:sendTask` `notifyResolution` — notificationDelegate, templateKey `ticket-resolved` (fires AFTER the userTask completes)
+- <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="4"><circle cx="18" cy="18" r="15"/></svg> None end
 
-**Business grounding:** IT helpdesk ticket routing with conditional escalation email for high-urgency tickets.
+**Seeded notification templates:**
+- `ticket-acknowledged`: subject "Your IT ticket has been received", email to `${requesterEmail}`
+- `ticket-resolved`: subject "Your IT ticket has been resolved", email to `${requesterEmail}`
 
-**Implementation tracking:** See Master Roadmap entry "Seed library reshuffle (finance-approval → IT Helpdesk)".
+**Affected files (added/modified):**
+- `services/engine/src/main/resources/examples/tenants/default/bpmn/it-helpdesk-ticket.bpmn20.xml`
+- `services/engine/src/main/resources/examples/tenants/default/forms/it-helpdesk-ticket-form.json`
+- `services/engine/src/main/resources/examples/tenants/default/forms/it-helpdesk-resolution-form.json`
+- Flyway migration V30 (seeds the above + removes finance-approval artifacts)
+- `WerkflowSendTaskXMLConverter` (amended to support sendTask in engine; see ADR-015 amendment)
 
 ### DROPPED — Simple PO Approval (no new coverage)
 
-The previously proposed "Simple PO Approval" BPMN has been **dropped**. Per the seed curation policy, its exclusive-gateway-only pattern adds no element-family coverage beyond what capex/leave already demonstrate. Bucket A test slots are now filled by Test 1 (Finance happy path — still using `finance-approval-process` until the reshuffle lands) and Test 2 (DMN Reuse — authored fresh from designer).
+The previously proposed "Simple PO Approval" BPMN was **dropped**. Per the seed curation policy, its exclusive-gateway-only pattern adds no element-family coverage beyond what capex/leave already demonstrate. Bucket A test slots are now filled by Test 1 (IT Helpdesk — see updated Test 1 card below) and Test 2 (DMN Reuse — authored fresh from designer).
 
 ---
 
@@ -453,7 +470,7 @@ Every artifact key authored during this run carries the `e2e-` prefix. Verified:
 
 ### Rule 2 — Never modify seeded artifacts
 
-Seeded BPMNs (`capex-approval-process`, `leave-request`, `procurement-approval-process`, `finance-approval-process`), seeded DMNs (`leave_approval`, `capex-approver-resolution`), and seeded forms are **read-only** during the E2E run. If a different shape is needed for a test, author a fresh variant under the `e2e-` prefix — do NOT fork a seeded artifact.
+Seeded BPMNs (`capex-approval-process`, `leave-request`, `procurement-approval-process`, `it-helpdesk-ticket`), seeded DMNs (`leave_approval`, `capex-approver-resolution`), and seeded forms are **read-only** during the E2E run. If a different shape is needed for a test, author a fresh variant under the `e2e-` prefix — do NOT fork a seeded artifact.
 
 ### Rule 3 — Reuse seeded DMNs and forms where the test is about composition
 
@@ -470,17 +487,18 @@ When a test is about **composition** (referencing a seeded artifact from a new B
 | `leave-request-form` | Form | Form with date fields + select + textarea |
 | `leave-approval-form` | Form | Minimal approval form |
 | `procurement-*` forms (×4) | Form | Sequential form chain across 4 approval steps |
-| `budget-request-form` | Form | Single-field minimal form |
+| `it-helpdesk-ticket-form` | Form | Start form with subject, description, category, priority, requesterEmail |
+| `it-helpdesk-resolution-form` | Form | Completion form with resolutionNotes, resolutionStatus |
 | Any seeded BPMN | Process | Read-only inspection in the designer for pattern reference (do NOT save edits) |
 
 **Per-test reuse summary:**
 
 | Test | Reuses (read-only) | Authors (`e2e-` prefix) |
 |---|---|---|
-| 1 | `finance-approval-process` | — |
+| 1 | `it-helpdesk-ticket` BPMN + `it-helpdesk-ticket-form` + `it-helpdesk-resolution-form` | — |
 | 2 | `leave_approval` DMN | `e2e-dmn-reuse-test` BPMN |
 | 3 | — | `e2e-round-trip-form` + `e2e-round-trip-process` |
-| 4 | `finance-approval-process` (+ `GlobalTaskNotificationListener`) | — |
+| 4 | `leave-request` BPMN (+ `GlobalTaskNotificationListener`) | — |
 | 5 | `leave-request` BPMN + `leave-approval.dmn` + `leave-request-form` | — |
 | 6 | — | `e2e-simple-review` BPMN |
 | 7 | `leave-request` BPMN + `leave-approval.dmn` + `leave-request-form` + `leave-approval-form` | — |
