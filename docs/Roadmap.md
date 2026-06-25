@@ -2,7 +2,7 @@
 
 **Repo scope**: Enterprise-only engine, admin-service, and portal features
 **Master Roadmap**: `~/Projects/werkflow-platform/docs/Roadmap.md` (authoritative for all future tasks)
-**Last Updated**: 2026-06-22 (session 41 end-of-day)
+**Last Updated**: 2026-06-25 (sessions 42–43)
 **Target**: Internal Enterprise Demo — June 2026
 
 > Future tasks in this file are synced from the master Roadmap. Do not add tasks here without adding them to master first.
@@ -14,211 +14,61 @@
 | Item | Status |
 |------|--------|
 | E2E quality gate | 7/7 specs passing (full milestone-end re-run = master item 9, last) |
-| ADRs | ADR-001 through ADR-029 (in master `docs/adr/`) — latest: ADR-027 (approval escalation), ADR-028 (process test harness), ADR-029 (DOA emission + routing patterns) |
-| Active milestone | Pre-MVP Tier 5 (release hardening) per master Roadmap |
+| ADRs | ADR-001 through ADR-033 (in master `docs/adr/`) — latest: ADR-027 (approval escalation), ADR-028 (process test harness), ADR-029 (DOA emission + routing), ADR-032 (form tenant scoping), ADR-033 (deploy fail-loud) |
 | M4.11 / M4.12 | Complete (P3 11/11; Phase A + B.1a–B.6 + B.4/B.5-portal + item 8 sidebar gate) |
 | Tier 1–3 done | All Tier-1 (mechanical cleanups, facade hardening, schema hygiene); item 7 approval-escalation cluster (BPMN + engine + 7c-UI, ADR-027) shipped |
-| Done this session | ✅ **Session 18 — portal UX + engine semantics (2026-06-01, 9 enterprise commits `e09e023`→`e694c1e` + platform `8b1674f`, all pushed)** — ProcessExampleDeployer reset-on-startup; asset-request BPMN exec-keyword fix; `/services` card styling parity with `/processes`; source-aware back nav; "Start Process Anyway" fallback; V14 bare-date fix; hide Submit Request when no form; React Query `retry:false`; `FormNotFoundException`→404; CLAUDE.md mandate staff-engineer + frontend-developer review |
-| Done this session | ✅ **Session 19 — DMN+connector+notification indicators + marketplace + DMN seeding (2026-06-01, 7 enterprise commits `515e7d3`→`ecd5d47`, NOT pushed yet)** — Items 1+2+3 shipped from session 18 punch list + B1/B2 sub-tasks uncovered during Item 3 + critical Flowable autoscan fix. (1) `515e7d3` Item 1 — `/services` no-form description ternary. (2) `8a272f7` Item 3 — DMN + connector indicators on /processes cards (Option 2): V15 `process_indicators` + `BpmnIndicatorScanner` (XXE-hardened DOM) + DTO extension + batch lookup `findAllById` (no N+1) + portal `Workflow` icon. (3) `9332162` B1 — new `DmnExampleDeployer` seeds 3 example DMNs under `tenantId="default"` + reset mode wipes ALL tenantless DMN deployments + prior default-tenant deployments; `ProcessExampleDeployer @DependsOn`. (4) `03142a4` B2 — scanner Spring-derives connector bean names from `Map<String, ConnectorDelegateBase>` (auto-includes @Bean aliases like `restConnectorDelegate`); `hasNotification` field for separate notification indicator; V16 ALTER + Bell icon (channel-agnostic) + new `DelegateLabel` utility. (5) `a74f9f7` Item 2 — marketplace `useQuery(listConnectors)` + amber info banner + installed badge + disabled "Installed" button + removed contradicting Contribute CTA. (6) `afac983`+`ecd5d47` critical fix — `flowable.dmn.deployment-resources` does NOT control Flowable's spring-boot autoscan; renamed `src/main/resources/dmn/` → `dmn-examples/` so `DmnExampleDeployer` is sole owner. Tests: scanner 15/15 + DelegateLabel 7/7 green; portal builds green; engine compile clean. Verified DB state: 6 DMN decisions in `default` tenant + zero tenantless rows + indicator table correctly populated per BPMN content |
-| Done session 33 | ✅ **Session 33 — Portal design audit sprint (2026-06-12)** — All 20 items from `docs/portal-design-audit.md` implemented. Track A (5 security/correctness fixes: next-auth types, health auth guard, NEXT_PUBLIC_ removal, proxy fetch, redirect guard) committed to main (`d1f8a28`). Tracks B+C (design consistency + library hardening) on feature branch `feature/portal-design-audit` (`ad5bd1c`→`29c1b15`). Security audit: 4 MEDIUMs fixed (env var mismatch, ERP NEXT_PUBLIC_, connector param injection, health topology disclosure). 4 deferred non-blocking items in master roadmap post-MVP backlog. Design references: `frontends/portal/DESIGN.md` + `frontends/portal/CLAUDE_HANDOVER.md`. |
-| Done this session | ✅ **Session 41 — manual E2E prep + logical unit enforcement + 3 cleanup migrations + 4 latent bug fixes (2026-06-22, enterprise commits `491b89f0`, `3214d5a8`, `ca17ba26`, `97da020b`, `4876f17c`, `7f23b1a1`; first 4 pushed, `7f23b1a1` awaits 5th rebuild verification)** — (1) `docs/BPMN-Symbol-Reference.md` (334 lines, 71 inline BPMN 2.0 SVG figures, exhaustive support + testability vocabulary); (2) `docs/Manual-E2E-Test-Plan.md` (545 lines, 10 manual tests with SVGs, Test Artifact Lifecycle section with `e2e-` prefix convention + per-test reuse table + cleanup checklist + seed library reshuffle plan); (3) V24 orphan cleanup migration (atomic; 52 rows across form_schemas + act_dmn_* + act_re_procdef); (4) `ExampleSeedService.formExists` idempotency fix via new `FormSchemaService.formExistsAnyVersion`; (5) BPMN XSD element-order fix in finance + procurement BPMNs — `<documentation>` must precede `<extensionElements>` per BPMN 2.0 spec; both files were silently failing to deploy + their 5 forms never seeded; (6) V25 + V26 follow-up cleanup of cross-tenant residue + tenantless DMN duplicates + leave-request-form v8 leftover; (7) `BpmnFormKeyValidator` classpath path fix — was checking `processes/` but session 40 moved seed BPMNs to `examples/tenants/default/bpmn/`; validator was silently dead code for ALL 4 seeded BPMNs; (8) Form display name fix — `ProcessExampleDeployer.seedFormSchemas` INSERT was missing the `name` column entirely; now reads JSON `"name"` field via Jackson, falls back to title-cased form_key; 5 form JSON files updated for consistency. Clean DB baseline verified: 4 BPMNs default tenant only, 5 DMNs default tenant v2 only, 9 forms at v1 only, validator actually validating now. |
-| Next | Pre-MVP hard gate (correctness over speed per user): **D2 + D1 DONE session 42 (see below).** Remaining: (f) **Seed library reshuffle** (finance-approval removal + IT Helpdesk authoring with self-contained `NotificationDelegate` verification, 3-4h) — NEXT; (g) Manual E2E Option A — 10-test baseline + re-run authoring tests (2, 3, 6) against final code. Option B fallback (single E2E pass after all code lands) recorded but not preferred. |
-| Done session 42 | ✅ **Session 42 — D2 form tenant scoping (ADR-032) + D1 deploy fail-loud (ADR-033) (2026-06-24)** — **D2** (enterprise `4d7949fe`, merged to main + pushed): Flyway V29 adds `tenant_id` to `form_schemas` (composite `UNIQUE(form_key,version,tenant_id)`); strict tenant scoping (no fallback) through every `FormSchemaService` query + `FormSchemaController` (GET + mutating) + `BpmnFormKeyPinner` + `BpmnFormKeyValidator` (per-`ProcessDefinition.getTenantId()`) + runtime paths `TaskFormService` (`Task.getTenantId()`) and `ProcessDefinitionService.getStartForm` (resolves under the **definition's** tenant); `ExampleSeedService`/`ProcessExampleDeployer` write per-tenant copies; `@Cacheable` keys normalised. **D1** (enterprise `04924b61`, branch `fix/deploy-fail-loud-missing-refs`): deploy now FAILS with aggregated HTTP 422 `{missingForms,missingDecisions}` on dangling form/decision refs (reverses ADR-026 tolerance); `DeployReferenceValidator` on both `/deploy/bundle` + standalone `/deploy` (now tenant-scoped); active-version form check; tenant-strict decision check; `unbundledDecisions` removed. Gates: engine 46 targeted tests + `npm run build` green; staff-engineer + senior-code-reviewer + frontend-developer passes. |
-| Done this session | ✅ **Session 41 end-of-day — UI consistency hardening + form rendering reliability stack (2026-06-22, enterprise commits `a5b6195a`, `cec630d6`, `48d17356`, `7dcc561f`, `6426ec5d`, `04c21036`, all pushed)** — (1) `a5b6195a` UI consistency punch list: `--wf-card-hover-*` token family + `.wf-card-interactive` utility in `globals.css`; DESIGN.md "Interactive Cards" subsection; datasource list → grouped cards + Dialog form (matches connectors); Process Health `/api/health` 3s→8s timeout + capture error in details. (2) `cec630d6` UI consistency round 2: `wf-card-interactive` applied to services/connectors/DeployedCard cards (conditional on actionable cards only per DESIGN.md); tenants text Edit/Delete → icon ghost buttons (Pencil/Trash2/Layers, h-8 w-8) matching approval-authority pattern; email-templates page full rework matching Forms anatomy — PageSurface + stats card (Total Templates) + search bar + grid table (TEMPLATE NAME / TEMPLATE KEY / CHANNEL / UPDATED / ACTIONS) + 28×28 IconBtn + Skeleton loading. (3) `48d17356` seed forms: added top-level `"id"` field to 4 form JSONs (capex/leave request + approval) that form-js v1.19.0 requires; without it `form.importSchema()` rejects silently and the form renders empty. Also V27 dropped orphan `committee-outcome` notification template. (4) `7dcc561f` reliability stack: `FormJsViewer` local error state + default inline error card when no `onError` passed; hides internal Submit on error; `onError` wired on 4 consumer sites (start, task completion, preview, demo); `ProcessExampleDeployer.validateIdMatchesKey` — fails per-form seed loudly if JSON `id` is missing/mismatched; deleted 4 dead duplicate seed JSONs at legacy `src/main/resources/forms/`. (5) `6426ec5d` root cause #2 surfaced by error toast: form-js v1.19.0 does NOT register `'email'` as a field type. Converted 3 email fields to `textfield` + `validate.validationType="email"`; removed `'email'` from `FormJsEditor` allowlist; fixed `budget-request-form.json` id mismatch (`finance-approval-form` → `budget-request-form`). (6) `04c21036` tenants table header className matches approval-authority (uppercase + muted-foreground + tracking-wider + bg-muted/30); V28 migration sets Title Case names on 8 notification templates (Task Assigned, CapEx Approved, etc.); applied directly to dev DB. Both BPMN designer consumers (`flowable-properties-provider.ts:863` + `SendNotificationSection.tsx:88`) already honour id=ref / name=display rule — DB name update auto-propagates. |
-| Pre-MVP UI Punch List status (2026-06-22) | (1) Datasource page → DONE `a5b6195a`. (2) Design system consistency → DONE — DESIGN.md `Interactive Cards` subsection + `.wf-card-interactive` token + tenants header re-aligned in `04c21036`. (3) Card transition consistency → DONE — applied to Marketplace + DtdsConnectorCard + DeployedCard + DatasourceCard + services process card (conditional on actionable cards only). (4) Process Health "down" → DIAGNOSED + MITIGATED — env + network verified correct; 3s timeout was too aggressive; now 8s + surfaces real error in details. Watch for next recurrence to confirm root cause. |
-| Branch | `main` — HEAD `04c21036` (all 8 today's enterprise commits pushed) |
-| Operational | Dev DB at V28. Engine rebuild applies V27 (drops committee-outcome) + V28 (Title Case template names). Portal rebuild brings card-hover tokens + error visibility + tenants header style + email-templates page rework. `ProcessExampleDeployer.validateIdMatchesKey` now fails loudly on missing/mismatched `id` in seed JSON. `FormJsViewer` no longer silently swallows schema-import errors. Docker compose env warnings for `${ENGINE_CLIENT_SECRET}`/etc. remain cosmetic. |
+| Active milestone | Pre-MVP — Blast-Radius Phase Plan + Manual E2E (per master Roadmap) |
+| Done (sessions 42–43, 2026-06-25) | D2 form tenant scoping (ADR-032, V29); D1 deploy fail-loud (ADR-033, aggregate 422); seed library reshuffle (finance-approval→it-helpdesk, V30, ADR-015 amended for `WerkflowSendTaskXMLConverter`); CI greening + artifact-upload gating (`d7b4ec66`, `dd335a63`). All merged+pushed to enterprise main `dd335a63`; live-verified on dev stack. |
+| Next | Pre-MVP Blast-Radius Phase Plan (canonical detail in master `docs/Roadmap.md` → "Pre-MVP Phase Plan — Blast-Radius Re-Verification"): **Phase 1** formKey@N version-resolution verify + assignee/flowable:assignee verify + DRY `extractFormRefs()`; **Phase 2** portal silent-401-refresh + Engine→Admin S2S 401; **Phase 3** flowable-assignment group removal (M4.9 Task 1/5) + Custody Groups panel visibility (Task 4). Then Manual E2E, then MVP release cut (Droplet-blocked). |
+| Branch | `main` — HEAD `dd335a63` |
+| Operational | Dev DB at V30. Docker compose env warnings for `${ENGINE_CLIENT_SECRET}`/etc. remain cosmetic. |
+
+### Session log (collapsed — detail in git history + docs/adr/ + Knowledge-Base)
+
+- **Session 18** (2026-06-01, `e09e023`→`e694c1e` + platform `8b1674f`, pushed) — portal UX + engine semantics: ProcessExampleDeployer reset-on-startup, back-nav, "Start Process Anyway" fallback, V14 bare-date fix, no-form Submit hide, `FormNotFoundException`→404.
+- **Session 19** (2026-06-01, `515e7d3`→`ecd5d47`) — DMN+connector+notification indicators (Option 2: V15 `process_indicators` + `BpmnIndicatorScanner`), marketplace UI, `DmnExampleDeployer` (V16), Flowable autoscan fix (renamed `dmn/`→`dmn-examples/`).
+- **Session 33** (2026-06-12, main `d1f8a28`; branch `feature/portal-design-audit` `ad5bd1c`→`29c1b15`) — portal design audit sprint, all 20 `docs/portal-design-audit.md` items; 4 MEDIUM security fixes.
+- **Session 41** (2026-06-22, `491b89f0`/`3214d5a8`/`ca17ba26`/`97da020b`/`4876f17c`/`7f23b1a1`) — manual E2E prep docs (`BPMN-Symbol-Reference.md`, `Manual-E2E-Test-Plan.md`), logical-unit enforcement, V24–V26 cleanup migrations, 4 latent bug fixes (BPMN XSD element-order, `BpmnFormKeyValidator` classpath, form display-name INSERT, idempotency).
+- **Session 41 end-of-day** (2026-06-22, `a5b6195a`/`cec630d6`/`48d17356`/`7dcc561f`/`6426ec5d`/`04c21036`, pushed) — UI consistency hardening (`.wf-card-interactive`, datasource/services/connectors/tenants/email-templates) + form-rendering reliability stack (form-js `id` field, `validateIdMatchesKey`, `FormJsViewer` error visibility, email→textfield+validationType, V27/V28).
+- **Session 42** (2026-06-24, `4d7949fe` + `04924b61`) — D2 form tenant scoping (ADR-032, V29) + D1 deploy fail-loud (ADR-033, aggregate 422, `DeployReferenceValidator`).
 
 ---
 
 ## M2 — ADR Foundation + Performance ✅ COMPLETE
 
-**Committed**: 2026-04-30 — commits a2b53ce, f048a98, 5ab62b4
-
-### Engine Quick Wins (ADR-009)
-
-- [x] Add `parentDeploymentId` to `ProcessDefinitionService` for bundle deployments
-- [x] Add transient variables to `ExternalApiCallDelegate` — raw API response transient (`storeRawResponse`), masked response persists
-- [x] Add task-local variables pattern to `ExternalApiCallDelegate` for parallel branch isolation (`useLocalVariables`)
-
-### Form Field Types (ADR-007)
-
-- [x] Refactor `FormSchemaValidator.java` — four sets: `VARIABLE_TYPES (A)`, `DISPLAY_TYPES (B)`, `SERVICE_TYPES (C)`, `INVALID_TYPES (D)`
-- [x] `validateFormSchema()` — accepts A+B+C; rejects D with `400 Invalid component type`
-- [x] `validateFormData()` — skips B; throws `FormFieldTypeNotImplementedException` (501) for C on submit
-- [x] `TaskFormService.java` — filter Category B keys before `variablesToSave`
-- [x] `FormFieldTypeNotImplementedException` + `GlobalExceptionHandler` 501 handler
-
-### Signal Tenant Scoping (ADR-008)
-
-- [x] `TenantAwareSignalService` — wraps `signalEventReceivedWithTenantId` + async variant; validates non-blank tenantId
-- [x] 8 tests; no direct calls to non-tenant `runtimeService.signalEventReceived()` allowed
-
-### Performance
-
-- [x] Async history: `async-history-enabled: true`, pool 2/4 — history writes off the process transaction
-- [x] DB indexes: `FlowableIndexCreator` adds 6 indexes on `ACT_RU_TASK` + `ACT_RU_IDENTITYLINK`
-- [x] Dead-letter job monitoring: `JobManagementController` + portal `/admin/jobs/dead-letter` page + 5 tests
-- [⏸️] Async email via Flowable `EmailJobHandler` — deferred; `@Async+@Retryable` already in place
+Committed 2026-04-30 (`a2b53ce`/`f048a98`/`5ab62b4`) — engine quick wins (ADR-009), form field types (ADR-007), signal tenant scoping (ADR-008, `TenantAwareSignalService`), async history, `FlowableIndexCreator` (6 indexes), dead-letter job UI. Deferred: async email via Flowable `EmailJobHandler` (`@Async+@Retryable` already in place).
 
 ---
 
-## M3 — ADR Core Implementation
+## M3 — ADR Core Implementation ✅ COMPLETE
 
-**Deps**: M1 (ERP APIs) + M2 complete — both done
-**Estimate**: 8–10 hours remaining (Groups 3a/3d moved to M4)
-**Next session**: Groups 3b + 3c + M5 together
-
-### Group 2a — FlowableGroupResolver Simplification (ADR-003) ✅ COMPLETE
-
-**Committed**: 2026-04-30 — commit 9dae8d8
-
-- [x] Remove `doa_approver_level1/2/3/4` from `FlowableGroupProperties` YAML
-- [x] Remove `doaLevel` cumulative loop and compound group emission from `FlowableGroupResolver`
-- [x] Remove `adminServiceClient.getTenantDepartmentCodes()` and `getTenantCrossDeptThreshold()` calls
-- [x] Add `RoleGroupMapping` table to admin-service + Flyway migration (V3)
-- [x] Add `RoleGroupMappingService` with 5-min cache per tenant (via AdminServiceClient Caffeine)
-- [x] Add `GET/POST/DELETE /api/v1/config/role-mappings` endpoints
-- [x] Add `UserGroupLookupProxy` SPI interface
-
-### Group 2b — configVars Admin API (ADR-002) ✅ COMPLETE
-
-**Committed**: 2026-04-30 — commit 5d4e16c
-
-- [x] `GET/POST/PUT/DELETE /api/v1/config/vars` for tenant `ConfigurationVariable` entries
-- [x] Two-layer data: Level definitions (L1–L4 → amounts) + Role-to-level mapping (role → level)
-- [x] Remove `crossDeptDoaThreshold` from Tenant entity + V4 migration drops DB column
-- [x] `AdminServiceClient.getConfigVars(tenantCode)` with 5-min cache (prepares DmnConfigVariableInjector)
-
-### Group 2c — BPMN Action Blocks (ADR-009) ✅ COMPLETE
-
-**Committed**: 2026-04-30 — commit 4ce7b89
-
-- [x] `SEND_NOTIFICATION` block — channel multi-select (Email + Slack/WhatsApp stubs), template picker, recipient, condition
-- [x] `CALL_SUBPROCESS` block — processKey, inVariables, outVariables fields + `CallSubprocessDelegate`
-- [x] `GROOVY_SCRIPT` block — inline script editor, admin-restricted label
-- [x] `MANUAL_STEP` block — stepDescription + confirmationRequired fields
-- [x] Remove `DMN_ROUTE` from action block options (native BusinessRuleTask per ADR-009)
-- [x] Signal throw event: signal name dropdown (reads `bpmn:Signal` elements from diagram)
-- [x] `SlackNotificationChannel` + `WhatsAppNotificationChannel` stubs (`UnsupportedOperationException`)
-
-### Group 3b — Custody Move to ERP (ADR-004) ✅ COMPLETE
-
-**Committed**: 2026-04-30 — commit 3cb362a
-
-- [x] Remove custody DB table from admin-service (V5 migration + delete entity/repo/service/controller)
-- [x] Update portal `/admin/custody` to call ERP `GET/POST/PUT/DELETE /api/v1/custody-mappings`; add `erpApiClient`; update BpmnDesigner custody dropdown
-- [x] Add `ErpServiceClient` + `DmnConfigVariableInjector` (configVars + custodyVars enrichment); update `DmnRouteDelegate`
-
-### Group 3c — Department Simplification (ADR-005) ✅ COMPLETE
-
-**Committed**: 2026-04-30 — commit de0f6c9
-
-- [x] `SetOwningDepartmentDelegate` — resolves submitter ERP dept → `owningDepartment` variable; fallback to form value
-- [x] `FlowableGroupResolver` Step 4: fetch user ERP dept → emit `${deptCode}_APPROVER` (NOTE: will be REMOVED in M4.4 per ADR-010)
-- [x] Remove `departments` table from admin-service (V6 migration)
-- [x] Department-scoped query filter in `WorkflowTaskService` and `ProcessMonitoringService` (ERP-enabled guard)
+Committed 2026-04-30 — Group 2a FlowableGroupResolver simplification + `RoleGroupMapping` (ADR-003, `9dae8d8`); Group 2b configVars admin API + level/role two-layer (ADR-002, `5d4e16c`); Group 2c BPMN action blocks (SEND_NOTIFICATION / CALL_SUBPROCESS / GROOVY_SCRIPT / MANUAL_STEP, ADR-009, `4ce7b89`); Group 3b custody → ERP (ADR-004, `3cb362a`); Group 3c department simplification + `SetOwningDepartmentDelegate` (ADR-005, `de0f6c9`). (Groups 3a/3d moved to M4.)
 
 ---
 
 ## M4 — UI Full Visual Overhaul + Tenant Setup + Form Editor + Analytics UI ✅ COMPLETE
 
-**Deps**: M3 complete (Groups 3b/3c), M5 complete, M6 Group A complete
-**Estimate**: 32–36 hours (includes M6 Group B)
-**Status**: COMPLETE — 2026-05-01 — branch feature/m4-ui-overhaul — final commit 7aac042
+Complete 2026-05-01, branch `feature/m4-ui-overhaul`, final commit `7aac042`. Covered: Group 3a Tenant Setup UI (ADR-006, `9d1d88a`/`54678f4`/`cbe28db`); Group 3d Form Editor (`FormJsEditor` palette filter + CSS theme, ADR-007, `c5fc003`); design-system foundation (Tailwind purple palette, shared `StatCard`/`StatusBadge` etc.); dark sidebar nav overhaul; full screen overhaul (Service Catalog/My Tasks/My Requests/Forms/Processes/Decisions/Dashboard/Connectors/Tenant Setup, `8f62118`/`06866d5`); editor CSS theming for bpmn-js/form-js/dmn-js (`05843e8`).
 
-### Design Reference
+> **Design reference**: implement screens against approved Figma-export HTML at `/Users/lamteiwahlang/Projects/Werkflow Redesigned Final/`. Open the relevant HTML file before implementing any screen; derive colours/spacing/typography from it.
 
-All screens must be implemented against the approved Figma-export HTML designs:
+**Carry-forward `[~]`/`[ ]` items (not complete):**
 
-**Local path**: `/Users/lamteiwahlang/Projects/Werkflow Redesigned Final/`
-
-| File | Covers |
-|------|--------|
-| `Werkflow Redesigned.html` | Employee Portal — Dashboard, My Tasks, My Requests, Service Catalog, Processes, Forms, Decisions |
-| `Werkflow Employee Portal.html` | Full portal shell — sidebar, header, navigation structure |
-| `Werkflow Editor Theming.html` | BPMN / Form / DMN editor CSS theming targets |
-| `Werkflow Email Templates.html` | Email Templates screen (Design Studio section) |
-| `Werkflow Login.html` | Login page |
-| `Werkflow Landing Page.html` | Public landing page |
-| `uploads/` | Component screenshots — DMN Table, Form Editor, Process, Email Template |
-
-**Rule**: Open the relevant HTML file before implementing any screen. Derive all colours, spacing, typography, and component structure from the design files — do not guess or invent.
-
-### Group 3a — Tenant Setup UI (ADR-006)
-
-- [x] `Tenant Setup` sidebar section (ADMIN/SUPER_ADMIN guard) — reordered: Role Mappings → Approval Authority → Departments → Custody Groups *(commit: 9d1d88a)*
-- [x] `/admin/tenant/role-mappings` — Tier 1 read-only from engine YAML endpoint; Tier 2 with Keycloak realm-roles dropdown (ADR-003) *(commit: 54678f4)*
-- [x] `/admin/tenant/approval-authority` — dynamic L1–L10 levels; 1:1 role→level with KC + level dropdowns; delete per row (ADR-002) *(commit: 54678f4)*
-- [x] `/admin/tenant/custody-groups` — reads from ERP; info tip (Candidate Groups vs Custody Groups) *(commit: 9d1d88a)*
 - [~] `/admin/tenant/departments` — reads from ERP; redirect from `/admin/departments` (ADR-005) — page exists, redirect pending
 - [ ] Tenant Setup checklist widget on `/admin/dashboard`
-- [x] Engine: `GET /api/v1/config/flowable-role-mappings` — returns YAML Tier-1 mappings as JSON *(commit: cbe28db)*
-- [x] Admin: `GET /api/v1/keycloak/realm-roles` — lists KC realm roles via client-credentials Admin API *(commit: cbe28db)*
-- [x] Portal: engine proxy route `/api/proxy/engine/[...path]` *(commit: cbe28db)*
-
-### Group 3d — Form Editor Improvements (ADR-007) ✅ COMPLETE
-
-- [x] `FormJsEditor.tsx` — fetch tenant component allowlist; pass `createPaletteFilterModule(allowedTypes)` to `FormEditor` *(commit: c5fc003)*
-- [x] `FormJsEditor.tsx` — fetch `CSS_THEME` config vars; apply as inline style on `.fjs-container`
-- [x] `lib/forms/createPaletteFilterModule.ts` — deregisters non-allowed types on `form.init`
-- [x] `GET /api/v1/config/form-components` — hardcoded default allowlist; no admin UI (deferred post-demo)
-
-### Design System Foundation ✅ COMPLETE
-
-- [x] Tailwind config: primary purple palette, dark sidebar tokens, badge colour map
-- [x] CSS custom properties: `--sidebar-bg`, `--primary`, `--primary-foreground`, `--badge-*`
-- [x] Shared components: `StatCard`, `FilterPills`, `StatusBadge`, `PriorityBadge`, `AvatarCell`
-
-### Navigation Overhaul ✅ COMPLETE
-
-- [x] Dark sidebar: five sections with icon + label nav items; role-gated visibility per section *(commit: sidebar rewrite)*
-- [x] Move Email Templates nav item from Admin → Design Studio section
-- [x] User profile card at sidebar bottom (avatar, name, role)
-- [x] Notification bell + user avatar in top-right header
-
-### Screen Overhaul ✅ COMPLETE
-
-- [x] **Service Catalog** *(commit: 8f62118)* — card grid, category filter pills, step tags, Submit Request CTA
-- [x] **My Tasks** — stat cards row, All/Mine/Overdue/Unassigned tabs, task table *(commit: task 5)*
-- [x] **My Requests** — request list with status tracking *(commit: task 6)*
-- [x] **Forms** — stat cards, tabs, search, category pills, table + inline actions *(commit: task 7)*
-- [x] **Processes** — stat cards, Deployed/Drafts tabs, card grid *(commit: 8f62118)*
-- [x] **Decisions** — aligned to Forms list pattern *(commit: 8f62118)*
-- [x] **Email Templates** — moved to Design Studio section; existing UI unchanged
-- [x] **Dashboard** — overview cards, recent activity, quick actions *(commit: task 4)*
-- [x] **Connectors** — aligned to new table pattern
-- [x] **Tenant Setup sub-pages** — Approval Authority, Role Mappings, Departments, Custody Groups *(commit: 06866d5)*
-
-### Editor CSS Theming ✅ COMPLETE
-
-- [x] **bpmn-js** — canvas bg, toolbar buttons, properties panel bg/text *(commit: 05843e8)*
-- [x] **form-js** — container bg, field labels/inputs, buttons, palette panel *(commit: 05843e8)*
-- [x] **dmn-js** — table header bg, cell borders, toolbar, hit policy badges *(commit: 05843e8)*
-- [x] All three: inject primary color + font via CSS custom properties; no JS internals
 
 ---
 
 ## M5 — ADR Signal Events ✅ COMPLETE
 
-**Committed**: 2026-04-30 — commit 00e04aa
-
-- [x] Procurement process: `IntermediateThrowEvent(Signal)` after final approval — uses `TenantAwareSignalService`
-- [x] Asset request process: `IntermediateCatchEvent(Signal)` for `procurementApproved`
-- [x] All approval UserTasks: non-interrupting Timer boundary (PT48H → reminder)
-- [x] All approval UserTasks: interrupting Timer boundary (PT72H → escalate)
-- [x] All external-call service tasks: Error boundary event with fallback flow
+Committed 2026-04-30 (`00e04aa`) — procurement throw / asset-request catch signals via `TenantAwareSignalService`; non-interrupting (PT48H reminder) + interrupting (PT72H escalate) timer boundaries on approval UserTasks; error boundary + fallback on external-call service tasks.
 
 ---
 
 ## M6 — Analytics + Basic Monitoring ✅ COMPLETE (Group A + B)
 
-**Committed**: Group A commit b1c9f15 · Group B commit 7aac042
+Committed Group A `b1c9f15` · Group B `7aac042` — backend process/task metrics (<1s for 100k+ instances), Analytics Dashboard (charts + SLA + CSV export), Monitoring sidebar, `/actuator/health` via portal proxy.
 
-- [x] Backend: process execution stats, task metrics (avg cycle time, bottleneck step, SLA %) — all < 1s for 100k+ instances
-- [x] Frontend Analytics Dashboard: overview stat cards, line chart (executions over time), bar chart (task bottlenecks), SLA dashboard, CSV export
-- [x] Monitoring sidebar section (ADMIN/SUPER_ADMIN): Analytics Dashboard + Process Health links
-- [x] Health check endpoints on all services (`/actuator/health`) via portal proxy
 - [ ] Basic alerting runbook doc — deferred post-demo
 
 ---
@@ -303,71 +153,23 @@ All screens must be implemented against the approved Figma-export HTML designs:
 
 ---
 
-## M4.4 — Platform Semantics Service + Categorization (ADR-010)
+## M4.4 — Platform Semantics Service + Categorization (ADR-010) ✅ COMPLETE
 
-**Phase**: Pre-Internal-Demo
-**Estimate**: 16–18 hours
 **Reference**: Master Roadmap M4.4 / [`docs/M4.4-Platform-Semantics-Service-FINAL.md`](~/Projects/werkflow-platform/docs/M4.4-Platform-Semantics-Service-FINAL.md)
-**ADR**: ADR-010 (Department Simplification + Categorization)
 
-### Engine Refactor (ADR-010)
-
-- [x] Remove Step 4 from `FlowableGroupResolver` (lines 76–78: `${deptCode}_APPROVER` emission, ADR-005 remnant)
-- [x] Update sample BPMN files: replace `${deptCode}_APPROVER` with role-mapped groups via DMN routing
-- [x] Update `FlowableGroupResolver` javadoc (document three-step model)
-
-### Backend PSS (services/admin)
-
-- [x] `PlatformSemanticsController` — nine endpoints under `/api/v1/design/platform/` (JWT-only tenant; no user-supplied tenantCode)
-  - `/capabilities`, `/candidate-groups`, `/feel-expressions`, `/process-variables`
-  - `/categories`, `/tags`, `/departments`, `/visibility-policy`
-- [x] `CapabilityAggregator`, `CandidateGroupsAggregator`, `FeelExpressionGenerator`
-- [x] `CategoryProjector`, `TagProjector`, `VisibilityPolicyProjector`, `DepartmentProjector`
-- [x] Caffeine cache (5-min TTL, invalidation on admin writes)
-
-### Schema Migrations
-
-- [x] `category` table (Flyway V16 — applied)
-- [x] Add `department_code`, `category_id`, `tags[]` to `process_draft`, `form_schemas` (engine V5)
-- [x] Add `is_manager_tier` boolean to `role_group_mapping` (Flyway V17 — applied)
-- [x] Seed default categories on tenant creation
-
-### Frontend (frontends/portal)
-
-- [x] BPMN designer: candidate-groups picker from PSS (no department section)
-- [x] DMN designer: type-aware autocomplete from PSS feel-expressions
-- [x] Artifact metadata panel (shared): department + category + tags pickers
-- [x] Tenant Setup → Categories admin page (CRUD + server-side role gate)
-- [x] Tenant Setup → Visibility Policy admin page (server-side role gate)
-- [x] Capability-aware degradation in all three designers
-
-### Security fixes (post-review)
-
-- [x] C-1: Removed `?tenantCode=` query param — tenant derived exclusively from JWT
-- [x] C-2: Parameterized SQL LIKE clause in `TagProjector` (no string concatenation)
-- [x] H-1: Added `@AuthenticationPrincipal Jwt jwt` to `/process-variables` for audit trail
-- [x] H-2: `app/(platform)/admin/tenant/layout.tsx` — server-side `auth()` role gate
+Engine refactor (removed `FlowableGroupResolver` Step 4 `${deptCode}_APPROVER`, ADR-010); PSS backend — `PlatformSemanticsController` (9 endpoints under `/api/v1/design/platform/`) + aggregators/projectors + Caffeine cache; schema migrations (`category` V16, `is_manager_tier` V17, engine V5 dept/category/tags); frontend designers + Categories/Visibility-Policy admin pages; security fixes C-1/C-2/H-1/H-2 (tenant from JWT only, parameterized LIKE, audit principal, server-side role gate).
 
 ---
 
 ## M4.4a — Process Custody UI Cleanup ✅ COMPLETE (7accb93)
 
-**Phase**: Pre-Internal-Demo (alongside M4.4)
-
-- [x] Rename admin route `/admin/tenant/custody-groups` → `/admin/tenant/custody-mappings`; redirect from old URL *(commit: 7accb93)*
-- [x] Process list cards surface department/category/tags as read-only custody metadata *(commit: 7accb93)*
-- [x] Glossary / Terminology section on Custody Mappings page disambiguating runtime routing vs. definition governance *(commit: 7accb93)*
+Rename `/admin/tenant/custody-groups` → `/admin/tenant/custody-mappings` + redirect; process cards surface department/category/tags read-only; glossary disambiguating runtime routing vs definition governance.
 
 ---
 
 ## M4.4b — Currency Standardization ✅ COMPLETE (7accb93)
 
-**Phase**: Pre-Internal-Demo (alongside M4.4)
-
-- [x] `ConfigurationVariable` type=LOCALE (currency, locale, timezone, numberFormat, dateFormat per tenant) *(commit: 7accb93)*
-- [x] PSS endpoint: `GET /api/v1/design/platform/locale`; `LocaleProjector` with safe USD default *(commit: 7accb93)*
-- [x] `formatCurrency` / `formatDmnThreshold` utilities; DMN FEEL panel shows locale-formatted thresholds *(commit: 7accb93)*
-- [x] Tenant Setup → Locale admin page (currency + timezone + date format + live preview) *(commit: 7accb93)*
+`ConfigurationVariable` type=LOCALE; PSS `GET /api/v1/design/platform/locale` + `LocaleProjector` (USD default); `formatCurrency`/`formatDmnThreshold` utilities; Tenant Setup → Locale admin page.
 
 ---
 
