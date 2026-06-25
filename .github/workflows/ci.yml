@@ -68,6 +68,8 @@ jobs:
         run: mvn clean verify -B
 
       - name: Upload engine JAR
+        # Consumed only by the manual-only e2e job — skip on push to save artifact storage.
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: engine-jar
@@ -106,6 +108,8 @@ jobs:
         run: mvn clean verify -B
 
       - name: Upload admin JAR
+        # Consumed only by the manual-only e2e job — skip on push to save artifact storage.
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: admin-jar
@@ -171,6 +175,8 @@ jobs:
         run: npm run build
 
       - name: Upload portal build output
+        # Consumed only by the manual-only e2e job — skip on push to save artifact storage.
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: portal-next
