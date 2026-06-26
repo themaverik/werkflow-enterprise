@@ -2,6 +2,9 @@
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
              xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
              typeLanguage="http://www.w3.org/2001/XMLSchema"
              expressionLanguage="http://www.w3.org/1999/XPath"
              targetNamespace="http://werkflow.com/bpmn/procurement">
@@ -9,16 +12,40 @@
   <signal id="procurementApprovedSignal" name="procurementApproved" flowable:scope="global"/>
 
   <process id="procurement-approval-process" name="Procurement Approval Process" isExecutable="true"
-           flowable:versionTag="1">
-    <documentation>Purchase request approval with vendor selection, quotation review, and DMN-backed approval routing via procurement-matrix.dmn.</documentation>
+           flowable:versionTag="2">
+
+    <documentation>Purchase request approval workflow. A DMN service task (procurement-matrix.dmn)
+evaluates amount and category to determine the procurement path. Requests flagged as
+DIRECT_PURCHASE are auto-approved; all others proceed through vendor selection, quotation review,
+and manager approval before a final approve/reject decision.</documentation>
+
     <extensionElements>
       <flowable:properties>
         <flowable:property name="category" value="examples"/>
       </flowable:properties>
     </extensionElements>
 
-    <startEvent id="startEvent" name="Purchase Request Submitted" flowable:formKey="procurement-request-form"/>
+    <!-- Start: requestor submits purchase request -->
+    <startEvent id="startEvent" name="Purchase Request Submitted"
+                flowable:formKey="procurement-request-form"/>
 
+    <!-- DMN service task: evaluates amount + category, sets procurementPath + requiresCommittee.
+         Flowable 7.2 convention (ADR-026): DMN called as serviceTask flowable:type="dmn". -->
+    <serviceTask id="evaluateMatrix" name="Evaluate Procurement Matrix" flowable:type="dmn">
+      <extensionElements>
+        <flowable:field name="decisionTableReferenceKey">
+          <flowable:string>procurement_matrix</flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- Gateway: DIRECT_PURCHASE → auto-approve; all other paths → vendor workflow.
+         The non-direct branch is the gateway default so null/unexpected procurementPath
+         never dead-locks the instance. -->
+    <exclusiveGateway id="directPurchaseGateway" name="Procurement Path?"
+                      flowable:default="flowToVendorDefault"/>
+
+    <!-- User tasks: vendor selection, quotation review, manager approval -->
     <userTask id="selectVendor" name="Select Vendor"
               flowable:candidateGroups="DOA_L1,SUPER_ADMIN"
               flowable:formKey="vendor-selection"/>
@@ -31,13 +58,139 @@
               flowable:candidateGroups="DOA_L2,SUPER_ADMIN"
               flowable:formKey="procurement-approval"/>
 
+    <!-- Gateway: approve/reject decision after manager review.
+         The reject branch is the default to avoid dead-lock on unexpected decision values. -->
+    <exclusiveGateway id="approvalDecision" name="Approval Decision?"
+                      flowable:default="flowRejectDefault"/>
+
     <endEvent id="endEventApproved" name="PO Created"/>
     <endEvent id="endEventRejected" name="Request Rejected"/>
 
-    <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="selectVendor"/>
+    <!-- ===== Sequence Flows ===== -->
+
+    <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="evaluateMatrix"/>
+    <sequenceFlow id="flow2" sourceRef="evaluateMatrix" targetRef="directPurchaseGateway"/>
+
+    <!-- DIRECT_PURCHASE: auto-approve, skip vendor workflow -->
+    <sequenceFlow id="flowDirect" sourceRef="directPurchaseGateway" targetRef="endEventApproved">
+      <conditionExpression xsi:type="tFormalExpression">${procurementPath == 'DIRECT_PURCHASE'}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- Default: all other paths (MANAGER_APPROVAL, COMMITTEE_REVIEW, BOARD_APPROVAL) -->
+    <sequenceFlow id="flowToVendorDefault" sourceRef="directPurchaseGateway" targetRef="selectVendor"/>
+
     <sequenceFlow id="flow3" sourceRef="selectVendor" targetRef="reviewQuotations"/>
-    <sequenceFlow id="flow5" sourceRef="reviewQuotations" targetRef="managerApproval"/>
-    <sequenceFlow id="flow12" sourceRef="managerApproval" targetRef="endEventApproved"/>
+    <sequenceFlow id="flow4" sourceRef="reviewQuotations" targetRef="managerApproval"/>
+    <sequenceFlow id="flow5" sourceRef="managerApproval" targetRef="approvalDecision"/>
+
+    <!-- Approve branch -->
+    <sequenceFlow id="flowApprove" sourceRef="approvalDecision" targetRef="endEventApproved">
+      <conditionExpression xsi:type="tFormalExpression">${decision == 'approve'}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- Default reject branch -->
+    <sequenceFlow id="flowRejectDefault" sourceRef="approvalDecision" targetRef="endEventRejected"/>
+
   </process>
 
+  <!--
+    BPMNDI — left-to-right layout.
+    Row 1 (y≈262): start → evaluateMatrix → directPurchaseGateway → selectVendor → reviewQuotations → managerApproval → approvalDecision
+    Direct path (DIRECT_PURCHASE): directPurchaseGateway drops to endEventApproved (y≈420).
+    Approve path: approvalDecision → endEventApproved (x=1220, y≈262).
+    Reject path: approvalDecision drops to endEventRejected (y≈420).
+  -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_procurement-approval-process">
+    <bpmndi:BPMNPlane id="BPMNPlane_procurement-approval-process" bpmnElement="procurement-approval-process">
+
+      <bpmndi:BPMNShape id="startEvent_di" bpmnElement="startEvent">
+        <omgdc:Bounds x="152" y="262" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="125" y="305" width="90" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="evaluateMatrix_di" bpmnElement="evaluateMatrix">
+        <omgdc:Bounds x="240" y="240" width="120" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="directPurchaseGateway_di" bpmnElement="directPurchaseGateway" isMarkerVisible="true">
+        <omgdc:Bounds x="415" y="255" width="50" height="50"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="396" y="312" width="88" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="selectVendor_di" bpmnElement="selectVendor">
+        <omgdc:Bounds x="530" y="240" width="120" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="reviewQuotations_di" bpmnElement="reviewQuotations">
+        <omgdc:Bounds x="710" y="240" width="120" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="managerApproval_di" bpmnElement="managerApproval">
+        <omgdc:Bounds x="890" y="240" width="120" height="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="approvalDecision_di" bpmnElement="approvalDecision" isMarkerVisible="true">
+        <omgdc:Bounds x="1075" y="255" width="50" height="50"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1055" y="312" width="90" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- endEventApproved: end of approve path (right of approvalDecision) -->
+      <bpmndi:BPMNShape id="endEventApproved_di" bpmnElement="endEventApproved">
+        <omgdc:Bounds x="1197" y="262" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1180" y="305" width="70" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- endEventRejected: below approvalDecision -->
+      <bpmndi:BPMNShape id="endEventRejected_di" bpmnElement="endEventRejected">
+        <omgdc:Bounds x="1082" y="420" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1060" y="463" width="80" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Edges -->
+      <bpmndi:BPMNEdge id="flow1_di" bpmnElement="flow1">
+        <omgdi:waypoint x="188" y="280"/><omgdi:waypoint x="240" y="280"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="flow2_di" bpmnElement="flow2">
+        <omgdi:waypoint x="360" y="280"/><omgdi:waypoint x="415" y="280"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- DIRECT_PURCHASE: gateway drops down to endEventApproved below the main row -->
+      <bpmndi:BPMNEdge id="flowDirect_di" bpmnElement="flowDirect">
+        <omgdi:waypoint x="440" y="305"/><omgdi:waypoint x="440" y="438"/><omgdi:waypoint x="1197" y="438"/><omgdi:waypoint x="1197" y="298"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- Default: gateway → selectVendor -->
+      <bpmndi:BPMNEdge id="flowToVendorDefault_di" bpmnElement="flowToVendorDefault">
+        <omgdi:waypoint x="465" y="280"/><omgdi:waypoint x="530" y="280"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="flow3_di" bpmnElement="flow3">
+        <omgdi:waypoint x="650" y="280"/><omgdi:waypoint x="710" y="280"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="flow4_di" bpmnElement="flow4">
+        <omgdi:waypoint x="830" y="280"/><omgdi:waypoint x="890" y="280"/>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="flow5_di" bpmnElement="flow5">
+        <omgdi:waypoint x="1010" y="280"/><omgdi:waypoint x="1075" y="280"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- Approve: gateway → endEventApproved (rightward) -->
+      <bpmndi:BPMNEdge id="flowApprove_di" bpmnElement="flowApprove">
+        <omgdi:waypoint x="1125" y="280"/><omgdi:waypoint x="1197" y="280"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- Default reject: gateway drops down to endEventRejected -->
+      <bpmndi:BPMNEdge id="flowRejectDefault_di" bpmnElement="flowRejectDefault">
+        <omgdi:waypoint x="1100" y="305"/><omgdi:waypoint x="1100" y="420"/>
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
 </definitions>

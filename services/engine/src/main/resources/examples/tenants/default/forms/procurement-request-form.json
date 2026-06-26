@@ -24,10 +24,23 @@
     },
     {
       "type": "number",
-      "key": "requestedAmount",
+      "key": "amount",
       "label": "Requested Amount (USD)",
       "placeholder": "Enter estimated total amount",
       "validate": { "required": true, "min": 1, "max": 100000000 }
+    },
+    {
+      "type": "select",
+      "key": "category",
+      "label": "Spend Category",
+      "values": [
+        { "label": "IT", "value": "IT" },
+        { "label": "Infrastructure", "value": "INFRASTRUCTURE" },
+        { "label": "Services", "value": "SERVICES" },
+        { "label": "Supplies", "value": "SUPPLIES" },
+        { "label": "Other", "value": "OTHER" }
+      ],
+      "validate": { "required": true }
     },
     {
       "type": "textfield",

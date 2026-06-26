@@ -74,6 +74,10 @@ class AllProcessesDeployAndStartTest {
         // leave-request: leaveType + leaveDays drive the leave-approval DMN
         vars.put("leaveDays", 2);
         vars.put("leaveType", "annual");
+        // procurement-approval-process: amount + category drive procurement-matrix.dmn.
+        // amount=100 hits rule_direct (<=50000) → DIRECT_PURCHASE → auto-approved end.
+        vars.put("amount", 100);
+        vars.put("category", "SUPPLIES");
         // it-helpdesk-ticket: requesterEmail is consumed by both acknowledgeTicket and notifyResolution
         // sendTasks; notificationDelegate is stubbed but the EL expression is resolved at execution time.
         vars.put("requesterEmail", "requester@example.com");
@@ -96,6 +100,7 @@ class AllProcessesDeployAndStartTest {
         repositoryService.createDeployment()
                 .addClasspathResource("examples/tenants/default/dmn/capex-approver-resolution.dmn")
                 .addClasspathResource("examples/tenants/default/dmn/leave-approval.dmn")
+                .addClasspathResource("examples/tenants/default/dmn/procurement-matrix.dmn")
                 .name("quality-gate-dmn-all")
                 .deploy();
 
@@ -104,6 +109,7 @@ class AllProcessesDeployAndStartTest {
                 .addClasspathResource("examples/tenants/default/bpmn/capex-approval-process.bpmn20.xml")
                 .addClasspathResource("examples/tenants/default/bpmn/leave-request.bpmn20.xml")
                 .addClasspathResource("examples/tenants/default/bpmn/it-helpdesk-ticket.bpmn20.xml")
+                .addClasspathResource("examples/tenants/default/bpmn/procurement-approval-process.bpmn20.xml")
                 .name("quality-gate-bpmn-all")
                 .deploy();
     }
@@ -123,7 +129,8 @@ class AllProcessesDeployAndStartTest {
         return Stream.of(
                 "capex-approval-process",
                 "leave-request",
-                "it-helpdesk-ticket"
+                "it-helpdesk-ticket",
+                "procurement-approval-process"
         );
     }
 
