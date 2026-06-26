@@ -2,6 +2,7 @@ package com.werkflow.engine.controller;
 
 import com.werkflow.engine.dto.JwtUserContext;
 import com.werkflow.engine.util.JwtClaimsExtractor;
+import com.werkflow.engine.workflow.FlowableGroupResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.HistoryService;
@@ -33,6 +34,7 @@ public class WorkflowDashboardController {
     private final HistoryService historyService;
     private final TaskService taskService;
     private final JwtClaimsExtractor jwtClaimsExtractor;
+    private final FlowableGroupResolver groupResolver;
 
     /**
      * GET /workflows/instances — list all workflow instances (active + completed)
@@ -160,12 +162,17 @@ public class WorkflowDashboardController {
     @GetMapping("/api/v1/tasks/summary")
     public ResponseEntity<Map<String, Object>> getTaskSummary(@AuthenticationPrincipal Jwt jwt) {
         String userId = jwt.getSubject();
-        String tenantId = jwtClaimsExtractor.getTenantCode(jwt);
+        JwtUserContext userContext = jwtClaimsExtractor.extractUserContext(jwt);
+        String tenantId = userContext.getTenantCode();
+        List<String> userGroups = groupResolver.resolveGroups(userContext);
         log.info("GET /api/v1/tasks/summary - user={}, tenant={}", userId, tenantId);
 
         long myTasks = taskService.createTaskQuery().taskTenantId(tenantId).taskAssignee(userId).count();
-        long teamTasks = taskService.createTaskQuery().taskTenantId(tenantId).taskCandidateUser(userId).count();
-        long unassigned = taskService.createTaskQuery().taskTenantId(tenantId).taskCandidateUser(userId).count();
+        // Team tasks = tasks claimable by the user's candidate groups (matches
+        // TaskService.getTasksForCandidateGroups). taskCandidateGroupIn throws on an empty list.
+        long teamTasks = userGroups.isEmpty() ? 0L
+                : taskService.createTaskQuery().taskTenantId(tenantId).taskCandidateGroupIn(userGroups).count();
+        long unassigned = taskService.createTaskQuery().taskTenantId(tenantId).taskUnassigned().count();
         long overdue = taskService.createTaskQuery().taskTenantId(tenantId).taskAssignee(userId)
                 .taskDueBefore(new Date()).count();
         long highPriority = taskService.createTaskQuery().taskTenantId(tenantId).taskAssignee(userId)
