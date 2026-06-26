@@ -1,7 +1,20 @@
 /**
- * Generate a blank BPMN 2.0 XML template
+ * Generate a unique, NCName-valid BPMN process id (key).
+ * Convention: Process_<base36 timestamp><random> — unique even for two diagrams
+ * created in the same millisecond. New diagrams must NOT default to a shared
+ * hardcoded key (e.g. "process"): that collides across processes and tenants and
+ * breaks tenant-scoped start-by-key lookups.
  */
-export function generateBlankBpmn(processId: string = 'process', processName: string = 'New Process'): string {
+export function generateProcessId(): string {
+  const rand = Math.random().toString(36).slice(2, 8)
+  return `Process_${Date.now().toString(36)}${rand}`
+}
+
+/**
+ * Generate a blank BPMN 2.0 XML template.
+ * When no processId is given, a unique key is generated (never a hardcoded default).
+ */
+export function generateBlankBpmn(processId: string = generateProcessId(), processName: string = 'New Process'): string {
   const timestamp = new Date().toISOString()
 
   return `<?xml version="1.0" encoding="UTF-8"?>
