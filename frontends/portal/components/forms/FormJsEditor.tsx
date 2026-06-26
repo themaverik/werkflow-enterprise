@@ -92,6 +92,8 @@ export default function FormJsEditor({
         // "date"/"time" are subtypes of "datetime", not standalone form-js types
         // "email" is NOT a form-js field type; use textfield + validate.validationType="email"
         'datetime',
+        // expression: headless FEEL-computed value (e.g. derived totals like leaveDays)
+        'expression',
         'group', 'columns',
         // DISPLAY_TYPES — presentational, no key required
         'html', 'text', 'button', 'image', 'spacer', 'separator',

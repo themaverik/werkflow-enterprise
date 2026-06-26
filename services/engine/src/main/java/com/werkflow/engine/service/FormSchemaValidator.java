@@ -27,7 +27,7 @@ public class FormSchemaValidator {
     // fields must be authored as type "datetime" with the appropriate subtype.
     static final Set<String> VARIABLE_TYPES = Set.of(
             "textfield", "number", "textarea", "checkbox", "radio", "select",
-            "datetime", "email", "checklist", "taglist",
+            "datetime", "email", "checklist", "taglist", "expression",
             "group", "columns"
     );
 
