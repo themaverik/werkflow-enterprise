@@ -1,8 +1,9 @@
 package com.werkflow.admin.designtime.bpmn.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.werkflow.admin.designtime.bpmn.dto.VariableAtActivityResponse;
 import com.werkflow.admin.designtime.bpmn.dto.VariableAtActivityResponse.ProcessVariableEntry;
-import com.werkflow.admin.designtime.platform.client.EngineClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,9 +52,12 @@ public class ProcessVariableScopeService {
     private static final Pattern EXTRACT_FIELDS_PATTERN =
             Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)\\s*:");
 
+    private static final String FLOWABLE_NS = "http://flowable.org/bpmn";
+
     private static final int MAX_TRAVERSAL_DEPTH = 200;
 
     private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
 
     @Value("${app.engine-service.url:http://werkflow-engine:8081}")
     private String engineBaseUrl;
@@ -69,9 +73,14 @@ public class ProcessVariableScopeService {
     public VariableAtActivityResponse variablesAt(String tenantId, String processDefId, String activityId, String bearerToken) {
         String bpmnXml = fetchBpmnXml(tenantId, processDefId, bearerToken);
         Document doc = parseBpmnXml(bpmnXml);
-        List<ProcessVariableEntry> variables = traverse(doc, activityId);
-        return new VariableAtActivityResponse(variables);
+        List<FormRef> formRefs = new ArrayList<>();
+        Map<String, ProcessVariableEntry> variables = traverse(doc, activityId, formRefs);
+        resolveFormFields(formRefs, bearerToken, variables);
+        return new VariableAtActivityResponse(new ArrayList<>(variables.values()));
     }
+
+    /** Lightweight carrier for a formKey found on a visited BPMN element. */
+    record FormRef(String bareKey, String activityId, String displayTask) {}
 
     // -------------------------------------------------------------------------
     // XML fetch
@@ -128,9 +137,11 @@ public class ProcessVariableScopeService {
 
     /**
      * BFS traversal from start events to the target activity.
-     * Collects variables set by tasks that precede the target.
+     * Collects variables set by tasks that precede the target, and populates
+     * {@code formRefs} with any {@code flowable:formKey} found on visited elements.
      */
-    private List<ProcessVariableEntry> traverse(Document doc, String targetActivityId) {
+    private Map<String, ProcessVariableEntry> traverse(Document doc, String targetActivityId,
+                                                        List<FormRef> formRefs) {
         // Index all elements by their id attribute
         Map<String, Element> elementById = indexElements(doc);
 
@@ -151,14 +162,15 @@ public class ProcessVariableScopeService {
             queue.addAll(successors);
         }
 
-        // Collect variables from visited tasks
+        // Collect variables and form keys from visited tasks
         Map<String, ProcessVariableEntry> variables = new LinkedHashMap<>();
         for (String id : visited) {
             Element el = elementById.get(id);
             if (el == null) continue;
             extractVariables(el, id, variables);
+            collectFormRef(el, id, formRefs);
         }
-        return new ArrayList<>(variables.values());
+        return variables;
     }
 
     private Map<String, Element> indexElements(Document doc) {
@@ -255,5 +267,94 @@ public class ProcessVariableScopeService {
             String varName = m.group(1);
             out.put(varName, new ProcessVariableEntry(varName, null, activityId, taskName));
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Form field extraction
+    // -------------------------------------------------------------------------
+
+    /**
+     * If the element carries a {@code flowable:formKey} attribute, records a
+     * {@link FormRef} for later resolution.  Strips any {@code @<version>} suffix.
+     */
+    private void collectFormRef(Element el, String activityId, List<FormRef> formRefs) {
+        String rawKey = el.getAttributeNS(FLOWABLE_NS, "formKey");
+        if (rawKey == null || rawKey.isBlank()) return;
+        String taskName = el.getAttribute("name");
+        String displayTask = taskName.isBlank() ? activityId : taskName;
+        // strip @<version> suffix (e.g. "leave-request-form@2" → "leave-request-form")
+        String bareKey = rawKey.contains("@") ? rawKey.substring(0, rawKey.lastIndexOf('@')) : rawKey;
+        if (!bareKey.isBlank()) {
+            formRefs.add(new FormRef(bareKey, activityId, displayTask));
+        }
+    }
+
+    /**
+     * For each {@link FormRef}, fetches the form schema from the engine and adds its
+     * field keys to {@code variables}.  Failures are logged and skipped (best-effort).
+     */
+    void resolveFormFields(List<FormRef> formRefs, String bearerToken,
+                           Map<String, ProcessVariableEntry> variables) {
+        for (FormRef ref : formRefs) {
+            String url = engineBaseUrl + "/api/v1/form-schemas/" + ref.bareKey();
+            try {
+                HttpHeaders headers = new HttpHeaders();
+                headers.setBearerAuth(bearerToken);
+                HttpEntity<?> entity = new HttpEntity<>(headers);
+                var response = restTemplate.exchange(url, HttpMethod.GET, entity, JsonNode.class);
+                JsonNode body = response.getBody();
+                if (body == null) {
+                    log.warn("ProcessVariableScopeService: empty body for form key={}", ref.bareKey());
+                    continue;
+                }
+                // schemaJson may be a nested object or a JSON string
+                JsonNode schemaNode = body.get("schemaJson");
+                if (schemaNode == null || schemaNode.isNull()) {
+                    log.warn("ProcessVariableScopeService: no schemaJson for form key={}", ref.bareKey());
+                    continue;
+                }
+                JsonNode schema = schemaNode.isTextual()
+                        ? objectMapper.readTree(schemaNode.asText())
+                        : schemaNode;
+                extractFormFieldsFromSchema(schema, ref.activityId(), ref.displayTask(), variables);
+            } catch (RestClientException e) {
+                log.warn("ProcessVariableScopeService: could not fetch form key={} — {}", ref.bareKey(), e.getMessage());
+            } catch (Exception e) {
+                log.warn("ProcessVariableScopeService: could not parse form key={} — {}", ref.bareKey(), e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Recursively walks a form-js schema node's {@code components} array and adds
+     * any component with a non-blank {@code key} as a {@link ProcessVariableEntry}.
+     *
+     * <p>Type mapping: {@code number} → {@code "number"};
+     * {@code datetime} / {@code date} → {@code "date"};
+     * everything else → {@code "string"}.</p>
+     */
+    void extractFormFieldsFromSchema(JsonNode schema, String activityId, String displayTask,
+                                     Map<String, ProcessVariableEntry> out) {
+        if (schema == null || !schema.isObject()) return;
+        JsonNode components = schema.get("components");
+        if (components == null || !components.isArray()) return;
+        for (JsonNode component : components) {
+            // recurse into layout components (group, columns, dynamiclist, etc.)
+            extractFormFieldsFromSchema(component, activityId, displayTask, out);
+            JsonNode keyNode = component.get("key");
+            if (keyNode == null || keyNode.isNull()) continue;
+            String key = keyNode.asText("").trim();
+            if (key.isBlank()) continue;
+            String type = mapFormJsType(component.path("type").asText(""));
+            out.putIfAbsent(key, new ProcessVariableEntry(key, type, activityId, displayTask));
+        }
+    }
+
+    private String mapFormJsType(String formJsType) {
+        return switch (formJsType) {
+            case "number" -> "number";
+            case "datetime", "date" -> "date";
+            default -> "string";
+        };
     }
 }
