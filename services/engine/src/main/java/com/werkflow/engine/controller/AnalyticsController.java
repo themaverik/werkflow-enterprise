@@ -3,6 +3,7 @@ package com.werkflow.engine.controller;
 import com.werkflow.engine.dto.ProcessStatsDTO;
 import com.werkflow.engine.dto.TaskMetricsDTO;
 import com.werkflow.engine.service.AnalyticsService;
+import com.werkflow.engine.util.JwtClaimsExtractor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,6 +27,7 @@ import java.util.Collection;
 public class AnalyticsController {
 
     private final AnalyticsService analyticsService;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     @GetMapping("/process-stats")
     @Operation(summary = "Process execution stats", description = "Count, avg duration, success/failure rate per tenant")
@@ -65,7 +67,6 @@ public class AnalyticsController {
 
     private String extractTenant(Jwt jwt) {
         // JWT uses "tenant_id" claim per Keycloak mapper config (not "tenant_code")
-        String tc = jwt.getClaimAsString("tenant_id");
-        return (tc != null && !tc.isBlank()) ? tc : "default";
+        return jwtClaimsExtractor.getTenantCode(jwt);
     }
 }

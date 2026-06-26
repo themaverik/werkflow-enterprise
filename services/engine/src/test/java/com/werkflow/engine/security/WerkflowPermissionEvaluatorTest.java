@@ -4,6 +4,7 @@ import com.werkflow.engine.client.AdminServiceClient;
 import com.werkflow.engine.security.guard.AssetRequestGuard;
 import com.werkflow.engine.security.guard.HubManagerGuard;
 import com.werkflow.engine.security.guard.TaskGuard;
+import com.werkflow.engine.util.JwtClaimsExtractor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +25,7 @@ class WerkflowPermissionEvaluatorTest {
     @Mock private PermissionConfig permissionConfig;
     @Mock private KeycloakRoleExtractor roleExtractor;
     @Mock private AdminServiceClient adminServiceClient;
+    @Mock private JwtClaimsExtractor jwtClaimsExtractor;
     @Mock private AssetRequestGuard assetRequestGuard;
     @Mock private TaskGuard taskGuard;
     @Mock private HubManagerGuard hubManagerGuard;
@@ -40,7 +42,7 @@ class WerkflowPermissionEvaluatorTest {
 
         evaluator = new WerkflowPermissionEvaluator(
                 permissionConfig, roleExtractor, adminServiceClient,
-                List.of(assetRequestGuard, taskGuard, hubManagerGuard));
+                List.of(assetRequestGuard, taskGuard, hubManagerGuard), jwtClaimsExtractor);
         evaluator.buildRegistry();
         // buildRegistry() calls guard.supports() to populate the registry; clear those
         // interactions so verifyNoInteractions() in tests only sees decision-path calls.
@@ -48,7 +50,7 @@ class WerkflowPermissionEvaluatorTest {
 
         // Default: no tenant-specific permissions (tests that fall through YAML check get false)
         lenient().when(adminServiceClient.getTenantRolePermissions(any(), any())).thenReturn(Set.of());
-        lenient().when(jwt.getClaimAsString("tenant_code")).thenReturn(null);
+        lenient().when(jwtClaimsExtractor.getTenantCode(jwt)).thenReturn("default");
 
         when(authentication.getPrincipal()).thenReturn(jwt);
     }

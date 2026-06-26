@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import com.werkflow.engine.util.JwtClaimsExtractor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,7 @@ import java.util.List;
 public class NotificationTemplateController {
 
     private final NotificationTemplateRepository repository;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     // ---- DTOs -------------------------------------------------------
 
@@ -168,8 +170,7 @@ public class NotificationTemplateController {
 
     private String extractTenantId(Authentication authentication) {
         if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
-            String ti = jwt.getClaimAsString("tenant_id");
-            return (ti != null && !ti.isBlank()) ? ti : "default";
+            return jwtClaimsExtractor.getTenantCode(jwt);
         }
         return "default";
     }

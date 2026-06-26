@@ -2,6 +2,7 @@ package com.werkflow.engine.security;
 
 import com.werkflow.engine.client.AdminServiceClient;
 import com.werkflow.engine.security.guard.DomainGuard;
+import com.werkflow.engine.util.JwtClaimsExtractor;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.PermissionEvaluator;
@@ -24,6 +25,7 @@ public class WerkflowPermissionEvaluator implements PermissionEvaluator {
     private final KeycloakRoleExtractor roleExtractor;
     private final AdminServiceClient adminServiceClient;
     private final List<DomainGuard> guards;
+    private final JwtClaimsExtractor jwtClaimsExtractor;
 
     /** Populated on startup from the registered DomainGuard beans. */
     private Map<String, DomainGuard> guardRegistry;
@@ -31,11 +33,13 @@ public class WerkflowPermissionEvaluator implements PermissionEvaluator {
     public WerkflowPermissionEvaluator(PermissionConfig permissionConfig,
                                         KeycloakRoleExtractor roleExtractor,
                                         AdminServiceClient adminServiceClient,
-                                        List<DomainGuard> guards) {
+                                        List<DomainGuard> guards,
+                                        JwtClaimsExtractor jwtClaimsExtractor) {
         this.permissionConfig = permissionConfig;
         this.roleExtractor = roleExtractor;
         this.adminServiceClient = adminServiceClient;
         this.guards = guards;
+        this.jwtClaimsExtractor = jwtClaimsExtractor;
     }
 
     @PostConstruct
@@ -57,8 +61,7 @@ public class WerkflowPermissionEvaluator implements PermissionEvaluator {
         if (yamlPerms.contains(permission.toString())) return true;
         // Fall back to tenant-specific DB permissions
         // JWT uses "tenant_id" claim (not "tenant_code") per Keycloak mapper config
-        String tenantCode = jwt.getClaimAsString("tenant_id");
-        if (tenantCode == null || tenantCode.isBlank()) tenantCode = "default";
+        String tenantCode = jwtClaimsExtractor.getTenantCode(jwt);
         try {
             Set<String> tenantPerms = adminServiceClient.getTenantRolePermissions(tenantCode, roles);
             return tenantPerms.contains(permission.toString());
