@@ -11,7 +11,6 @@ import org.flowable.engine.history.HistoricActivityInstance;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -46,11 +45,7 @@ public class WorkflowDashboardController {
             @RequestParam(defaultValue = "100") int limit,
             @RequestParam(required = false) String tenantId) {
 
-        String jwtTenantId = jwt.getClaimAsString("tenant_id");
-        if (jwtTenantId == null || jwtTenantId.isBlank()) {
-            log.warn("tenant_id claim missing for user {}", jwt.getClaimAsString("preferred_username"));
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+        String jwtTenantId = jwtClaimsExtractor.getTenantCode(jwt);
         String effectiveTenantId = (hasSuperAdminRole(jwt) && tenantId != null && !tenantId.isBlank())
                 ? tenantId : jwtTenantId;
         limit = Math.min(limit, 500);
@@ -130,11 +125,7 @@ public class WorkflowDashboardController {
             @RequestParam(defaultValue = "50") int limit,
             @RequestParam(required = false) String tenantId) {
 
-        String jwtTenantId = jwt.getClaimAsString("tenant_id");
-        if (jwtTenantId == null || jwtTenantId.isBlank()) {
-            log.warn("tenant_id claim missing for user {}", jwt.getClaimAsString("preferred_username"));
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+        String jwtTenantId = jwtClaimsExtractor.getTenantCode(jwt);
         String effectiveTenantId = (hasSuperAdminRole(jwt) && tenantId != null && !tenantId.isBlank())
                 ? tenantId : jwtTenantId;
         limit = Math.min(limit, 200);
@@ -168,12 +159,8 @@ public class WorkflowDashboardController {
      */
     @GetMapping("/api/v1/tasks/summary")
     public ResponseEntity<Map<String, Object>> getTaskSummary(@AuthenticationPrincipal Jwt jwt) {
-        String userId = jwt.getClaimAsString("preferred_username");
-        String tenantId = jwt.getClaimAsString("tenant_id");
-        if (tenantId == null || tenantId.isBlank()) {
-            log.warn("tenant_id claim missing for user {}", userId);
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+        String userId = jwt.getSubject();
+        String tenantId = jwtClaimsExtractor.getTenantCode(jwt);
         log.info("GET /api/v1/tasks/summary - user={}, tenant={}", userId, tenantId);
 
         long myTasks = taskService.createTaskQuery().taskTenantId(tenantId).taskAssignee(userId).count();
