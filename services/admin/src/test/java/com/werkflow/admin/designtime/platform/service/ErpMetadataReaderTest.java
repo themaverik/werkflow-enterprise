@@ -43,7 +43,7 @@ class ErpMetadataReaderTest {
 
     @Test
     void readCollection_unwrapsSpringPageContent() {
-        when(connectorService.callConnector(eq("acme"), eq("hr-service"), eq("/departments"), eq("GET"), any()))
+        when(connectorService.callConnector(eq("acme"), eq("org-directory"), eq("/departments"), eq("GET"), any()))
                 .thenReturn(response(200, "{\"content\":[{\"code\":\"ENG\"},{\"code\":\"FIN\"}],\"totalElements\":2}"));
 
         List<JsonNode> items = reader().readCollection("acme", "/departments");
@@ -71,7 +71,7 @@ class ErpMetadataReaderTest {
     @Test
     void readCollection_returnsEmptyWhenConnectorUnregistered() {
         when(connectorService.callConnector(any(), any(), any(), any(), any()))
-                .thenThrow(new NoSuchElementException("Connector not found: hr-service"));
+                .thenThrow(new NoSuchElementException("Connector not found: org-directory"));
 
         assertThat(reader().readCollection("acme", "/departments")).isEmpty();
     }
@@ -79,7 +79,7 @@ class ErpMetadataReaderTest {
     @Test
     void readCollection_returnsEmptyWhenCredentialMissing() {
         when(connectorService.callConnector(any(), any(), any(), any(), any()))
-                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "hr-service credential not found"));
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "org-directory credential not found"));
 
         assertThat(reader().readCollection("acme", "/departments")).isEmpty();
     }

@@ -18,7 +18,7 @@ import java.util.List;
  * <p>Per ADR-023: all external access — including platform→ERP — flows through the governed
  * connector abstraction; bespoke {@code RestTemplate} clients to ERP are prohibited. ERP exposes
  * one REST base ({@code /api/v1}); these design-time reads route through the tenant's canonical
- * {@code hr-service} connector. Every read degrades to an empty list when the connector is
+ * {@code org-directory} connector. Every read degrades to an empty list when the connector is
  * unregistered, ERP is unreachable, or the payload is unparseable (OSS mode / unconfigured tenant).
  */
 @Slf4j
@@ -26,13 +26,13 @@ import java.util.List;
 @RequiredArgsConstructor
 class ErpMetadataReader {
 
-    static final String ERP_CONNECTOR_KEY = "hr-service";
+    static final String ERP_CONNECTOR_KEY = "org-directory";
 
     private final ConnectorService connectorService;
     private final ObjectMapper objectMapper;
 
     /**
-     * Reads an ERP collection via the {@code hr-service} connector and returns its items.
+     * Reads an ERP collection via the {@code org-directory} connector and returns its items.
      * ERP returns a Spring {@code Page} ({@code {"content":[...]}}); a bare array is also tolerated.
      *
      * @param tenantCode tenant whose connector + credential are used

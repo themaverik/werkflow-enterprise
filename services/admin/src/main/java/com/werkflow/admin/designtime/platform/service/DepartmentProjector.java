@@ -14,7 +14,7 @@ import java.util.List;
  *
  * <p>Per ADR-023: routes through the governed connector abstraction via {@link ErpMetadataReader},
  * never a bespoke HTTP client. Degrades to an empty list when ERP is unavailable or the
- * {@code hr-service} connector is unregistered.
+ * {@code org-directory} connector is unregistered.
  */
 @Service
 @RequiredArgsConstructor

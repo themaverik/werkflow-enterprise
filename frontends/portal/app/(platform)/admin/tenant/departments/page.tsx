@@ -12,7 +12,7 @@ import { listConnectors } from '@/lib/api/connectors'
 import { PageSurface } from '@/components/layout/page-surface'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
-const DEPARTMENTS_CONNECTOR_KEY = 'hr-service'
+const DEPARTMENTS_CONNECTOR_KEY = 'org-directory'
 
 interface Department {
   id: string | number
@@ -90,7 +90,7 @@ export default function DepartmentsPage() {
             <p className="mt-0.5 text-amber-700 dark:text-amber-400">
               Register a connector with key{' '}
               <code className="rounded bg-amber-100 px-1 dark:bg-amber-900">{DEPARTMENTS_CONNECTOR_KEY}</code>{' '}
-              to load department data from your HR system.{' '}
+              to load department data from your org directory.{' '}
               <Link href="/admin/connectors" className="underline hover:no-underline">
                 Go to Connectors →
               </Link>
