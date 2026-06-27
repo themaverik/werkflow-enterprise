@@ -98,7 +98,6 @@ public class SecurityConfig {
                     .requestMatchers(new AntPathRequestMatcher("/api/history/**")).authenticated()
                     .requestMatchers(new AntPathRequestMatcher("/forms/**")).authenticated()
                     .requestMatchers(new AntPathRequestMatcher("/api/forms/**")).authenticated()
-                    .requestMatchers(new AntPathRequestMatcher("/api/services/**")).authenticated()
                     .requestMatchers(new AntPathRequestMatcher("/werkflow/api/**")).authenticated()
                     // Internal S2S endpoints — restrict at filter-chain level as defence-in-depth
                     .requestMatchers(new AntPathRequestMatcher("/api/internal/**"))

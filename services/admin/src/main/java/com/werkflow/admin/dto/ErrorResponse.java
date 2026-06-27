@@ -1,4 +1,4 @@
-package com.werkflow.admin.dto.serviceregistry;
+package com.werkflow.admin.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

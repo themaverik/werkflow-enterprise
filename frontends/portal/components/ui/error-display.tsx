@@ -3,11 +3,10 @@
 import { AlertCircle, RefreshCw, WifiOff } from 'lucide-react'
 import { Button } from './button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './card'
-import { NetworkError, ServiceRegistryError } from '@/lib/api/services'
 import { useTranslations } from 'next-intl'
 
 interface ErrorDisplayProps {
-  error: Error | NetworkError | ServiceRegistryError
+  error: Error
   onRetry?: () => void
   title?: string
   className?: string
@@ -15,7 +14,7 @@ interface ErrorDisplayProps {
 
 export function ErrorDisplay({ error, onRetry, title, className }: ErrorDisplayProps) {
   const t = useTranslations('common.errorDisplay')
-  const isNetworkError = error instanceof NetworkError || error.name === 'NetworkError'
+  const isNetworkError = error.name === 'NetworkError'
   const statusCode = (error as any).statusCode
 
   return (

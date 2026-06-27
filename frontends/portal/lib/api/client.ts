@@ -6,7 +6,6 @@ import { emitTokenExpired } from '@/lib/auth/token-expired-event'
 // NOTE: Do not include /api suffix here - different endpoints use different base paths:
 // - Flowable APIs: /api/*
 // - Werkflow Task APIs: /api/v1/*
-// - Service Registry: /werkflow/api/services/*
 // - Process Definitions: /werkflow/api/process-definitions/*
 // - Forms: /werkflow/api/forms/*
 // Client-side Axios client. Only for use in browser components.

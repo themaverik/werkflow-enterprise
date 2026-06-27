@@ -1,6 +1,6 @@
 package com.werkflow.admin.exception;
 
-import com.werkflow.admin.dto.serviceregistry.ErrorResponse;
+import com.werkflow.admin.dto.ErrorResponse;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -28,94 +28,6 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
-
-    /**
-     * Handle ServiceNotFoundException (404)
-     * @param ex The exception
-     * @param request The web request
-     * @return Error response with 404 status
-     */
-    @ExceptionHandler(ServiceNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleServiceNotFoundException(
-            ServiceNotFoundException ex, WebRequest request) {
-        log.error("Service not found: {}", ex.getMessage());
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(OffsetDateTime.now())
-                .status(HttpStatus.NOT_FOUND.value())
-                .error(HttpStatus.NOT_FOUND.getReasonPhrase())
-                .message(ex.getMessage())
-                .path(request.getDescription(false).replace("uri=", ""))
-                .build();
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-    }
-
-    /**
-     * Handle DuplicateServiceException (409)
-     * @param ex The exception
-     * @param request The web request
-     * @return Error response with 409 status
-     */
-    @ExceptionHandler(DuplicateServiceException.class)
-    public ResponseEntity<ErrorResponse> handleDuplicateServiceException(
-            DuplicateServiceException ex, WebRequest request) {
-        log.error("Duplicate service: {}", ex.getMessage());
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(OffsetDateTime.now())
-                .status(HttpStatus.CONFLICT.value())
-                .error(HttpStatus.CONFLICT.getReasonPhrase())
-                .message(ex.getMessage())
-                .path(request.getDescription(false).replace("uri=", ""))
-                .build();
-
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
-    }
-
-    /**
-     * Handle EnvironmentNotConfiguredException (400)
-     * @param ex The exception
-     * @param request The web request
-     * @return Error response with 400 status
-     */
-    @ExceptionHandler(EnvironmentNotConfiguredException.class)
-    public ResponseEntity<ErrorResponse> handleEnvironmentNotConfiguredException(
-            EnvironmentNotConfiguredException ex, WebRequest request) {
-        log.error("Environment not configured: {}", ex.getMessage());
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(OffsetDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
-                .message(ex.getMessage())
-                .path(request.getDescription(false).replace("uri=", ""))
-                .build();
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-    }
-
-    /**
-     * Handle ServiceRegistryException (400)
-     * @param ex The exception
-     * @param request The web request
-     * @return Error response with 400 status
-     */
-    @ExceptionHandler(ServiceRegistryException.class)
-    public ResponseEntity<ErrorResponse> handleServiceRegistryException(
-            ServiceRegistryException ex, WebRequest request) {
-        log.error("Service registry error: {}", ex.getMessage());
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(OffsetDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
-                .message(ex.getMessage())
-                .path(request.getDescription(false).replace("uri=", ""))
-                .build();
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-    }
 
     /**
      * Handle validation errors from @Valid annotation (400)
