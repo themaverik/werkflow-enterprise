@@ -34,6 +34,15 @@
 
 ---
 
+## Documentation Debt (Pre-MVP)
+
+Surfaced during the 2026-06-27 realm-file reconciliation (`8682a3de`) and Knowledge_Base sync (`91d1c8d9`).
+
+- [ ] **Rewrite `infrastructure/keycloak/README.md` against the realm JSON** — its Clients/Roles/Groups sections still document the old realm generation (clients `werkflow-admin-portal`/`werkflow-hr-portal`, the old 25-role / 6-department matrix). Only the realm name + setup commands were corrected during reconciliation. Re-derive the documented clients (`werkflow-portal`/`werkflow-engine`/`werkflow-admin`), roles, and groups from the canonical `realms/werkflow-realm.json` so the README matches what is actually imported.
+- [ ] **Normalise the Knowledge Base filename to the hyphen convention** — rename `docs/Knowledge_Base.md` → `docs/Knowledge-Base.md` (per doc-standards) and update all cross-references in one pass (doc-sync skill output target, any links in CLAUDE.md / other docs). Do the rename + ref-update together to avoid a dangling auto-generated target.
+
+---
+
 ## M2 — ADR Foundation + Performance ✅ COMPLETE
 
 Committed 2026-04-30 (`a2b53ce`/`f048a98`/`5ab62b4`) — engine quick wins (ADR-009), form field types (ADR-007), signal tenant scoping (ADR-008, `TenantAwareSignalService`), async history, `FlowableIndexCreator` (6 indexes), dead-letter job UI. Deferred: async email via Flowable `EmailJobHandler` (`@Async+@Retryable` already in place).
