@@ -14,14 +14,14 @@
 | Item | Status |
 |------|--------|
 | E2E quality gate | 7/7 specs passing (full milestone-end re-run = master item 9, last) |
-| ADRs | ADR-001 through ADR-033 (in master `docs/adr/`) — latest: ADR-027 (approval escalation), ADR-028 (process test harness), ADR-029 (DOA emission + routing), ADR-032 (form tenant scoping), ADR-033 (deploy fail-loud) |
+| ADRs | ADR-001 through ADR-034 (in master `docs/adr/`) — latest: ADR-032 (form tenant scoping), ADR-033 (deploy fail-loud), ADR-034 (token-lifecycle resilience) |
 | M4.11 / M4.12 | Complete (P3 11/11; Phase A + B.1a–B.6 + B.4/B.5-portal + item 8 sidebar gate) |
 | Tier 1–3 done | All Tier-1 (mechanical cleanups, facade hardening, schema hygiene); item 7 approval-escalation cluster (BPMN + engine + 7c-UI, ADR-027) shipped |
 | Active milestone | Pre-MVP — Blast-Radius Phase Plan + Manual E2E (per master Roadmap) |
 | Done (sessions 42–43, 2026-06-25) | D2 form tenant scoping (ADR-032, V29); D1 deploy fail-loud (ADR-033, aggregate 422); seed library reshuffle (finance-approval→it-helpdesk, V30, ADR-015 amended for `WerkflowSendTaskXMLConverter`); CI greening + artifact-upload gating (`d7b4ec66`, `dd335a63`). All merged+pushed to enterprise main `dd335a63`; live-verified on dev stack. |
-| Next | Pre-MVP Blast-Radius Phase Plan (canonical detail in master `docs/Roadmap.md` → "Pre-MVP Phase Plan — Blast-Radius Re-Verification"): **Phase 1** formKey@N version-resolution verify + assignee/flowable:assignee verify + DRY `extractFormRefs()`; **Phase 2** portal silent-401-refresh + Engine→Admin S2S 401; **Phase 3** flowable-assignment group removal (M4.9 Task 1/5) + Custody Groups panel visibility (Task 4). Then Manual E2E, then MVP release cut (Droplet-blocked). |
-| Branch | `main` — HEAD `dd335a63` |
-| Operational | Dev DB at V30. Docker compose env warnings for `${ENGINE_CLIENT_SECRET}`/etc. remain cosmetic. |
+| Next | Blast-Radius **Phase 1 ✅** (formKey@N + assignee verified-correct; DRY `BpmnFormRefExtractor`) and **Phase 2 ✅** (portal silent-401 + Engine→Admin S2S resilience, ADR-034) DONE+PUSHED. Remaining: **Phase 3** (decision-gated) `flowable-assignment` group removal (M4.9 Task 1/5) + Custody Groups panel visibility (Task 4); **Documentation Debt** (keycloak/README rewrite vs realm JSON + KB filename normalise). Then Manual E2E, then MVP release cut (Droplet-blocked). |
+| Branch | `main` — HEAD `ddb9c69b` |
+| Operational | Dev DB at engine V30. Compose secrets now owned by `.env.shared` (env_file), not `environment:` overrides. **Before Manual E2E rebuild `engine-service` + `admin-service` + `portal`** — all three have source changes since `dd335a63`. Single canonical realm file `infrastructure/keycloak/realms/werkflow-realm.json`. |
 
 ### Session log (collapsed — detail in git history + docs/adr/ + Knowledge-Base)
 
@@ -31,6 +31,7 @@
 - **Session 41** (2026-06-22, `491b89f0`/`3214d5a8`/`ca17ba26`/`97da020b`/`4876f17c`/`7f23b1a1`) — manual E2E prep docs (`BPMN-Symbol-Reference.md`, `Manual-E2E-Test-Plan.md`), logical-unit enforcement, V24–V26 cleanup migrations, 4 latent bug fixes (BPMN XSD element-order, `BpmnFormKeyValidator` classpath, form display-name INSERT, idempotency).
 - **Session 41 end-of-day** (2026-06-22, `a5b6195a`/`cec630d6`/`48d17356`/`7dcc561f`/`6426ec5d`/`04c21036`, pushed) — UI consistency hardening (`.wf-card-interactive`, datasource/services/connectors/tenants/email-templates) + form-rendering reliability stack (form-js `id` field, `validateIdMatchesKey`, `FormJsViewer` error visibility, email→textfield+validationType, V27/V28).
 - **Session 42** (2026-06-24, `4d7949fe` + `04924b61`) — D2 form tenant scoping (ADR-032, V29) + D1 deploy fail-loud (ADR-033, aggregate 422, `DeployReferenceValidator`).
+- **Session 43** (2026-06-25→27, pushed through `8682a3de`) — pre-MVP hardening: Blast-Radius Phase 1 (DRY `BpmnFormRefExtractor` `39af596f`; formKey@N + assignee verified-correct, no change) + Phase 2 (portal silent-401 `a0f69e03` + Engine→Admin S2S resilience `e87cc3eb`, ADR-034); V24–V26 act_* cleanup guards (`64be6232`); manual-E2E bug fixes (dashboard task-count vs list, `process` default-key); seed-form de-bloat (leave 27→5 / capex 22→8 / procurement DMN-gated `edca170f`/`e378fe69`/`9faa565b`); in-scope form-variable picker (`ProcessVariableScopeService`); departments connector `hr-portal`→`org-directory` (`863dea62`); env_file secret ownership (`acf37212`); Keycloak realm-file reconciliation + setup docs (`8682a3de`); Knowledge_Base sync (`91d1c8d9`).
 
 ---
 
