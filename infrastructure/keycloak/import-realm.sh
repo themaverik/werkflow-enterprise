@@ -3,14 +3,14 @@
 # ================================================================
 # Keycloak Realm Import Script
 # ================================================================
-# Imports werkflow-platform realm into Keycloak
+# Imports werkflow realm into Keycloak
 # Usage: ./import-realm.sh
 # ================================================================
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REALM_FILE="${SCRIPT_DIR}/werkflow-realm.json"
+REALM_FILE="${SCRIPT_DIR}/realms/werkflow-realm.json"
 KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8090}"
 ADMIN_USER="${KEYCLOAK_ADMIN:-admin}"
 ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-REDACTED_PASSWORD}"
@@ -73,16 +73,16 @@ echo ""
 # Check if realm already exists
 echo "Checking if realm already exists..."
 REALM_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" \
-  "${KEYCLOAK_URL}/admin/realms/werkflow-platform" \
+  "${KEYCLOAK_URL}/admin/realms/werkflow" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}")
 
 if [ "$REALM_EXISTS" == "200" ]; then
-    echo "Realm 'werkflow-platform' already exists"
+    echo "Realm 'werkflow' already exists"
     read -p "Do you want to delete and recreate it? (y/N): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo "Deleting existing realm..."
-        curl -s -X DELETE "${KEYCLOAK_URL}/admin/realms/werkflow-platform" \
+        curl -s -X DELETE "${KEYCLOAK_URL}/admin/realms/werkflow" \
           -H "Authorization: Bearer ${ACCESS_TOKEN}"
         echo "Realm deleted"
     else
@@ -114,32 +114,32 @@ echo "Verifying realm configuration..."
 echo "================================================================"
 
 # Verify realm
-REALM_INFO=$(curl -s "${KEYCLOAK_URL}/admin/realms/werkflow-platform" \
+REALM_INFO=$(curl -s "${KEYCLOAK_URL}/admin/realms/werkflow" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}")
 
 echo "Realm: $(echo $REALM_INFO | jq -r '.realm')"
 echo "Enabled: $(echo $REALM_INFO | jq -r '.enabled')"
 
 # Count roles
-ROLES=$(curl -s "${KEYCLOAK_URL}/admin/realms/werkflow-platform/roles" \
+ROLES=$(curl -s "${KEYCLOAK_URL}/admin/realms/werkflow/roles" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}")
 ROLE_COUNT=$(echo $ROLES | jq '. | length')
 echo "Realm Roles: ${ROLE_COUNT}"
 
 # Count groups
-GROUPS=$(curl -s "${KEYCLOAK_URL}/admin/realms/werkflow-platform/groups" \
+GROUPS=$(curl -s "${KEYCLOAK_URL}/admin/realms/werkflow/groups" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}")
 GROUP_COUNT=$(echo $GROUPS | jq '. | length')
 echo "Groups: ${GROUP_COUNT}"
 
 # Count clients
-CLIENTS=$(curl -s "${KEYCLOAK_URL}/admin/realms/werkflow-platform/clients" \
+CLIENTS=$(curl -s "${KEYCLOAK_URL}/admin/realms/werkflow/clients" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}")
 CLIENT_COUNT=$(echo $CLIENTS | jq '. | length')
 echo "Clients: ${CLIENT_COUNT}"
 
 # Count users
-USERS=$(curl -s "${KEYCLOAK_URL}/admin/realms/werkflow-platform/users" \
+USERS=$(curl -s "${KEYCLOAK_URL}/admin/realms/werkflow/users" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}")
 USER_COUNT=$(echo $USERS | jq '. | length')
 echo "Users: ${USER_COUNT}"
@@ -150,7 +150,7 @@ echo "Import Complete!"
 echo "================================================================"
 echo ""
 echo "Keycloak Admin Console: ${KEYCLOAK_URL}/admin"
-echo "Realm: werkflow-platform"
+echo "Realm: werkflow"
 echo ""
 echo "Default admin user: admin@werkflow.com / REDACTED_PASSWORD"
 echo ""

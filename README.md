@@ -38,11 +38,19 @@
 
 ```bash
 git clone https://github.com/themaverik/werkflow-enterprise.git
-cd werkflow-enterprise/infrastructure/docker
+cd werkflow-enterprise
+
+# 1. Create the env files from their examples, then fill in secrets.
+#    At minimum set KEYCLOAK_ADMIN_PASSWORD and POSTGRES_PASSWORD in
+#    config/env/.env.shared before the first start.
+cp config/env/.env.shared.example config/env/.env.shared
+
+# 2. Start the stack
+cd infrastructure/docker
 docker compose up -d
 ```
 
-Copy any missing `config/env/.env.*.example` files and fill in secrets before first run.
+Copy any other missing `config/env/.env.*.example` files and fill in secrets before first run.
 
 Portal: http://localhost:4000  
 Engine Swagger UI: http://localhost:8081/swagger-ui.html

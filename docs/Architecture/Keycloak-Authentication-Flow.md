@@ -629,7 +629,7 @@ Werkflow implements **enterprise-grade authentication** using:
 
 **Key Files:**
 - Frontend: `/frontends/admin-portal/auth.config.ts`
-- Realm Export: `/infrastructure/keycloak/keycloak-realm-export.json`
+- Realm Import: `/infrastructure/keycloak/realms/werkflow-realm.json`
 - Docker Config: `/infrastructure/docker/docker-compose.yml`
 
 **Quick Links:**

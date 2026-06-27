@@ -768,4 +768,4 @@ The UI symptom in all three cases is the same — realm roles dropdown shows emp
 ## References
 
 - Keycloak RBAC Role Matrix: [Keycloak-RBAC-Role-Matrix-Design.md](./Keycloak-RBAC-Role-Matrix-Design.md)
-- Realm Configuration: `/infrastructure/keycloak/werkflow-realm.json`
+- Realm Configuration: `/infrastructure/keycloak/realms/werkflow-realm.json`

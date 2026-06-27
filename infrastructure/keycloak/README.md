@@ -6,7 +6,7 @@ This directory contains Keycloak realm configuration and management scripts for 
 
 ## Files
 
-- `werkflow-realm.json` - Complete realm configuration with roles, groups, clients, and mappers
+- `realms/werkflow-realm.json` - Complete realm configuration with roles, groups, clients, and mappers (imported automatically by docker-compose via `--import-realm`)
 - `import-realm.sh` - Script to import realm into Keycloak
 - `sample-users.json` - Sample users for testing
 - `README.md` - This file
@@ -18,8 +18,8 @@ This directory contains Keycloak realm configuration and management scripts for 
 Ensure Keycloak is running:
 
 ```bash
-cd /Users/lamteiwahlang/Projects/werkflow/infrastructure/docker
-docker-compose up -d keycloak
+cd infrastructure/docker
+docker compose up -d keycloak
 ```
 
 Wait for Keycloak to be ready (check http://localhost:8090/health/ready).
@@ -27,13 +27,13 @@ Wait for Keycloak to be ready (check http://localhost:8090/health/ready).
 ### 2. Import Realm
 
 ```bash
-cd /Users/lamteiwahlang/Projects/werkflow/infrastructure/keycloak
+cd infrastructure/keycloak
 ./import-realm.sh
 ```
 
 This will:
 - Wait for Keycloak to be ready
-- Import the werkflow-platform realm
+- Import the werkflow realm
 - Create all roles, groups, clients, and mappers
 - Verify the import
 
@@ -44,7 +44,7 @@ Login to Keycloak Admin Console:
 - Username: `admin`
 - Password: `REDACTED_PASSWORD`
 
-Navigate to the `werkflow-platform` realm and verify:
+Navigate to the `werkflow` realm and verify:
 - Roles: 25+ realm roles created
 - Groups: 6 department groups with sub-groups
 - Clients: 3 clients (werkflow-admin-portal, werkflow-engine, werkflow-hr-portal)
@@ -70,7 +70,7 @@ TOKEN=$(curl -s -X POST "http://localhost:8090/realms/master/protocol/openid-con
 
 # Import each user from sample-users.json
 cat sample-users.json | jq -c '.[]' | while read user; do
-  curl -X POST "http://localhost:8090/admin/realms/werkflow-platform/users" \
+  curl -X POST "http://localhost:8090/admin/realms/werkflow/users" \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
     -d "$user"
@@ -226,7 +226,7 @@ To export the current realm configuration:
 ```bash
 # Via Docker
 docker exec -it werkflow-keycloak /opt/keycloak/bin/kc.sh export \
-  --realm werkflow-platform \
+  --realm werkflow \
   --file /tmp/werkflow-realm-export.json
 
 # Copy from container
@@ -274,7 +274,7 @@ TOKEN=$(curl -s -X POST "http://localhost:8090/realms/master/protocol/openid-con
   -d "grant_type=password" | jq -r '.access_token')
 
 # Delete realm
-curl -X DELETE "http://localhost:8090/admin/realms/werkflow-platform" \
+curl -X DELETE "http://localhost:8090/admin/realms/werkflow" \
   -H "Authorization: Bearer $TOKEN"
 
 # Re-run import
