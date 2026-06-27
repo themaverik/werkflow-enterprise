@@ -266,7 +266,7 @@ Seeds the 4 bundled example processes on engine startup:
 - `capex-approval-process` — CapEx multi-tier approval (DMN + exclusive gateways + notification)
 - `leave-request` — Leave approval (DMN-routed, auto or manual approval)
 - `procurement-approval-process` — Procurement (multi-step user tasks + signal definition)
-- `finance-approval-process` — Finance review (basic single-approver exclusive gateway)
+- `it-helpdesk-ticket` — IT helpdesk ticket (send-task email notification + resolution user task)
 
 Orphaned drafts from previous deployments are auto-pruned. Each seed is idempotent.
 
