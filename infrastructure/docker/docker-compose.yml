@@ -86,13 +86,12 @@ services:
       KC_METRICS_ENABLED: true
       KC_HEALTH_ENABLED: true
 
-      # Admin Credentials — sourced from env_file (.env.shared) not hardcoded here
+      # Admin username (non-secret). The admin password and the *_CLIENT_SECRET realm-import
+      # vars are provided by env_file (.env.shared) below. Do NOT re-declare them here as
+      # ${VAR}: Compose interpolates those from the shell (empty on a bare `docker compose up`)
+      # and `environment:` OVERRIDES `env_file:`, so the realm would import with empty secrets
+      # and the bootstrap admin with no password.
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      # Realm import substitution vars — passed through from .env.shared
-      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
-      ENGINE_CLIENT_SECRET: ${ENGINE_CLIENT_SECRET}
-      ADMIN_CLIENT_SECRET: ${ADMIN_CLIENT_SECRET}
 
     env_file:
       - ../../config/env/.env.shared
@@ -124,7 +123,8 @@ services:
     container_name: werkflow-pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@werkflow.local}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      # default keeps pgAdmin from crash-looping on a bare `up` (it requires a non-empty password)
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
       - "5050:80"
@@ -232,9 +232,8 @@ services:
       # OpenBao — credential resolution backend. Engine reads tenant secrets directly.
       WERKFLOW_VAULT_ADDR: http://openbao:8200
       WERKFLOW_VAULT_TOKEN: werkflow-engine-dev-token-do-not-use-in-prod
-      # Keycloak service-account credential for engine -> admin internal calls.
-      # Matches the werkflow-engine client secret in werkflow-realm.json (dev only).
-      ENGINE_CLIENT_SECRET: ${ENGINE_CLIENT_SECRET}
+      # ENGINE_CLIENT_SECRET (engine -> KC service account) comes from env_file (.env.shared);
+      # not re-declared here — a ${VAR} override would shadow env_file with an empty value.
     ports:
       - "8081:8081"
     volumes:
@@ -282,9 +281,8 @@ services:
       # OpenBao — credential store. Admin writes tenant secrets here.
       WERKFLOW_VAULT_ADDR: http://openbao:8200
       WERKFLOW_VAULT_TOKEN: werkflow-admin-dev-token-do-not-use-in-prod
-      # Keycloak service-account credential for admin -> engine internal calls.
-      # Matches the werkflow-admin client secret in werkflow-realm.json (dev only).
-      ADMIN_CLIENT_SECRET: ${ADMIN_CLIENT_SECRET}
+      # ADMIN_CLIENT_SECRET (admin -> KC service account) comes from env_file (.env.shared);
+      # not re-declared here — a ${VAR} override would shadow env_file with an empty value.
       # Public-facing portal URL — embedded in KC execute-actions-email redirect_uri so
       # users land on the portal login page after completing account setup, not the KC account console.
       WERKFLOW_PORTAL_BASE_URL: http://localhost:4000
