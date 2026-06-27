@@ -2,7 +2,7 @@
 
 **Repo scope**: Enterprise-only engine, admin-service, and portal features
 **Master Roadmap**: `~/Projects/werkflow-platform/docs/Roadmap.md` (authoritative for all future tasks)
-**Last Updated**: 2026-06-25 (sessions 42–43)
+**Last Updated**: 2026-06-27 (session 44 — Blast-Radius Phase 3 closed; documentation debt)
 **Target**: Internal Enterprise Demo — June 2026
 
 > Future tasks in this file are synced from the master Roadmap. Do not add tasks here without adding them to master first.
@@ -19,7 +19,7 @@
 | Tier 1–3 done | All Tier-1 (mechanical cleanups, facade hardening, schema hygiene); item 7 approval-escalation cluster (BPMN + engine + 7c-UI, ADR-027) shipped |
 | Active milestone | Pre-MVP — Blast-Radius Phase Plan + Manual E2E (per master Roadmap) |
 | Done (sessions 42–43, 2026-06-25) | D2 form tenant scoping (ADR-032, V29); D1 deploy fail-loud (ADR-033, aggregate 422); seed library reshuffle (finance-approval→it-helpdesk, V30, ADR-015 amended for `WerkflowSendTaskXMLConverter`); CI greening + artifact-upload gating (`d7b4ec66`, `dd335a63`). All merged+pushed to enterprise main `dd335a63`; live-verified on dev stack. |
-| Next | Blast-Radius **Phase 1 ✅** (formKey@N + assignee verified-correct; DRY `BpmnFormRefExtractor`) and **Phase 2 ✅** (portal silent-401 + Engine→Admin S2S resilience, ADR-034) DONE+PUSHED. Remaining: **Phase 3** (decision-gated) `flowable-assignment` group removal (M4.9 Task 1/5) + Custody Groups panel visibility (Task 4); **Documentation Debt** (keycloak/README rewrite vs realm JSON + KB filename normalise). Then Manual E2E, then MVP release cut (Droplet-blocked). |
+| Next | Blast-Radius **Phase 1 ✅**, **Phase 2 ✅** (ADR-034) DONE+PUSHED. **Phase 3 ✅ closed 2026-06-27 as verified no-op** — re-verify found M4.9 Tasks 1/4/5 already resolved by the M4.10 VariableComboBox refactor (`290ae067`); no code. Remaining: **Documentation Debt** (in progress) then Manual E2E, then MVP release cut (Droplet-blocked). |
 | Branch | `main` — HEAD `ddb9c69b` |
 | Operational | Dev DB at engine V30. Compose secrets now owned by `.env.shared` (env_file), not `environment:` overrides. **Before Manual E2E rebuild `engine-service` + `admin-service` + `portal`** — all three have source changes since `dd335a63`. Single canonical realm file `infrastructure/keycloak/realms/werkflow-realm.json`. |
 
@@ -31,16 +31,16 @@
 - **Session 41** (2026-06-22, `491b89f0`/`3214d5a8`/`ca17ba26`/`97da020b`/`4876f17c`/`7f23b1a1`) — manual E2E prep docs (`BPMN-Symbol-Reference.md`, `Manual-E2E-Test-Plan.md`), logical-unit enforcement, V24–V26 cleanup migrations, 4 latent bug fixes (BPMN XSD element-order, `BpmnFormKeyValidator` classpath, form display-name INSERT, idempotency).
 - **Session 41 end-of-day** (2026-06-22, `a5b6195a`/`cec630d6`/`48d17356`/`7dcc561f`/`6426ec5d`/`04c21036`, pushed) — UI consistency hardening (`.wf-card-interactive`, datasource/services/connectors/tenants/email-templates) + form-rendering reliability stack (form-js `id` field, `validateIdMatchesKey`, `FormJsViewer` error visibility, email→textfield+validationType, V27/V28).
 - **Session 42** (2026-06-24, `4d7949fe` + `04924b61`) — D2 form tenant scoping (ADR-032, V29) + D1 deploy fail-loud (ADR-033, aggregate 422, `DeployReferenceValidator`).
-- **Session 43** (2026-06-25→27, pushed through `8682a3de`) — pre-MVP hardening: Blast-Radius Phase 1 (DRY `BpmnFormRefExtractor` `39af596f`; formKey@N + assignee verified-correct, no change) + Phase 2 (portal silent-401 `a0f69e03` + Engine→Admin S2S resilience `e87cc3eb`, ADR-034); V24–V26 act_* cleanup guards (`64be6232`); manual-E2E bug fixes (dashboard task-count vs list, `process` default-key); seed-form de-bloat (leave 27→5 / capex 22→8 / procurement DMN-gated `edca170f`/`e378fe69`/`9faa565b`); in-scope form-variable picker (`ProcessVariableScopeService`); departments connector `hr-portal`→`org-directory` (`863dea62`); env_file secret ownership (`acf37212`); Keycloak realm-file reconciliation + setup docs (`8682a3de`); Knowledge_Base sync (`91d1c8d9`).
+- **Session 43** (2026-06-25→27, pushed through `8682a3de`) — pre-MVP hardening: Blast-Radius Phase 1 (DRY `BpmnFormRefExtractor` `39af596f`; formKey@N + assignee verified-correct, no change) + Phase 2 (portal silent-401 `a0f69e03` + Engine→Admin S2S resilience `e87cc3eb`, ADR-034); V24–V26 act_* cleanup guards (`64be6232`); manual-E2E bug fixes (dashboard task-count vs list, `process` default-key); seed-form de-bloat (leave 27→5 / capex 22→8 / procurement DMN-gated `edca170f`/`e378fe69`/`9faa565b`); in-scope form-variable picker (`ProcessVariableScopeService`); departments connector `hr-portal`→`org-directory` (`863dea62`); env_file secret ownership (`acf37212`); Keycloak realm-file reconciliation + setup docs (`8682a3de`); Knowledge-Base sync (`91d1c8d9`).
 
 ---
 
 ## Documentation Debt (Pre-MVP)
 
-Surfaced during the 2026-06-27 realm-file reconciliation (`8682a3de`) and Knowledge_Base sync (`91d1c8d9`).
+Surfaced during the 2026-06-27 realm-file reconciliation (`8682a3de`) and Knowledge-Base sync (`91d1c8d9`).
 
-- [ ] **Rewrite `infrastructure/keycloak/README.md` against the realm JSON** — its Clients/Roles/Groups sections still document the old realm generation (clients `werkflow-admin-portal`/`werkflow-hr-portal`, the old 25-role / 6-department matrix). Only the realm name + setup commands were corrected during reconciliation. Re-derive the documented clients (`werkflow-portal`/`werkflow-engine`/`werkflow-admin`), roles, and groups from the canonical `realms/werkflow-realm.json` so the README matches what is actually imported.
-- [ ] **Normalise the Knowledge Base filename to the hyphen convention** — rename `docs/Knowledge_Base.md` → `docs/Knowledge-Base.md` (per doc-standards) and update all cross-references in one pass (doc-sync skill output target, any links in CLAUDE.md / other docs). Do the rename + ref-update together to avoid a dangling auto-generated target.
+- [x] **Rewrite `infrastructure/keycloak/README.md` against the realm JSON** *(2026-06-27)* — re-derived from canonical `realms/werkflow-realm.json`: correct clients (`werkflow-portal`/`werkflow-engine`/`werkflow-admin`), env-var client secrets (no hardcoded values), the actual 37 realm roles, removed the 6 phantom department groups (realm has none — role-based), added KC 26 version + Google IdP + `tenant_id` attribute. Also stubbed the superseded `REALM_SETUP.md` (removed stale manual flow + committed dev secrets) to point at the README.
+- [x] **Normalise the Knowledge Base filename to the hyphen convention** *(2026-06-27)* — `git mv docs/Knowledge_Base.md → docs/Knowledge-Base.md`; updated all cross-refs (this Roadmap's session log + the KB's own docs-index/tech-debt rows). doc-sync already targets the hyphen name, so no dangling auto-generated target.
 
 ---
 
@@ -103,11 +103,13 @@ Committed Group A `b1c9f15` · Group B `7aac042` — backend process/task metric
 
 > **Context**: The Action Block → HUMAN_APPROVAL → Assignee Expression is the authoritative assignment mechanism in Werkflow. The standard BPMN Assignment section (Assignee, Candidate Users, Candidate Groups) maps to different XML attributes that the engine may not read.
 
-- [ ] **Task 1** — Decide: remove standard BPMN `flowable-assignment` group from UserTask panel entirely, or keep as low-level override? Consult ADR-009 (BPMN task type → action block mapping).
+> **Resolution 2026-06-27 (Blast-Radius Phase 3 re-verify):** Tasks 1, 4, 5 are RESOLVED — already overtaken by the M4.10 VariableComboBox refactor (`290ae067`), which post-dates this list. No code change; closed as verified no-op (no-side-effects rule). Tasks 2 and 3 were also superseded (FEEL assist moved to `ExpressionBuilder`; Artifact Metadata is process-level-scoped).
+
+- [x] **Task 1** — RESOLVED (verified): the standard BPMN `flowable-assignment` group was removed from `flowable-properties-provider.ts` in M4.10 (`290ae067`). `HumanApprovalSection.tsx` (React sidebar) is the single authoritative assignment UI.
 - [ ] **Task 2** — Move the 4-section suggestion panel (Process Variables, Custody Lookups, Business Tier 2, System Tier 1) to assist the Assignee Expression FEEL field in Action Block → HUMAN_APPROVAL. Currently wired to the wrong field (`candidateGroups`).
 - [ ] **Task 3** — Scope Artifact Metadata panel to process level only (no element selected). Hide when any element is active on the canvas.
-- [ ] **Task 4** — Decide Custody Groups reference panel visibility: always-on, process-level-only, or only when a UserTask with HUMAN_APPROVAL is selected.
-- [ ] **Task 5** — Remove `flowable-assignment` group (Assignee, Candidate Users, Candidate Groups text fields) from `flowable-properties-provider.ts` once Task 1 decision is made.
+- [x] **Task 4** — RESOLVED (verified): the standalone always-on Custody Groups reference panel no longer exists. Custody groups are now *contextual* — a source inside the Candidate Groups combobox (UserTask/HUMAN_APPROVAL only) and a group inside `ExpressionBuilder` (sequence-flow conditions only).
+- [x] **Task 5** — RESOLVED (verified): the `flowable-assignment` group (Assignee, Candidate Users, Candidate Groups text fields) is already absent from `flowable-properties-provider.ts` (removed in `290ae067`).
 - [ ] **Open question** — Attribute discrepancy: native `assignee` field reads `businessObject.assignee`; Action Block reads `businessObject.get('flowable:assignee')`. Are these the same XML attribute? Verify with moddle extension config and engine behaviour.
 
 ---

@@ -151,8 +151,6 @@ Pointer only. Proposed / not-yet-active ADRs are tracked in the platform `docs/a
 
 | Item | Source | Priority |
 |------|--------|----------|
-| `infrastructure/keycloak/README.md` Clients/Roles sections still document old client names + role matrix | realm reconciliation (8682a3de) | Doc-sync pass |
-| KB filename uses underscore (`Knowledge_Base.md`) vs the hyphen convention in doc-standards | doc-standards rule | Normalise when cross-refs updated |
 | Webhook replay cache is single-node Caffeine — replace with Redis for multi-instance | ADR-011 | Pre-prod |
 | HMAC secrets in env vars — rotation requires service restart | ADR-011 | Pre-prod |
 | Kafka/RabbitMQ deferred — `transport: messaging` slot reserved in envelope | ADR-008 | Customer-driven |
@@ -171,4 +169,4 @@ Pointer only. Proposed / not-yet-active ADRs are tracked in the platform `docs/a
 | `~/Projects/werkflow-platform/docs/adr/index.md` | 34 architecture decision records (canonical) | 2026-06 |
 | `docs/Architecture/` | Design specs, delegate analysis, workflow guides | Various |
 | `docs/superpowers/specs/` | Feature specs consumed by implementation | 2026-04/05 |
-| `docs/Knowledge_Base.md` | This file | 2026-06-27 |
+| `docs/Knowledge-Base.md` | This file | 2026-06-27 |

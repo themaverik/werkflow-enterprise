@@ -98,7 +98,7 @@ Four example processes auto-deploy on startup (set `WERKFLOW_DEPLOY_EXAMPLES=tru
 | CapEx Approval | capex-request-form, capex-approval-form | capex-approver-resolution |
 | Leave Request | leave-request-form, leave-approval-form | leave-approval |
 | Procurement Approval | procurement-request-form, vendor-selection, quotation-review, procurement-approval | procurement-matrix |
-| Finance Approval | budget-request-form | — |
+| IT Helpdesk Ticket | it-helpdesk-ticket-form, it-helpdesk-resolution-form | — |
 
 ## Documentation
 
