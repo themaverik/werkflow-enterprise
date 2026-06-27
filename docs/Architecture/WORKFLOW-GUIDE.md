@@ -1,5 +1,3 @@
-> **Note**: This document reflects pre-S1 architecture and is scheduled for a full rewrite. Use with caution.
-
 # Werkflow - Workflow Management Guide
 
 ## Overview
@@ -398,18 +396,18 @@ This section explains how to add new workflows to the Werkflow platform with **m
 
 ### Architecture Principles
 
-The Werkflow platform follows a **decoupled architecture** where:
+The Werkflow platform follows a **connector-first integration architecture** where:
 
 1. **Workflows are orchestrated by the Engine Service** using BPMN processes
-2. **Data is managed by department services** (Finance, Procurement, Inventory, HR, etc.)
-3. **Generic delegates** handle cross-service communication via REST APIs
-4. **No code changes required** in existing services to add new workflows
+2. **External data comes from an independent ERP backing service** (werkflow-erp) and other registered external systems — accessed through the connector abstraction, never via bespoke in-platform service clients
+3. **All external integration flows through the connector framework** — registered connectors supply base URLs and credentials; the engine resolves transport and auth server-side at runtime (ADR-023, ADR-024)
+4. **No code changes required** to add new workflows — processes are authored in the BPMN designer, forms in the Form Builder, and deployed at runtime
 
 **Key Benefits:**
 - 90%+ no-code workflow creation
-- BPMN processes are configuration, not code
-- Department services remain focused on domain logic
-- Workflows can be added, modified, or removed without code changes
+- BPMN processes are authored and deployed via the Process Designer
+- External service integration is governed through the connector registry (SSRF-guarded, credential-resolved, audit-logged)
+- Workflows can be added, modified, or removed without modifying platform services
 
 ### Step-by-Step Integration Guide
 
@@ -442,9 +440,20 @@ Create a BPMN 2.0 XML file for your workflow.
                 flowable:formKey="equipment-request">
     </startEvent>
 
-    <!-- Service Task: Create Request -->
+    <!-- Service Task: Create Request in external system via connector -->
     <serviceTask id="createRequest" name="Create Equipment Request"
-                 flowable:expression="${execution.setVariable('requestId', equipmentService.createRequest(execution.getVariables()))}">
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <extensionElements>
+        <flowable:field name="connector">
+          <flowable:string>erp-service</flowable:string>
+        </flowable:field>
+        <flowable:field name="path">
+          <flowable:string>/api/equipment/requests</flowable:string>
+        </flowable:field>
+        <flowable:field name="onError">
+          <flowable:string>FAIL</flowable:string>
+        </flowable:field>
+      </extensionElements>
     </serviceTask>
 
     <!-- User Task: Manager Approval -->
@@ -456,13 +465,35 @@ Create a BPMN 2.0 XML file for your workflow.
     <!-- Exclusive Gateway: Approved? -->
     <exclusiveGateway id="decisionGateway" name="Approved?" />
 
-    <!-- Service Task: Update Status -->
+    <!-- Service Task: Update Status via connector -->
     <serviceTask id="updateApproved" name="Update Status: Approved"
-                 flowable:expression="${equipmentService.updateStatus(requestId, 'APPROVED')}">
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <extensionElements>
+        <flowable:field name="connector">
+          <flowable:string>erp-service</flowable:string>
+        </flowable:field>
+        <flowable:field name="path">
+          <flowable:string>/api/equipment/requests/${requestId}/approve</flowable:string>
+        </flowable:field>
+        <flowable:field name="onError">
+          <flowable:string>FAIL</flowable:string>
+        </flowable:field>
+      </extensionElements>
     </serviceTask>
 
     <serviceTask id="updateRejected" name="Update Status: Rejected"
-                 flowable:expression="${equipmentService.updateStatus(requestId, 'REJECTED')}">
+                 flowable:delegateExpression="${externalApiCallDelegate}">
+      <extensionElements>
+        <flowable:field name="connector">
+          <flowable:string>erp-service</flowable:string>
+        </flowable:field>
+        <flowable:field name="path">
+          <flowable:string>/api/equipment/requests/${requestId}/reject</flowable:string>
+        </flowable:field>
+        <flowable:field name="onError">
+          <flowable:string>FAIL</flowable:string>
+        </flowable:field>
+      </extensionElements>
     </serviceTask>
 
     <!-- End Events -->
@@ -587,61 +618,39 @@ export const formTemplates = {
 
 ---
 
-#### Step 3: Implement Service Delegates (If Needed)
+#### Step 3: Wire External Calls via the Connector Framework
 
-If you're calling **existing service APIs**, use Spring Expression Language (SpEL) directly in BPMN - **no code needed**.
+External service calls in BPMN use the **connector abstraction** — all external access (ERP data, third-party APIs) routes through a registered connector. There is no `RestServiceDelegate` and no hard-coded service URLs in the engine.
 
-If you need **custom logic**, create a reusable delegate.
+**How it works:**
 
-**Location:** `services/engine/src/main/java/com/werkflow/engine/delegate/`
+1. In the admin portal, register a connector under **Settings → Connectors** with the external service's base URL and auth scheme. Credentials are stored in OpenBao via the credential registry.
+2. In the BPMN designer, add a ServiceTask and set the **Action Block** to `CONNECTOR_OPERATION`.
+3. Select the registered connector and (optionally) a sub-path or operation ID.
+4. The designer writes the resulting BPMN; the engine resolves base URL, transport, and credentials server-side at runtime (ADR-024).
 
-**Example:** Generic REST service delegate (already exists, reuse it):
-
-```java
-// services/engine/src/main/java/com/werkflow/engine/delegate/RestServiceDelegate.java
-
-@Component("restServiceDelegate")
-public class RestServiceDelegate implements JavaDelegate {
-
-    @Autowired
-    private RestTemplate restTemplate;
-
-    @Override
-    public void execute(DelegateExecution execution) {
-        String serviceUrl = (String) execution.getVariable("serviceUrl");
-        String method = (String) execution.getVariable("httpMethod");
-        Object requestBody = execution.getVariable("requestBody");
-
-        // Make REST call to department service
-        ResponseEntity<?> response = restTemplate.exchange(
-            serviceUrl,
-            HttpMethod.valueOf(method),
-            new HttpEntity<>(requestBody),
-            Object.class
-        );
-
-        execution.setVariable("responseData", response.getBody());
-    }
-}
-```
-
-**Usage in BPMN:**
+**Resulting BPMN shape** (produced by the designer):
 
 ```xml
-<serviceTask id="callService" name="Call Equipment Service"
-             flowable:delegateExpression="${restServiceDelegate}">
+<serviceTask id="createRequest" name="Create Equipment Request"
+             flowable:delegateExpression="${externalApiCallDelegate}">
   <extensionElements>
-    <flowable:field name="serviceUrl">
-      <flowable:string>http://equipment-service:8087/api/equipment</flowable:string>
+    <flowable:field name="connector">
+      <flowable:string>erp-service</flowable:string>
     </flowable:field>
-    <flowable:field name="httpMethod">
-      <flowable:string>POST</flowable:string>
+    <flowable:field name="path">
+      <flowable:string>/api/equipment/requests</flowable:string>
+    </flowable:field>
+    <flowable:field name="onError">
+      <flowable:string>FAIL</flowable:string>
     </flowable:field>
   </extensionElements>
 </serviceTask>
 ```
 
-**That's it!** Generic delegates handle cross-service calls - no new code needed.
+`onError` values: `FAIL` (default — task fails and retries), `CONTINUE` (swallow error, proceed), `THROW_BPMN_ERROR` (trigger an attached error boundary event).
+
+**No custom delegate code is needed.** The `externalApiCallDelegate` (`RestConnectorDelegate`) handles SSRF-guarded HTTP, connector credential resolution (ADR-024), body template substitution, and response size capping.
 
 ---
 
@@ -678,14 +687,14 @@ Here's where you need to make changes (all minimal):
 |------|----------|------|-----------|
 | **1. BPMN Process** | `services/engine/src/main/resources/processes/` | **Configuration** | ✅ Yes |
 | **2. Form Templates** | `frontends/admin-portal/lib/form-templates.ts` | Code (1 object) | ⚠️ Optional |
-| **3. Service Delegates** | `services/engine/src/main/java/.../delegate/` | Code (Java class) | ⚠️ Only if custom logic needed |
-| **4. Dashboard Tab** | `frontends/admin-portal/app/(studio)/workflows/page.tsx` | Code (1 line) | ⚠️ Optional |
-| **5. Department Service** | None | None | ✅ No changes needed |
+| **3. Register Connector** | Admin portal → Settings → Connectors | Configuration | Required for external service calls |
+| **4. Dashboard Tab** | `frontends/portal/app/(studio)/workflows/page.tsx` | Code (1 line) | Optional |
+| **5. External Service** | None | None | No changes needed — called via connector |
 
 **Key Insight:**
 - The **only required change** is the BPMN XML file (configuration, not code)
-- Department services remain **completely unchanged**
-- Generic delegates handle all service communication
+- External services (ERP, APIs) remain **completely unchanged** — they are called via registered connectors
+- The built-in `${externalApiCallDelegate}`, `${notificationDelegate}`, and `${setVariablesDelegate}` handle all integration needs
 
 ---
 
@@ -714,7 +723,7 @@ Let's look at how Phase 3 workflows were implemented:
    { id: 'capex', label: 'CapEx' }
    ```
 
-**Finance Service Changes:** ✅ **ZERO** - Service already has CapEx APIs
+**ERP Changes:** **ZERO** — werkflow-erp is not modified; the capex workflow calls it via a registered connector
 
 **Total Code Changes:**
 - 1 BPMN XML file (configuration)
@@ -737,9 +746,9 @@ Let's look at how Phase 3 workflows were implemented:
    'asset-transfer-request': { /* form definition */ }
    ```
 
-**Inventory Service Changes:** ✅ **ZERO** - Service already has transfer APIs
+**ERP Changes:** **ZERO** — werkflow-erp is not modified; asset transfer calls it via a registered connector
 
-**Delegates Used:** Generic `RestServiceDelegate`, `NotificationDelegate` (already exist)
+**Delegates Used:** `${externalApiCallDelegate}` (connector operation), `${notificationDelegate}` (notifications)
 
 **Total New Code:** 0 Java files, 0 service changes
 
@@ -747,111 +756,89 @@ Let's look at how Phase 3 workflows were implemented:
 
 ### Integration Patterns
 
-#### Pattern 1: Direct SpEL Expressions (No Delegates)
+#### Pattern 1: Connector Operation (Recommended for all external calls)
 
-Use when calling existing service methods directly:
-
-```xml
-<serviceTask id="createRequest" name="Create Request"
-             flowable:expression="${financeService.createCapExRequest(execution.getVariables())}">
-</serviceTask>
-```
-
-**Pros:** No delegate code needed
-**Cons:** Service bean must be available in Engine Service context
-
----
-
-#### Pattern 2: Generic REST Delegate (Recommended)
-
-Use for calling department service REST APIs:
+Use for REST calls to werkflow-erp or any third-party API. Author in the BPMN designer by setting the Action Block to `CONNECTOR_OPERATION`. The designer writes `${externalApiCallDelegate}` and the `connector` field; the engine resolves base URL and credentials from the connector registry at runtime.
 
 ```xml
-<serviceTask id="callFinanceAPI" name="Call Finance Service"
-             flowable:delegateExpression="${restServiceDelegate}">
+<serviceTask id="callErpApi" name="Fetch Approval Data"
+             flowable:delegateExpression="${externalApiCallDelegate}">
   <extensionElements>
-    <flowable:field name="serviceUrl">
-      <flowable:string>http://finance-service:8084/api/capex</flowable:string>
+    <flowable:field name="connector">
+      <flowable:string>erp-service</flowable:string>
+    </flowable:field>
+    <flowable:field name="path">
+      <flowable:string>/api/capex/validate</flowable:string>
+    </flowable:field>
+    <flowable:field name="onError">
+      <flowable:string>FAIL</flowable:string>
     </flowable:field>
   </extensionElements>
 </serviceTask>
 ```
 
-**Pros:** True microservice separation, no coupling
-**Cons:** Requires HTTP call overhead
+**Pros:** Governed path — SSRF-guarded, credential-resolved, audit-logged. No service URLs or credentials in the BPMN.
 
 ---
 
-#### Pattern 3: Custom Delegate (When Needed)
+#### Pattern 2: Notification (SEND_NOTIFICATION Action Block)
 
-Use for complex orchestration logic:
+Use for email and channel notifications. Author in the designer by setting the Action Block to `SEND_NOTIFICATION`. Required fields: `recipient` (email expression) and `templateKey`.
 
-```java
-@Component("customApprovalDelegate")
-public class CustomApprovalDelegate implements JavaDelegate {
-    @Override
-    public void execute(DelegateExecution execution) {
-        // Custom logic here
-        BigDecimal amount = (BigDecimal) execution.getVariable("amount");
-
-        if (amount.compareTo(new BigDecimal("50000")) > 0) {
-            execution.setVariable("requiresVPApproval", true);
-        }
-    }
-}
+```xml
+<serviceTask id="notifyApplicant" name="Notify Applicant"
+             flowable:delegateExpression="${notificationDelegate}">
+  <extensionElements>
+    <flowable:field name="recipient">
+      <flowable:expression>${applicantEmail}</flowable:expression>
+    </flowable:field>
+    <flowable:field name="templateKey">
+      <flowable:string>request-approved</flowable:string>
+    </flowable:field>
+    <flowable:field name="channel">
+      <flowable:string>email</flowable:string>
+    </flowable:field>
+  </extensionElements>
+</serviceTask>
 ```
 
-**Pros:** Full control over logic
-**Cons:** Requires Java code in Engine Service
+`channel` defaults to `email` when omitted. Dispatch is `@Async`; the process does not block on delivery.
+
+---
+
+#### Pattern 3: Set Variables (SET_VARIABLES Action Block)
+
+Use for computed variable assignments that require no external call. All `var.*`-prefixed fields are evaluated atomically before any variable is committed.
+
+```xml
+<serviceTask id="computePriority" name="Compute Priority"
+             flowable:delegateExpression="${setVariablesDelegate}">
+  <extensionElements>
+    <flowable:field name="var.requestPriority">
+      <flowable:expression>${requestAmount > 100000 ? 'HIGH' : 'STANDARD'}</flowable:expression>
+    </flowable:field>
+  </extensionElements>
+</serviceTask>
+```
 
 ---
 
 ### Configuration Requirements
 
-#### 1. Engine Service Configuration
+#### 1. Register a Connector
 
-If integrating with a **new department service**, add the service URL:
+To integrate with an external service, register a connector in the admin portal under **Settings → Connectors**. Provide:
 
-**Location:** `services/engine/src/main/resources/application.yml`
+- **Key** — the slug used in BPMN (e.g., `erp-service`)
+- **Base URL** — the external service's root URL
+- **Auth scheme** — NONE, BASIC, BEARER, or API_KEY
+- **Credential** — stored in OpenBao via the credential registry; never written to the BPMN
 
-```yaml
-app:
-  services:
-    hr-url: ${HR_SERVICE_URL:http://localhost:8082}
-    admin-url: ${ADMIN_SERVICE_URL:http://localhost:8083}
-    finance-url: ${FINANCE_SERVICE_URL:http://localhost:8084}
-    procurement-url: ${PROCUREMENT_SERVICE_URL:http://localhost:8085}
-    inventory-url: ${INVENTORY_SERVICE_URL:http://localhost:8086}
-    equipment-url: ${EQUIPMENT_SERVICE_URL:http://localhost:8087}  # <-- Add new service
-```
+The engine resolves the URL and credential at runtime (ADR-024). No `application.yml` change is needed for standard connector-based integration.
 
-#### 2. Docker Compose (For New Services)
+#### 2. Docker Compose
 
-If adding a **new department service**, update `infrastructure/docker/docker-compose.yml`:
-
-```yaml
-services:
-  equipment-service:
-    build:
-      context: ../..
-      dockerfile: Dockerfile
-      target: equipment-service
-    container_name: werkflow-equipment
-    environment:
-      SERVER_PORT: 8087
-      SPRING_DATASOURCE_SCHEMA: equipment_service
-    ports:
-      - "8087:8087"
-```
-
-#### 3. Database Schema (For New Services)
-
-Update `infrastructure/docker/init-db.sql`:
-
-```sql
-CREATE SCHEMA IF NOT EXISTS equipment_service;
-GRANT ALL PRIVILEGES ON SCHEMA equipment_service TO werkflow_admin;
-```
+The Werkflow platform runs three core services: `engine`, `admin`, and `portal`. External systems (ERP, third-party APIs) are not co-deployed — they are reached via registered connectors. No new Docker services are added to the platform stack for external integrations.
 
 ---
 
@@ -899,15 +886,15 @@ POST http://localhost:8081/api/workflows/tasks/complete
 
 ### Best Practices for Minimal Code Changes
 
-1. **Reuse Generic Delegates**
-   - Use `RestServiceDelegate` for HTTP calls
-   - Use `NotificationDelegate` for emails/notifications
-   - Use `ApprovalDelegate` for common approval logic
+1. **Use the built-in Action Block delegates**
+   - Use `CONNECTOR_OPERATION` (`${externalApiCallDelegate}`) for HTTP calls to registered connectors
+   - Use `SEND_NOTIFICATION` (`${notificationDelegate}`) for emails/notifications
+   - Use `SET_VARIABLES` (`${setVariablesDelegate}`) for computed variable assignments
 
-2. **Keep Department Services Independent**
-   - Services should not know about workflows
-   - Expose REST APIs for data operations
-   - Workflows orchestrate via Engine Service
+2. **Keep External Systems Independent**
+   - External systems (ERP, third-party APIs) should not know about workflows
+   - Workflows orchestrate via the Engine Service and connector abstraction
+   - External data access is governed through registered connectors (SSRF-guarded, credential-resolved, audit-logged)
 
 3. **Use Configuration Over Code**
    - BPMN XML is configuration
@@ -963,9 +950,9 @@ A: Check `flowable:formKey` in BPMN matches form template key:
 
 ---
 
-**Q: Can't call department service from delegate**
+**Q: Connector operation task fails with "connector not registered"**
 
-A: Ensure service URL is configured in `application.yml` and accessible from Engine Service container.
+A: Register the connector in the admin portal under **Settings → Connectors** before deploying the process. The `connector` field in the BPMN must match the registered connector key exactly.
 
 ---
 

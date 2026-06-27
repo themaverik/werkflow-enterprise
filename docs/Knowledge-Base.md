@@ -11,7 +11,7 @@
 
 **Stack**
 - Engine: Spring Boot + Flowable 7.2 (multi-tenant, JWT-secured); Flyway engine migrations at V30
-- Admin service: Spring Boot (connector catalog, PSS/DTDS design-time, DMN, tenant config, org/service registry)
+- Admin service: Spring Boot (connector catalog, PSS/DTDS design-time, DMN, tenant config, org directory)
 - Portal: Next.js 14 (App Router, next-auth v5, Keycloak OIDC, React Query)
 - Auth: Keycloak 26 (realm `werkflow`; clients `werkflow-portal`/`werkflow-engine`/`werkflow-admin`); JWT carries `realm_access.roles`
 - Credentials: OpenBao per-tenant credential store (AES paths removed; secretRef model)

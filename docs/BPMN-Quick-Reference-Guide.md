@@ -75,23 +75,17 @@ This guide provides quick reference for mapping approval concepts to BPMN constr
 
 ```xml
 <serviceTask id="budgetCheck" name="Check Budget Availability"
-             flowable:delegateExpression="${restServiceDelegate}">
-  <documentation>Verify budget availability via Finance Service REST API</documentation>
+             flowable:delegateExpression="${externalApiCallDelegate}">
+  <documentation>Verify budget availability via the registered ERP connector</documentation>
   <extensionElements>
-    <flowable:field name="url">
-      <flowable:expression>${financeServiceUrl}/budget/check</flowable:expression>
+    <flowable:field name="connector">
+      <flowable:string>erp-service</flowable:string>
     </flowable:field>
-    <flowable:field name="method">
-      <flowable:string>POST</flowable:string>
+    <flowable:field name="path">
+      <flowable:string>/api/finance/budget/check</flowable:string>
     </flowable:field>
-    <flowable:field name="body">
-      <flowable:expression>#{{'departmentId': departmentId, 'amount': totalAmount}}</flowable:expression>
-    </flowable:field>
-    <flowable:field name="responseVariable">
-      <flowable:string>budgetCheckResponse</flowable:string>
-    </flowable:field>
-    <flowable:field name="timeoutSeconds">
-      <flowable:string>15</flowable:string>
+    <flowable:field name="onError">
+      <flowable:string>FAIL</flowable:string>
     </flowable:field>
   </extensionElements>
 </serviceTask>
@@ -103,30 +97,35 @@ This guide provides quick reference for mapping approval concepts to BPMN constr
 <serviceTask id="notifyApproval" name="Notify Approval"
              flowable:delegateExpression="${notificationDelegate}">
   <extensionElements>
-    <flowable:field name="notificationType">
-      <flowable:string><![CDATA[APPROVAL_GRANTED]]></flowable:string>
+    <flowable:field name="recipient">
+      <flowable:expression>${requesterEmail}</flowable:expression>
     </flowable:field>
-    <flowable:field name="recipientVariable">
-      <flowable:string>requesterId</flowable:string>
+    <flowable:field name="templateKey">
+      <flowable:string>approval-granted</flowable:string>
+    </flowable:field>
+    <flowable:field name="channel">
+      <flowable:string>email</flowable:string>
     </flowable:field>
   </extensionElements>
 </serviceTask>
 ```
 
-### Data Update Service
+### Data Update via Connector Operation
+
+Status updates on external records route through the registered connector, the same as any other external call. Author this in the designer as a `CONNECTOR_OPERATION` service task:
 
 ```xml
 <serviceTask id="updateStatus" name="Update Request Status"
-             flowable:delegateExpression="${dataUpdateDelegate}">
+             flowable:delegateExpression="${externalApiCallDelegate}">
   <extensionElements>
-    <flowable:field name="entity">
-      <flowable:string>PurchaseRequisition</flowable:string>
+    <flowable:field name="connector">
+      <flowable:string>erp-service</flowable:string>
     </flowable:field>
-    <flowable:field name="entityId">
-      <flowable:expression>${prId}</flowable:expression>
+    <flowable:field name="path">
+      <flowable:string>/api/procurement/requisitions/${prId}/status</flowable:string>
     </flowable:field>
-    <flowable:field name="updates">
-      <flowable:expression>#{{'status': 'APPROVED', 'approvalDate': now()}}</flowable:expression>
+    <flowable:field name="onError">
+      <flowable:string>FAIL</flowable:string>
     </flowable:field>
   </extensionElements>
 </serviceTask>
@@ -426,13 +425,20 @@ This guide provides quick reference for mapping approval concepts to BPMN constr
 
 #### From Service Task Response
 
+Connector operation tasks (`${externalApiCallDelegate}`) write the parsed response body into a process variable. The variable name is configured on the connector definition in the admin portal, and the engine stores it automatically on successful execution.
+
 ```xml
 <serviceTask id="budgetCheck" name="Check Budget"
-             flowable:delegateExpression="${restServiceDelegate}">
+             flowable:delegateExpression="${externalApiCallDelegate}">
   <extensionElements>
-    <flowable:field name="responseVariable">
-      <!-- Service response stored in this variable -->
-      <flowable:string>budgetCheckResponse</flowable:string>
+    <flowable:field name="connector">
+      <flowable:string>erp-service</flowable:string>
+    </flowable:field>
+    <flowable:field name="path">
+      <flowable:string>/api/finance/budget/check</flowable:string>
+    </flowable:field>
+    <flowable:field name="onError">
+      <flowable:string>FAIL</flowable:string>
     </flowable:field>
   </extensionElements>
 </serviceTask>
@@ -526,7 +532,19 @@ This guide provides quick reference for mapping approval concepts to BPMN constr
 <sequenceFlow sourceRef="submitRequest" targetRef="budgetCheck" />
 
 <serviceTask id="budgetCheck" name="Check Budget"
-             delegateExpression="${budgetCheckDelegate}" />
+             flowable:delegateExpression="${externalApiCallDelegate}">
+  <extensionElements>
+    <flowable:field name="connector">
+      <flowable:string>erp-service</flowable:string>
+    </flowable:field>
+    <flowable:field name="path">
+      <flowable:string>/api/finance/budget/check</flowable:string>
+    </flowable:field>
+    <flowable:field name="onError">
+      <flowable:string>FAIL</flowable:string>
+    </flowable:field>
+  </extensionElements>
+</serviceTask>
 <sequenceFlow sourceRef="budgetCheck" targetRef="budgetDecision" />
 
 <exclusiveGateway id="budgetDecision" name="Budget OK?" />

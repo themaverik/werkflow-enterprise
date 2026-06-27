@@ -2,7 +2,7 @@
 
 ## Overview
 
-Werkflow is an enterprise workflow automation platform built on Flowable BPMN. It uses a centralized engine for workflow orchestration, a consolidated business service for all domain logic, and a unified portal frontend.
+Werkflow is an enterprise workflow automation platform built on Flowable BPMN. It uses a centralized engine for workflow orchestration, an admin service for connector and configuration management, and a unified portal frontend. External business data (HR, finance, procurement, inventory) is served by an independent ERP backing service (werkflow-erp) that is accessed through the connector abstraction — never via direct in-platform clients.
 
 ---
 
@@ -11,11 +11,11 @@ Werkflow is an enterprise workflow automation platform built on Flowable BPMN. I
 | Service | Port | Purpose |
 |---------|------|---------|
 | Engine | 8081 | Flowable BPMN engine, process definitions, task management |
-| Admin | 8083 | Admin APIs, route access control, configuration |
-| Business | 8084 | All domain logic (HR, Finance, Procurement, Inventory) |
-| Portal | 4000 | Unified Next.js frontend with module-based route groups |
+| Admin | 8083 | Admin APIs, connector registry, credential management, route access control |
+| Portal | 4000 | Unified Next.js frontend — BPMN designer, form builder, task inbox, admin UI |
 | Keycloak | 8090 | OAuth2/OIDC identity provider |
-| PostgreSQL | 5432 | Shared database |
+| PostgreSQL | 5432 | Shared database (engine + admin schemas) |
+| ERP (external) | — | werkflow-erp: business domain data (HR, finance, procurement, inventory); accessed via registered connector, never via a direct in-platform client |
 
 ### Architecture Diagram
 
@@ -25,26 +25,34 @@ Werkflow is an enterprise workflow automation platform built on Flowable BPMN. I
                     |   :8090   |
                     +-----+-----+
                           |
-         +----------------+----------------+
-         |                |                |
-   +-----+-----+   +-----+-----+   +------+------+
-   |   Engine   |   |   Admin   |   |  Business   |
-   |   :8081    |   |   :8083   |   |   :8084     |
-   | (Flowable) |   | (Config)  |   | (HR/Fin/    |
-   |            |   |           |   |  Proc/Inv)  |
-   +-----+------+   +-----------+   +------+------+
-         |                                  |
-         +----------------------------------+
-                          |
-                    +-----+-----+
-                    | PostgreSQL |
-                    |   :5432    |
-                    +-----+-----+
+              +-----------+-----------+
+              |                       |
+        +-----+-----+          +------+------+
+        |   Engine   |          |    Admin    |
+        |   :8081    |          |    :8083    |
+        | (Flowable) |          | (Connector  |
+        |            |          |  Registry)  |
+        +-----+------+          +------+------+
+              |                        |
+              +----------+-------------+
+                         |  connector abstraction
+                         |  (SSRF-guarded, credential-resolved,
+                         |   audit-logged — ADR-023/ADR-024)
+                         v
+              +----------+----------+
+              |   External ERP      |
+              |  (werkflow-erp)     |
+              |  + other APIs       |
+              +---------------------+
 
-   +--------------------------------------------------+
-   |              Portal (Next.js :4000)               |
-   | (platform) | (hr) | (finance) | (procurement) |  |
-   +--------------------------------------------------+
+              +--------------------+
+              |  PostgreSQL :5432  |
+              +--------------------+
+
+   +------------------------------------------------------+
+   |               Portal (Next.js :4000)                  |
+   |  BPMN designer | Form builder | Task inbox | Admin UI |
+   +------------------------------------------------------+
 ```
 
 ---
@@ -57,60 +65,94 @@ Additionally, processes can be deployed at runtime via the Portal's Process Desi
 
 ### Process Categories
 
-| Category | Examples | Delegate Target |
+| Category | Examples | Integration Path |
 |----------|----------|-----------------|
-| HR | Leave Approval, Onboarding, Performance Review | business:8084 |
-| Finance | CapEx Approval, Budget Check | business:8084 |
-| Procurement | Purchase Requisition | business:8084 |
-| Inventory | Stock Requisition | business:8084 |
-| Cross-Domain | Asset Transfer (HR + Inventory) | business:8084 |
+| HR | Leave Approval, Onboarding, Performance Review | connector → werkflow-erp |
+| Finance | CapEx Approval, Budget Check | connector → werkflow-erp |
+| Procurement | Purchase Requisition | connector → werkflow-erp |
+| Inventory | Stock Requisition | connector → werkflow-erp |
+| Cross-Domain | Asset Transfer (HR + Inventory) | connector → werkflow-erp |
 
-All domain-specific logic lives in the Business service. The engine calls it via `RestServiceDelegate` or domain-specific Java delegates.
+External data access routes through the connector abstraction. The engine calls registered connectors via `${externalApiCallDelegate}` (ADR-023); the admin service reads ERP design-time metadata (department lists, custody mappings) via `ErpMetadataReader` on the same connector path. No direct ERP clients exist in the platform services.
 
 ---
 
 ## Inter-Service Communication
 
-### Pattern 1: RestServiceDelegate (Generic REST)
+### Action Block authoring model
 
-The engine's `RestServiceDelegate` makes HTTP calls to the Business service during workflow execution:
+BPMN authors do not hand-write delegate expressions or service URLs. The BPMN designer presents an **Action Block** picker on each ServiceTask. Selecting an action type auto-morphs the task and the designer writes the correct `flowable:delegateExpression` and extension fields.
 
-```java
-// Configured in BPMN service tasks via field injection
-// baseUrl: http://business-service:8084
-// endpoint: /api/hr/leave/validate
-// method: POST
+| Action Block type | Delegate bean written by designer | Purpose |
+|---|---|---|
+| `CONNECTOR_OPERATION` | `${externalApiCallDelegate}` | Outbound REST call to a registered connector |
+| `SEND_NOTIFICATION` | `${notificationDelegate}` | Email / channel notification via AdapterRegistry |
+| `SET_VARIABLES` | `${setVariablesDelegate}` | Computed variable assignments (no external call) |
+| `CALL_SUBPROCESS` | native `calledElement` | Start a child process instance |
+| `HUMAN_APPROVAL` | UserTask (no service delegate) | Assign task to a candidate group |
+
+### Pattern 1: Connector Operation (`${externalApiCallDelegate}`)
+
+`RestConnectorDelegate` (bean name `externalApiCallDelegate`) makes SSRF-guarded HTTP calls to registered connectors. The connector's base URL and credential are resolved server-side from the connector registry (ADR-023, ADR-024) — no URL or credential appears in the BPMN.
+
+```xml
+<serviceTask id="fetchBudget" name="Fetch Budget from ERP"
+             flowable:delegateExpression="${externalApiCallDelegate}">
+  <extensionElements>
+    <flowable:field name="connector">
+      <flowable:string>erp-service</flowable:string>
+    </flowable:field>
+    <flowable:field name="path">
+      <flowable:string>/api/finance/budgets/check</flowable:string>
+    </flowable:field>
+    <flowable:field name="onError">
+      <flowable:string>FAIL</flowable:string>
+    </flowable:field>
+  </extensionElements>
+</serviceTask>
 ```
 
-### Pattern 2: Domain-Specific Delegates
+`onError` values: `FAIL` (default), `CONTINUE` (swallow error, proceed), `THROW_BPMN_ERROR` (trigger error boundary event).
 
-Java delegates in the engine that call Business service APIs:
+### Pattern 2: Notification (`${notificationDelegate}`)
 
-```java
-public class FinanceBudgetCheckDelegate implements JavaDelegate {
-    @Override
-    public void execute(DelegateExecution execution) {
-        // Call Business Service (consolidated)
-        Budget budget = restTemplate.getForObject(
-            "http://business-service:8084/api/finance/budgets/{id}",
-            Budget.class
-        );
-        execution.setVariable("budgetAvailable", budget.isAvailable());
-    }
-}
+Routes through `AdapterRegistry` to the configured channel adapter (email, Slack, WhatsApp). Dispatch is `@Async`; the process does not block on delivery.
+
+```xml
+<serviceTask id="notifyRequester" name="Notify Requester"
+             flowable:delegateExpression="${notificationDelegate}">
+  <extensionElements>
+    <flowable:field name="recipient">
+      <flowable:expression>${requesterEmail}</flowable:expression>
+    </flowable:field>
+    <flowable:field name="templateKey">
+      <flowable:string>request-approved</flowable:string>
+    </flowable:field>
+    <flowable:field name="channel">
+      <flowable:string>email</flowable:string>
+    </flowable:field>
+  </extensionElements>
+</serviceTask>
 ```
 
-### Pattern 3: Notification Delegates
+Required fields: `recipient` (validated email expression) and `templateKey`. `channel` defaults to `email` when omitted.
 
-```java
-public class NotificationDelegate implements JavaDelegate {
-    @Override
-    public void execute(DelegateExecution execution) {
-        String email = (String) execution.getVariable("approverEmail");
-        emailService.sendNotification(email, "Action Required");
-    }
-}
+### Pattern 3: Set Variables (`${setVariablesDelegate}`)
+
+Evaluates JUEL expressions and writes process variables atomically. Used for computed fields that require no external call.
+
+```xml
+<serviceTask id="setApprovalTier" name="Set Approval Tier"
+             flowable:delegateExpression="${setVariablesDelegate}">
+  <extensionElements>
+    <flowable:field name="var.approvalTier">
+      <flowable:expression>${requestAmount > 50000 ? 'VP' : 'MANAGER'}</flowable:expression>
+    </flowable:field>
+  </extensionElements>
+</serviceTask>
 ```
+
+All `var.*`-prefixed fields are evaluated atomically before any variable is written (no partial commit). Variable names only are audit-logged; values are not.
 
 ---
 
@@ -137,11 +179,11 @@ All services share a single PostgreSQL database (`werkflow_db`):
 ```
 werkflow_db
   +-- Flowable tables (act_re_*, act_ru_*, act_hi_*)
-  +-- business schema (hr, finance, procurement, inventory entities)
-  +-- admin schema (route config, permissions)
+  +-- engine schema (process definitions, task state, connector bindings)
+  +-- admin schema (connector registry, credential refs, route config, permissions)
 ```
 
-Process definitions are visible to the Flowable engine regardless of which service deployed them. The Business service uses Flyway migrations prefixed by domain (e.g., `V20__hr_leave_types.sql`).
+Process definitions are visible to the Flowable engine regardless of which service deployed them. Business domain data (HR records, finance entries, procurement orders, inventory) lives in werkflow-erp's own database, which the platform reaches only through registered connectors.
 
 ---
 
@@ -182,14 +224,18 @@ All route groups share the same app-shell layout (sidebar + header).
 ## Scaling Considerations
 
 - **Engine**: Stateless, can be load-balanced horizontally
-- **Business**: Single service handles all domains; scale vertically or horizontally behind LB
+- **Admin**: Stateless configuration service; scale horizontally
 - **Database**: Read replicas for query scaling; connection pooling via HikariCP
 - **Portal**: Static export + CDN, or multiple Next.js instances behind LB
+- **ERP (external)**: werkflow-erp scales independently of the platform; the connector abstraction decouples its availability from engine uptime
 
 ---
 
 ## Related Documentation
 
-- [Delegate Architecture Analysis](./Delegate-Architecture-Analysis.md)
+- ADR-012: Engine Action Delegates Canonical Location (werkflow-platform `docs/adr/`)
+- ADR-019: Service Adapter Layer for Connector Operations (werkflow-platform `docs/adr/`)
+- ADR-023: All External Access via Connector Abstraction (werkflow-platform `docs/adr/`)
+- ADR-024: Connector-Mode Credentials Resolved Server-Side (werkflow-platform `docs/adr/`)
 - [API Path Structure](../API-Path-Structure.md)
 - [Deployment Configuration Guide](../Deployment-Configuration-Guide.md)

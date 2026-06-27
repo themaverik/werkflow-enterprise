@@ -21,7 +21,7 @@
 | Service    | Port | Description                                         |
 |------------|------|-----------------------------------------------------|
 | Engine     | 8081 | Flowable BPM orchestration                          |
-| Admin      | 8083 | User, organisation, and service registry management |
+| Admin      | 8083 | User, organisation, connector, and integration management |
 | Portal     | 4000 | Web portal (Next.js)                                |
 | Keycloak   | 8090 | Authentication and authorisation                    |
 | PostgreSQL | 5433 | Primary database                                    |
@@ -72,7 +72,7 @@ All admin credentials are sourced from `config/env/.env.shared` (gitignored). Co
 werkflow-enterprise/
 ├── services/
 │   ├── engine/       # Flowable BPM orchestration (8081)
-│   └── admin/        # Org and service registry management (8083)
+│   └── admin/        # Org, connector, and integration management (8083)
 ├── frontends/
 │   └── portal/       # Next.js portal (4000)
 ├── infrastructure/
