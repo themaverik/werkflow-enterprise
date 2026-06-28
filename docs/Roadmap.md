@@ -2,7 +2,7 @@
 
 **Repo scope**: Enterprise-only engine, admin-service, and portal features
 **Master Roadmap**: `~/Projects/werkflow-platform/docs/Roadmap.md` (authoritative for all future tasks)
-**Last Updated**: 2026-06-27 (session 44 — Blast-Radius Phase 3 closed; documentation debt)
+**Last Updated**: 2026-06-28 (session 45 — Documentation Debt complete; E2E ROPC dev-guard; engine Flyway repair)
 **Target**: Internal Enterprise Demo — June 2026
 
 > Future tasks in this file are synced from the master Roadmap. Do not add tasks here without adding them to master first.
@@ -19,9 +19,9 @@
 | Tier 1–3 done | All Tier-1 (mechanical cleanups, facade hardening, schema hygiene); item 7 approval-escalation cluster (BPMN + engine + 7c-UI, ADR-027) shipped |
 | Active milestone | Pre-MVP — Blast-Radius Phase Plan + Manual E2E (per master Roadmap) |
 | Done (sessions 42–43, 2026-06-25) | D2 form tenant scoping (ADR-032, V29); D1 deploy fail-loud (ADR-033, aggregate 422); seed library reshuffle (finance-approval→it-helpdesk, V30, ADR-015 amended for `WerkflowSendTaskXMLConverter`); CI greening + artifact-upload gating (`d7b4ec66`, `dd335a63`). All merged+pushed to enterprise main `dd335a63`; live-verified on dev stack. |
-| Next | Blast-Radius **Phase 1 ✅**, **Phase 2 ✅** (ADR-034) DONE+PUSHED. **Phase 3 ✅ closed 2026-06-27 as verified no-op** — re-verify found M4.9 Tasks 1/4/5 already resolved by the M4.10 VariableComboBox refactor (`290ae067`); no code. Remaining: **Documentation Debt** (in progress) then Manual E2E, then MVP release cut (Droplet-blocked). |
-| Branch | `main` — HEAD `ddb9c69b` |
-| Operational | Dev DB at engine V30. Compose secrets now owned by `.env.shared` (env_file), not `environment:` overrides. **Before Manual E2E rebuild `engine-service` + `admin-service` + `portal`** — all three have source changes since `dd335a63`. Single canonical realm file `infrastructure/keycloak/realms/werkflow-realm.json`. |
+| Next | Blast-Radius **Phase 1 ✅**, **Phase 2 ✅** (ADR-034), **Phase 3 ✅** (verified no-op) DONE+PUSHED. **Documentation Debt ✅ DONE** (sessions 44–45: keycloak README vs realm, KB normalize, finance→helpdesk + tutorials; portal doc cleanup — AUTH_SETUP dropped, M4 handover archived to platform, E2E guide → `docs/Running-E2E-Locally.md`). Remaining: **Manual E2E**, then MVP release cut (Droplet-blocked). |
+| Branch | `main` — HEAD `f6975382` |
+| Operational | Dev DB at engine **V31** (V31 dropped orphaned `service_registry`; required a `flyway repair` on the `flowable` schema after the V24–V26 act_* guard edits changed already-applied checksums). Compose secrets owned by `.env.shared` (env_file). **Before Manual E2E rebuild `portal`** (engine + admin already rebuilt this session). E2E auth: run `infrastructure/keycloak/setup-local-e2e.sh` (now fail-closed on `APP_ENVIRONMENT=development`) to re-enable ROPC — guide `docs/Running-E2E-Locally.md`. Single canonical realm `infrastructure/keycloak/realms/werkflow-realm.json`. |
 
 ### Session log (collapsed — detail in git history + docs/adr/ + Knowledge-Base)
 
