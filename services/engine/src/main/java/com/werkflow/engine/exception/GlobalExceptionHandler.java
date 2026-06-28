@@ -35,7 +35,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleTaskNotFoundException(
             TaskNotFoundException ex, WebRequest request) {
 
-        log.error("Task not found: {}", ex.getMessage());
+        log.warn("Task not found: {}", ex.getMessage());
 
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(OffsetDateTime.now())
@@ -58,7 +58,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleProcessNotFoundException(
             ProcessNotFoundException ex, WebRequest request) {
 
-        log.error("Process not found: {}", ex.getMessage());
+        log.warn("Process not found: {}", ex.getMessage());
 
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(OffsetDateTime.now())
@@ -81,7 +81,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleUnauthorizedTaskAccessException(
             UnauthorizedTaskAccessException ex, WebRequest request) {
 
-        log.error("Unauthorized task access: {}", ex.getMessage());
+        log.warn("Unauthorized task access: {}", ex.getMessage());
 
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(OffsetDateTime.now())
@@ -104,7 +104,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAccessDeniedException(
             AccessDeniedException ex, WebRequest request) {
 
-        log.error("Access denied: {}", ex.getMessage());
+        log.warn("Access denied: {}", ex.getMessage());
 
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(OffsetDateTime.now())
@@ -127,7 +127,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleValidationExceptions(
             MethodArgumentNotValidException ex, WebRequest request) {
 
-        log.error("Validation error: {}", ex.getMessage());
+        log.warn("Validation error: {}", ex.getMessage());
 
         Map<String, String> validationErrors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
@@ -176,7 +176,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleFormNotFoundException(
             FormNotFoundException ex, WebRequest request) {
 
-        log.error("Form not found: {}", ex.getMessage());
+        log.warn("Form not found: {}", ex.getMessage());
 
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(OffsetDateTime.now())
@@ -199,7 +199,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleFormValidationException(
             FormValidationException ex, WebRequest request) {
 
-        log.error("Form validation failed: {}", ex.getMessage());
+        log.warn("Form validation failed: {}", ex.getMessage());
 
         Map<String, String> flattenedErrors = new HashMap<>();
         ex.getValidationErrors().forEach((field, errors) -> {
@@ -251,7 +251,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
             IllegalArgumentException ex, WebRequest request) {
 
-        log.error("Illegal argument: {}", ex.getMessage());
+        log.warn("Illegal argument: {}", ex.getMessage());
 
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(OffsetDateTime.now())

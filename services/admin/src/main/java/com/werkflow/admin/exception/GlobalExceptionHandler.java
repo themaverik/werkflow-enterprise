@@ -38,7 +38,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(
             MethodArgumentNotValidException ex, WebRequest request) {
-        log.error("Validation error: {}", ex.getMessage());
+        log.warn("Validation error: {}", ex.getMessage());
 
         Map<String, String> validationErrors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
@@ -72,7 +72,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleConstraintViolationException(
             ConstraintViolationException ex, WebRequest request) {
-        log.error("Constraint violation: {}", ex.getMessage());
+        log.warn("Constraint violation: {}", ex.getMessage());
 
         Map<String, String> validationErrors = new HashMap<>();
         for (ConstraintViolation<?> violation : ex.getConstraintViolations()) {
@@ -103,7 +103,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<ErrorResponse> handleNoSuchElementException(
             NoSuchElementException ex, WebRequest request) {
-        log.error("Resource not found: {}", ex.getMessage());
+        log.warn("Resource not found: {}", ex.getMessage());
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(OffsetDateTime.now())
                 .status(HttpStatus.NOT_FOUND.value())
@@ -123,7 +123,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
             IllegalArgumentException ex, WebRequest request) {
-        log.error("Illegal argument: {}", ex.getMessage());
+        log.warn("Illegal argument: {}", ex.getMessage());
 
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(OffsetDateTime.now())

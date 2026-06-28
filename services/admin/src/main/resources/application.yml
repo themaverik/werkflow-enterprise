@@ -66,10 +66,18 @@ management:
   endpoint:
     health:
       show-details: when-authorized
-  metrics:
-    export:
-      prometheus:
+  prometheus:
+    metrics:
+      export:
         enabled: true
+  tracing:
+    sampling:
+      # 0.0 = no spans exported (no OTLP collector required). traceId/spanId still
+      # populate the MDC and appear in log lines for cross-service log correlation.
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.0}
+  otlp:
+    tracing:
+      endpoint: ${OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
 
 logging:
   level:
@@ -78,8 +86,8 @@ logging:
     org.hibernate.SQL: ${SQL_LOG_LEVEL:WARN}
     org.flywaydb: INFO
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%X{traceId:-},%X{spanId:-}] - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{traceId:-},%X{spanId:-}] %-5level %logger{36} - %msg%n"
 
 springdoc:
   api-docs:

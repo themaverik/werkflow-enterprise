@@ -157,17 +157,25 @@ management:
     web:
       base-path: /actuator
       exposure:
-        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info,metrics,flowable}
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info,metrics,flowable,prometheus}
   endpoint:
     health:
       show-details: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS:when-authorized}
   health:
     mail:
       enabled: false  # Disable mail health check since we're not using Spring Mail for Flowable
-  metrics:
-    export:
-      prometheus:
+  prometheus:
+    metrics:
+      export:
         enabled: true
+  tracing:
+    sampling:
+      # 0.0 = no spans exported (no OTLP collector required). traceId/spanId still
+      # populate the MDC and appear in log lines for cross-service log correlation.
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.0}
+  otlp:
+    tracing:
+      endpoint: ${OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
 
 # API Documentation
 springdoc:
@@ -195,8 +203,8 @@ logging:
   file:
     path: ${LOG_FILE_PATH:./logs}
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%X{traceId:-},%X{spanId:-}] - %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{traceId:-},%X{spanId:-}] %-5level %logger{36} - %msg%n"
 
 # Application-specific configuration
 app:
