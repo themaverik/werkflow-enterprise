@@ -236,14 +236,14 @@ This is the only approved pattern for row-level delete actions. Do not use `vari
 **Source:** `components/ui/badge.tsx`  
 Use for category labels, version tags, role labels. Not for status — use `StatusBadge` for that.
 
-`success` and `warning` variants in badge.tsx currently use raw Tailwind green/yellow. **These should be updated** to use `--badge-success` / `--badge-warning` tokens via inline style or a CSS variable reference for consistency (see CLAUDE_HANDOVER §Track A, item 3).
+`success` and `warning` variants in badge.tsx currently use raw Tailwind green/yellow. **These should be updated** to use `--badge-success` / `--badge-warning` tokens via inline style or a CSS variable reference for consistency.
 
 ### 7.3 StatusBadge
 
 **Source:** `components/ui/status-badge.tsx`  
 Already correctly uses `--badge-*` CSS custom property tokens. This is the canonical pattern for all status indicators across the portal.
 
-**Do not create a second status component.** The inline `StatusPill` in `monitoring/page.tsx` duplicates this. It must be replaced with `StatusBadge` (see CLAUDE_HANDOVER §DS-4).
+**Do not create a second status component.** A legacy inline `StatusPill` still lingers in the `forms` and `decisions` pages and duplicates this — replace it with `StatusBadge`. (Tracked in the enterprise Roadmap "Deferred" list.)
 
 Status → token mapping:
 ```

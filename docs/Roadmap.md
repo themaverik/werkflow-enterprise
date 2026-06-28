@@ -142,6 +142,8 @@ Committed Group A `b1c9f15` · Group B `7aac042` — backend process/task metric
 | M4.4d — Reason Codes + Business Calendar | Post-demo polish — see Other-Semantics-To-Standardize.md |
 | Tenant Setup checklist widget | Post-demo on `/admin/dashboard` |
 | Basic alerting runbook | Post-demo |
+| Portal UI: `StatusPill` → `StatusBadge` (`forms`, `decisions` pages) | Post-demo polish — residual from M4 UI handover (B-5); monitoring already migrated |
+| Portal UI: raw `<table>` → shadcn `Table` (~10 pages incl. FormSection, approval-authority, custody-mappings, role-mappings, categories, dead-letter, workflows, decisions, analytics) | Post-demo polish — residual from M4 UI handover (B-8); the 4 admin targets already migrated |
 
 ---
 
