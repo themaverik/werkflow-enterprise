@@ -11,7 +11,7 @@ docker-compose via `--import-realm` on a fresh Keycloak volume.
 
 - `realms/werkflow-realm.json` — canonical realm (roles, clients, mappers, identity providers, demo users)
 - `import-realm.sh` — import the realm into a running Keycloak via the admin REST API
-- `setup-local-e2e.sh` — local E2E bootstrap (re-enables ROPC for headless test login)
+- `setup-local-e2e.sh` — local E2E bootstrap (re-enables ROPC for headless test login; dev-only, runs only when `APP_ENVIRONMENT=development`)
 - `setup-ci-realm.sh` / `init-realm.sh` — CI / first-boot helpers
 - `sample-users.json` — reference-only sample users (not auto-imported)
 - `themes/` — custom login theme (FTL)

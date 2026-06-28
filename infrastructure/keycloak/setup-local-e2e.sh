@@ -9,19 +9,42 @@
 # recreate the realm and does NOT change the client secret or redirect URIs.
 #
 # ⚠️  NEVER run this against a non-local / staging / production Keycloak.
-#     To revert: set directAccessGrantsEnabled=false on werkflow-portal.
+#     Two independent, fail-closed guards enforce dev-only use (BOTH must pass):
+#       1. APP_ENVIRONMENT must be "development" — read from the environment, else
+#          from config/env/.env.shared (the same env_file docker-compose loads), so
+#          a non-dev instance is refused even when the var isn't exported.
+#       2. KEYCLOAK_URL must be a localhost / 127.0.0.1 address.
+#     To revert after testing: set directAccessGrantsEnabled=false on werkflow-portal.
 #
 # Usage:
 #   KEYCLOAK_ADMIN_PASSWORD=<your-local-kc-master-admin-pw> \
 #     infrastructure/keycloak/setup-local-e2e.sh
 #
 # Env:
+#   APP_ENVIRONMENT          must be "development" (dev-only guard; falls back to .env.shared)
 #   KEYCLOAK_URL             default http://localhost:8090
 #   KEYCLOAK_ADMIN           default admin   (master realm admin user)
 #   KEYCLOAK_ADMIN_PASSWORD  REQUIRED        (master realm admin password)
 #   E2E_TEST_PASSWORD        default Werkflow@2026!  (must match E2E_*_PASSWORD)
 # ──────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
+
+# ── DEV-ONLY environment guard (fail-closed, runs before anything else) ──────────
+# Proceed only when the canonical deployment signal APP_ENVIRONMENT == "development".
+# Prefer the exported env var; fall back to the committed-per-instance .env.shared so
+# a staging/prod box is refused even if the operator never exported the var.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_SHARED="${SCRIPT_DIR}/../../config/env/.env.shared"
+APP_ENVIRONMENT="${APP_ENVIRONMENT:-}"
+if [ -z "$APP_ENVIRONMENT" ] && [ -f "$ENV_SHARED" ]; then
+  APP_ENVIRONMENT="$(grep -E '^APP_ENVIRONMENT=' "$ENV_SHARED" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '[:space:]' || true)"
+fi
+if [ "${APP_ENVIRONMENT:-}" != "development" ]; then
+  echo "REFUSING: APP_ENVIRONMENT='${APP_ENVIRONMENT:-<unset>}' (must be 'development')."
+  echo "This script re-enables ROPC and is DEV-ONLY; it will not run outside a development instance."
+  exit 1
+fi
+echo "  ✓ environment guard: APP_ENVIRONMENT=development"
 
 KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8090}"
 KC_ADMIN="${KEYCLOAK_ADMIN:-admin}"

@@ -10,6 +10,11 @@ one-time, **dev-only** realm prep that re-enables ROPC and seeds the test users.
 
 ## Prerequisites
 
+- **This is a local/dev-only flow.** `setup-local-e2e.sh` re-enables ROPC, which is a
+  security downgrade, so it is fail-closed: it runs ONLY when `APP_ENVIRONMENT=development`
+  (read from the environment, else from `config/env/.env.shared`). On any other instance it
+  refuses. A local stack already has `APP_ENVIRONMENT=development` in `.env.shared`, so no
+  action is needed locally.
 - Docker stack up and healthy (engine `:8081`, Keycloak `:8090`) — see `docker-dev`.
 - `jq` installed (`brew install jq`).
 - Portal deps installed (`cd frontends/portal && npm ci`).
@@ -31,8 +36,9 @@ test users with `tenant_id=default` and password `Werkflow@2026!`:
 | `john.manager` | doa_approver_level2 |
 | `jane.employee` | employee |
 
-It refuses any non-localhost `KEYCLOAK_URL`. **Revert when done** by setting
-`directAccessGrantsEnabled=false` on `werkflow-portal` (ROPC should stay off
+It is guarded by two independent fail-closed checks (both must pass): `APP_ENVIRONMENT`
+must be `development`, and `KEYCLOAK_URL` must be a localhost address. **Revert when done**
+by setting `directAccessGrantsEnabled=false` on `werkflow-portal` (ROPC should stay off
 outside local dev).
 
 ## 2. Env
