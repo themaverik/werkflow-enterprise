@@ -13,7 +13,8 @@
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:debug": "playwright test --debug",
-    "e2e:report": "playwright show-report"
+    "e2e:report": "playwright show-report",
+    "lint:bpmn:bundle": "bpmnlint-pack-config -c .bpmnlintrc -o lib/bpmn/bundled-lint-config.js -t es"
   },
   "dependencies": {
     "@bpmn-io/form-js": "^1.18.0",
@@ -38,6 +39,7 @@
     "autoprefixer": "^10.4.20",
     "axios": "^1.7.7",
     "bpmn-js": "^17.11.1",
+    "bpmn-js-bpmnlint": "0.24.0",
     "bpmn-js-properties-panel": "^5.24.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
@@ -69,6 +71,8 @@
     "@types/node": "^22.7.5",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",
+    "bpmnlint": "11.12.1",
+    "bpmnlint-pack-config": "0.9.0",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.15",
     "jsdom": "^29.0.1",

@@ -1,0 +1,11 @@
+{
+  "extends": "bpmnlint:recommended",
+  "rules": {
+    "label-required": "warn",
+    "no-overlapping-elements": "warn",
+    "no-bpmndi": "warn",
+    "superfluous-termination": "warn",
+    "no-implicit-end": "warn",
+    "no-implicit-start": "warn"
+  }
+}

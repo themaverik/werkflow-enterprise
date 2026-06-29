@@ -71,7 +71,7 @@ const nextConfig = {
     })
 
     if (isServer) {
-      config.externals = [...(config.externals || []), 'formiojs', 'bpmn-js', 'dmn-js', '@formio/react']
+      config.externals = [...(config.externals || []), 'formiojs', 'bpmn-js', 'dmn-js', '@formio/react', 'bpmn-js-bpmnlint', 'bpmnlint']
     }
 
     return config

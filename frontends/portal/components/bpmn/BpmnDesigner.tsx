@@ -26,6 +26,7 @@ import { ArtifactMetadataPanel } from '@/components/design/ArtifactMetadataPanel
 import 'bpmn-js/dist/assets/diagram-js.css'
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css'
 import 'bpmn-js/dist/assets/bpmn-js.css'
+import 'bpmn-js-bpmnlint/dist/assets/css/bpmn-js-bpmnlint.css'
 
 // Import Properties Panel CSS
 import '@bpmn-io/properties-panel/dist/assets/properties-panel.css'
@@ -36,6 +37,8 @@ import {
   BpmnPropertiesProviderModule,
 } from 'bpmn-js-properties-panel'
 
+import lintModule from 'bpmn-js-bpmnlint'
+import bundledLintConfig from '@/lib/bpmn/bundled-lint-config'
 import FlowablePropertiesProviderModule from '@/lib/bpmn/flowable-properties-module'
 import flowableModdleDescriptor from '@/lib/bpmn/flowable-moddle.json'
 import { setFormSchemaOptions, setNotificationTemplateOptions, setGroupOptions, setProcessDefinitionOptions, setDmnDecisionOptions, setDelegateOptions, setCurrentUserRoles, setProcessVariableOptions, setCustodyVarGroups } from '@/lib/bpmn/flowable-properties-provider'
@@ -283,8 +286,13 @@ export default function BpmnDesigner({ initialXml, processId, initialMetadata }:
       additionalModules: [
         BpmnPropertiesPanelModule,
         BpmnPropertiesProviderModule,
-        FlowablePropertiesProviderModule
+        FlowablePropertiesProviderModule,
+        lintModule
       ],
+      linting: {
+        bpmnlint: bundledLintConfig,
+        active: true
+      },
       moddleExtensions: {
         flowable: flowableModdleDescriptor,
       }
