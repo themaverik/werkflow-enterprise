@@ -43,7 +43,7 @@ and manager approval before a final approve/reject decision.</documentation>
          The non-direct branch is the gateway default so null/unexpected procurementPath
          never dead-locks the instance. -->
     <exclusiveGateway id="directPurchaseGateway" name="Procurement Path?"
-                      flowable:default="flowToVendorDefault"/>
+                      default="flowToVendorDefault"/>
 
     <!-- User tasks: vendor selection, quotation review, manager approval -->
     <userTask id="selectVendor" name="Select Vendor"
@@ -61,7 +61,7 @@ and manager approval before a final approve/reject decision.</documentation>
     <!-- Gateway: approve/reject decision after manager review.
          The reject branch is the default to avoid dead-lock on unexpected decision values. -->
     <exclusiveGateway id="approvalDecision" name="Approval Decision?"
-                      flowable:default="flowRejectDefault"/>
+                      default="flowRejectDefault"/>
 
     <endEvent id="endEventApproved" name="PO Created"/>
     <endEvent id="endEventRejected" name="Request Rejected"/>
