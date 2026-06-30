@@ -2,7 +2,7 @@
 
 **Repo scope**: Enterprise-only engine, admin-service, and portal features
 **Master Roadmap**: `~/Projects/werkflow-platform/docs/Roadmap.md` (authoritative for all future tasks)
-**Last Updated**: 2026-06-28 (session 45 — Documentation Debt complete; E2E ROPC dev-guard; engine Flyway repair)
+**Last Updated**: 2026-06-30 (session 49 — SLA start-form `slaDuration` selector (ADR-037 follow-up); CI-hygiene findings logged)
 **Target**: Internal Enterprise Demo — June 2026
 
 > Future tasks in this file are synced from the master Roadmap. Do not add tasks here without adding them to master first.
@@ -32,6 +32,14 @@
 - **Session 41 end-of-day** (2026-06-22, `a5b6195a`/`cec630d6`/`48d17356`/`7dcc561f`/`6426ec5d`/`04c21036`, pushed) — UI consistency hardening (`.wf-card-interactive`, datasource/services/connectors/tenants/email-templates) + form-rendering reliability stack (form-js `id` field, `validateIdMatchesKey`, `FormJsViewer` error visibility, email→textfield+validationType, V27/V28).
 - **Session 42** (2026-06-24, `4d7949fe` + `04924b61`) — D2 form tenant scoping (ADR-032, V29) + D1 deploy fail-loud (ADR-033, aggregate 422, `DeployReferenceValidator`).
 - **Session 43** (2026-06-25→27, pushed through `8682a3de`) — pre-MVP hardening: Blast-Radius Phase 1 (DRY `BpmnFormRefExtractor` `39af596f`; formKey@N + assignee verified-correct, no change) + Phase 2 (portal silent-401 `a0f69e03` + Engine→Admin S2S resilience `e87cc3eb`, ADR-034); V24–V26 act_* cleanup guards (`64be6232`); manual-E2E bug fixes (dashboard task-count vs list, `process` default-key); seed-form de-bloat (leave 27→5 / capex 22→8 / procurement DMN-gated `edca170f`/`e378fe69`/`9faa565b`); in-scope form-variable picker (`ProcessVariableScopeService`); departments connector `hr-portal`→`org-directory` (`863dea62`); env_file secret ownership (`acf37212`); Keycloak realm-file reconciliation + setup docs (`8682a3de`); Knowledge-Base sync (`91d1c8d9`).
+- **Session 49** (2026-06-30, `ddb4a54c`, pushed) — **SLA start-form selector** (ADR-037 follow-up): optional `slaDuration` preset `select` (Default 15 min / 2 / 5 / 10 min / 1 hour / 1 day, `defaultValue` `PT15M`, `required`) added to all 4 seed start forms so the SLA-breach scenario is exercisable from the portal without waiting 15 min. `select`-not-textfield + `required` guarantees a valid ISO-8601 value, closing the empty-string path the unfiltered portal start-variable forwarding would expose → no timer-expr change. frontend-developer reviewed APPROVE-WITH-NITS. Reseed propagates via `ProcessExampleDeployer.seedFormSchemas()` `ON CONFLICT DO UPDATE` (rebuild **engine** only; no DB wipe).
+
+### CI hygiene (known, non-blocking — pre-MVP)
+
+Both enterprise workflows ("CI / E2E Pipeline", "Security Scan") are red since ~2026-06-29, but **no real gate fails** — every build/test/audit step passes; the jobs go red only on `actions/upload-artifact` with `Artifact storage quota has been hit`. The quota is **account-wide** (`themaverik` ~500 MB free pool shared with Packages; this repo holds only 9.9 MB), so freeing it / setting a billing spend-limit > $0 is account-level. Follow-ups (one CI branch, after Manual E2E):
+- Make upload-artifact steps `continue-on-error: true` + `if: ${{ failure() }}` + `retention-days: 3` so a quota hit degrades to a warning (extends the session-42 `d7b4ec66`/`dd335a63` greening).
+- Bump GitHub-maintained action majors to clear the **node20 action-runtime** deprecation: `checkout` v4→v7, `setup-node` v4→v6, `setup-java` v4→v5 (low-risk); `upload-artifact`/`download-artifact` v4→v7/v8 (breaking — bump in lockstep, test). This is the *action runtime*, separate from project Node.
+- (Separate) project still runs **Node 20** (maintenance LTS, EOL ~April 2026) — README badge + `setup-node` `node-version`. Bumping project Node to current LTS is its own change (Dockerfiles + setup-node + badge), not the action-runtime warning.
 
 ---
 

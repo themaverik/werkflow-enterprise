@@ -100,6 +100,11 @@ Four example processes auto-deploy on startup (set `WERKFLOW_DEPLOY_EXAMPLES=tru
 | Procurement Approval | procurement-request-form, vendor-selection, quotation-review, procurement-approval | procurement-matrix |
 | IT Helpdesk Ticket | it-helpdesk-ticket-form, it-helpdesk-resolution-form | — |
 
+Each approval/work task carries a non-interrupting SLA timer (ADR-037): on timeout a token reaches
+an "SLA Breached" end event while the task stays active. The start forms expose an optional **SLA
+Duration (testing)** preset selector (default 15 min) so the breach scenario can be exercised
+without waiting.
+
 ## Documentation
 
 - [Quick Start](./docs/QUICKSTART.md)
