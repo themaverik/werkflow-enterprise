@@ -14,7 +14,8 @@
     "e2e:ui": "playwright test --ui",
     "e2e:debug": "playwright test --debug",
     "e2e:report": "playwright show-report",
-    "lint:bpmn:bundle": "bpmnlint-pack-config -c .bpmnlintrc -o lib/bpmn/bundled-lint-config.js -t es"
+    "lint:bpmn:bundle": "bpmnlint-pack-config -c .bpmnlintrc -o lib/bpmn/bundled-lint-config.js -t es",
+    "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
     "@bpmn-io/form-js": "^1.18.0",
@@ -64,7 +65,7 @@
     "zustand": "^4.5.5"
   },
   "devDependencies": {
-    "bpmnlint-plugin-werkflow": "file:lib/bpmn/bpmnlint-plugin-werkflow",
+    "@next/bundle-analyzer": "^14.2.35",
     "@playwright/test": "^1.58.2",
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^14.3.1",
@@ -74,6 +75,7 @@
     "@types/react-dom": "^18.3.0",
     "bpmnlint": "11.12.1",
     "bpmnlint-pack-config": "0.9.0",
+    "bpmnlint-plugin-werkflow": "file:lib/bpmn/bpmnlint-plugin-werkflow",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.15",
     "jsdom": "^29.0.1",

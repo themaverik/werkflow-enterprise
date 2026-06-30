@@ -157,6 +157,13 @@ jobs:
         continue-on-error: true
         run: npm audit --audit-level=info 2>&1 || true
 
+      - name: Verify bpmnlint bundle is up to date
+        working-directory: frontends/portal
+        run: |
+          npm run lint:bpmn:bundle
+          git diff --exit-code lib/bpmn/bundled-lint-config.js \
+            || { echo "::error::bundled-lint-config.js is stale — run 'npm run lint:bpmn:bundle' and commit."; exit 1; }
+
       - name: Type-check
         working-directory: frontends/portal
         run: npx tsc --noEmit

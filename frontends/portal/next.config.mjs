@@ -1,6 +1,8 @@
 import createNextIntlPlugin from 'next-intl/plugin'
+import bundleAnalyzer from '@next/bundle-analyzer'
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' })
 
 // 'standalone' bundles the server for Docker (DigitalOcean Droplet deploy).
 // Non-Docker builds (local dev) use Next.js' default output.
@@ -78,4 +80,4 @@ const nextConfig = {
   },
 }
 
-export default withNextIntl(nextConfig)
+export default withBundleAnalyzer(withNextIntl(nextConfig))
