@@ -271,6 +271,30 @@ requestAmount (number), category (string), capexOwner (string — department cod
     <sequenceFlow id="flow15" sourceRef="updateRejected" targetRef="sendRejectionNotification" />
     <sequenceFlow id="flow16" sourceRef="sendRejectionNotification" targetRef="endEventRejected" />
 
+    <!-- Non-interrupting SLA timers — one per approval level, shared SLA-Breached end event -->
+    <boundaryEvent id="slaTimerManager" attachedToRef="managerApproval" cancelActivity="false">
+      <timerEventDefinition>
+        <timeDuration>${execution.getVariable('slaDuration') != null ? execution.getVariable('slaDuration') : 'PT15M'}</timeDuration>
+      </timerEventDefinition>
+    </boundaryEvent>
+    <sequenceFlow id="flowSlaManager" sourceRef="slaTimerManager" targetRef="endEventSlaBreached"/>
+
+    <boundaryEvent id="slaTimerVp" attachedToRef="vpApproval" cancelActivity="false">
+      <timerEventDefinition>
+        <timeDuration>${execution.getVariable('slaDuration') != null ? execution.getVariable('slaDuration') : 'PT15M'}</timeDuration>
+      </timerEventDefinition>
+    </boundaryEvent>
+    <sequenceFlow id="flowSlaVp" sourceRef="slaTimerVp" targetRef="endEventSlaBreached"/>
+
+    <boundaryEvent id="slaTimerCfo" attachedToRef="cfoApproval" cancelActivity="false">
+      <timerEventDefinition>
+        <timeDuration>${execution.getVariable('slaDuration') != null ? execution.getVariable('slaDuration') : 'PT15M'}</timeDuration>
+      </timerEventDefinition>
+    </boundaryEvent>
+    <sequenceFlow id="flowSlaCfo" sourceRef="slaTimerCfo" targetRef="endEventSlaBreached"/>
+
+    <endEvent id="endEventSlaBreached" name="SLA Breached"/>
+
   </process>
 
   <!--
@@ -483,6 +507,30 @@ requestAmount (number), category (string), capexOwner (string — department cod
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow16_di" bpmnElement="flow16">
         <omgdi:waypoint x="2500" y="390" /><omgdi:waypoint x="2562" y="390" />
+      </bpmndi:BPMNEdge>
+
+      <!-- SLA timers: non-interrupting boundaries on each approval level -->
+      <bpmndi:BPMNShape id="slaTimerManager_di" bpmnElement="slaTimerManager">
+        <omgdc:Bounds x="912" y="302" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="slaTimerVp_di" bpmnElement="slaTimerVp">
+        <omgdc:Bounds x="1472" y="192" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="slaTimerCfo_di" bpmnElement="slaTimerCfo">
+        <omgdc:Bounds x="2022" y="82" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="endEventSlaBreached_di" bpmnElement="endEventSlaBreached">
+        <omgdc:Bounds x="1190" y="490" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1168" y="533" width="80" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flowSlaManager_di" bpmnElement="flowSlaManager">
+        <omgdi:waypoint x="930" y="338"/><omgdi:waypoint x="930" y="508"/><omgdi:waypoint x="1190" y="508"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flowSlaVp_di" bpmnElement="flowSlaVp">
+        <omgdi:waypoint x="1490" y="228"/><omgdi:waypoint x="1490" y="508"/><omgdi:waypoint x="1226" y="508"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flowSlaCfo_di" bpmnElement="flowSlaCfo">
+        <omgdi:waypoint x="2040" y="118"/><omgdi:waypoint x="2040" y="508"/><omgdi:waypoint x="1226" y="508"/>
       </bpmndi:BPMNEdge>
 
     </bpmndi:BPMNPlane>

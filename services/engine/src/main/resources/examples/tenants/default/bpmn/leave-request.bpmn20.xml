@@ -79,6 +79,15 @@ auto-approved; longer or special-category leave is routed to the appropriate app
       <conditionExpression xsi:type="tFormalExpression">${decision == 'reject'}</conditionExpression>
     </sequenceFlow>
 
+    <!-- Non-interrupting SLA timer boundary: managerReview -->
+    <boundaryEvent id="slaTimerManagerReview" attachedToRef="managerReview" cancelActivity="false">
+      <timerEventDefinition>
+        <timeDuration>${execution.getVariable('slaDuration') != null ? execution.getVariable('slaDuration') : 'PT15M'}</timeDuration>
+      </timerEventDefinition>
+    </boundaryEvent>
+    <sequenceFlow id="flowSlaManagerReview" sourceRef="slaTimerManagerReview" targetRef="endEventSlaBreached"/>
+    <endEvent id="endEventSlaBreached" name="SLA Breached"/>
+
   </process>
 
   <bpmndi:BPMNDiagram id="BPMNDiagram_leave-request">
@@ -144,6 +153,18 @@ auto-approved; longer or special-category leave is routed to the appropriate app
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow7_di" bpmnElement="flow7">
         <omgdi:waypoint x="745" y="305"/><omgdi:waypoint x="745" y="370"/><omgdi:waypoint x="842" y="370"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- SLA timer: non-interrupting boundary on managerReview -->
+      <bpmndi:BPMNShape id="slaTimerManagerReview_di" bpmnElement="slaTimerManagerReview">
+        <omgdc:Bounds x="632" y="302" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="endEventSlaBreached_di" bpmnElement="endEventSlaBreached">
+        <omgdc:Bounds x="632" y="380" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="610" y="423" width="80" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flowSlaManagerReview_di" bpmnElement="flowSlaManagerReview">
+        <omgdi:waypoint x="650" y="338"/><omgdi:waypoint x="650" y="380"/>
       </bpmndi:BPMNEdge>
 
     </bpmndi:BPMNPlane>

@@ -67,6 +67,15 @@ category, priority, requesterEmail.</documentation>
     <sequenceFlow id="flow3" sourceRef="resolveTicket" targetRef="notifyResolution"/>
     <sequenceFlow id="flow4" sourceRef="notifyResolution" targetRef="ticketClosed"/>
 
+    <!-- Non-interrupting SLA timer boundary: resolveTicket -->
+    <boundaryEvent id="slaTimerResolveTicket" attachedToRef="resolveTicket" cancelActivity="false">
+      <timerEventDefinition>
+        <timeDuration>${execution.getVariable('slaDuration') != null ? execution.getVariable('slaDuration') : 'PT15M'}</timeDuration>
+      </timerEventDefinition>
+    </boundaryEvent>
+    <sequenceFlow id="flowSlaResolveTicket" sourceRef="slaTimerResolveTicket" targetRef="endEventSlaBreached"/>
+    <endEvent id="endEventSlaBreached" name="SLA Breached"/>
+
   </process>
 
   <bpmndi:BPMNDiagram id="BPMNDiagram_it-helpdesk-ticket">
@@ -108,6 +117,18 @@ category, priority, requesterEmail.</documentation>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="flow4_di" bpmnElement="flow4">
         <omgdi:waypoint x="730" y="280"/><omgdi:waypoint x="792" y="280"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- SLA timer: non-interrupting boundary on resolveTicket -->
+      <bpmndi:BPMNShape id="slaTimerResolveTicket_di" bpmnElement="slaTimerResolveTicket">
+        <omgdc:Bounds x="532" y="302" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="endEventSlaBreached_di" bpmnElement="endEventSlaBreached">
+        <omgdc:Bounds x="532" y="380" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="510" y="423" width="80" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flowSlaResolveTicket_di" bpmnElement="flowSlaResolveTicket">
+        <omgdi:waypoint x="550" y="338"/><omgdi:waypoint x="550" y="380"/>
       </bpmndi:BPMNEdge>
 
     </bpmndi:BPMNPlane>

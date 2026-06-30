@@ -55,6 +55,7 @@ and manager approval before a final approve/reject decision.</documentation>
               flowable:formKey="quotation-review"/>
 
     <userTask id="managerApproval" name="Manager Approval"
+              flowable:actionType="HUMAN_APPROVAL"
               flowable:candidateGroups="DOA_L2,SUPER_ADMIN"
               flowable:formKey="procurement-approval"/>
 
@@ -90,6 +91,15 @@ and manager approval before a final approve/reject decision.</documentation>
 
     <!-- Default reject branch -->
     <sequenceFlow id="flowRejectDefault" sourceRef="approvalDecision" targetRef="endEventRejected"/>
+
+    <!-- Non-interrupting SLA timer boundary: managerApproval -->
+    <boundaryEvent id="slaTimerManagerApproval" attachedToRef="managerApproval" cancelActivity="false">
+      <timerEventDefinition>
+        <timeDuration>${execution.getVariable('slaDuration') != null ? execution.getVariable('slaDuration') : 'PT15M'}</timeDuration>
+      </timerEventDefinition>
+    </boundaryEvent>
+    <sequenceFlow id="flowSlaManagerApproval" sourceRef="slaTimerManagerApproval" targetRef="endEventSlaBreached"/>
+    <endEvent id="endEventSlaBreached" name="SLA Breached"/>
 
   </process>
 
@@ -189,6 +199,18 @@ and manager approval before a final approve/reject decision.</documentation>
       <!-- Default reject: gateway drops down to endEventRejected -->
       <bpmndi:BPMNEdge id="flowRejectDefault_di" bpmnElement="flowRejectDefault">
         <omgdi:waypoint x="1100" y="305"/><omgdi:waypoint x="1100" y="420"/>
+      </bpmndi:BPMNEdge>
+
+      <!-- SLA timer: non-interrupting boundary on managerApproval -->
+      <bpmndi:BPMNShape id="slaTimerManagerApproval_di" bpmnElement="slaTimerManagerApproval">
+        <omgdc:Bounds x="992" y="302" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="endEventSlaBreached_di" bpmnElement="endEventSlaBreached">
+        <omgdc:Bounds x="992" y="380" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="970" y="423" width="80" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flowSlaManagerApproval_di" bpmnElement="flowSlaManagerApproval">
+        <omgdi:waypoint x="1010" y="338"/><omgdi:waypoint x="1010" y="380"/>
       </bpmndi:BPMNEdge>
 
     </bpmndi:BPMNPlane>
