@@ -1,0 +1,7 @@
+{
+  "name": "bpmnlint-plugin-werkflow",
+  "version": "1.0.0",
+  "description": "Werkflow-specific bpmnlint rules for BPMN design-time validation",
+  "main": "index.js",
+  "private": true
+}

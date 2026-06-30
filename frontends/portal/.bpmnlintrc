@@ -1,5 +1,5 @@
 {
-  "extends": "bpmnlint:recommended",
+  "extends": ["bpmnlint:recommended", "plugin:werkflow/recommended"],
   "rules": {
     "label-required": "warn",
     "no-overlapping-elements": "warn",

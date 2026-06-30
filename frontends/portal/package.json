@@ -64,6 +64,7 @@
     "zustand": "^4.5.5"
   },
   "devDependencies": {
+    "bpmnlint-plugin-werkflow": "file:lib/bpmn/bpmnlint-plugin-werkflow",
     "@playwright/test": "^1.58.2",
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^14.3.1",

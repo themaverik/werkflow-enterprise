@@ -3076,6 +3076,355 @@ function requireSuperfluousTermination () {
 var superfluousTerminationExports = requireSuperfluousTermination();
 var rule_24 = /*@__PURE__*/getDefaultExportFromCjs(superfluousTerminationExports);
 
+var candidateGroupFallback;
+var hasRequiredCandidateGroupFallback;
+
+function requireCandidateGroupFallback () {
+	if (hasRequiredCandidateGroupFallback) return candidateGroupFallback;
+	hasRequiredCandidateGroupFallback = 1;
+
+	/**
+	 * Rule: candidate-group-fallback (error)
+	 *
+	 * A HUMAN_APPROVAL user task must have an assignee OR candidate groups.
+	 * Mirrors the HUMAN_APPROVAL branch in validateActionBlocks().
+	 *
+	 * @param {ModdleElement} node
+	 * @param {Reporter} reporter
+	 */
+	candidateGroupFallback = function() {
+	  const { is } = require$$0;
+
+	  function check(node, reporter) {
+	    if (!is(node, 'bpmn:UserTask')) return;
+
+	    const actionType = (node.get && node.get('flowable:actionType')) || '';
+	    if (actionType !== 'HUMAN_APPROVAL') return;
+
+	    const hasAssignee = !!(node.get('assignee') || node.get('candidateGroups'));
+	    if (!hasAssignee) {
+	      reporter.report(node.id, 'User task has no assignee or candidate groups set.');
+	    }
+	  }
+
+	  return { check };
+	};
+	return candidateGroupFallback;
+}
+
+var candidateGroupFallbackExports = requireCandidateGroupFallback();
+var rule_25 = /*@__PURE__*/getDefaultExportFromCjs(candidateGroupFallbackExports);
+
+var gatewayDefaultFlow;
+var hasRequiredGatewayDefaultFlow;
+
+function requireGatewayDefaultFlow () {
+	if (hasRequiredGatewayDefaultFlow) return gatewayDefaultFlow;
+	hasRequiredGatewayDefaultFlow = 1;
+
+	/**
+	 * Rule: gateway-default-flow (error)
+	 *
+	 * A diverging exclusive gateway that has at least one conditional outgoing
+	 * flow MUST also have a default flow set. The Flowable stock validator does
+	 * not check this, so authors discover the gap at runtime.
+	 *
+	 * "Diverging" = more than one outgoing sequence flow.
+	 * "Conditional" = the flow has a conditionExpression.
+	 * "Default" = node.default references one of the outgoing flows (BPMN standard attr).
+	 *
+	 * @param {ModdleElement} node
+	 * @param {Reporter} reporter
+	 */
+	gatewayDefaultFlow = function() {
+	  const { is } = require$$0;
+
+	  function check(node, reporter) {
+	    if (!is(node, 'bpmn:ExclusiveGateway')) return;
+
+	    const outgoing = node.outgoing || [];
+	    if (outgoing.length <= 1) return;
+
+	    const hasConditionalFlow = outgoing.some(flow => !!flow.conditionExpression);
+	    if (!hasConditionalFlow) return;
+
+	    if (!node.default) {
+	      reporter.report(
+	        node.id,
+	        'Exclusive gateway has conditional flows but no default flow set. ' +
+	        'A default flow is required to handle unmatched conditions.'
+	      );
+	    }
+	  }
+
+	  return { check };
+	};
+	return gatewayDefaultFlow;
+}
+
+var gatewayDefaultFlowExports = requireGatewayDefaultFlow();
+var rule_26 = /*@__PURE__*/getDefaultExportFromCjs(gatewayDefaultFlowExports);
+
+var boundaryTimerSlaCoverage;
+var hasRequiredBoundaryTimerSlaCoverage;
+
+function requireBoundaryTimerSlaCoverage () {
+	if (hasRequiredBoundaryTimerSlaCoverage) return boundaryTimerSlaCoverage;
+	hasRequiredBoundaryTimerSlaCoverage = 1;
+
+	/**
+	 * Rule: boundary-timer-sla-coverage (warn)
+	 *
+	 * Advisory nudge: a HUMAN_APPROVAL user task should have at least one
+	 * timer boundary event attached to it for SLA coverage. Without it, stalled
+	 * approvals have no automatic escalation path.
+	 *
+	 * This is a recommendation, not a hard requirement — severity is 'warn'.
+	 *
+	 * @param {ModdleElement} node
+	 * @param {Reporter} reporter
+	 */
+	boundaryTimerSlaCoverage = function() {
+	  const { is } = require$$0;
+
+	  function check(node, reporter) {
+	    if (!is(node, 'bpmn:UserTask')) return;
+
+	    const actionType = (node.get && node.get('flowable:actionType')) || '';
+	    if (actionType !== 'HUMAN_APPROVAL') return;
+
+	    // Traverse parent process/sub-process flowElements for a timer boundary
+	    // event whose attachedToRef points back to this task.
+	    const parent = node.$parent;
+	    if (!parent) return;
+
+	    const flowElements = parent.flowElements || [];
+	    const hasTimerBoundary = flowElements.some(el => {
+	      if (!is(el, 'bpmn:BoundaryEvent')) return false;
+	      if (el.attachedToRef !== node) return false;
+	      const eventDefs = el.eventDefinitions || [];
+	      return eventDefs.some(def => is(def, 'bpmn:TimerEventDefinition'));
+	    });
+
+	    if (!hasTimerBoundary) {
+	      reporter.report(
+	        node.id,
+	        'Human approval task has no timer boundary event. ' +
+	        'Add a timer boundary for SLA escalation coverage.'
+	      );
+	    }
+	  }
+
+	  return { check };
+	};
+	return boundaryTimerSlaCoverage;
+}
+
+var boundaryTimerSlaCoverageExports = requireBoundaryTimerSlaCoverage();
+var rule_27 = /*@__PURE__*/getDefaultExportFromCjs(boundaryTimerSlaCoverageExports);
+
+var actionBlockCompleteness;
+var hasRequiredActionBlockCompleteness;
+
+function requireActionBlockCompleteness () {
+	if (hasRequiredActionBlockCompleteness) return actionBlockCompleteness;
+	hasRequiredActionBlockCompleteness = 1;
+
+	/**
+	 * Rule: action-block-completeness (error)
+	 *
+	 * Ports the non-HUMAN_APPROVAL branches of validateActionBlocks() into a
+	 * bpmnlint rule so authors see errors in the designer rather than only at
+	 * deploy-click time.  The deploy gate (validateActionBlocks) is unchanged —
+	 * this rule is additive defense-in-depth.
+	 *
+	 * Checks covered:
+	 *   SEND_NOTIFICATION  → requires 'recipient' and 'templateKey' flowable:Field
+	 *   CONNECTOR_OPERATION → requires 'connector' flowable:Field
+	 *   CALL_SUBPROCESS    → requires calledElement
+	 *   GROOVY_SCRIPT      → requires flowable:script
+	 *   ServiceTask[dmn]   → requires 'decisionTableReferenceKey' flowable:Field
+	 *
+	 * @param {ModdleElement} node
+	 * @param {Reporter} reporter
+	 */
+
+	/**
+	 * Mirror of getFlowableField from BpmnDesigner.tsx.
+	 * Reads a <flowable:field> string or expression value from a moddle element.
+	 *
+	 * @param {ModdleElement} node
+	 * @param {string} fieldName
+	 * @returns {string}
+	 */
+	function getFlowableField(node, fieldName) {
+	  const extensionElements = node.extensionElements;
+	  if (!extensionElements) return '';
+
+	  const values = extensionElements.get ? extensionElements.get('values') : (extensionElements.values || []);
+	  if (!values) return '';
+
+	  const field = values.find(v => v.$type === 'flowable:Field' && v.name === fieldName);
+	  return (field && (field.expression || field.string)) || '';
+	}
+
+	actionBlockCompleteness = function() {
+	  const { is } = require$$0;
+
+	  function check(node, reporter) {
+	    const actionType = (node.get && node.get('flowable:actionType')) || '';
+
+	    if (actionType === 'SEND_NOTIFICATION') {
+	      if (!getFlowableField(node, 'recipient')) {
+	        reporter.report(node.id, 'Notification task is missing a recipient.');
+	      }
+	      if (!getFlowableField(node, 'templateKey')) {
+	        reporter.report(node.id, 'Notification task is missing a template key.');
+	      }
+	    }
+
+	    if (actionType === 'CONNECTOR_OPERATION') {
+	      if (!getFlowableField(node, 'connector')) {
+	        reporter.report(node.id, 'Connector Operation task requires a connector to be selected.');
+	      }
+	    }
+
+	    if (actionType === 'CALL_SUBPROCESS') {
+	      if (!node.get('calledElement')) {
+	        reporter.report(node.id, 'Call Subprocess task is missing a process key (calledElement).');
+	      }
+	    }
+
+	    if (actionType === 'GROOVY_SCRIPT') {
+	      if (!node.get('flowable:script')) {
+	        reporter.report(node.id, 'Groovy Script task has no script content.');
+	      }
+	    }
+
+	    if (is(node, 'bpmn:ServiceTask')) {
+	      const flowableType = node.get && node.get('flowable:type');
+	      if (flowableType === 'dmn') {
+	        if (!getFlowableField(node, 'decisionTableReferenceKey')) {
+	          reporter.report(node.id, 'DMN Decision task is missing a decision key (decisionTableReferenceKey).');
+	        }
+	      }
+	    }
+	  }
+
+	  return { check };
+	};
+	return actionBlockCompleteness;
+}
+
+var actionBlockCompletenessExports = requireActionBlockCompleteness();
+var rule_28 = /*@__PURE__*/getDefaultExportFromCjs(actionBlockCompletenessExports);
+
+var taskTypeAdvisory;
+var hasRequiredTaskTypeAdvisory;
+
+function requireTaskTypeAdvisory () {
+	if (hasRequiredTaskTypeAdvisory) return taskTypeAdvisory;
+	hasRequiredTaskTypeAdvisory = 1;
+
+	/**
+	 * Rule: task-type-advisory (error)
+	 *
+	 * Surfaces at design time the task-type bans that the engine enforces at
+	 * deploy time or silently ignores at runtime.  References:
+	 *
+	 *   bpmn:ScriptTask          → quarantined (ADR-016)
+	 *   bpmn:BusinessRuleTask    → dead in Flowable 7.2 (ADR-026); use
+	 *                              serviceTask flowable:type=dmn
+	 *   bpmn:ManualTask          → confirmationRequired='true' is a silent no-op
+	 *                              (ADR-017)
+	 *   Dead flowable:* attrs    → signalName, correlationKey, webhookConnector,
+	 *                              correlationExpression have no effect (ADR-009)
+	 *
+	 * @param {ModdleElement} node
+	 * @param {Reporter} reporter
+	 */
+
+	/** Dead extension attributes that have been removed / never wired. */
+	const DEAD_FLOWABLE_ATTRS = [
+	  'signalName',
+	  'correlationKey',
+	  'webhookConnector',
+	  'correlationExpression'
+	];
+
+	/**
+	 * Try to read a potentially-namespaced attribute from a moddle element.
+	 * Checks both typed getters (attribute defined in loaded moddle descriptor)
+	 * and the $attrs bag (attribute present in XML but not recognised by any
+	 * loaded descriptor).
+	 *
+	 * @param {ModdleElement} node
+	 * @param {string} qualifiedName  e.g. 'flowable:signalName'
+	 * @returns {string|undefined}
+	 */
+	function getAttrValue(node, qualifiedName) {
+	  if (typeof node.get === 'function') {
+	    try {
+	      const val = node.get(qualifiedName);
+	      if (val !== undefined && val !== null) return val;
+	    } catch (_) {
+	      /* attribute not defined in loaded moddle descriptor — fall through */
+	    }
+	  }
+	  return node.$attrs && node.$attrs[qualifiedName];
+	}
+
+	taskTypeAdvisory = function() {
+	  const { is } = require$$0;
+
+	  function check(node, reporter) {
+	    // 1. Quarantined task type: ScriptTask (ADR-016)
+	    if (is(node, 'bpmn:ScriptTask')) {
+	      reporter.report(
+	        node.id,
+	        'Script tasks are quarantined (ADR-016). Use a service task with an appropriate action type instead.'
+	      );
+	    }
+
+	    // 2. Dead task type in Flowable 7.2: BusinessRuleTask (ADR-026)
+	    if (is(node, 'bpmn:BusinessRuleTask')) {
+	      reporter.report(
+	        node.id,
+	        'Business rule tasks are not supported in Flowable 7.2 (ADR-026). ' +
+	        'Use a service task with flowable:type=dmn and a decisionTableReferenceKey field instead.'
+	      );
+	    }
+
+	    // 3. ManualTask with confirmationRequired='true' is a silent no-op (ADR-017)
+	    if (is(node, 'bpmn:ManualTask')) {
+	      const confirmationRequired = getAttrValue(node, 'flowable:confirmationRequired');
+	      if (confirmationRequired === 'true') {
+	        reporter.report(
+	          node.id,
+	          'ManualTask confirmationRequired="true" is a silent no-op (ADR-017). Remove the attribute.'
+	        );
+	      }
+	    }
+
+	    // 4. Dead flowable:* extension attributes (ADR-009)
+	    for (const attr of DEAD_FLOWABLE_ATTRS) {
+	      if (getAttrValue(node, `flowable:${attr}`)) {
+	        reporter.report(
+	          node.id,
+	          `Element carries dead extension attribute "flowable:${attr}" which has no effect (ADR-009). Remove it.`
+	        );
+	      }
+	    }
+	  }
+
+	  return { check };
+	};
+	return taskTypeAdvisory;
+}
+
+var taskTypeAdvisoryExports = requireTaskTypeAdvisory();
+var rule_29 = /*@__PURE__*/getDefaultExportFromCjs(taskTypeAdvisoryExports);
+
 const cache = {};
 
 /**
@@ -3130,7 +3479,12 @@ const rules = {
   "start-event-required": "error",
   "sub-process-blank-start-event": "error",
   "superfluous-gateway": "warn",
-  "superfluous-termination": "warn"
+  "superfluous-termination": "warn",
+  "werkflow/candidate-group-fallback": "error",
+  "werkflow/gateway-default-flow": "error",
+  "werkflow/boundary-timer-sla-coverage": "warn",
+  "werkflow/action-block-completeness": "error",
+  "werkflow/task-type-advisory": "error"
 };
 
 const config = {
@@ -3194,5 +3548,15 @@ cache['bpmnlint/sub-process-blank-start-event'] = rule_22;
 cache['bpmnlint/superfluous-gateway'] = rule_23;
 
 cache['bpmnlint/superfluous-termination'] = rule_24;
+
+cache['bpmnlint-plugin-werkflow/candidate-group-fallback'] = rule_25;
+
+cache['bpmnlint-plugin-werkflow/gateway-default-flow'] = rule_26;
+
+cache['bpmnlint-plugin-werkflow/boundary-timer-sla-coverage'] = rule_27;
+
+cache['bpmnlint-plugin-werkflow/action-block-completeness'] = rule_28;
+
+cache['bpmnlint-plugin-werkflow/task-type-advisory'] = rule_29;
 
 export { config, bundle as default, moddleExtensions, resolver };
