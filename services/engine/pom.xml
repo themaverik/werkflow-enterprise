@@ -419,5 +419,55 @@
                 </plugins>
             </build>
         </profile>
+
+        <!-- mvn -Pdmn-advisory verify -DskipTests  → structural DMN lint on seed DMNs (advisory, opt-in).
+             Build-scoped only: the dmn-check plugin runs on the host JVM at build time and
+             contributes ZERO classes to the assembled Spring Boot JAR.
+             Validator strategy: <validatorPackages> points to a non-existent package to neutralise
+             the default FEEL-parsing scan (which false-positives on Werkflow's JUEL entries).
+             <validatorClasses> then adds back only the 7 structural/metadata validators that are
+             JUEL-safe. FEEL type-validators, ShadowedRuleValidator, and requirement-graph validators
+             are intentionally omitted. -->
+        <profile>
+            <id>dmn-advisory</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>de.redsix</groupId>
+                        <artifactId>dmn-check-maven-plugin</artifactId>
+                        <version>1.3.1</version>
+                        <executions>
+                            <execution>
+                                <id>dmn-advisory-check</id>
+                                <phase>verify</phase>
+                                <goals><goal>check-dmn</goal></goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <searchPaths>
+                                <searchPath>src/main/resources/examples</searchPath>
+                            </searchPaths>
+                            <!-- Neutralize the default FEEL-parsing validator scan; Werkflow DMNs are JUEL. -->
+                            <validatorPackages>
+                                <validatorPackage>de.redsix.dmncheck.none</validatorPackage>
+                            </validatorPackages>
+                            <!-- Add back ONLY the JUEL-safe (text/structural/metadata) validators.
+                                 FEEL type-validators, ShadowedRuleValidator, and the requirement-graph
+                                 validators are intentionally omitted (they false-positive on JUEL and on
+                                 Werkflow's intentionally-independent capex decisions). -->
+                            <validatorClasses>
+                                <validatorClass>de.redsix.dmncheck.validators.DuplicateRuleValidator</validatorClass>
+                                <validatorClass>de.redsix.dmncheck.validators.ConflictingRuleValidator</validatorClass>
+                                <validatorClass>de.redsix.dmncheck.validators.AggregationValidator</validatorClass>
+                                <validatorClass>de.redsix.dmncheck.validators.NoDecisionPresentValidator</validatorClass>
+                                <validatorClass>de.redsix.dmncheck.validators.DecisionIdAndNameValidator</validatorClass>
+                                <validatorClass>de.redsix.dmncheck.validators.DefinitionsIdAndNameValidator</validatorClass>
+                                <validatorClass>de.redsix.dmncheck.validators.DuplicateColumnLabelValidator</validatorClass>
+                            </validatorClasses>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 </project>
