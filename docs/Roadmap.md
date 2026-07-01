@@ -42,6 +42,12 @@ Both enterprise workflows ("CI / E2E Pipeline", "Security Scan") are red since ~
 - Bump GitHub-maintained action majors to clear the **node20 action-runtime** deprecation: `checkout` v4→v7, `setup-node` v4→v6, `setup-java` v4→v5 (low-risk); `upload-artifact`/`download-artifact` v4→v7/v8 (breaking — bump in lockstep, test). This is the *action runtime*, separate from project Node.
 - (Separate) project still runs **Node 20** (maintenance LTS, EOL ~April 2026) — README badge + `setup-node` `node-version`. Bumping project Node to current LTS is its own change (Dockerfiles + setup-node + badge), not the action-runtime warning.
 
+### Connector API_KEY header-name mismatch (known, non-blocking — pre-MVP)
+
+The connector's one-click **"Generate & Register ERP Key"** flow stores the credential binding with a hardcoded `headerName: "Authorization"` (`services/admin/src/main/java/com/werkflow/admin/service/ConnectorService.java:287`), but the ERP business service reads the API key from the **`X-API-Key`** header only (`werkflow-erp/services/business/.../apikey/filter/ApiKeyAuthenticationFilter.java:29`). A key registered via the one-click flow is therefore sent under the wrong header and ERP never authenticates it. **Manual workaround:** create an "HTTP header auth" credential with header name `X-API-Key`, value = a key minted via ERP `POST /api/v1/api-keys/generate`. Fix (own branch, after Manual E2E):
+- Align the two: change the hardcoded `Authorization` → `X-API-Key` in `ConnectorService.registerApiKey`, **or** make the header name configurable defaulting to `X-API-Key`.
+- First verify the outbound connector proxy (`ConnectorService.executeProxy`) applies the credential's `headerName` verbatim, and confirm no other ERP path accepts the key via `Authorization`, before changing.
+
 ---
 
 ## Documentation Debt (Pre-MVP)
