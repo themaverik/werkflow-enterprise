@@ -7,7 +7,7 @@ import { useAuthorization } from '@/lib/auth/use-authorization'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useState } from 'react'
+import React, { useState, useId } from 'react'
 import { Info, Lock, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -69,6 +69,194 @@ async function deleteMapping(id: string, token: string) {
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) throw new Error('Failed to delete mapping')
+}
+
+// Accepts UPPER_SNAKE_CASE or the scoped DOA form DEPT:<ID>::DOA:L<N>
+const GROUP_RE = /^[A-Z0-9_]+$|^DEPT:[A-Z0-9_]+::DOA:L[0-9]+$/
+
+// ── Group combobox ─────────────────────────────────────────────────────────────
+
+interface GroupOption {
+  key: string
+  label: string
+}
+
+interface GroupComboBoxProps {
+  value: string
+  onChange: (v: string) => void
+  options: GroupOption[]
+  loading: boolean
+  isError: boolean
+}
+
+function GroupComboBox({ value, onChange, options, loading, isError }: GroupComboBoxProps) {
+  const [open, setOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(-1)
+  const listboxId = useId()
+
+  const trimmed = value.trim()
+  const filtered = options
+    .filter(
+      (o) =>
+        o.key.toLowerCase().includes(trimmed.toLowerCase()) ||
+        o.label.toLowerCase().includes(trimmed.toLowerCase()),
+    )
+    .sort((a, b) => a.key.localeCompare(b.key))
+
+  const exactMatch = options.some((o) => o.key.toLowerCase() === trimmed.toLowerCase())
+  const showAddOption = trimmed.length > 0 && !exactMatch
+  const hasContent = loading || isError || filtered.length > 0 || showAddOption
+
+  const totalOptions = filtered.length + (showAddOption ? 1 : 0)
+
+  const activeDescendant =
+    open && activeIndex >= 0 && activeIndex < filtered.length
+      ? `${listboxId}-opt-${activeIndex}`
+      : open && showAddOption && activeIndex === filtered.length
+        ? `${listboxId}-opt-add`
+        : undefined
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        if (!open) {
+          setOpen(true)
+          setActiveIndex(totalOptions > 0 ? 0 : -1)
+        } else if (totalOptions > 0) {
+          setActiveIndex((prev) => Math.min(prev + 1, totalOptions - 1))
+        }
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        if (open) {
+          setActiveIndex((prev) => Math.max(prev - 1, 0))
+        }
+        break
+      case 'Enter': {
+        e.preventDefault()
+        if (!open) break
+        if (activeIndex >= 0 && activeIndex < filtered.length) {
+          onChange(filtered[activeIndex].key)
+          setOpen(false)
+          setActiveIndex(-1)
+        } else if (showAddOption && (activeIndex === filtered.length || filtered.length === 0)) {
+          onChange(trimmed)
+          setOpen(false)
+          setActiveIndex(-1)
+        }
+        break
+      }
+      case 'Escape':
+        e.preventDefault()
+        setOpen(false)
+        setActiveIndex(-1)
+        break
+    }
+  }
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    onChange(e.target.value)
+    setActiveIndex(-1)
+  }
+
+  return (
+    <div className="relative flex-1">
+      <Input
+        value={value}
+        onChange={handleChange}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => { setOpen(false); setActiveIndex(-1) }, 150)}
+        onKeyDown={handleKeyDown}
+        placeholder="Select or type group…"
+        className="h-8 text-xs font-mono w-full"
+        aria-label="Candidate group name"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={listboxId}
+        aria-haspopup="listbox"
+        aria-autocomplete="list"
+        aria-activedescendant={activeDescendant}
+        autoComplete="off"
+      />
+      {open && hasContent && (
+        <div
+          id={listboxId}
+          role="listbox"
+          aria-label="Candidate group options"
+          className="absolute z-50 top-full mt-1 w-full bg-popover border border-border rounded-md shadow-md max-h-48 overflow-y-auto"
+        >
+          {loading && (
+            <div
+              role="option"
+              aria-disabled="true"
+              aria-selected={false}
+              className="px-3 py-2 text-xs text-muted-foreground"
+            >
+              Loading groups…
+            </div>
+          )}
+          {isError && !loading && (
+            <div
+              role="option"
+              aria-disabled="true"
+              aria-selected={false}
+              className="px-3 py-2 text-xs text-muted-foreground italic"
+            >
+              Could not load groups — you can still type a new one
+            </div>
+          )}
+          {!loading &&
+            filtered.map((o, i) => (
+              <div
+                key={o.key}
+                id={`${listboxId}-opt-${i}`}
+                role="option"
+                aria-selected={value === o.key}
+                className={`flex items-center gap-2 px-3 py-1.5 text-xs cursor-pointer select-none hover:bg-accent hover:text-accent-foreground${activeIndex === i ? ' bg-accent text-accent-foreground' : ''}`}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  onChange(o.key)
+                  setOpen(false)
+                  setActiveIndex(-1)
+                }}
+              >
+                <span className="font-mono">{o.key}</span>
+                {o.label !== o.key && (
+                  <span className="text-muted-foreground font-sans truncate">{o.label}</span>
+                )}
+              </div>
+            ))}
+          {!loading && showAddOption && (
+            <div
+              id={`${listboxId}-opt-add`}
+              role="option"
+              aria-selected={false}
+              className={`px-3 py-1.5 text-xs cursor-pointer select-none hover:bg-accent hover:text-accent-foreground italic${activeIndex === filtered.length ? ' bg-accent text-accent-foreground' : ' text-muted-foreground'}`}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                onChange(trimmed)
+                setOpen(false)
+                setActiveIndex(-1)
+              }}
+            >
+              Add &ldquo;{trimmed}&rdquo;
+            </div>
+          )}
+          {!loading && !isError && filtered.length === 0 && !showAddOption && (
+            <div
+              role="option"
+              aria-disabled="true"
+              aria-selected={false}
+              className="px-3 py-2 text-xs text-muted-foreground"
+            >
+              No Tier 2 groups found — type a new group name
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function RoleMappingsPage() {
@@ -134,6 +322,31 @@ export default function RoleMappingsPage() {
     },
     onError: () => toast.error('Failed to delete mapping'),
   })
+
+  const tier2Groups = candidateGroups.filter((g) => g.tier === 2)
+
+  function handleAddMapping() {
+    const trimmed = newGroup.trim()
+    const existing = tier2Groups.find((g) => g.key.toLowerCase() === trimmed.toLowerCase())
+    const resolvedGroup = existing ? existing.key : trimmed
+
+    if (!GROUP_RE.test(resolvedGroup)) {
+      toast.error(
+        'Group must be UPPER_SNAKE_CASE — A–Z, 0–9, _ (e.g. MANAGER, FINANCE_APPROVER, DOA_L1)',
+      )
+      return
+    }
+
+    const isDuplicate = tier2.some(
+      (m) => m.roleName === newRole && m.groupName === resolvedGroup,
+    )
+    if (isDuplicate) {
+      toast.error('This role is already mapped to ' + resolvedGroup)
+      return
+    }
+
+    addMutation.mutate({ roleName: newRole, groupName: resolvedGroup })
+  }
 
   if (!hasAnyRole(['ADMIN', 'SUPER_ADMIN'])) {
     return <p className="text-destructive">Access denied.</p>
@@ -235,78 +448,59 @@ export default function RoleMappingsPage() {
         </div>
 
         {/* Add row */}
-        <div className="mt-3 flex items-center gap-2">
-          <Select
-            value={newRole || '__none__'}
-            onValueChange={(v) => setNewRole(v === '__none__' ? '' : v)}
-          >
-            <SelectTrigger className="h-8 text-xs font-mono flex-1" aria-label="Select Keycloak role">
-              <SelectValue placeholder="Select role…" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__" className="text-xs text-muted-foreground">Select role…</SelectItem>
-              {realmRoles.map((r) => (
-                <SelectItem key={r} value={r} className="font-mono text-xs">{r}</SelectItem>
-              ))}
-              {loadingRoles && (
-                <div className="px-3 py-2 text-xs text-muted-foreground">Loading roles…</div>
-              )}
-              {rolesError && !loadingRoles && (
-                <div className="px-3 py-2 text-xs text-destructive">Failed to load roles</div>
-              )}
-              {!loadingRoles && !rolesError && realmRoles.length === 0 && (
-                <div className="px-3 py-2 text-xs text-muted-foreground">No roles found</div>
-              )}
-            </SelectContent>
-          </Select>
-
-          {groupsError ? (
-            <div className="flex-1 space-y-1">
-              <Input
-                value={newGroup}
-                onChange={(e) => setNewGroup(e.target.value)}
-                placeholder="candidate_group_name"
-                className="h-8 text-xs font-mono w-full"
-                aria-label="Candidate group name"
-              />
-              <p className="text-xs text-destructive">Could not load groups — enter manually.</p>
-            </div>
-          ) : (
+        <div className="mt-3 space-y-1.5">
+          <div className="flex items-center gap-2">
             <Select
-              value={newGroup || '__none__'}
-              onValueChange={(v) => setNewGroup(v === '__none__' ? '' : v)}
+              value={newRole || '__none__'}
+              onValueChange={(v) => setNewRole(v === '__none__' ? '' : v)}
             >
-              <SelectTrigger className="h-8 text-xs font-mono flex-1" aria-label="Select candidate group">
-                <SelectValue placeholder="Select group…" />
+              <SelectTrigger className="h-8 text-xs font-mono flex-1" aria-label="Select Keycloak role">
+                <SelectValue placeholder="Select role…" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__" className="text-xs text-muted-foreground">Select group…</SelectItem>
-                {loadingGroups && (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">Loading groups…</div>
+                <SelectItem value="__none__" className="text-xs text-muted-foreground">Select role…</SelectItem>
+                {realmRoles.map((r) => (
+                  <SelectItem key={r} value={r} className="font-mono text-xs">{r}</SelectItem>
+                ))}
+                {loadingRoles && (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">Loading roles…</div>
                 )}
-                {!loadingGroups && candidateGroups
-                  .filter((g) => g.tier === 2)
-                  .sort((a, b) => a.key.localeCompare(b.key))
-                  .map((g) => (
-                    <SelectItem key={g.key} value={g.key} className="font-mono text-xs">
-                      {g.label}
-                    </SelectItem>
-                  ))}
-                {!loadingGroups && candidateGroups.filter((g) => g.tier === 2).length === 0 && (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">No Tier 2 groups found</div>
+                {rolesError && !loadingRoles && (
+                  <div className="px-3 py-2 text-xs text-destructive">Failed to load roles</div>
+                )}
+                {!loadingRoles && !rolesError && realmRoles.length === 0 && (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">No roles found</div>
                 )}
               </SelectContent>
             </Select>
-          )}
 
-          <Button
-            size="sm"
-            aria-label="Add mapping"
-            disabled={!newRole || !newGroup.trim() || addMutation.isPending}
-            onClick={() => addMutation.mutate({ roleName: newRole, groupName: newGroup.trim() })}
-          >
-            <Plus size={14} strokeWidth={1.8} />
-          </Button>
+            <GroupComboBox
+              value={newGroup}
+              onChange={setNewGroup}
+              options={tier2Groups}
+              loading={loadingGroups}
+              isError={groupsError}
+            />
+
+            <Button
+              size="sm"
+              aria-label="Add mapping"
+              disabled={!newRole || !newGroup.trim() || addMutation.isPending}
+              onClick={handleAddMapping}
+            >
+              <Plus size={14} strokeWidth={1.8} />
+            </Button>
+          </div>
+          <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <Info size={12} className="mt-0.5 shrink-0" strokeWidth={1.8} />
+            <span>
+              Group names are UPPER_SNAKE_CASE (A–Z, 0–9, _) — or a scoped form like{' '}
+              <span className="font-mono">DEPT:FIN::DOA:L2</span> — and must match a candidate
+              group used in a process (e.g. <span className="font-mono">MANAGER</span>,{' '}
+              <span className="font-mono">FINANCE_APPROVER</span>,{' '}
+              <span className="font-mono">DOA_L1</span>).
+            </span>
+          </div>
         </div>
       </section>
       <ConfirmDialog
