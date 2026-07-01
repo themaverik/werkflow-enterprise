@@ -6,6 +6,7 @@ import com.werkflow.admin.designtime.platform.dto.CandidateGroupEntry;
 import com.werkflow.admin.entity.RoleGroupMapping;
 import com.werkflow.admin.repository.RoleGroupMappingRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
  * candidate-group list for the PSS endpoint.
  * Per ADR-010: excludes any group name ending in _APPROVER.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CandidateGroupsAggregator {
@@ -51,6 +53,24 @@ public class CandidateGroupsAggregator {
             businessGroupAccumulators
                     .computeIfAbsent(row.getGroupName(), k -> new Tier2Accumulator(row.isManagerTier()))
                     .addRole(row.getRoleName());
+        }
+
+        // Union BPMN-discovered groups: add any group from deployed BPMNs that is not already
+        // present in Tier-1 (system) or in the saved Tier-2 mappings. Groups discovered this
+        // way are surfaced with no mapped roles (empty list) so the admin can create the mapping.
+        // Engine failures are non-fatal: a warning is logged and we fall back to saved-only.
+        List<String> bpmnGroups;
+        try {
+            bpmnGroups = engineClient.getBpmnCandidateGroups(tenantCode);
+        } catch (Exception e) {
+            log.warn("CandidateGroupsAggregator: failed to fetch BPMN candidate groups for tenant='{}', "
+                    + "falling back to saved-mappings-only — {}", tenantCode, e.getMessage());
+            bpmnGroups = List.of();
+        }
+        for (String group : bpmnGroups) {
+            if (!systemGroupToRoles.containsKey(group) && !businessGroupAccumulators.containsKey(group)) {
+                businessGroupAccumulators.put(group, new Tier2Accumulator(false));
+            }
         }
 
         List<CandidateGroupEntry> result = new ArrayList<>();

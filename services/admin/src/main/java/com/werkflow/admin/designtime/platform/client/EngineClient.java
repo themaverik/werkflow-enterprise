@@ -54,6 +54,34 @@ public class EngineClient {
     }
 
     /**
+     * Returns the distinct static candidateGroup literals from the latest deployed BPMN
+     * process definitions for the given tenant.
+     *
+     * <p>The engine exposes {@code /api/v1/config/bpmn-candidate-groups} as
+     * {@code permitAll()} (same as {@code /flowable-role-mappings}), so this call is
+     * intentionally unauthenticated. Returns an empty list on any failure so the caller
+     * degrades gracefully to saved-mappings-only.
+     *
+     * @param tenantCode the tenant to scope the query to
+     * @return immutable list of static group literals, sorted ascending; empty on failure
+     */
+    @SuppressWarnings("unchecked")
+    public List<String> getBpmnCandidateGroups(String tenantCode) {
+        String url = engineBaseUrl + "/api/v1/config/bpmn-candidate-groups?tenantCode={tenantCode}";
+        try {
+            Map<String, Object> response =
+                    restTemplate.exchange(url, HttpMethod.GET, HttpEntity.EMPTY, MAP_TYPE, tenantCode).getBody();
+            if (response == null) return List.of();
+            List<String> groups = (List<String>) response.get("groups");
+            return groups != null ? List.copyOf(groups) : List.of();
+        } catch (Exception e) {
+            log.warn("EngineClient: could not fetch BPMN candidate groups for tenant='{}' — {}",
+                    tenantCode, e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    /**
      * Returns Tier 1 YAML role→groups map from the engine config endpoint.
      * <p>The engine exposes {@code /api/v1/config/flowable-role-mappings} as
      * {@code permitAll()}, so this call is intentionally unauthenticated (an explicit
