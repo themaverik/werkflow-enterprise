@@ -86,12 +86,13 @@ services:
       KC_METRICS_ENABLED: true
       KC_HEALTH_ENABLED: true
 
-      # Admin username (non-secret). The admin password and the *_CLIENT_SECRET realm-import
-      # vars are provided by env_file (.env.shared) below. Do NOT re-declare them here as
-      # ${VAR}: Compose interpolates those from the shell (empty on a bare `docker compose up`)
-      # and `environment:` OVERRIDES `env_file:`, so the realm would import with empty secrets
-      # and the bootstrap admin with no password.
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      # Bootstrap-admin username (non-secret). KC 26 canonical vars — KEYCLOAK_ADMIN /
+      # KEYCLOAK_ADMIN_PASSWORD are deprecated. The admin password and the *_CLIENT_SECRET
+      # realm-import vars are provided by env_file (.env.shared) below. Do NOT re-declare them
+      # here as ${VAR}: Compose interpolates those from the shell (empty on a bare
+      # `docker compose up`) and `environment:` OVERRIDES `env_file:`, so the realm would
+      # import with empty secrets and the bootstrap admin with no password.
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
 
     env_file:
       - ../../config/env/.env.shared
