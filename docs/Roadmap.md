@@ -59,6 +59,33 @@ Surfaced during the 2026-06-27 realm-file reconciliation (`8682a3de`) and Knowle
 
 ---
 
+## Pre-MVP — MUST: Business Integrations + Marketplace
+
+**Added 2026-07-02.** Scope required before MVP, beyond the existing connector/datasource set. This materially expands pre-MVP beyond Manual E2E.
+
+### MUST — Business Integrations (new, to be built)
+
+Each needs a connector (or datasource) + credential type + core endpoints/queries, following the connector spec (M4.5) and the marketplace packaging below:
+
+1. [ ] **Google Calendar + Email (Gmail)** — OAuth2 credential; calendar event CRUD + email send/read endpoints.
+2. [ ] **MCP (Model Context Protocol)** — connector that lets processes call MCP servers/tools; auth + tool-invocation contract TBD.
+3. [ ] **Slack** — bot-token credential type already exists (`SlackBotTokenCredential`); build the connector + endpoints (post message, channel/user lookup).
+4. [ ] **WhatsApp (Business)** — credential type already exists (`WhatsAppBusinessCredential`); build the connector + send/template endpoints.
+5. [ ] **Amazon EventBridge** — publish/consume events on an AWS event bus; IAM/SigV4 credential.
+
+> Note: Slack/WhatsApp credential *types* exist in the engine, but the *connectors + endpoints* do not. Verify per-integration what is already wired before building.
+
+### MUST — Marketplace (extends M4.8 — Marketplace Foundation)
+
+1. [ ] **One-click install provisions the whole package** — installing a template must automatically create the required **credentials** and set up the connector/datasource, and for the ERP template specifically wire the **org-directory connector**. Today credentials + the org-directory connector are manual (this session's api-key/credential-binding friction is the symptom).
+2. [ ] **The business integrations above ship as marketplace packages** — a package = template (BPMN/DMN/form) + connector/datasource + credential definition(s) + core endpoints (connectors) or queries (datasources).
+3. [ ] **Standard for extending an installed connector** — brainstorm + define how new endpoints (connectors) / queries (datasources) are *appended* to an already-installed connector via an update, without breaking existing deployments (needs a versioning/append contract).
+4. [ ] **Contribution standard + hardened PR security review** — a documented standard so community/third-party integration contributions follow a consistent shape, gated by a hardened security review on merge (auth, secret handling, endpoint allow-listing, injection surface). Ties into `marketplace/CONTRIBUTING.md` (M4.8).
+
+> Cross-repo: marketplace item 1 (ERP auto-provision on install) spans `werkflow-enterprise` (marketplace/install) + `werkflow-erp` (ERP template + org-directory) — flag for the Master Roadmap when scheduled.
+
+---
+
 ## M2 — ADR Foundation + Performance ✅ COMPLETE
 
 Committed 2026-04-30 (`a2b53ce`/`f048a98`/`5ab62b4`) — engine quick wins (ADR-009), form field types (ADR-007), signal tenant scoping (ADR-008, `TenantAwareSignalService`), async history, `FlowableIndexCreator` (6 indexes), dead-letter job UI. Deferred: async email via Flowable `EmailJobHandler` (`@Async+@Retryable` already in place).
