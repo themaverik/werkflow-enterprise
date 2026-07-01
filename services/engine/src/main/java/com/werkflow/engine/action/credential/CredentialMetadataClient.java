@@ -47,7 +47,10 @@ public class CredentialMetadataClient {
      */
     @Cacheable(value = "credentialPaths",
         key = "#tenantId + ':' + #credentialType + ':' + #label",
-        unless = "#result == null || !#result.isPresent()")
+        // Spring unwraps Optional return values, so #result here is the unwrapped
+        // CredentialPathDto (null when empty) — NOT the Optional. Calling .isPresent()
+        // on it throws SpelEvaluationException whenever a credential actually resolves.
+        unless = "#result == null")
     public Optional<CredentialPathDto> resolvePath(String tenantId, String credentialType, String label) {
         String url = adminServiceUrl
             + "/api/v1/config/credentials/{tenantCode}/{credentialType}/{label}";
