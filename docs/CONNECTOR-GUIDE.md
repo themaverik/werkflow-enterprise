@@ -133,6 +133,21 @@ The secret value is injected as the `Authorization` header at runtime and never 
 
 ---
 
+## Credential Binding (Tenant Credentials)
+
+For per-tenant authenticated connectors, bind a credential in the portal (**Admin → Tenant Settings → Credentials**) instead of an env secret. Credentials are stored in OpenBao and resolved server-side at call time.
+
+**HTTP header auth** (the common case, including the Werkflow ERP connector):
+
+- **Header Name** — the exact header the target service reads. For the ERP connector this is **`X-API-Key`** (HTTP header names are case-insensitive).
+- **Header Value** — the raw credential. For ERP this is the **plaintext API key**; ERP stores only its SHA-256 hash and re-hashes the incoming header to validate. Mint a key via ERP `POST /api/v1/api-keys/generate` (needs an admin JWT), or register a hash directly.
+
+Use the connector's **Test** button to verify the binding end-to-end.
+
+> Known issue (pre-MVP): the connector's one-click **"Generate & Register ERP Key"** currently stores the value under the `Authorization` header, not `X-API-Key`, so keys minted that way do not authenticate against ERP. Until fixed, add a manual **HTTP header auth** credential with header name `X-API-Key`. See the Roadmap "Connector API_KEY header-name mismatch" entry.
+
+---
+
 ## SSRF Protection
 
 All connector URLs are validated against the SSRF guard before execution. Requests to private IP ranges (10.x, 172.16–31.x, 192.168.x, 127.x, localhost) are blocked by default. This cannot be disabled.
